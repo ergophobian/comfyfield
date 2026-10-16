@@ -211,7 +211,7 @@ async function balances() {
   const el = config('elevenlabs').key
   if (el) {
     const d = await fetch('https://api.elevenlabs.io/v1/user/subscription', { headers: { 'xi-api-key': el } }).then((r) => r.json()).catch(() => ({}))
-    if (d.character_limit) out.elevenlabs = { left: d.character_limit - d.character_count, unit: 'characters' }
+    out.elevenlabs = d.character_limit ? { left: d.character_limit - d.character_count, unit: 'characters' } : { note: 'Key cannot read usage (needs user_read)' }
   }
   if (config('google').key) out.google = { note: 'Billed to your Google Cloud account' }
   return out
@@ -244,7 +244,8 @@ async function testConnection(id) {
     return r.ok
   }
   if (id === 'elevenlabs') {
-    const r = await fetch('https://api.elevenlabs.io/v1/user', { headers: { 'xi-api-key': c.key } })
+    // Restricted keys often lack user_read, so check with the models list instead.
+    const r = await fetch('https://api.elevenlabs.io/v1/models', { headers: { 'xi-api-key': c.key } })
     return r.ok
   }
   if (id === 'fal') return Boolean(c.key) // fal has no free auth-check endpoint
