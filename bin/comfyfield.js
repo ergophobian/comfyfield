@@ -38,8 +38,9 @@ async function main() {
   if (cmd === 'mcp') return (await import('../server/mcp.js')).startMcp()
 
   if (cmd === 'dev') {
-    const bin = path.join(ROOT, 'node_modules', '.bin', 'vite')
-    const child = spawn(bin, ['--config', path.join(ROOT, 'vite.config.js'), '--root', ROOT], { stdio: 'inherit', env: { ...process.env, COMFYFIELD_HOME: process.env.COMFYFIELD_HOME || process.cwd() } })
+    // Run Vite's JS entry through node so this works on Windows, where .bin/vite is a shell shim.
+    const vite = path.join(ROOT, 'node_modules', 'vite', 'bin', 'vite.js')
+    const child = spawn(process.execPath, [vite, '--config', path.join(ROOT, 'vite.config.js'), '--root', ROOT], { stdio: 'inherit', env: { ...process.env, COMFYFIELD_HOME: process.env.COMFYFIELD_HOME || process.cwd() } })
     return child.on('exit', (code) => process.exit(code ?? 0))
   }
 
