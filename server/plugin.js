@@ -111,11 +111,78 @@ async function runElevenLabs({ mode, text, voice }) {
   const payload = mode === 'speech' ? { text, model_id: 'eleven_multilingual_v2' } : { text }
   const r = await fetch(url, { method: 'POST', headers: { 'xi-api-key': key, 'Content-Type': 'application/json', Accept: 'audio/mpeg' }, body: JSON.stringify(payload) })
   if (!r.ok) throw new Error(`ElevenLabs rejected the request (${r.status}): ${(await r.text()).slice(0, 300)}`)
-  fs.mkdirSync(MEDIA, { recursive: true })
-  const name = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.mp3`
-  fs.writeFileSync(path.join(MEDIA, name), Buffer.from(await r.arrayBuffer()))
-  return [{ url: `/media/${name}`, kind: 'audio' }]
+  return [{ url: saveMedia(Buffer.from(await r.arrayBuffer()), 'mp3'), kind: 'audio' }]
 }
+
+function saveMedia(buf, ext) {
+  fs.mkdirSync(MEDIA, { recursive: true })
+  const name = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+  fs.writeFileSync(path.join(MEDIA, name), buf)
+  return `/media/${name}`
+}
+
+// Gemini TTS returns raw 16-bit PCM at 24 kHz; wrap it in a WAV header so browsers can play it.
+function pcmToWav(pcm, rate = 24000) {
+  const h = Buffer.alloc(44)
+  h.write('RIFF', 0); h.writeUInt32LE(36 + pcm.length, 4); h.write('WAVE', 8)
+  h.write('fmt ', 12); h.writeUInt32LE(16, 16); h.writeUInt16LE(1, 20); h.writeUInt16LE(1, 22)
+  h.writeUInt32LE(rate, 24); h.writeUInt32LE(rate * 2, 28); h.writeUInt16LE(2, 32); h.writeUInt16LE(16, 34)
+  h.write('data', 36); h.writeUInt32LE(pcm.length, 40)
+  return Buffer.concat([h, pcm])
+}
+
+const GEMINI = 'https://generativelanguage.googleapis.com/v1beta'
+
+// Google AI (Gemini API key): image and speech via generateContent, Veo via a long-running operation.
+async function runGoogle({ model, mode, prompt, aspect, count = 1, duration }) {
+  const { key } = config('google')
+  if (!key) throw Object.assign(new Error('Connect Google AI in Connections first.'), { status: 400 })
+  const headers = { 'x-goog-api-key': key, 'Content-Type': 'application/json' }
+  const call = async (url, payload) => {
+    const r = await fetch(url, { method: 'POST', headers, body: JSON.stringify(payload) })
+    const data = await r.json().catch(() => ({}))
+    if (!r.ok) throw new Error(`Google rejected the request (${r.status}): ${data.error?.message || ''}`)
+    return data
+  }
+
+  if (mode === 'video') {
+    const parameters = { aspectRatio: aspect === '9:16' ? '9:16' : '16:9' }
+    if (duration) parameters.durationSeconds = duration
+    let op = await call(`${GEMINI}/models/${model}:predictLongRunning`, { instances: [{ prompt }], parameters })
+    for (let i = 0; i < 180 && !op.done; i++) {
+      await sleep(5000)
+      op = await (await fetch(`${GEMINI}/${op.name}`, { headers })).json()
+    }
+    if (op.error) throw new Error(`Veo failed: ${op.error.message}`)
+    const samples = op.response?.generateVideoResponse?.generatedSamples || []
+    if (!samples.length) throw new Error('Veo finished without a video. The prompt may have been filtered.')
+    const files = []
+    for (const smp of samples) {
+      const v = await fetch(smp.video.uri, { headers: { 'x-goog-api-key': key } })
+      files.push({ url: saveMedia(Buffer.from(await v.arrayBuffer()), 'mp4'), kind: 'video' })
+    }
+    return files
+  }
+
+  const generationConfig = mode === 'speech'
+    ? { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } } }
+    : { responseModalities: ['IMAGE'], imageConfig: { aspectRatio: aspect } }
+  const runs = mode === 'speech' ? 1 : count
+  const files = []
+  for (let i = 0; i < runs; i++) {
+    const data = await call(`${GEMINI}/models/${model}:generateContent`, { contents: [{ parts: [{ text: prompt }] }], generationConfig })
+    for (const part of data.candidates?.[0]?.content?.parts || []) {
+      if (!part.inlineData) continue
+      const buf = Buffer.from(part.inlineData.data, 'base64')
+      if (mode === 'speech') files.push({ url: saveMedia(pcmToWav(buf), 'wav'), kind: 'audio' })
+      else files.push({ url: saveMedia(buf, part.inlineData.mimeType.split('/')[1] || 'png'), kind: 'image' })
+    }
+  }
+  if (!files.length) throw new Error('Google returned no media. The prompt may have been filtered.')
+  return files
+}
+
+const mediaTypes = { mp3: 'audio/mpeg', wav: 'audio/wav', mp4: 'video/mp4', png: 'image/png', jpeg: 'image/jpeg', jpg: 'image/jpeg', webp: 'image/webp' }
 
 async function testConnection(id) {
   const c = config(id)
@@ -173,10 +240,13 @@ function mount(app) {
       if (url.pathname === '/api/elevenlabs' && req.method === 'POST') {
         return send(res, 200, { files: await runElevenLabs(await body(req)) })
       }
+      if (url.pathname === '/api/google' && req.method === 'POST') {
+        return send(res, 200, { files: await runGoogle(await body(req)) })
+      }
       if (url.pathname.startsWith('/media/')) {
         const file = path.join(MEDIA, path.basename(url.pathname))
         if (!fs.existsSync(file)) return send(res, 404, { error: 'Not found' })
-        res.setHeader('Content-Type', 'audio/mpeg')
+        res.setHeader('Content-Type', mediaTypes[path.extname(file).slice(1)] || 'application/octet-stream')
         return fs.createReadStream(file).pipe(res)
       }
       if (url.pathname.startsWith('/comfy/')) return proxyComfy(req, res, url)

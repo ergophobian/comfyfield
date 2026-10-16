@@ -45,7 +45,7 @@ export default function Create({ gens, picker }) {
 
   const chips = [
     <Chip key="model" icon={<IconModel />} label={model.name}>
-      {['comfy', 'fal', 'elevenlabs'].map((p) => {
+      {['comfy', 'google', 'fal', 'elevenlabs'].map((p) => {
         const list = options.filter((m) => m.provider === p)
         if (!list.length) return null
         return (
@@ -89,7 +89,7 @@ export default function Create({ gens, picker }) {
     <main>
       <section className="hero">
         <h1>Create with <em>any model</em><br />using your own keys</h1>
-        <p>Images, video and audio from ComfyUI, fal and ElevenLabs. Open source, and it runs on your machine.</p>
+        <p>Images, video and audio from ComfyUI, Google, fal and ElevenLabs. Open source, and it runs on your machine.</p>
       </section>
       <Composer kind={kind} setKind={setKind} prompt={prompt} setPrompt={setPrompt} placeholder={placeholders[kind]}
         chips={chips} onGenerate={onGenerate} busy={gens.busy} />

@@ -7,12 +7,20 @@ export const models = [
   { id: 'fal:openai/gpt-image-2', kind: 'image', provider: 'fal', name: 'GPT Image 2', note: 'OpenAI, via fal', model: 'openai/gpt-image-2' },
   { id: 'fal:fal-ai/flux-2-pro', kind: 'image', provider: 'fal', name: 'Flux 2 Pro', note: 'Black Forest Labs, via fal', model: 'fal-ai/flux-2-pro' },
 
+  { id: 'g-nano-banana-pro', kind: 'image', provider: 'google', name: 'Nano Banana Pro', note: 'Gemini 3 Pro Image, your Google key', model: 'gemini-3-pro-image', mode: 'image' },
+  { id: 'g-nano-banana-2', kind: 'image', provider: 'google', name: 'Nano Banana 2', note: 'Gemini 3.1 Flash Image, your Google key', model: 'gemini-3.1-flash-image', mode: 'image' },
+
   { id: 'comfy-ltx', kind: 'video', provider: 'comfy', name: 'LTX Video', note: 'Open weights on your ComfyUI', workflow: 'video_ltx', durations: [3, 5, 8] },
   { id: 'fal:bytedance/seedance-2.5/text-to-video', kind: 'video', provider: 'fal', name: 'Seedance 2.5', note: 'ByteDance, via fal', model: 'bytedance/seedance-2.5/text-to-video' },
   { id: 'fal:fal-ai/kling-video/v3/pro/text-to-video', kind: 'video', provider: 'fal', name: 'Kling 3 Pro', note: 'Kling, via fal', model: 'fal-ai/kling-video/v3/pro/text-to-video' },
   { id: 'fal:minimax/h3/text-to-video', kind: 'video', provider: 'fal', name: 'MiniMax H3', note: 'MiniMax, via fal', model: 'minimax/h3/text-to-video' },
   { id: 'fal:alibaba/wan-3.0/text-to-video', kind: 'video', provider: 'fal', name: 'Wan 3.0', note: 'Alibaba, via fal', model: 'alibaba/wan-3.0/text-to-video' },
 
+  { id: 'g-veo', kind: 'video', provider: 'google', name: 'Veo 3.1', note: 'Video with sound, your Google key', model: 'veo-3.1-generate-preview', mode: 'video', durations: [4, 6, 8] },
+  { id: 'g-veo-fast', kind: 'video', provider: 'google', name: 'Veo 3.1 Fast', note: 'Cheaper and quicker', model: 'veo-3.1-fast-generate-preview', mode: 'video', durations: [4, 6, 8] },
+  { id: 'g-veo-lite', kind: 'video', provider: 'google', name: 'Veo 3.1 Lite', note: 'Lowest cost Veo', model: 'veo-3.1-lite-generate-preview', mode: 'video', durations: [4, 6, 8] },
+
+  { id: 'g-tts', kind: 'audio', provider: 'google', name: 'Gemini voice', note: 'Text to speech, your Google key', model: 'gemini-3.8-flash-tts', mode: 'speech' },
   { id: 'el-speech', kind: 'audio', provider: 'elevenlabs', name: 'ElevenLabs voice', note: 'Text to speech with your key', mode: 'speech' },
   { id: 'el-sfx', kind: 'audio', provider: 'elevenlabs', name: 'ElevenLabs sound effects', note: 'Describe a sound', mode: 'sfx' },
   { id: 'fal:minimax/music-3', kind: 'audio', provider: 'fal', name: 'MiniMax Music 3', note: 'Songs, via fal', model: 'minimax/music-3' },
@@ -34,15 +42,15 @@ export const providerInfo = {
   fal: { name: 'fal', blurb: 'One key for hosted FLUX, Kling, Seedance, Veo and more. Pay per run.', fields: [
     { id: 'key', label: 'API key', placeholder: 'fal key', secret: true },
   ], link: 'https://fal.ai/dashboard/keys' },
-  google: { name: 'Google AI', blurb: 'Gemini API key from AI Studio, for Veo and Gemini image models.', fields: [
+  google: { name: 'Google AI', blurb: 'Gemini API key from AI Studio. Veo 3.1, Nano Banana and Gemini voices.', fields: [
     { id: 'key', label: 'API key', placeholder: 'Gemini API key', secret: true },
-  ], link: 'https://aistudio.google.com/apikey', soon: true },
+  ], link: 'https://aistudio.google.com/apikey' },
   elevenlabs: { name: 'ElevenLabs', blurb: 'Your ElevenLabs key for voices and sound effects.', fields: [
     { id: 'key', label: 'API key', placeholder: 'xi-api-key', secret: true },
   ], link: 'https://elevenlabs.io/app/settings/api-keys' },
 }
 
-// Account sign-ins we want next. None of these offer third-party OAuth today; see the README.
+// Account sign-ins for later. These need each site's own login, not an API key.
 export const plannedAccounts = [
   { name: 'ChatGPT', how: 'Sign in through the local Codex CLI to use your ChatGPT plan for image generation.' },
   { name: 'Higgsfield', how: 'Higgsfield API key from their developer platform.' },

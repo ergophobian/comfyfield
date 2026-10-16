@@ -69,6 +69,9 @@ export async function run(model, opts) {
     const { properties } = await falSchema(model.model)
     return (await post('/api/fal', { model: model.model, input: falInput(properties, opts) })).files
   }
+  if (model.provider === 'google') {
+    return (await post('/api/google', { model: model.model, mode: model.mode, prompt: opts.prompt, aspect: opts.aspect, count: opts.count, duration: opts.duration })).files
+  }
   if (model.provider === 'elevenlabs') {
     return (await post('/api/elevenlabs', { mode: model.mode, text: opts.prompt })).files
   }
