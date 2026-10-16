@@ -47,6 +47,19 @@ const restored = createFlows({ directory: () => directory, generate })
 assert.deepEqual(restored.get(flow.id), flow)
 console.log('ok    shared flow persistence, conflict detection and connection validation')
 
+let releaseGeneration
+const lockedFlows = createFlows({ directory: () => path.join(directory, 'locked'), generate: () => new Promise((resolve) => { releaseGeneration = resolve }) })
+lockedFlows.save({ revision: 0, current: flow.id, flows: [flow] })
+const lockedRun = lockedFlows.perform(flow.id, 'runNew')
+const selectedStore = lockedFlows.read()
+selectedStore.flows[0].nodes[0].selected = true
+selectedStore.flows[0].updated = Date.now()
+lockedFlows.save(selectedStore)
+assert.throws(() => lockedFlows.update(flow.id, 'p', { data: { text: 'Changed while running' } }), /finish/)
+releaseGeneration([{ kind: 'image', url: '/media/locked-fake.png' }])
+await lockedRun
+console.log('ok    running flows permit selection but refuse definition changes')
+
 await assert.rejects(harness.start('missing', 'http://localhost:5173'), /Install/)
 const session = await harness.start('fake', 'http://localhost:5173')
 assert.equal(adapterOptions.mcp.command, process.execPath)

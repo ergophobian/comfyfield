@@ -6,6 +6,11 @@ import { createEngine, topoOrder } from '../src/lib/flowEngine.js'
 
 export const problem = (message, status = 400) => Object.assign(new Error(message), { status })
 export const clone = (value) => structuredClone(value)
+export const flowSignature = (flow) => flow && JSON.stringify({
+  id: flow.id, name: flow.name,
+  nodes: flow.nodes.map(({ id, type, position, data }) => ({ id, type, position, data })),
+  edges: flow.edges.map(({ id, source, target }) => ({ id, source, target })),
+})
 
 export function createFlows({ directory = core.home, generate = core.generate, changed = () => {} } = {}) {
   const engines = new Map()
@@ -53,7 +58,7 @@ export function createFlows({ directory = core.home, generate = core.generate, c
     if (revision !== store.revision) throw problem('Flows changed elsewhere. Reload flows before editing again.', 409)
     if (!Array.isArray(flows) || new Set(flows.map((f) => f.id)).size !== flows.length) throw problem('Invalid flows')
     flows.forEach(validate)
-    for (const id of locks) if (JSON.stringify(store.flows.find((f) => f.id === id)) !== JSON.stringify(flows.find((f) => f.id === id))) throw problem('Wait for this flow to finish before editing it.', 409)
+    for (const id of locks) if (flowSignature(store.flows.find((f) => f.id === id)) !== flowSignature(flows.find((f) => f.id === id))) throw problem('Wait for this flow to finish before editing it.', 409)
     const migrated = store.revision === 0 && runs ? Object.fromEntries(flows.map((f) => [f.id, Object.fromEntries(Object.entries(runs[f.id] || {}).filter(([id]) => f.nodes.some((n) => n.id === id)).map(([id, state]) => [id, { ...state, running: 0, items: state.items?.filter((i) => i.status === 'done') }]))])) : store.runs
     return write({ ...store, revision: store.revision + 1, flows: clone(flows), current, runs: migrated })
   }

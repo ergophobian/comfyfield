@@ -1,7 +1,7 @@
 import crypto from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import * as core from './core.js'
-import { createFlows, clone, problem } from './flows.js'
+import { createFlows, clone, problem, flowSignature } from './flows.js'
 import { createEngine } from '../src/lib/flowEngine.js'
 import { createServer } from './mcp.js'
 import { adapterSetup, claudeAdapter, codexAdapter } from './agent-adapters.js'
@@ -81,7 +81,7 @@ export function createHarness({ adapters = { claude: claudeAdapter, codex: codex
         for (const job of jobs) allowance.set(jobKey(job), (allowance.get(jobKey(job)) || 0) + 1)
         const steps = await Promise.all(jobs.map(async (job) => ({ model: job.model, prompt: job.prompt, aspect: job.aspect, duration: job.duration, count: job.count, usd: (await estimate(job).catch(() => null))?.usd ?? null })))
         await approval(session, { title: `Run ${snapshot.name}`, tool: name, args, flow: snapshot, steps, usd: steps.every((s) => s.usd != null) ? steps.reduce((n, s) => n + s.usd, 0) : null })
-        if (JSON.stringify(snapshot) !== JSON.stringify(flows.get(args.flow_id)) || JSON.stringify(state) !== JSON.stringify(flows.engine(args.flow_id).state)) throw problem('The flow changed. Request a fresh plan before running.', 409)
+        if (flowSignature(snapshot) !== flowSignature(flows.get(args.flow_id)) || JSON.stringify(state) !== JSON.stringify(flows.engine(args.flow_id).state)) throw problem('The flow changed. Request a fresh plan before running.', 409)
       } else if (['generate', 'write_prompts'].includes(name)) {
         const cost = name === 'generate' ? await estimate(args).catch(() => null) : null
         await approval(session, { title: name === 'generate' ? 'Generate media' : 'Write prompts', tool: name, args, steps: [{ ...args, model: args.model || 'Google Gemini', prompt: args.prompt || args.idea, usd: cost?.usd ?? null }], usd: cost?.usd ?? null })
