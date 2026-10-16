@@ -1,0 +1,36 @@
+name: Task
+description: A piece of work small enough for one PR (a day or less)
+body:
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Why this matters and what the user sees today.
+    validations:
+      required: true
+  - type: textarea
+    id: criteria
+    attributes:
+      label: Acceptance criteria
+      description: A checklist a reviewer (or an agent) can verify. One line each.
+      placeholder: "- [ ] ..."
+    validations:
+      required: true
+  - type: input
+    id: files
+    attributes:
+      label: Where in the code
+      placeholder: server/core.js, src/pages/Create.jsx
+  - type: input
+    id: budget
+    attributes:
+      label: Spend budget for real generations
+      description: Leave empty if no paid calls are allowed.
+      placeholder: "$0.50"
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [comfy, providers, create, formats, flows, library, agents, design, 3d, launch]
+    validations:
+      required: true
