@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Composer, { Chip, Option } from '../components/Composer.jsx'
 import Results from '../components/Results.jsx'
-import { IconAspect, IconClock, IconModel, IconStack, IconSpark } from '../components/Icons.jsx'
+import ModelPicker from '../components/ModelPicker.jsx'
+import { IconAspect, IconClock, IconStack, IconSpark } from '../components/Icons.jsx'
 import { aspects, styles, providerInfo } from '../lib/catalog.js'
 import { durationsFor, getConnections } from '../lib/providers.js'
 
@@ -44,19 +45,8 @@ export default function Create({ gens, picker }) {
   }
 
   const chips = [
-    <Chip key="model" icon={<IconModel />} label={model.name}>
-      {['comfy', 'google', 'fal', 'elevenlabs'].map((p) => {
-        const list = options.filter((m) => m.provider === p)
-        if (!list.length) return null
-        return (
-          <div key={p}>
-            <h6>{providerInfo[p].name}{connections[p]?.connected ? '' : ' · not connected'}</h6>
-            {list.map((m) => <Option key={m.id} on={m.id === model.id} label={m.name} note={m.note} onClick={() => choose(m.id)} />)}
-          </div>
-        )
-      })}
-      <h6><Link to="/models" style={{ color: 'var(--blue)' }}>Browse every fal model ›</Link></h6>
-    </Chip>,
+    <ModelPicker key="model" model={model} options={options} favorites={picker.favorites}
+      toggleFavorite={picker.toggleFavorite} choose={choose} connections={connections} />,
     kind !== 'audio' && (
       <Chip key="aspect" icon={<IconAspect />} label={aspect}>
         {aspects.map((a) => <Option key={a} on={a === aspect} label={a} onClick={() => setAspect(a)} />)}
@@ -87,7 +77,7 @@ export default function Create({ gens, picker }) {
 
   return (
     <main>
-      <section className="hero">
+      <section className="hero rise">
         <h1>Create with <em>any model</em><br />using your own keys</h1>
         <p>Images, video and audio from ComfyUI, Google, fal and ElevenLabs. Open source, and it runs on your machine.</p>
       </section>

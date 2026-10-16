@@ -3,7 +3,7 @@ import { models as pinned } from './catalog.js'
 
 const KEY = 'comfyfield.picker'
 const first = (kind) => pinned.find((m) => m.kind === kind).id
-const initial = { kind: 'image', chosen: { image: first('image'), video: first('video'), audio: first('audio') }, extra: [] }
+const initial = { kind: 'image', chosen: { image: first('image'), video: first('video'), audio: first('audio') }, extra: [], favorites: [] }
 
 function load() {
   try { return { ...initial, ...JSON.parse(localStorage.getItem(KEY)) } } catch { return initial }
@@ -22,9 +22,14 @@ export function usePicker() {
     model,
     options: all.filter((m) => m.kind === state.kind),
     setKind: (kind) => setState((s) => ({ ...s, kind })),
+    favorites: state.favorites,
+    toggleFavorite: (id) => setState((s) => ({
+      ...s, favorites: s.favorites.includes(id) ? s.favorites.filter((f) => f !== id) : [...s.favorites, id],
+    })),
     choose: (id) => setState((s) => ({ ...s, chosen: { ...s.chosen, [s.kind]: id } })),
     // Adds a fal catalog model and switches the composer to it.
     use: (m) => setState((s) => ({
+      ...s,
       kind: m.kind,
       chosen: { ...s.chosen, [m.kind]: m.id },
       extra: [m, ...s.extra.filter((x) => x.id !== m.id)].slice(0, 20),
