@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 
-function Chip({ icon, label, options, value, onChange }) {
+export function Chip({ icon, label, lit, children }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   useEffect(() => {
@@ -11,30 +11,36 @@ function Chip({ icon, label, options, value, onChange }) {
   }, [open])
   return (
     <div className="chip" ref={ref}>
-      <button type="button" onClick={() => setOpen((o) => !o)}>{icon}{label}</button>
-      {open && (
-        <div className="menu">
-          {options.map((o) => (
-            <button key={o.value} type="button" className={o.value === value ? 'on' : ''}
-              onClick={() => { onChange(o.value); setOpen(false) }}>
-              {o.label}{o.note && <small>{o.note}</small>}
-            </button>
-          ))}
-        </div>
-      )}
+      <button type="button" className={lit ? 'lit' : ''} onClick={() => setOpen((o) => !o)}>{icon}{label}</button>
+      {open && <div className="menu glass" onClick={(e) => e.target.closest('button') && setOpen(false)}>{children}</div>}
     </div>
   )
 }
 
-export default function Composer({ prompt, setPrompt, placeholder, chips, onGenerate, busy }) {
+export function Option({ on, disabled, label, note, onClick }) {
+  return (
+    <button type="button" className={on ? 'on' : ''} disabled={disabled} onClick={onClick}>
+      {label}{note && <small>{note}</small>}
+    </button>
+  )
+}
+
+export default function Composer({ kind, setKind, prompt, setPrompt, placeholder, chips, onGenerate, busy }) {
   const submit = (e) => {
     e.preventDefault()
     if (prompt.trim() && !busy) onGenerate()
   }
   return (
-    <div className="composer-wrap">
-      <form className="composer" onSubmit={submit}>
+    <form className="composer glass" onSubmit={submit}>
+      <div className="composer-inner">
         <div className="composer-main">
+          <div className="seg" role="tablist">
+            {['image', 'video', 'audio'].map((k) => (
+              <button key={k} type="button" className={kind === k ? 'on' : ''} onClick={() => setKind(k)}>
+                {k[0].toUpperCase() + k.slice(1)}
+              </button>
+            ))}
+          </div>
           <textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
@@ -42,12 +48,12 @@ export default function Composer({ prompt, setPrompt, placeholder, chips, onGene
             placeholder={placeholder}
             rows={2}
           />
-          <div className="chips">{chips.map((c) => <Chip key={c.key} {...c} />)}</div>
+          <div className="chips">{chips}</div>
         </div>
-        <button className="generate" disabled={!prompt.trim() || busy}>
+        <button className="btn-blue" disabled={!prompt.trim() || busy}>
           {busy ? 'Generating' : 'Generate'}
         </button>
-      </form>
-    </div>
+      </div>
+    </form>
   )
 }

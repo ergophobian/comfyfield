@@ -1,87 +1,107 @@
-import { useState } from 'react'
-import { useLocation } from 'react-router-dom'
-import Composer from '../components/Composer.jsx'
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import Composer, { Chip, Option } from '../components/Composer.jsx'
 import Results from '../components/Results.jsx'
-import { IconAspect, IconClock, IconModel, IconStack, IconCamera } from '../components/Icons.jsx'
-import { useGenerations } from '../lib/useGenerations.js'
-import { imageModels, videoModels, aspects, aspectSize, durations, cameraMoves, gradient } from '../lib/catalog.js'
+import { IconAspect, IconClock, IconModel, IconStack, IconSpark } from '../components/Icons.jsx'
+import { aspects, styles, providerInfo } from '../lib/catalog.js'
+import { durationsFor, getConnections } from '../lib/providers.js'
 
-const copy = {
-  image: { title: 'Start creating with', accent: 'open image models', sub: 'Describe a scene, a character or a mood, and watch it render.', placeholder: 'Describe the scene you imagine' },
-  video: { title: 'Prompt to motion with', accent: 'LTX video', sub: 'Every shot runs through a ComfyUI workflow you can open and remix.', placeholder: 'Describe any visual idea, we will turn it into video' },
-  cinema: { title: 'Direct the shot in', accent: 'Cinema studio', sub: 'Pick a camera move, describe the scene, roll camera.', placeholder: 'Describe the scene the camera should capture' },
+const placeholders = {
+  image: 'Describe the image you want',
+  video: 'Describe a shot, a scene or a moment in motion',
+  audio: 'Type a line to voice, or describe a sound',
 }
 
-// LTX wants dimensions divisible by 32 and frame counts of 8n + 1.
-const videoSize = (a) => aspectSize[a].map((n) => Math.round((n * 0.6) / 32) * 32)
-
-export default function Create({ mode, cinema = false }) {
-  const preset = useLocation().state
-  const isVideo = mode === 'video'
-  const models = isVideo ? videoModels : imageModels
+export default function Create({ gens, picker }) {
+  const { kind, model, options, setKind, choose } = picker
   const [prompt, setPrompt] = useState('')
-  const [model, setModel] = useState(models[0].id)
-  const [aspect, setAspect] = useState(isVideo ? '16:9' : '1:1')
+  const [aspect, setAspect] = useState('1:1')
   const [count, setCount] = useState(1)
+  const [durations, setDurations] = useState([])
   const [duration, setDuration] = useState(5)
-  const [move, setMove] = useState(cinema ? cameraMoves[0].id : null)
-  const { items, error, busy, run } = useGenerations()
-  const c = copy[cinema ? 'cinema' : mode]
+  const [style, setStyle] = useState(null)
+  const [connections, setConnections] = useState({})
+
+  useEffect(() => { getConnections().then(setConnections) }, [])
+  useEffect(() => { setAspect(kind === 'video' ? '16:9' : '1:1'); setStyle(null) }, [kind])
+  useEffect(() => {
+    let live = true
+    durationsFor(model).then((ds) => {
+      if (!live) return
+      setDurations(ds)
+      if (ds.length && !ds.includes(duration)) setDuration(ds.includes(5) ? 5 : ds[0])
+    })
+    return () => { live = false }
+  }, [model?.id])
+
+  const styleItem = styles.flatMap((g) => g.items).find((s) => s.id === style)
+  const connected = connections[model.provider]?.connected
+  const recent = gens.items.slice(0, 12)
 
   const onGenerate = () => {
-    const m = models.find((x) => x.id === model)
-    const parts = [prompt.trim()]
-    if (preset?.prompt) parts.push(preset.prompt)
-    if (move) parts.push(cameraMoves.find((x) => x.id === move).prompt)
-    const full = parts.join(', ')
-    const [width, height] = isVideo ? videoSize(aspect) : aspectSize[aspect]
-    run({
-      workflow: m.workflow,
-      vars: { prompt: full, width, height, count, frames: duration * 24 + 1 },
-      aspect,
-      caption: prompt.trim(),
-      kind: isVideo ? 'video' : 'image',
-    })
+    const full = [prompt.trim(), styleItem?.prompt].filter(Boolean).join(', ')
+    gens.generate(model, { prompt: full, caption: prompt.trim(), aspect, count, duration })
   }
 
   const chips = [
-    { key: 'model', icon: <IconModel />, label: models.find((x) => x.id === model).name, value: model, onChange: setModel,
-      options: models.map((x) => ({ value: x.id, label: x.name, note: x.note })) },
-    { key: 'aspect', icon: <IconAspect />, label: aspect, value: aspect, onChange: setAspect,
-      options: aspects.map((a) => ({ value: a, label: a })) },
-    isVideo
-      ? { key: 'dur', icon: <IconClock />, label: `${duration}s`, value: duration, onChange: setDuration,
-          options: durations.map((d) => ({ value: d, label: `${d} seconds` })) }
-      : { key: 'count', icon: <IconStack />, label: `${count}/4`, value: count, onChange: setCount,
-          options: [1, 2, 3, 4].map((n) => ({ value: n, label: `${n} ${n === 1 ? 'image' : 'images'}` })) },
+    <Chip key="model" icon={<IconModel />} label={model.name}>
+      {['comfy', 'fal', 'elevenlabs'].map((p) => {
+        const list = options.filter((m) => m.provider === p)
+        if (!list.length) return null
+        return (
+          <div key={p}>
+            <h6>{providerInfo[p].name}{connections[p]?.connected ? '' : ' · not connected'}</h6>
+            {list.map((m) => <Option key={m.id} on={m.id === model.id} label={m.name} note={m.note} onClick={() => choose(m.id)} />)}
+          </div>
+        )
+      })}
+      <h6><Link to="/models" style={{ color: 'var(--blue)' }}>Browse every fal model ›</Link></h6>
+    </Chip>,
+    kind !== 'audio' && (
+      <Chip key="aspect" icon={<IconAspect />} label={aspect}>
+        {aspects.map((a) => <Option key={a} on={a === aspect} label={a} onClick={() => setAspect(a)} />)}
+      </Chip>
+    ),
+    kind === 'image' && (
+      <Chip key="count" icon={<IconStack />} label={`${count} ${count === 1 ? 'image' : 'images'}`}>
+        {[1, 2, 3, 4].map((n) => <Option key={n} on={n === count} label={`${n} ${n === 1 ? 'image' : 'images'}`} onClick={() => setCount(n)} />)}
+      </Chip>
+    ),
+    kind === 'video' && durations.length > 0 && (
+      <Chip key="dur" icon={<IconClock />} label={`${duration}s`}>
+        {durations.map((d) => <Option key={d} on={d === duration} label={`${d} seconds`} onClick={() => setDuration(d)} />)}
+      </Chip>
+    ),
+    kind !== 'audio' && (
+      <Chip key="style" icon={<IconSpark />} label={styleItem?.name || 'Style'} lit={Boolean(styleItem)}>
+        <Option on={!style} label="None" onClick={() => setStyle(null)} />
+        {styles.map((g) => (
+          <div key={g.group}>
+            <h6>{g.group}</h6>
+            {g.items.map((s) => <Option key={s.id} on={s.id === style} label={s.name} onClick={() => setStyle(s.id)} />)}
+          </div>
+        ))}
+      </Chip>
+    ),
   ]
 
   return (
-    <main className="create">
-      {preset?.name && <div className="muted" style={{ marginBottom: 12 }}>Effect: <strong style={{ color: 'var(--text)' }}>{preset.name}</strong></div>}
-      {cinema && (
-        <div className="moves">
-          {cameraMoves.map((m) => (
-            <button key={m.id} className={`move${move === m.id ? ' on' : ''}`} onClick={() => setMove(m.id)}>
-              <IconCamera size={20} /><span>{m.name}</span>
-            </button>
-          ))}
-        </div>
+    <main>
+      <section className="hero">
+        <h1>Create with <em>any model</em><br />using your own keys</h1>
+        <p>Images, video and audio from ComfyUI, fal and ElevenLabs. Open source, and it runs on your machine.</p>
+      </section>
+      <Composer kind={kind} setKind={setKind} prompt={prompt} setPrompt={setPrompt} placeholder={placeholders[kind]}
+        chips={chips} onGenerate={onGenerate} busy={gens.busy} />
+      {!connected && model.provider !== 'comfy' && (
+        <div className="notice glass">{model.name} runs on {providerInfo[model.provider].name}. <Link to="/connections">Add your key</Link> to use it.</div>
       )}
-      {items.length || error ? <Results items={items} error={error} /> : (
-        <div className="create-empty">
-          <div>
-            <div className="stack">
-              {[[16, 290], [200, 30], [330, 180], [40, 250]].map((h, i) => (
-                <div key={i} className="tile" style={{ background: gradient(h, i) }} />
-              ))}
-            </div>
-            <h1 className="h1">{c.title}<br /><span>{c.accent}</span></h1>
-            <p className="muted" style={{ marginTop: 14 }}>{c.sub}</p>
-          </div>
-        </div>
+      {gens.error && <div className="notice glass error">{gens.error}</div>}
+      {recent.length > 0 && (
+        <section className="results-wrap">
+          <Results items={recent} />
+        </section>
       )}
-      <Composer prompt={prompt} setPrompt={setPrompt} placeholder={c.placeholder} chips={chips} onGenerate={onGenerate} busy={busy} />
     </main>
   )
 }

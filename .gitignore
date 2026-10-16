@@ -4,3 +4,5 @@ node_modules/
 outputs/
 __pycache__/
 dist/
+.comfyfield/
+.env

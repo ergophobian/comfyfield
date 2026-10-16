@@ -1,26 +1,37 @@
-import { useState } from 'react'
-import { generate } from './comfy.js'
+import { useEffect, useState } from 'react'
+import { run } from './providers.js'
 
-// Tracks a list of generations, newest first. Each run renders as a pending card until ComfyUI returns.
+const KEY = 'comfyfield.library'
+
+function load() {
+  try { return JSON.parse(localStorage.getItem(KEY)) || [] } catch { return [] }
+}
+
+// Generations, newest first. Finished items persist in this browser for the Library page.
 export function useGenerations() {
-  const [items, setItems] = useState([])
+  const [items, setItems] = useState(load)
   const [error, setError] = useState(null)
   const busy = items.some((i) => i.pending)
 
-  async function run({ workflow, vars, aspect, caption, kind }) {
+  useEffect(() => {
+    try { localStorage.setItem(KEY, JSON.stringify(items.filter((i) => !i.pending).slice(0, 200))) } catch {}
+  }, [items])
+
+  async function generate(model, opts) {
     const id = crypto.randomUUID()
+    const meta = { aspect: opts.aspect, caption: opts.caption, model: model.name, kind: model.kind }
     setError(null)
-    setItems((xs) => [{ id, pending: true, aspect, caption, kind }, ...xs])
+    setItems((xs) => [{ id, pending: true, ...meta }, ...xs])
     try {
-      const files = await generate(workflow, { seed: Math.floor(Math.random() * 2 ** 31), ...vars })
-      setItems((xs) => xs.flatMap((x) => x.id === id
-        ? files.map((f, i) => ({ id: `${id}-${i}`, aspect, caption, ...f }))
-        : [x]))
+      const files = await run(model, opts)
+      setItems((xs) => xs.flatMap((x) => (x.id === id
+        ? files.map((f, i) => ({ id: `${id}-${i}`, ...meta, ...f, created: Date.now() }))
+        : [x])))
     } catch (e) {
       setError(e.message)
       setItems((xs) => xs.filter((x) => x.id !== id))
     }
   }
 
-  return { items, error, busy, run }
+  return { items, error, busy, generate, clear: () => setItems([]) }
 }
