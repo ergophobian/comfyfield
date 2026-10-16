@@ -37,7 +37,7 @@ await vite.listen()
 const base = `http://127.0.0.1:${vite.httpServer.address().port}`
 const profile = path.join(dir, `chrome-profile-${Date.now()}`)
 const chromePath = process.env.WIDGET_CHROME || chromeExecutable()
-const chrome = spawn(chromePath, ['--headless=new', '--no-sandbox', '--disable-gpu', '--disable-extensions', '--no-first-run', '--no-default-browser-check', '--autoplay-policy=no-user-gesture-required', '--remote-debugging-port=0', `--user-data-dir=${profile}`, 'about:blank'], { windowsHide: true, stdio: 'ignore' })
+const chrome = spawn(chromePath, ['--headless=new', '--use-mock-keychain', '--password-store=basic', '--no-sandbox', '--disable-gpu', '--disable-extensions', '--no-first-run', '--no-default-browser-check', '--autoplay-policy=no-user-gesture-required', '--remote-debugging-port=0', `--user-data-dir=${profile}`, 'about:blank'], { windowsHide: true, stdio: 'ignore' })
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 let ws
 const pending = new Map()
@@ -54,6 +54,8 @@ try {
     const message = JSON.parse(event.data)
     if (message.id) {
       const task = pending.get(message.id)
+      if (!task) return
+      clearTimeout(task.timer)
       pending.delete(message.id)
       if (message.error) task.reject(new Error(message.error.message))
       else task.resolve(message.result)
@@ -61,7 +63,8 @@ try {
   })
   const cdp = (method, params = {}) => new Promise((resolve, reject) => {
     const id = ++sequence
-    pending.set(id, { resolve, reject })
+    const timer = setTimeout(() => { pending.delete(id); reject(new Error(`CDP timeout: ${method}`)) }, 15000)
+    pending.set(id, { resolve, reject, timer })
     ws.send(JSON.stringify({ id, method, params }))
   })
   const js = async (expression) => {

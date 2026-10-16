@@ -13,7 +13,7 @@ const profile = path.resolve('.comfyfield', 'agent-chrome', String(Date.now()))
 const output = path.resolve('research_notes', 'agent-harness')
 fs.mkdirSync(profile, { recursive: true })
 fs.mkdirSync(output, { recursive: true })
-const chrome = spawn(executable, ['--headless=new', '--no-sandbox', '--disable-gpu', '--disable-extensions', '--disable-background-networking', '--no-first-run', '--no-default-browser-check', '--remote-debugging-port=0', `--user-data-dir=${profile}`, 'about:blank'], { windowsHide: true, stdio: 'ignore' })
+const chrome = spawn(executable, ['--headless=new', '--use-mock-keychain', '--password-store=basic', '--no-sandbox', '--disable-gpu', '--disable-extensions', '--disable-background-networking', '--no-first-run', '--no-default-browser-check', '--remote-debugging-port=0', `--user-data-dir=${profile}`, 'about:blank'], { windowsHide: true, stdio: 'ignore' })
 let socket
 const pending = new Map()
 let counter = 0

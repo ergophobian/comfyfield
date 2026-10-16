@@ -48,7 +48,7 @@ await server.listen()
 const origin = `http://127.0.0.1:${server.httpServer.address().port}`
 const profile = resolve(`node_modules/.cache/format-chrome-${Date.now()}`)
 mkdirSync(profile, { recursive: true })
-const chrome = spawn(executable, ['--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check', '--disable-background-networking', '--disable-gpu', '--no-sandbox', 'about:blank'], { windowsHide: true, stdio: 'ignore' })
+const chrome = spawn(executable, ['--headless=new', '--use-mock-keychain', '--password-store=basic', '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check', '--disable-background-networking', '--disable-gpu', '--no-sandbox', 'about:blank'], { windowsHide: true, stdio: 'ignore' })
 const pause = (ms) => new Promise((r) => setTimeout(r, ms))
 let ws
 try {
@@ -64,12 +64,14 @@ try {
     const msg = JSON.parse(event.data)
     if (msg.id) {
       const p = pending.get(msg.id)
+      if (!p) return
+      clearTimeout(p.timer)
       pending.delete(msg.id)
       if (msg.error) p.reject(new Error(JSON.stringify(msg.error)))
       else p.resolve(msg.result)
     } else if (msg.method === 'Runtime.exceptionThrown') errors.push(msg.params.exceptionDetails.exception?.description || msg.params.exceptionDetails.text)
   })
-  const cdp = (method, params = {}) => new Promise((resolve, reject) => { const key = ++id; pending.set(key, { resolve, reject }); ws.send(JSON.stringify({ id: key, method, params })) })
+  const cdp = (method, params = {}) => new Promise((resolve, reject) => { const key = ++id; const timer = setTimeout(() => { pending.delete(key); reject(new Error(`CDP timeout: ${method}`)) }, 15000); pending.set(key, { resolve, reject, timer }); ws.send(JSON.stringify({ id: key, method, params })) })
   const evaluate = async (expression) => {
     const result = await cdp('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true })
     if (result.exceptionDetails) throw new Error(JSON.stringify(result.exceptionDetails))

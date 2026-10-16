@@ -5,7 +5,7 @@ const checks = readdirSync('scripts').filter((file) => /-check.*\.mjs$/.test(fil
 let failed = 0
 for (const file of checks) {
   console.log(`Running ${file}`)
-  const result = spawnSync(process.execPath, [`scripts/${file}`], { stdio: 'inherit', windowsHide: true, timeout: 180000 })
+  const result = spawnSync(process.execPath, [`scripts/${file}`], { stdio: 'inherit', windowsHide: true, timeout: 180000, killSignal: 'SIGKILL' })
   if (result.status !== 0) { failed++; console.error(`Failed ${file}: ${result.error?.message || result.status}`) }
 }
 console.log(`${checks.length - failed}/${checks.length} check scripts passed`)
