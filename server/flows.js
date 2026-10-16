@@ -3,6 +3,7 @@ import path from 'node:path'
 import crypto from 'node:crypto'
 import * as core from './core.js'
 import { createEngine, topoOrder } from '../src/lib/flowEngine.js'
+import { widgetTypes } from '../shared/widgetInputs.js'
 
 export const problem = (message, status = 400) => Object.assign(new Error(message), { status })
 export const clone = (value) => structuredClone(value)
@@ -12,7 +13,7 @@ export const flowSignature = (flow) => flow && JSON.stringify({
   edges: flow.edges.map(({ id, source, target }) => ({ id, source, target })),
 })
 
-export function createFlows({ directory = core.home, generate = core.generate, changed = () => {} } = {}) {
+export function createFlows({ directory = core.home, generate = core.generate, writePrompt = core.writePrompt, stitch = core.stitch, changed = () => {} } = {}) {
   const engines = new Map()
   const locks = new Set()
   const file = () => path.join(directory(), 'flows.json')
@@ -37,7 +38,7 @@ export function createFlows({ directory = core.home, generate = core.generate, c
   const validate = (flow) => {
     if (!flow || typeof flow.id !== 'string' || typeof flow.name !== 'string' || !Array.isArray(flow.nodes) || !Array.isArray(flow.edges)) throw problem('Invalid flow')
     const ids = new Set(flow.nodes.map((n) => n.id))
-    if (ids.size !== flow.nodes.length || flow.nodes.some((n) => typeof n.id !== 'string' || !['prompt', 'image', 'model', 'approve', 'output', 'note'].includes(n.type) || !n.data || !Number.isFinite(n.position?.x) || !Number.isFinite(n.position?.y))) throw problem('Invalid node')
+    if (ids.size !== flow.nodes.length || flow.nodes.some((n) => typeof n.id !== 'string' || !['prompt', 'image', ...widgetTypes, 'writer', 'stitch', 'model', 'approve', 'output', 'note'].includes(n.type) || !n.data || !Number.isFinite(n.position?.x) || !Number.isFinite(n.position?.y))) throw problem('Invalid node')
     for (const n of flow.nodes) {
       if (n.type === 'model' && n.data.model) core.resolveModel(n.data.model.id)
       if (n.type === 'model' && [n.data.takes ?? 1, n.data.count ?? 1].some((v) => !Number.isInteger(v) || v < 1 || v > 20)) throw problem('Use 1 to 20 takes and results')
@@ -47,7 +48,7 @@ export function createFlows({ directory = core.home, generate = core.generate, c
       const source = flow.nodes.find((n) => n.id === e.source)
       const target = flow.nodes.find((n) => n.id === e.target)
       const pair = `${e.source}:${e.target}`
-      if (!source || !target || source === target || pairs.has(pair) || ['output', 'note'].includes(source.type) || ['prompt', 'image', 'note'].includes(target.type) || (source.type === 'prompt' && target.type !== 'model')) throw problem('Invalid connection')
+      if (!source || !target || source === target || pairs.has(pair) || ['output', 'note'].includes(source.type) || ['prompt', 'image', ...widgetTypes, 'note'].includes(target.type) || (source.type === 'prompt' && !['model', 'writer'].includes(target.type))) throw problem('Invalid connection')
       pairs.add(pair)
     }
     topoOrder(flow)
@@ -74,6 +75,8 @@ export function createFlows({ directory = core.home, generate = core.generate, c
     if (!engines.has(id)) {
       const eng = createEngine({
         run: (model, opts) => generate({ ...opts, model: model.id }),
+        writePrompt,
+        stitch: (opts) => stitch({ ...opts, preview: true }),
         onChange: (state) => {
           const store = read()
           write({ ...store, runs: { ...store.runs, [id]: state } })
@@ -84,8 +87,8 @@ export function createFlows({ directory = core.home, generate = core.generate, c
     }
     return engines.get(id)
   }
-  const perform = async (id, action, node, item, { flow = get(id), generate: guardedGenerate } = {}) => {
-    if (!['runNew', 'regenerateAll', 'send', 'rerun', 'rerunGate', 'togglePick', 'stop'].includes(action)) throw problem('Unknown flow action')
+  const perform = async (id, action, node, item, { flow = get(id), generate: guardedGenerate, writePrompt: guardedWriter, stitch: guardedStitch } = {}) => {
+    if (!['runNew', 'regenerateAll', 'send', 'rerun', 'rerunGate', 'togglePick', 'stop', 'editWriter', 'sendWriter'].includes(action)) throw problem('Unknown flow action')
     if (node && !flow.nodes.some((n) => n.id === node)) throw problem('Node not found', 404)
     if (!['runNew', 'regenerateAll'].includes(action) && !node) throw problem('Choose a node')
     if (locks.has(id)) throw problem('This flow is already running', 409)
@@ -93,7 +96,12 @@ export function createFlows({ directory = core.home, generate = core.generate, c
     try {
       // Each invocation gets its own runner so a session can gate every provider call.
       const base = engine(id)
-      const eng = guardedGenerate ? createEngine({ run: (model, opts) => guardedGenerate({ ...opts, model: model.id }), onChange: (state) => base.load(state) }) : base
+      const eng = guardedGenerate ? createEngine({
+        run: (model, opts) => guardedGenerate({ ...opts, model: model.id }),
+        writePrompt: guardedWriter,
+        stitch: guardedStitch,
+        onChange: (state) => base.load(state),
+      }) : base
       if (eng !== base) eng.load(base.state)
       return await eng[action](flow, node, item)
     } finally { locks.delete(id) }

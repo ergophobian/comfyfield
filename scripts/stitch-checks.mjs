@@ -110,7 +110,7 @@ try {
 } finally { await client.close(); await server.close() }
 console.log('ok    MCP stitch and export_stitch tools')
 
-const vite = await createViteServer({ server: { host: '127.0.0.1', port: 0 }, optimizeDeps: { noDiscovery: true, include: [] }, logLevel: 'error' })
+const vite = await createViteServer({ envFile: false, server: { host: '127.0.0.1', port: 0 }, optimizeDeps: { noDiscovery: true, include: [] }, logLevel: 'error' })
 console.log('check HTTP routes')
 await vite.listen()
 const base = `http://127.0.0.1:${vite.httpServer.address().port}`

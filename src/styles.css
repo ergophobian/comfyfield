@@ -107,7 +107,6 @@
 
   /* State */
   --disabled: .45;
-<<<<<<< HEAD
 
   /* Input widgets */
   --widget-gap: 8px;
@@ -127,7 +126,6 @@
   --stitch-gap: 10px;
   --stitch-border: 1px;
   --stitch-preview-height: 240px;
-=======
   --agent-gap: 16px;
   --agent-small-gap: 8px;
   --agent-pad: 24px;
@@ -180,7 +178,6 @@
   .agent-heading h2 { font-size: var(--text-xl); }
   .agent-canvas-panel { top: var(--agent-toolbar-mobile); }
   .agent-plan li { flex-wrap: wrap; }
->>>>>>> origin/lane/harness
 }
 
 * { box-sizing: border-box; }
@@ -2481,3 +2478,8 @@ button.gen-step:active { transform: scale(.97); }
 .widget-video { display: block; width: 100%; max-height: var(--widget-stage); border-radius: var(--r-md); background: var(--ink); }
 .widget-poster, .widget-face-preview { max-width: 100%; width: var(--widget-preview); max-height: var(--widget-preview); object-fit: contain; border-radius: var(--r-sm); }
 .widget .sheet-note { margin: 0; }
+.format-review { display: grid; gap: var(--widget-space); min-width: 0; }
+.format-review-media { display: flex; flex-wrap: wrap; gap: var(--widget-gap); }
+.format-review-media button { border: var(--widget-border) solid var(--line); border-radius: var(--r-sm); padding: var(--widget-gap); }
+.format-review-media button[aria-pressed=true] { border-color: var(--blue); }
+.format-review-media img, .format-review-media video { width: var(--widget-preview); max-width: 100%; }

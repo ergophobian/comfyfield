@@ -26,7 +26,7 @@ const addable = [
   ['output', 'A gallery of results'],
   ['note', 'A note for yourself'],
 ]
-const miniColor = { prompt: '#8a8fa6', image: '#8a8fa6', writer: 'var(--blue)', stitch: 'var(--blue-hi)', model: '#4a5bff', approve: '#f5b301', output: '#138a4b', note: '#c3c6d4' }
+const miniColor = { prompt: 'var(--muted)', image: 'var(--muted)', writer: 'var(--blue)', stitch: 'var(--blue-hi)', model: 'var(--blue-hi)', approve: 'var(--warn)', output: 'var(--success)', note: 'var(--faint)' }
 
 function Pop({ label, children, align = 'left' }) {
   const [open, setOpen] = useState(false)
@@ -74,21 +74,13 @@ function Canvas({ picker }) {
 
   const say = (r) => setNote(r?.reason || null)
   const act = {
-<<<<<<< HEAD
-    pick: (id, item) => engine.togglePick(flow, id, item),
-    stop: (id) => engine.stop(flow, id),
-    send: async (id) => say(await engine.send(flow, id)),
-    editWriter: (id, text) => engine.editWriter(flow, id, text),
-    sendWriter: async (id) => say(await engine.sendWriter(flow, id)),
-    rerun: async (id) => say(await engine.rerun(flow, id)),
-    rerunGate: async (id) => say(await engine.rerunGate(flow, id)),
-=======
     pick: (id, item) => engine.togglePick(flow, id, item).catch((e) => setNote(e.message)),
     stop: (id) => engine.stop(flow, id).catch((e) => setNote(e.message)),
     send: async (id) => { try { say(await engine.send(flow, id)) } catch (e) { setNote(e.message) } },
+    editWriter: (id, text) => engine.editWriter(flow, id, text).catch((e) => setNote(e.message)),
+    sendWriter: async (id) => { try { say(await engine.sendWriter(flow, id)) } catch (e) { setNote(e.message) } },
     rerun: async (id) => { try { say(await engine.rerun(flow, id)) } catch (e) { setNote(e.message) } },
     rerunGate: async (id) => { try { say(await engine.rerunGate(flow, id)) } catch (e) { setNote(e.message) } },
->>>>>>> origin/lane/harness
   }
 
   const run = async () => {
@@ -156,7 +148,7 @@ function Canvas({ picker }) {
   return (
     <FlowCtx.Provider value={ctx}>
       <div className="flows">
-        {!ready && <div className="agent-flow-status glass" role="status">{error || 'Loading shared flows…'}{error && <><button type="button" className="btn-soft" onClick={download}>Export unsaved flow</button><button type="button" className="btn-soft" onClick={() => reloadFlows().catch((e) => setNote(e.message))}>Reload flows</button></>}</div>}
+        {!ready && <div className="agent-flow-status glass" role="status">{error || 'Loading shared flowsâ€¦'}{error && <><button type="button" className="btn-soft" onClick={download}>Export unsaved flow</button><button type="button" className="btn-soft" onClick={() => reloadFlows().catch((e) => setNote(e.message))}>Reload flows</button></>}</div>}
         <div className="ftool glass">
           <Pop label={<>Flows<span className="fcount">{store.flows.filter((f) => f.nodes.length).length || ''}</span></>}>
             {store.flows.map((f) => (
@@ -178,11 +170,7 @@ function Canvas({ picker }) {
           </Pop>
           <button type="button" className="btn-soft" onClick={download} disabled={!flow.nodes.length}>Export</button>
           {hasOutput && <button type="button" className="btn-soft" onClick={regenerate} disabled={busy}>{wipe ? 'Wipe and re-run?' : 'Regenerate all'}</button>}
-<<<<<<< HEAD
-          <button type="button" className="btn-blue sm" onClick={run} disabled={busy || !flow.nodes.some((n) => ['model', 'writer', 'stitch'].includes(n.type))}>{busy ? 'Running' : 'Run'}</button>
-=======
-          <button type="button" className="btn-blue sm" onClick={run} disabled={!ready || busy || !flow.nodes.some((n) => n.type === 'model')}>{busy ? 'Running' : 'Run'}</button>
->>>>>>> origin/lane/harness
+          <button type="button" className="btn-blue sm" onClick={run} disabled={!ready || busy || !flow.nodes.some((n) => ['model', 'writer', 'stitch'].includes(n.type))}>{busy ? 'Running' : 'Run'}</button>
         </div>
 
         <ReactFlow key={flow.id} nodes={flow.nodes} edges={edges} nodesDraggable={ready} nodesConnectable={ready} nodeTypes={nodeTypes}

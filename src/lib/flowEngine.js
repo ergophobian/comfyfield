@@ -152,7 +152,7 @@ export function createEngine({ run, writePrompt, stitch, onChange = () => {}, co
         else {
           const written = out.filter((i) => i.kind === 'text').map((i) => i.text)
           if (written.length) { promptEdge = true; texts.push(...written) }
-                    images.push(...out.filter((i) => i.kind === 'image' && !i.inputType))
+          images.push(...out.filter((i) => i.kind === 'image' && !i.inputType))
           for (const item of out.filter((i) => i.inputType)) {
             inputs[item.id] = item.value
             widgetOpts = { ...widgetOpts, ...widgetOptions(item.inputType, item.value) }

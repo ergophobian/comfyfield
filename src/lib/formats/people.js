@@ -38,7 +38,8 @@ const characters = [
   open({
     id: 'face-swap', name: 'Face swap', kind: 'image', category: 'characters', hub: 'face',
     blurb: 'Swap the face in a photo for your own face or a saved character.',
-    runsOn: 'Qwen-Image 2.1', workflow: 'qwen_edit_face_swap',
+    engine: 'fal', model: 'fal-ai/nano-banana-2/edit', runsOn: 'Nano Banana 2 via fal',
+    steps: [{ id: 'generate', provider: 'fal', endpoint: 'fal-ai/nano-banana-2/edit', bindings: { image_urls: ['photo.url', 'character.faceUrl'] } }],
     inputs: [
       { id: 'photo', type: 'image', label: 'Photo to change' },
       { id: 'character', type: 'face', label: 'Your own face or a saved character' },

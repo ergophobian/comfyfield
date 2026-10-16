@@ -37,7 +37,7 @@ export function config(id) {
   return Object.fromEntries(fields.map((f, i) => [f, saved[f] || process.env[env[i]] || '']))
 }
 
-export const mask = (v) => (v ? `${v.slice(0, 4)}â€¦${v.slice(-4)}` : '')
+export const mask = (v) => (v ? `${v.slice(0, 4)}…${v.slice(-4)}` : '')
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
@@ -597,10 +597,10 @@ export async function listModels({ kind, query, includeFal = true, limit = 25 } 
 }
 
 // One generation on any model. `image` is a URL or a local file path (sent to fal as a data URI).
-export async function generate({ model, prompt, aspect = '16:9', count = 1, duration, image }) {
+export async function generate({ model, prompt, aspect = '16:9', count = 1, duration, image, images, ...options }) {
   if (!prompt) throw new Error('A prompt is required.')
   const m = resolveModel(model)
-  const o = { prompt, aspect, count, duration, image: image && !/^(https?:|data:|\/media\/)/.test(image) ? fileDataUri(image) : image }
+  const o = { ...options, images, prompt, aspect, count, duration, image: image && !/^(https?:|data:|\/media\/)/.test(image) ? fileDataUri(image) : image }
   if (m.provider === 'comfyRouter') {
     const files = []
     for (let i = 0; i < (m.kind === 'image' ? count : 1); i++) files.push(...await runComfyRouter({ model: m.model, input: comfyRouterInput(m.model, o) }))
@@ -608,11 +608,11 @@ export async function generate({ model, prompt, aspect = '16:9', count = 1, dura
   }
   if (m.provider === 'comfy') return runComfy(m.workflow, comfyVars(m.kind, { ...o, duration: duration || 5 }))
   if (m.provider === 'fal') {
-    const endpoint = await falEndpointFor(m, Boolean(image), falSchema)
+    const endpoint = await falEndpointFor(m, Boolean(o.images?.length || o.image), falSchema)
     const { properties } = await falSchema(endpoint)
     return runFal({ model: endpoint, input: falInput(properties, o) })
   }
-  if (m.provider === 'google') return runGoogle({ model: m.model, mode: m.mode, prompt, aspect, count, duration, images: o.image ? [o.image] : [] })
+  if (m.provider === 'google') return runGoogle({ model: m.model, mode: m.mode, prompt, aspect, count, duration, images: o.images || (o.image ? [o.image] : []) })
   if (m.provider === 'elevenlabs') return runElevenLabs({ mode: m.mode, text: prompt })
   throw new Error(`${m.provider} is not wired up yet.`)
 }

@@ -161,6 +161,7 @@ export function recipeOptions(recipe, values) {
   const media = {}
   const refs = []
   const inputs = {}
+  let widgets = {}
   let params = { ...recipe.params }
   const fill = {}
   for (const input of visibleInputs(recipe, values)) {
@@ -169,6 +170,7 @@ export function recipeOptions(recipe, values) {
       const type = input.type === 'draw' ? 'mask' : input.type
       if (!widgetReady(type, v)) continue
       const opts = widgetOptions(type, v)
+      widgets = { ...widgets, ...opts }
       inputs[input.id] = v
       if (opts.image) images.push(opts.image)
       if (opts.mask) media[`${input.id}Strokes`] = opts.mask
@@ -197,7 +199,7 @@ export function recipeOptions(recipe, values) {
   const prompt = recipe.prompt.replace(/\{(\w+)\}/g, (_, k) => fill[k] ?? '').replace(/[^\S\n]+/g, ' ').replace(/ *\n\s*/g, '\n').trim()
   const first = recipe.inputs.find((i) => i.type === 'image' || i.type === 'draw' || widgetTypes.includes(i.type))
   return {
-    prompt, caption: recipe.name, images, fields, params, count: 1,
+    ...widgets, prompt, caption: recipe.name, images, fields, params, count: 1,
     ...(Object.keys(inputs).length && { inputs }),
     ...(Object.keys(media).length && { media }), ...(refs.length && { refs }),
     aspect: recipe.settings.aspect, duration: recipe.settings.duration, shape: first ? values[first.id]?.ratio : undefined,

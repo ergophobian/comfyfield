@@ -23,7 +23,8 @@ const imageEdits = [
   open({
     id: 'inpaint', name: 'Paint to change', kind: 'image', category: 'image-edit',
     blurb: 'Paint over part of a picture and say what it should become.',
-    runsOn: 'Qwen-Image 2.1', workflow: 'qwen_edit_inpaint',
+    engine: 'fal', model: 'fal-ai/flux-pro/v1/fill', runsOn: 'Flux Fill via fal',
+    steps: [{ id: 'generate', provider: 'fal', endpoint: 'fal-ai/flux-pro/v1/fill', bindings: { image_url: 'image.url', mask_url: 'image.maskUrl' } }],
     inputs: [
       { id: 'image', type: 'mask', label: 'Photo, then paint over what should change' },
       { id: 'change', type: 'text', label: 'What it should become', placeholder: 'A bowl of ripe lemons' },

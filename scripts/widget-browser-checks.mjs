@@ -4,6 +4,7 @@ import path from 'node:path'
 import { spawn } from 'node:child_process'
 import { createServer } from 'vite'
 import react from '@vitejs/plugin-react'
+import { chromeExecutable } from './browser.mjs'
 import api from '../server/plugin.js'
 
 const dir = path.resolve('outputs/widget-browser')
@@ -22,21 +23,21 @@ const mock = {
         res.setHeader('Content-Type', 'text/html')
         return res.end(await server.transformIndexHtml('/widget-checks', '<html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body><div id="root"></div><script type="module" src="/scripts/widget-fixture.jsx"></script></body></html>'))
       }
-      if (req.url.startsWith('/api/') && req.url !== '/api/upload') {
+      if (req.url.startsWith('/api/') && req.url !== '/api/upload' && !req.url.startsWith('/api/flows') && req.url !== '/api/agents/events') {
         res.setHeader('Content-Type', 'application/json')
-        const out = req.url === '/api/library/characters' ? [{ id: 'test-character', name: 'Studio character', images: [fixtureImage] }] : req.url.startsWith('/api/library/') ? [] : {}
+        const out = ['/api/stitch/exports', '/api/agents', '/api/agents/setup'].includes(req.url) ? [] : req.url === '/api/library/characters' ? [{ id: 'test-character', name: 'Studio character', images: [fixtureImage] }] : req.url.startsWith('/api/library/') ? [] : {}
         return res.end(JSON.stringify(out))
       }
       next()
     })
   },
 }
-const vite = await createServer({ configFile: false, plugins: [mock, react(), api()], server: { host: '127.0.0.1', port: 0, strictPort: true, watch: { ignored: ['**/outputs/**'] } } })
+const vite = await createServer({ configFile: false, envFile: false, cacheDir: 'node_modules/.cache/widget-vite', plugins: [mock, react(), api()], server: { host: '127.0.0.1', port: 0, strictPort: true, watch: { ignored: ['**/outputs/**'] } } })
 await vite.listen()
 const base = `http://127.0.0.1:${vite.httpServer.address().port}`
 const profile = path.join(dir, `chrome-profile-${Date.now()}`)
-const chromePath = process.env.WIDGET_CHROME || 'C:/Program Files/Google/Chrome/Application/chrome.exe'
-const chrome = spawn(chromePath, ['--headless=new', '--disable-gpu', '--disable-extensions', '--no-first-run', '--no-default-browser-check', '--autoplay-policy=no-user-gesture-required', '--remote-debugging-port=0', `--user-data-dir=${profile}`, 'about:blank'], { windowsHide: true, stdio: 'ignore' })
+const chromePath = process.env.WIDGET_CHROME || chromeExecutable()
+const chrome = spawn(chromePath, ['--headless=new', '--no-sandbox', '--disable-gpu', '--disable-extensions', '--no-first-run', '--no-default-browser-check', '--autoplay-policy=no-user-gesture-required', '--remote-debugging-port=0', `--user-data-dir=${profile}`, 'about:blank'], { windowsHide: true, stdio: 'ignore' })
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 let ws
 const pending = new Map()
@@ -171,10 +172,10 @@ try {
   await cdp('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
   assert.ok((await values()).crop.box.x > before, 'touch drag moves crop')
   await cdp('Page.navigate', { url: `${base}/flows` })
-  await wait(`document.querySelector('.flows')`)
+  await wait(`document.querySelector('.flows') && document.querySelector('.react-flow__renderer') && !document.body.textContent.includes('Loading flows')`)
   for (const type of ['mask', 'face', 'video', 'crop']) {
     await js(`(()=>{const b=[...document.querySelectorAll('.ftool button')].find(b=>b.textContent==='Add');b.click()})()`)
-    await wait(`document.querySelector('.fpop .menu')`)
+    await wait(`[...document.querySelectorAll('.fpop .menu button')].some(b=>b.textContent.startsWith('Mask painter'))`)
     await js(`(()=>{const b=[...document.querySelectorAll('.fpop .menu button')].find(b=>b.textContent.startsWith(${JSON.stringify({ mask: 'Mask painter', face: 'Face picker', video: 'Video input', crop: 'Crop and reframe' }[type])}));b.click()})()`)
     await wait(`document.querySelector('.f-${type}')&&document.querySelector('.fpanel .widget-upload,.fpanel .widget')`)
   }

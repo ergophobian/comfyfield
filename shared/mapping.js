@@ -66,11 +66,16 @@ export function falInput(props, o) {
   const input = {}
   if (o.prompt) input[props.prompt || !props.text ? 'prompt' : 'text'] = o.prompt
   const images = o.images || (o.image ? [o.image] : [])
-  if (images.length) {
+  const face = o.face?.faceUrl || o.face?.url
+  const references = face && !images.includes(face) ? [...images, face] : images
+  if (references.length) {
     const many = manyImages.find((k) => props[k])
     const one = singleImage.find((k) => props[k])
-    if (many && (!one || images.length > 1 || many === 'image_urls')) input[many] = images
-    else if (one) input[one] = images[0]
+    if (many && (!one || references.length > 1 || many === 'image_urls')) input[many] = references
+    else if (one) input[one] = references[0]
+  }
+  for (const [field, value] of Object.entries({ mask_url: o.mask, video_url: o.video, start_time: o.trim?.start, end_time: o.trim?.end, crop: o.crop })) {
+    if (props[field] && value != null) input[field] = value
   }
   Object.assign(input, o.fields)
   if (props.aspect_ratio) {

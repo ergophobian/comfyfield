@@ -72,23 +72,30 @@ without removing their copy, controls, prompt templates or provider settings.
 - `shape`: `preset`, `tool`, `chain` or `pipeline`.
 - `inputs`: typed slots with unique `id`, `type`, `label`, optional `optional`, `default`
   and `when: [choiceId, optionId]`. Types: `text`, `longtext`, `choice`, `count`,
-  `image`, `video`, `audio`, `draw`, `character`, `product`, `brand`, `voice`.
+  `image`, `video`, `audio`, `draw`, `mask`, `face`, `crop`, `character`, `product`, `brand`, `voice`.
   Media values are `{ url, name, ratio }`. Choices have `options: [{ id, label,
   text?, params? }]`; counts have numeric `options`. `field` binds a media slot to
   a named fal input. A UI widget alone does not make an unsupported slot runnable.
 - `writer` (optional): prompt-writer instructions. The runner requires an injected
   `writePrompt({ instructions, inputs, format }) -> Promise<string>` when present.
-  The returned prompt replaces the first model step's prompt. The writer lane owns
-  the implementation; formats with writers must be connected by their caller.
+  It compiles to a native Writer node. The UI injects the `/api/prompt` client;
+  output stays editable and rendering waits for Send. Explicit steps use
+  `{ id, type: 'writer', instructions, target? }`. Instructions pass through unchanged.
 - `steps`: ordered steps with unique `id`, a catalog `model` id, or `provider: 'fal'`
   plus `endpoint`, or `provider: 'comfy'` plus bundled `workflow`. Model steps have
   `kind`, `prompt` (a `{slotId}` template), raw `params`, optional `settings`
   (`aspect`, `duration`), `takes` and `bindings: { modelField: slotId }`.
+  Bindings also accept dotted properties (`image.maskUrl`, `video.trim.start`,
+  `crop.box`) and arrays of paths for ordered reference images. Full widget values
+  remain in `opts.inputs`; trim and crop remain metadata unless the target accepts them.
+  A step may select `targets` by the choice slot named in `targetInput`; every
+  alternative is schema-checked, including the Seedance fal and Router targets.
   Choices interpolate their `text` or `label` and merge their raw `params`.
   A step's `from: [stepId]` overrides the default previous-step dependency;
   `from: []` starts an independent branch. `{ id, type: 'approve', from: [...] }`
   inserts an engine approval gate. Image outputs can feed the next fal model.
-  Other media chaining and Comfy image uploads await their respective lanes.
+  Comfy image uploads work on Local and Cloud, including `ltx_i2v` and `h3_i2v`.
+  Other media chaining remains limited to the supported node/provider contracts.
 - `outputs`: `[{ step: stepId, kind: 'image' | 'video' | 'audio' | '3d' }]` selects
   the result steps. Every executed generation also persists through the Library
   adapter, including intermediate images. `cover`: existing gradient or media URL.
@@ -108,13 +115,15 @@ and `runsOn` remain supported):
 
 `compileFormat(format, values)` produces a small flow. `runFormat(format, values,
 { run, writePrompt?, onChange?, concurrency? })` uses the existing engine and returns
-`{ flow, engine, results(), send(id) }`. The injected `run(model, options, metadata)`
+`{ flow, engine, results(), send(id), sendWriter(id) }`. Review edits use
+`engine.editWriter(flow, id, text)`. The injected `run(model, options, metadata)`
 must resolve to files and save them to the Library. The UI uses `gens.generateFormat`
 with the same queue and storage as Create. Engine Run, Rerun and Send rules apply.
 
 Run `node scripts/format-check.mjs` and `node scripts/format-runner-checks.mjs` before
 submitting format changes; both run in CI without network access. Public fal input
-schemas are snapshots of the metadata returned by `/api/fal/schema`; refresh with
+schemas are snapshots of the metadata returned by `/api/fal/schema`, with public
+Router input snapshots from `docs.comfy.org/router-schemas/`; refresh with
 `node scripts/format-schemas.mjs` (public metadata GETs only, no keys or generations).
 Bundled Comfy placeholders must match the snapshot. Missing workflows remain in
 `allFormats` and are reported as hidden with reasons. Existing target/schema
@@ -127,7 +136,9 @@ those planned workflows.
 discovery) and a separate mock API, without loading provider routes or keys. It
 checks the app page, shared sheet, Library persistence, Create generation and
 presets, and the 390px layout. It runs in Linux CI and writes labeled mock screenshots
-under `research_notes/format-runner/`.
+under `research_notes/format-runner/`. `node scripts/verify.mjs` discovers and runs
+every `scripts/*-check*.mjs` check, including browser fixtures. All run in the
+Windows/macOS/Linux CI matrix with Chrome installed through setup-chrome.
 
 ## Flows rules (from PatchWork's WORKFLOW-SPEC)
 

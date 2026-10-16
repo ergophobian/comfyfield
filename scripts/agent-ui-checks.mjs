@@ -3,14 +3,17 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
 import { spawn } from 'node:child_process'
+import { startFixture } from './agent-ui-fixture.mjs'
+import { chromeExecutable } from './browser.mjs'
 import { setTimeout as wait } from 'node:timers/promises'
 
-const executable = process.env.CHROME_PATH || (process.platform === 'win32' ? 'C:/Program Files/Google/Chrome/Application/chrome.exe' : 'google-chrome')
+const executable = chromeExecutable()
+const fixtures = [await startFixture(), await startFixture(true)]
 const profile = path.resolve('.comfyfield', 'agent-chrome', String(Date.now()))
 const output = path.resolve('research_notes', 'agent-harness')
 fs.mkdirSync(profile, { recursive: true })
 fs.mkdirSync(output, { recursive: true })
-const chrome = spawn(executable, ['--headless=new', '--disable-gpu', '--disable-extensions', '--disable-background-networking', '--no-first-run', '--no-default-browser-check', '--remote-debugging-port=0', `--user-data-dir=${profile}`, 'about:blank'], { windowsHide: true, stdio: 'ignore' })
+const chrome = spawn(executable, ['--headless=new', '--no-sandbox', '--disable-gpu', '--disable-extensions', '--disable-background-networking', '--no-first-run', '--no-default-browser-check', '--remote-debugging-port=0', `--user-data-dir=${profile}`, 'about:blank'], { windowsHide: true, stdio: 'ignore' })
 let socket
 const pending = new Map()
 let counter = 0
@@ -106,6 +109,7 @@ try {
   assert.equal(errors.length, 0, JSON.stringify(errors))
   console.log('ok    desktop/mobile chat, approval, canvas presence, stop, conflicting edits and missing-agent setup; screenshots saved')
 } finally {
+  await Promise.all(fixtures.map((server) => server.close()))
   socket?.close()
   chrome.kill()
   for (const p of pending.values()) { clearTimeout(p.timer); p.reject(new Error('Chrome closed')) }

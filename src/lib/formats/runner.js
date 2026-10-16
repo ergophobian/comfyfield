@@ -17,13 +17,28 @@ export function compileFormat(format, userInputs = {}) {
   }
   const nodes = []
   const edges = []
-  for (const [index, step] of format.steps.entries()) {
-    const from = step.from ?? (index ? [format.steps[index - 1].id] : [])
-    if (step.type === 'approve') {
+  const steps = format.writer && !format.steps.some((s) => s.type === 'writer')
+    ? [{ id: 'writer', type: 'writer', instructions: format.writer }, ...format.steps]
+    : format.steps
+  const receivesWriter = (from) => from.some((id) => {
+    const index = steps.findIndex((s) => s.id === id)
+    const source = steps[index]
+    return source?.type === 'writer' || (source?.type === 'approve' && receivesWriter(source.from ?? (index ? [steps[index - 1].id] : [])))
+  })
+  for (const [index, step] of steps.entries()) {
+    const from = step.from ?? (index ? [steps[index - 1].id] : [])
+    if (step.type === 'writer') {
+      const media = visibleInputs(format, values).flatMap((input) => {
+        const value = values[input.id]
+        return value?.url ? [value.faceUrl || value.url] : value?.images || []
+      })
+      const note = visibleInputs(format, values).filter((i) => ['text', 'longtext'].includes(i.type)).map((i) => values[i.id]).filter(Boolean).join('\n\n')
+      nodes.push({ id: step.id, type: 'writer', data: { instructions: step.instructions || step.writer_instructions || format.writer, note, images: media, target: step.target || format.runsOn || format.kind } })
+    } else if (step.type === 'approve') {
       nodes.push({ id: step.id, type: 'approve', data: {} })
     } else {
       const options = stepOptions(format, step, values)
-      const model = { ...stepModel(format, step), formatStep: { id: step.id, from, options } }
+      const model = { ...stepModel(format, step, values), formatStep: { id: step.id, from, options, written: receivesWriter(from) } }
       nodes.push({ id: step.id, type: 'model', data: { model, prompt: options.prompt || format.name, aspect: options.aspect, duration: options.duration, count: options.count, takes: step.takes || 1 } })
       // One reference triggers one run, including tools whose prompt is empty or which take named image fields.
       if (!from.length) {
@@ -38,6 +53,7 @@ export function compileFormat(format, userInputs = {}) {
     }
     edges.push(...from.map((source) => ({ source, target: step.id })))
   }
+  nodes.forEach((node, i) => { node.position = { x: i * 340, y: 0 } })
   return { id: `format:${format.id}`, name: format.name, formatId: format.id, nodes, edges, outputs: format.outputs, values }
 }
 
@@ -46,20 +62,15 @@ export function compileFormat(format, userInputs = {}) {
 export async function runFormat(format, inputs, { run, writePrompt, onChange, concurrency } = {}) {
   if (typeof run !== 'function') throw new Error('A Library generation adapter is required')
   const flow = compileFormat(format, inputs)
-  let written
-  if (format.writer) {
-    if (!writePrompt) throw new Error('The prompt writer is not connected yet')
-    written = await writePrompt({ instructions: format.writer, inputs: flow.values, format })
-    if (typeof written !== 'string' || !written.trim()) throw new Error('The prompt writer returned no prompt')
-  }
   const batch = globalThis.crypto.randomUUID()
   const engine = createEngine({
     concurrency,
     onChange,
+    writePrompt: writePrompt ? (input) => writePrompt({ ...input, inputs: flow.values, format }) : undefined,
     run: (model, unit) => {
       const { formatStep, ...target } = model
       const options = { ...formatStep.options, count: unit.count, caption: format.name }
-      if (written && formatStep.id === format.steps[0].id) options.prompt = written
+      if (formatStep.written && unit.prompt) options.prompt = unit.prompt
       if (formatStep.from.length && unit.image) options.images = [unit.image]
       if (target.provider === 'comfy' && options.aspect === 'auto') options.aspect = '1:1'
       return run(target, options, { formatId: format.id, stepId: formatStep.id, formatRunId: batch, prompt: options.prompt })
@@ -72,5 +83,5 @@ export async function runFormat(format, inputs, { run, writePrompt, onChange, co
   }
   await engine.runNew(flow)
   check()
-  return { flow, engine, results, send: async (id) => { const result = await engine.send(flow, id); check(); return result } }
+  return { flow, engine, results, sendWriter: async (id) => { const result = await engine.sendWriter(flow, id); check(); return result }, send: async (id) => { const result = await engine.send(flow, id); check(); return result } }
 }

@@ -12,6 +12,7 @@ import { presets } from './presetsx.js'
 import { mixedLooks } from './mixedx.js'
 import { jobs } from './jobsx.js'
 import { validateFormat } from './validate.js'
+import { effects } from './effects.js'
 
 export const categories = [
   { id: 'camera', name: 'Camera moves', blurb: 'One photo, one camera move.' },
@@ -70,8 +71,9 @@ const widenMix = (f) => ({
   }),
 })
 
-export const allFormats = [...motion, ...presets, ...looks, ...edits, ...people, ...ads, ...fun, ...apps2, ...mixedLooks, ...jobs, ...three, ...fromFal]
+export const allFormats = [...motion, ...presets, ...looks, ...edits, ...people, ...ads, ...fun, ...apps2, ...mixedLooks, ...jobs, ...three, ...fromFal, ...effects]
   .map((f) => (f.id === 'cam-mix' ? widenMix(f) : f))
+  .map((f) => f.workflow === 'ltx_i2v' ? { ...f, runsOn: 'LTX Video 2B' } : f)
 
 export const formatProblems = new Map(allFormats.map((f) => [f.id, validateFormat(f)]))
 export const formats = allFormats.filter((f) => !formatProblems.get(f.id).length)

@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Field } from '../components/formats/Fields.jsx'
+import FormatReview from '../components/formats/Review.jsx'
+import { stepModel } from '../lib/formats/options.js'
 import Results from '../components/Results.jsx'
 import { AppGrid } from '../components/apps/AppCard.jsx'
 import { mainInput, pathFor, valuesFrom } from '../components/apps/data.js'
 import { IconAudio, IconChevron, IconCube, IconImage, IconSpark, IconVideo } from '../components/Icons.jsx'
 import { useApp } from '../lib/appContext.js'
 import { appsIn, categoryOf, formatById, formats, hubs, isWired } from '../lib/formats/index.js'
-import { initialValues, missingInputs, recipeModel, visibleInputs } from '../lib/recipes.js'
-import { models as catalog, providerInfo } from '../lib/catalog.js'
+import { initialValues, missingInputs, visibleInputs } from '../lib/recipes.js'
+import { providerInfo } from '../lib/catalog.js'
 import { estimate, money, useModelMeta } from '../lib/cost.js'
 
 const calm = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
@@ -52,14 +54,16 @@ function AppView({ format, motion }) {
   const navigate = useNavigate()
   const [values, setValues] = useState(() => ({ ...initialValues(format), ...valuesFrom(format, params, state) }))
   const [error, setError] = useState(null)
+  const [session, setSession] = useState(null)
+  const [running, setRunning] = useState(false)
   const results = useRef(null)
-  const set = (id, v) => setValues((x) => ({ ...x, [id]: v }))
+  const set = (id, v) => { setSession(null); setValues((x) => ({ ...x, [id]: v })) }
 
-  const model = recipeModel(format, catalog)
+  const model = stepModel(format, format.steps.find((step) => !step.type), values)
   const metaOf = useModelMeta([model])
-  const provider = providerInfo[model.provider]
+  const provider = providerInfo[model.provider === 'comfyRouter' ? 'comfy' : model.provider]
   const wired = isWired(format)
-  const connected = model.provider === 'comfy' || connections[model.provider]?.connected
+  const connected = model.provider === 'comfy' || connections[model.provider === 'comfyRouter' ? 'comfy' : model.provider]?.connected
   const missing = missingInputs(format, values)
   const each = estimate(model, metaOf(model), { aspect: '1:1', count: 1, duration: format.settings?.duration })
   const main = mainInput(format)
@@ -83,10 +87,14 @@ function AppView({ format, motion }) {
   const where = format.hub ? hubs.find((h) => h.id === format.hub)?.name : categoryOf(format.category, format.kind)?.name
   const seeAll = motion ? '/motion' : format.hub ? `/apps?hub=${format.hub}` : homes[format.category] || `/apps?hub=${format.category}`
 
-  const run = (e) => {
+  const run = async (e) => {
     e.preventDefault()
     if (!wired || missing.length || !connected) return
-    gens.generateFormat(format, values).catch((e) => setError(e.message))
+    setRunning(true)
+    setError(null)
+    setSession(null)
+    try { setSession(await gens.generateFormat(format, values)) } catch (e) { setError(e.message) }
+    finally { setRunning(false) }
   }
   const use = (id, initial) => {
     const f = formatById(id)
@@ -132,9 +140,10 @@ function AppView({ format, motion }) {
             <p className="sheet-note">Nothing else to set. Add your {(main?.label || 'media').toLowerCase()} and generate.</p>
           )}
           {error && <p className="sheet-error">{error}</p>}
+          {session && <FormatReview key={session.flow.id + session.flow.values.renderer} session={session} />}
           <div className="app-go">
-            <button className="btn-blue" disabled={!wired || missing.length > 0 || !connected}>
-              Generate {nouns[format.kind] || ''}
+            <button className="btn-blue" disabled={running || !wired || missing.length > 0 || !connected}>
+              {running ? 'Working' : `Generate ${nouns[format.kind] || ''}`}
               {wired && each && <span className="app-cost">{each.approx ? '≈' : ''}{money(each.usd)}</span>}
             </button>
             {note && <p className="sheet-note">{note}</p>}

@@ -112,21 +112,25 @@ assert.equal(comfyVars('image', { ...comfyCall.opts, fields: { prompt: 'Bound pr
 
 await assert.rejects(runFormat(imageRecipe, valuesFor(imageRecipe), { run: async () => { throw new Error('Mock provider failure') } }), /Mock provider failure/)
 const writerFormat = { ...imageRecipe, writer: 'Describe the scene' }
-await assert.rejects(runFormat(writerFormat, valuesFor(imageRecipe), { run: async () => { throw new Error('Must not run') } }), /writer is not connected/)
+await assert.rejects(runFormat(writerFormat, valuesFor(imageRecipe), { run: async () => { throw new Error('Must not run') } }), /writing is not connected/)
 let writerPrompt
-await runFormat(writerFormat, valuesFor(writerFormat), {
+const writerSession = await runFormat(writerFormat, valuesFor(writerFormat), {
   writePrompt: async ({ instructions, inputs }) => { assert.equal(instructions, writerFormat.writer); assert.equal(inputs.image.url, photo.url); return 'Written prompt' },
   run: async (_, opts) => { writerPrompt = opts.prompt; return [{ url: 'written.png' }] },
 })
-assert.equal(writerPrompt, 'Written prompt')
+assert.equal(writerPrompt, undefined, 'Writer holds rendering for review')
+writerSession.engine.editWriter(writerSession.flow, 'writer', 'Edited written prompt')
+await writerSession.sendWriter('writer')
+assert.equal(writerPrompt, 'Edited written prompt')
 const writerOnly = { ...writerFormat, prompt: '', inputs: [...writerFormat.inputs, { id: 'brief', type: 'text', label: 'Brief' }], steps: [{ ...writerFormat.steps[0], prompt: '' }] }
 assert.deepEqual(validateFormat(writerOnly), [], 'A writer can supply the required prompt from a brief slot')
-await runFormat(writerOnly, { ...valuesFor(writerOnly), brief: 'Change the mood' }, {
+const briefSession = await runFormat(writerOnly, { ...valuesFor(writerOnly), brief: 'Change the mood' }, {
   writePrompt: async ({ inputs }) => inputs.brief,
   run: async (_, opts) => { assert.equal(opts.prompt, 'Change the mood'); return [{ url: 'written.png' }] },
 })
-assert.equal(formats.length, 10)
-assert.equal(allFormats.length, 434, 'Do not delete planned formats')
+await briefSession.sendWriter('writer')
+assert.equal(formats.length, 252)
+assert.equal(allFormats.length, 479, 'Do not delete planned formats')
 assert.equal(allFormats.filter((f) => f.category === 'camera').length > 0, true, 'Keep Create prompt presets')
 assert(allFormats.filter((f) => !formats.includes(f)).every((f) => formatProblems.get(f.id).length))
 console.log(`Format runner checks ok: ${checked} recipe cases, approval and batching, concurrency, schema rejection, Comfy placeholders, writer handoff and provider failures. No network calls.`)

@@ -86,7 +86,7 @@ export function createServer({ invoke, handlers = new Map(), flowService = flows
   register('get_flow', { description: 'Read nodes, connections and run state of a flow.', inputSchema: flow }, tool(({ flow_id }) => ({ flow: flowService.get(flow_id), state: flowService.engine(flow_id).state })))
   register('add_node', {
     description: 'Add a node to a flow. For model nodes, data.model must be a model object with an id from list_models.',
-    inputSchema: { ...flow, type: z.enum(['prompt', 'image', 'model', 'approve', 'output', 'note']), position: position.optional(), data: z.record(z.string(), z.unknown()).optional() },
+    inputSchema: { ...flow, type: z.enum(['prompt', 'image', 'mask', 'face', 'video', 'crop', 'writer', 'stitch', 'model', 'approve', 'output', 'note']), position: position.optional(), data: z.record(z.string(), z.unknown()).optional() },
   }, tool(({ flow_id, ...args }) => flowService.add(flow_id, args)))
   register('connect_nodes', { description: 'Connect two nodes without creating a loop.', inputSchema: { ...flow, source: z.string(), target: z.string() } }, tool(({ flow_id, ...args }) => flowService.connect(flow_id, args)))
   register('update_node', { description: 'Update a node’s data or position.', inputSchema: { ...flow, node_id: z.string(), data: z.record(z.string(), z.unknown()).optional(), position: position.optional() } }, tool(({ flow_id, node_id, ...args }) => flowService.update(flow_id, node_id, args)))

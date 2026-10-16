@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { run } from './providers.js'
+import { run, writePrompt } from './providers.js'
 import { runFormat } from './formats/runner.js'
 
 const KEY = 'comfyfield.library'
@@ -60,7 +60,7 @@ export function useGenerations() {
   }
 
   const generate = (model, opts, meta) => { execute(model, opts, meta).catch(() => {}) }
-  const generateFormat = (format, values) => runFormat(format, values, { run: execute })
+  const generateFormat = (format, values) => runFormat(format, values, { run: execute, writePrompt: ({ instructions, note, images, target }) => writePrompt({ instructions, note, images, target }) })
 
   const toggleApprove = (id) => setItems((xs) => xs.map((x) => (x.id === id ? { ...x, approved: !x.approved } : x)))
   const dismiss = (id) => {

@@ -13,7 +13,7 @@ const unwrap = (result) => {
   try { return JSON.parse(text) } catch { return text }
 }
 
-export function createHarness({ adapters = { claude: claudeAdapter, codex: codexAdapter }, setup = adapterSetup, directory = core.home, generate = core.generate, estimate = core.estimateCost, handlers: overrides = {} } = {}) {
+export function createHarness({ adapters = { claude: claudeAdapter, codex: codexAdapter }, setup = adapterSetup, directory = core.home, generate = core.generate, writePrompt = core.writePrompt, stitch = core.stitch, estimate = core.estimateCost, handlers: overrides = {} } = {}) {
   const sessions = new Map()
   const listeners = new Set()
   let sequence = 0
@@ -22,7 +22,7 @@ export function createHarness({ adapters = { claude: claudeAdapter, codex: codex
     listeners.forEach((fn) => fn(value))
     return value
   }
-  const flows = createFlows({ directory, generate, changed: publish })
+  const flows = createFlows({ directory, generate, writePrompt, stitch, changed: publish })
   const handlers = new Map()
   createServer({ handlers, flowService: flows })
   for (const [name, fn] of Object.entries(overrides)) handlers.set(name, fn)
@@ -72,14 +72,23 @@ export function createHarness({ adapters = { claude: claudeAdapter, codex: codex
         snapshot = flows.get(args.flow_id)
         state = clone(flows.engine(args.flow_id).state)
         const jobs = []
-        const dry = createEngine({ run: async (model, opts) => {
-          jobs.push({ ...opts, model: model.id })
-          return Array.from({ length: opts.count || 1 }, (_, i) => ({ kind: model.kind, url: `/media/estimate-${i}.png` }))
-        } })
+        const writes = []
+        const stitches = []
+        const dry = createEngine({
+          run: async (model, opts) => {
+            jobs.push({ ...opts, model: model.id })
+            return Array.from({ length: opts.count || 1 }, (_, i) => ({ kind: model.kind, url: `/media/estimate-${i}.png` }))
+          },
+          writePrompt: async (input) => { writes.push(input); return 'Prompt awaiting review' },
+          stitch: async (input) => { stitches.push(input); return { kind: 'video', url: '/media/estimate-stitch.mp4' } },
+        })
         dry.load(state)
         await dry.runNew(snapshot)
         for (const job of jobs) allowance.set(jobKey(job), (allowance.get(jobKey(job)) || 0) + 1)
+        for (const input of writes) allowance.set(`writer:${JSON.stringify(input)}`, 1)
         const steps = await Promise.all(jobs.map(async (job) => ({ model: job.model, prompt: job.prompt, aspect: job.aspect, duration: job.duration, count: job.count, usd: (await estimate(job).catch(() => null))?.usd ?? null })))
+        steps.push(...writes.map((input) => ({ model: 'Google Gemini writer', prompt: input.instructions, usd: null })))
+        steps.push(...stitches.map(() => ({ model: 'Local Stitch', prompt: 'Join clips locally', usd: 0 })))
         await approval(session, { title: `Run ${snapshot.name}`, tool: name, args, flow: snapshot, steps, usd: steps.every((s) => s.usd != null) ? steps.reduce((n, s) => n + s.usd, 0) : null })
         if (flowSignature(snapshot) !== flowSignature(flows.get(args.flow_id)) || JSON.stringify(state) !== JSON.stringify(flows.engine(args.flow_id).state)) throw problem('The flow changed. Request a fresh plan before running.', 409)
       } else if (['generate', 'write_prompts'].includes(name)) {
@@ -100,6 +109,15 @@ export function createHarness({ adapters = { claude: claudeAdapter, codex: codex
           if (!allowance.get(key)) throw new Error('This generation was not in the approved plan. Request a fresh plan.')
           allowance.set(key, allowance.get(key) - 1)
           return generate(job)
+        }, writePrompt: (input) => {
+          if (session.stopped) throw new Error('Session stopped')
+          const key = `writer:${JSON.stringify(input)}`
+          if (!allowance.get(key)) throw new Error('This writer was not in the approved plan. Request a fresh plan.')
+          allowance.set(key, 0)
+          return writePrompt(input)
+        }, stitch: (input) => {
+          if (session.stopped) throw new Error('Session stopped')
+          return stitch({ ...input, preview: true })
         } })
       } else result = unwrap(await handlers.get(name)(args))
       if (name === 'add_node') emit(session, { type: 'presence', flowId: args.flow_id, nodeId: result.id, position: result.position })

@@ -1,6 +1,163 @@
-// Public fal input schemas and bundled Comfy placeholders. Refresh with node scripts/format-schemas.mjs.
+// Public fal/Router schemas and bundled Comfy placeholders. Refresh with node scripts/format-schemas.mjs.
 export const schemas = {
   "fal": {
+    "fal-ai/flux-pro/v1/fill": {
+      "properties": {
+        "mask_url": {
+          "type": "string"
+        },
+        "sync_mode": {
+          "type": "boolean",
+          "default": false
+        },
+        "image_url": {
+          "type": "string"
+        },
+        "seed": {
+          "type": "integer"
+        },
+        "enhance_prompt": {
+          "type": "boolean",
+          "default": false
+        },
+        "output_format": {
+          "type": "string",
+          "enum": [
+            "jpeg",
+            "png"
+          ],
+          "default": "jpeg"
+        },
+        "num_images": {
+          "type": "integer",
+          "default": 1
+        },
+        "safety_tolerance": {
+          "type": "string",
+          "enum": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6"
+          ],
+          "default": "2"
+        },
+        "prompt": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "prompt",
+        "image_url",
+        "mask_url"
+      ]
+    },
+    "fal-ai/nano-banana-2/edit": {
+      "properties": {
+        "limit_generations": {
+          "type": "boolean",
+          "default": true
+        },
+        "sync_mode": {
+          "type": "boolean",
+          "default": false
+        },
+        "resolution": {
+          "type": "string",
+          "enum": [
+            "0.5K",
+            "1K",
+            "2K",
+            "4K"
+          ],
+          "default": "1K"
+        },
+        "aspect_ratio": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "21:9",
+            "16:9",
+            "3:2",
+            "4:3",
+            "5:4",
+            "1:1",
+            "4:5",
+            "3:4",
+            "2:3",
+            "9:16",
+            "4:1",
+            "1:4",
+            "8:1",
+            "1:8"
+          ],
+          "default": "auto"
+        },
+        "safety_tolerance": {
+          "type": "string",
+          "enum": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6"
+          ],
+          "default": "4"
+        },
+        "video_url": {
+          "type": "string"
+        },
+        "enable_web_search": {
+          "type": "boolean",
+          "default": false
+        },
+        "system_prompt": {
+          "type": "string",
+          "default": ""
+        },
+        "num_images": {
+          "type": "integer",
+          "default": 1
+        },
+        "output_format": {
+          "type": "string",
+          "enum": [
+            "jpeg",
+            "png",
+            "webp"
+          ],
+          "default": "png"
+        },
+        "pdf_url": {
+          "type": "string"
+        },
+        "prompt": {
+          "type": "string"
+        },
+        "audio_url": {
+          "type": "string"
+        },
+        "seed": {
+          "type": "integer"
+        },
+        "image_urls": {
+          "type": "array"
+        },
+        "thinking_level": {
+          "type": "string",
+          "enum": [
+            "minimal",
+            "high"
+          ]
+        }
+      },
+      "required": [
+        "prompt"
+      ]
+    },
     "bytedance/seedance-2.0/fast/image-to-video": {
       "properties": {
         "bitrate_mode": {
@@ -145,110 +302,6 @@ export const schemas = {
       },
       "required": [
         "start_image_url"
-      ]
-    },
-    "fal-ai/nano-banana-2/edit": {
-      "properties": {
-        "limit_generations": {
-          "type": "boolean",
-          "default": true
-        },
-        "sync_mode": {
-          "type": "boolean",
-          "default": false
-        },
-        "resolution": {
-          "type": "string",
-          "enum": [
-            "0.5K",
-            "1K",
-            "2K",
-            "4K"
-          ],
-          "default": "1K"
-        },
-        "aspect_ratio": {
-          "type": "string",
-          "enum": [
-            "auto",
-            "21:9",
-            "16:9",
-            "3:2",
-            "4:3",
-            "5:4",
-            "1:1",
-            "4:5",
-            "3:4",
-            "2:3",
-            "9:16",
-            "4:1",
-            "1:4",
-            "8:1",
-            "1:8"
-          ],
-          "default": "auto"
-        },
-        "safety_tolerance": {
-          "type": "string",
-          "enum": [
-            "1",
-            "2",
-            "3",
-            "4",
-            "5",
-            "6"
-          ],
-          "default": "4"
-        },
-        "video_url": {
-          "type": "string"
-        },
-        "enable_web_search": {
-          "type": "boolean",
-          "default": false
-        },
-        "system_prompt": {
-          "type": "string",
-          "default": ""
-        },
-        "num_images": {
-          "type": "integer",
-          "default": 1
-        },
-        "output_format": {
-          "type": "string",
-          "enum": [
-            "jpeg",
-            "png",
-            "webp"
-          ],
-          "default": "png"
-        },
-        "pdf_url": {
-          "type": "string"
-        },
-        "prompt": {
-          "type": "string"
-        },
-        "audio_url": {
-          "type": "string"
-        },
-        "seed": {
-          "type": "integer"
-        },
-        "image_urls": {
-          "type": "array"
-        },
-        "thinking_level": {
-          "type": "string",
-          "enum": [
-            "minimal",
-            "high"
-          ]
-        }
-      },
-      "required": [
-        "prompt"
       ]
     },
     "fal-ai/qwen-image-edit-2511-multiple-angles": {
@@ -473,9 +526,84 @@ export const schemas = {
       "required": [
         "image_url"
       ]
+    },
+    "fal-ai/bytedance/seedance/v1.5/pro/image-to-video": {
+      "properties": {
+        "resolution": {
+          "type": "string",
+          "enum": [
+            "480p",
+            "720p",
+            "1080p"
+          ],
+          "default": "720p"
+        },
+        "duration": {
+          "type": "string",
+          "enum": [
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12"
+          ],
+          "default": "5"
+        },
+        "image_url": {
+          "type": "string"
+        },
+        "prompt": {
+          "type": "string"
+        },
+        "aspect_ratio": {
+          "type": "string",
+          "enum": [
+            "21:9",
+            "16:9",
+            "4:3",
+            "1:1",
+            "3:4",
+            "9:16",
+            "auto"
+          ],
+          "default": "16:9"
+        },
+        "end_image_url": {
+          "type": "string"
+        },
+        "camera_fixed": {
+          "type": "boolean",
+          "default": false
+        },
+        "generate_audio": {
+          "type": "boolean",
+          "default": true
+        },
+        "seed": {
+          "type": "integer"
+        },
+        "enable_safety_checker": {
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "required": [
+        "prompt",
+        "image_url"
+      ]
     }
   },
   "comfy": {
+    "h3_i2v": [
+      "duration",
+      "image",
+      "prompt",
+      "seed"
+    ],
     "image_flux": [
       "count",
       "height",
@@ -490,6 +618,14 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "ltx_i2v": [
+      "frames",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
     "video_ltx": [
       "frames",
       "height",
@@ -497,5 +633,80 @@ export const schemas = {
       "seed",
       "width"
     ]
+  },
+  "router": {
+    "byteplus/dreamina-seedance-2-5-260628": {
+      "required": [
+        "content"
+      ],
+      "properties": {
+        "callback_url": {
+          "type": "string"
+        },
+        "content": {
+          "type": "array"
+        },
+        "draft": {
+          "type": "boolean"
+        },
+        "duration": {
+          "type": "integer"
+        },
+        "execution_expires_after": {
+          "type": "integer"
+        },
+        "generate_audio": {
+          "type": "boolean"
+        },
+        "model": {
+          "type": "string"
+        },
+        "output_format": {
+          "type": "string",
+          "enum": [
+            "mp4",
+            "mov"
+          ]
+        },
+        "ratio": {
+          "type": "string",
+          "enum": [
+            "16:9",
+            "4:3",
+            "1:1",
+            "3:4",
+            "9:16",
+            "21:9",
+            "9:21",
+            "adaptive"
+          ]
+        },
+        "resolution": {
+          "type": "string",
+          "enum": [
+            "480p",
+            "720p",
+            "1080p",
+            "4k"
+          ]
+        },
+        "return_last_frame": {
+          "type": "boolean"
+        },
+        "seed": {
+          "type": "integer"
+        },
+        "service_tier": {
+          "type": "string",
+          "enum": [
+            "default",
+            "flex"
+          ]
+        },
+        "watermark": {
+          "type": "boolean"
+        }
+      }
+    }
   }
 }

@@ -1,6 +1,7 @@
 import { imageLimit, videoLimit, videoTypes } from '../shared/widgetInputs.js'
 
 const imageTypes = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif', 'image/svg+xml': 'svg' }
+const audioTypes = { 'audio/mpeg': 'mp3', 'audio/wav': 'wav', 'audio/x-wav': 'wav', 'audio/mp4': 'm4a', 'audio/ogg': 'ogg', 'audio/flac': 'flac' }
 const fail = (message, status) => { throw Object.assign(new Error(message), { status }) }
 
 async function read(req, limit) {
@@ -28,11 +29,11 @@ export async function upload(req, saveMedia) {
     mime = (match ? match[1] : json.type || 'image/png').toLowerCase()
     buf = Buffer.from(match ? data.slice(match[0].length) : data, 'base64')
   } else {
-    if (!imageTypes[mime] && !videoTypes[mime]) fail('Attach an image or an mp4, webm or mov video.', 415)
+    if (!imageTypes[mime] && !videoTypes[mime] && !audioTypes[mime]) fail('Attach an image, video or audio file.', 415)
     buf = await read(req, videoTypes[mime] ? videoLimit : imageLimit)
   }
-  const ext = imageTypes[mime] || videoTypes[mime]
-  if (!ext) fail('Attach an image or an mp4, webm or mov video.', 415)
+  const ext = imageTypes[mime] || videoTypes[mime] || audioTypes[mime]
+  if (!ext) fail('Attach an image, video or audio file.', 415)
   if (!buf.length) fail('No file received.', 400)
   const limit = videoTypes[mime] ? videoLimit : imageLimit
   if (buf.length > limit) fail(`That file is too large (${videoTypes[mime] ? 200 : 40} MB max).`, 413)

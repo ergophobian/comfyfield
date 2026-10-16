@@ -19,14 +19,12 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - uses: browser-actions/setup-chrome@v2
+        id: chrome
+        with:
+          chrome-version: stable
       - run: npx vite build
-      - run: node scripts/flow-checks.mjs
-      - run: node scripts/writer-check.mjs
-      - run: node scripts/agent-checks.mjs
-      - run: node scripts/theme-check.mjs
-      - run: node scripts/format-check.mjs
-      - run: node scripts/format-runner-checks.mjs
-      - run: node scripts/format-ui-check.mjs
-        if: runner.os == 'Linux'
-      - run: node scripts/stitch-checks.mjs
+      - run: node scripts/verify.mjs
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
       - run: node bin/comfyfield.js --help

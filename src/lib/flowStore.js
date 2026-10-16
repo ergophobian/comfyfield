@@ -178,7 +178,7 @@ export function engineFor(id) {
   }
   subscribeFlows(sync)
   sync()
-  const actions = Object.fromEntries(['runNew', 'regenerateAll', 'send', 'rerun', 'rerunGate', 'togglePick', 'stop'].map((action) => [action, async (flow, node, item) => {
+  const actions = Object.fromEntries(['runNew', 'regenerateAll', 'send', 'rerun', 'rerunGate', 'togglePick', 'stop', 'editWriter', 'sendWriter'].map((action) => [action, async (flow, node, item) => {
     await flushFlows()
     const result = await api(`/api/flows/${id}/action`, 'POST', { action, node, item })
     await refreshFlows()

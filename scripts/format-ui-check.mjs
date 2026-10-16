@@ -18,7 +18,7 @@ assert(executable, 'Set CHROME_PATH to a local Chrome executable')
 
 const requests = []
 const svg = (label) => `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="750" viewBox="0 0 600 750"><rect width="600" height="750" fill="#e4e9ff"/><circle cx="300" cy="280" r="120" fill="#9b8cf5"/><path d="M100 680 Q100 380 300 390 Q500 380 500 680Z" fill="#6f7fd8"/><text x="300" y="720" text-anchor="middle" font-family="sans-serif" font-size="28" fill="#30384d">${label}</text></svg>`
-const server = await createServer({ configFile: false, envFile: false, plugins: [react(), {
+const server = await createServer({ configFile: false, envFile: false, cacheDir: 'node_modules/.cache/format-vite', plugins: [react(), {
   name: 'format-mock-api', configureServer(server) {
     server.middlewares.use(async (req, res, next) => {
       const url = new URL(req.url, 'http://localhost')
@@ -29,6 +29,7 @@ const server = await createServer({ configFile: false, envFile: false, plugins: 
       }
       if (!url.pathname.startsWith('/api/')) return next()
       res.setHeader('Content-Type', 'application/json')
+      if (url.pathname === '/api/stitch/exports') return res.end('[]')
       if (url.pathname === '/api/connections') return res.end(JSON.stringify({ fal: { connected: true }, google: { connected: true } }))
       if (url.pathname === '/api/fal/schema') return res.end(JSON.stringify(schemas.fal[url.searchParams.get('id')] || { properties: { prompt: { type: 'string' } } }))
       if (url.pathname === '/api/upload') { req.resume(); return res.end(JSON.stringify({ url: '/mock-photo.svg' })) }
@@ -36,12 +37,13 @@ const server = await createServer({ configFile: false, envFile: false, plugins: 
         let body = ''
         for await (const chunk of req) body += chunk
         requests.push({ path: url.pathname, body: JSON.parse(body) })
+        if (url.pathname === '/api/prompt') return res.end(JSON.stringify({ text: 'Mock writer prompt for review' }))
         return res.end(JSON.stringify({ files: [{ url: '/mock-result.svg', kind: 'image' }] }))
       }
       res.end('{}')
     })
   },
-}], server: { host: '127.0.0.1', port: 0 } })
+}], optimizeDeps: { noDiscovery: true, include: ['react', 'react-dom/client', 'react-router-dom', '@xyflow/react'] }, server: { host: '127.0.0.1', port: 0 } })
 await server.listen()
 const origin = `http://127.0.0.1:${server.httpServer.address().port}`
 const profile = resolve(`node_modules/.cache/format-chrome-${Date.now()}`)
@@ -65,7 +67,7 @@ try {
       pending.delete(msg.id)
       if (msg.error) p.reject(new Error(JSON.stringify(msg.error)))
       else p.resolve(msg.result)
-    } else if (msg.method === 'Runtime.exceptionThrown') errors.push(msg.params.exceptionDetails.text)
+    } else if (msg.method === 'Runtime.exceptionThrown') errors.push(msg.params.exceptionDetails.exception?.description || msg.params.exceptionDetails.text)
   })
   const cdp = (method, params = {}) => new Promise((resolve, reject) => { const key = ++id; pending.set(key, { resolve, reject }); ws.send(JSON.stringify({ id: key, method, params })) })
   const evaluate = async (expression) => {
@@ -75,7 +77,7 @@ try {
   }
   const wait = async (expression) => {
     for (let i = 0; i < 100; i++) { if (await evaluate(`Boolean(${expression})`)) return; await pause(100) }
-    throw new Error(`Timed out: ${expression}`)
+    throw new Error(`Timed out: ${expression}\n${await evaluate('document.body.innerText')}\n${JSON.stringify(errors)}`)
   }
   const goto = async (path) => { await cdp('Page.navigate', { url: `${origin}${path}` }); await wait('document.querySelector("main") && document.readyState === "complete"') }
   const screenshot = async (name) => {
@@ -111,7 +113,7 @@ try {
   await wait('document.querySelector(".viewer .use-in-btn")')
   await evaluate('document.querySelector(".use-in-btn").click()')
   await wait('document.querySelector(".use-in [role=menuitem]")')
-  await evaluate('document.querySelector(".use-in [role=menuitem]").click()')
+  await evaluate('[...document.querySelectorAll(".use-in [role=menuitem]")].find((b) => b.textContent === "Upscale").click()')
   await wait('document.querySelector("[role=dialog][aria-label=Upscale]")')
   await wait('!document.querySelector(".sheet-foot .btn-blue").disabled')
   await screenshot('mock-shared-sheet-desktop')
@@ -138,10 +140,30 @@ try {
   await wait('JSON.parse(localStorage.getItem("comfyfield.library") || "[]").length === 3')
   assert.equal(requests[2].path, '/api/google')
   assert.equal(requests[2].body.prompt, 'A field of flowers')
-  await goto('/apps/cam-dolly-in')
+  await goto('/apps/effect-aquarium-turn')
+  await wait('document.querySelector("input[type=file]")')
+  await evaluate(`(() => { const input = document.querySelector('input[type=file]'); const data = new DataTransfer(); data.items.add(new File(['mock'], 'sample.png', {type:'image/png'})); input.files = data.files; input.dispatchEvent(new Event('change', {bubbles:true})); })()`)
+  await wait('!document.querySelector(".app-go button").disabled')
+  await evaluate('document.querySelector(".app-go button").click()')
+  await wait(`document.querySelector('textarea[aria-label="Written prompt"]')`)
+  assert.equal(requests.length, 4, 'Only the writer runs before review')
+  assert.equal(requests[3].path, '/api/prompt')
+  assert.deepEqual(requests[3].body.images, ['/mock-photo.svg'])
+  await evaluate(`(() => { const input = document.querySelector('textarea[aria-label="Written prompt"]'); Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(input, 'Edited video prompt from the user'); input.dispatchEvent(new Event('input', {bubbles:true})); })()`)
+  await screenshot('mock-writer-review-desktop')
+  await cdp('Emulation.setDeviceMetricsOverride', { width: 390, height: 1100, deviceScaleFactor: 1, mobile: true })
+  assert(await evaluate('document.documentElement.scrollWidth <= 390'), 'Effect review must fit 390px')
+  await screenshot('mock-writer-review-mobile')
+  await evaluate('[...document.querySelectorAll("button")].find((b) => b.textContent === "Send to render").click()')
+  await wait('JSON.parse(localStorage.getItem("comfyfield.library") || "[]").length === 4')
+  assert.equal(requests[4].path, '/api/comfy/run')
+  assert.equal(requests[4].body.workflow, 'ltx_i2v')
+  assert.equal(requests[4].body.vars.prompt, 'Edited video prompt from the user')
+  assert.equal(requests[4].body.vars.image, '/mock-photo.svg')
+  await goto('/apps/expand')
   await wait('document.body.innerText.includes("Nothing lives at this address")')
   assert.deepEqual(errors, [], 'No browser runtime exceptions')
-  console.log('UI mock checks ok: app runner, shared sheet, Library after reload, 390px layout, Create generation/feed/camera presets and hidden invalid route. Three mocked generations; no provider calls. Four screenshots saved.')
+  console.log('UI mock checks ok: app runner, shared sheet, Library after reload, 390px layout, Create generation/feed/camera presets and hidden invalid route. Four mocked generations and one reviewed writer request; no provider calls. Six screenshots saved.')
   await cdp('Browser.close').catch(() => {})
 } finally {
   ws?.close()
