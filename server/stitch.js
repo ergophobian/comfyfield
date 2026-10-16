@@ -8,11 +8,11 @@ const fonts = fileURLToPath(new URL('./fonts/', import.meta.url))
 const dimensions = { '16:9': [1280, 720], '9:16': [720, 1280], '1:1': [720, 720], '4:5': [720, 900] }
 const invalid = (message) => Object.assign(new Error(message), { status: 400 })
 
-export function ffmpeg(args, { binary = 'ffmpeg', cwd, allowFailure = false } = {}) {
+export function ffmpeg(args, { binary = 'ffmpeg', cwd, allowFailure = false, timeout = 10 * 60 * 1000 } = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(binary, ['-hide_banner', '-nostdin', ...args], { cwd, windowsHide: true })
     let stderr = ''
-    const timer = setTimeout(() => { child.kill(); reject(new Error('Stitch took too long. Try shorter clips.')) }, 10 * 60 * 1000)
+    const timer = setTimeout(() => { child.kill(); reject(new Error(`Stitch took too long. Try shorter clips.\n${stderr.slice(-2400)}`)) }, timeout)
     child.stderr.on('data', (chunk) => { stderr = (stderr + chunk).slice(-64000) })
     child.stdout.resume()
     child.on('error', (e) => { clearTimeout(timer); reject(e) })
@@ -71,8 +71,8 @@ async function localFile(url, dir, name, mediaPath) {
   return path.resolve(url)
 }
 
-async function inspect(file, binary) {
-  const log = await ffmpeg(['-protocol_whitelist', 'file,pipe', '-i', file], { binary, allowFailure: true })
+async function inspect(file, binary, timeout) {
+  const log = await ffmpeg(['-protocol_whitelist', 'file,pipe', '-i', file], { binary, timeout, allowFailure: true })
   const m = /Duration: (\d+):(\d+):(\d+(?:\.\d+)?)/.exec(log)
   if (!m) throw invalid('Could not read the clip or track duration. Use a supported media file.')
   return { duration: Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]), audio: /Stream #.*Audio:/.test(log), video: /Stream #.*Video:/.test(log) }
@@ -95,7 +95,7 @@ Dialogue: 0,0:00:00.00,9:59:59.00,Default,,0,0,0,,${literal}
 }
 
 // Normalize each clip separately so silent clips, mixed sizes and frame rates can concatenate.
-export async function renderStitch(options, { home, mediaPath, binary } = {}) {
+export async function renderStitch(options, { home, mediaPath, binary, timeout, onProgress = () => {} } = {}) {
   const opts = stitchOptions(options)
   binary ||= await findFfmpeg()
   const base = path.join(home(), 'stitch')
@@ -106,7 +106,7 @@ export async function renderStitch(options, { home, mediaPath, binary } = {}) {
   let duration = 0
   for (const [i, clip] of opts.clips.entries()) {
     const file = await localFile(clip.url, dir, `input-${i}`, mediaPath)
-    const info = await inspect(file, binary)
+    const info = await inspect(file, binary, timeout)
     if (!info.video) throw invalid(`Clip ${i + 1} has no video.`)
     if (clip.start >= info.duration || (clip.end != null && clip.end > info.duration + 0.05)) throw invalid(`Clip ${i + 1} trim is outside its duration (${info.duration}s).`)
     const length = (clip.end ?? info.duration) - clip.start
@@ -123,20 +123,22 @@ export async function renderStitch(options, { home, mediaPath, binary } = {}) {
     args.push('-map', '0:v:0', '-map', info.audio ? '0:a:0' : '1:a:0', '-vf', video,
       '-af', 'aresample=48000,apad', '-t', String(frames / 30), '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20',
       '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-ar', '48000', '-ac', '2', `clip-${i}.mp4`)
-    await ffmpeg(args, { binary, cwd: dir })
+    onProgress(`Encode clip ${i + 1}`)
+    await ffmpeg(args, { binary, timeout, cwd: dir })
   }
   fs.writeFileSync(path.join(dir, 'clips.txt'), opts.clips.map((_, i) => `file 'clip-${i}.mp4'`).join('\n'))
   const args = ['-y', '-f', 'concat', '-safe', '1', '-i', 'clips.txt']
   if (opts.music) {
     const file = await localFile(opts.music.url, dir, 'music-input', mediaPath)
-    if (!(await inspect(file, binary)).audio) throw invalid('The music track has no audio.')
+    if (!(await inspect(file, binary, timeout)).audio) throw invalid('The music track has no audio.')
     const fade = Math.min(opts.music.fade, duration / 2)
-    args.push('-stream_loop', '-1', '-protocol_whitelist', 'file,pipe', '-i', file,
+    args.push('-stream_loop', '-1', '-t', String(duration), '-protocol_whitelist', 'file,pipe', '-i', file,
       '-filter_complex', `[1:a]aresample=48000,volume=${opts.music.volume},atrim=duration=${duration},afade=t=in:d=${fade},afade=t=out:st=${duration - fade}:d=${fade}[music];[0:a][music]amix=inputs=2:duration=first:normalize=0[audio]`,
       '-map', '0:v:0', '-map', '[audio]')
   } else args.push('-map', '0:v:0', '-map', '0:a:0')
   args.push('-t', String(duration), '-c:v', 'copy', '-c:a', 'aac', '-movflags', '+faststart', 'result.mp4')
-  await ffmpeg(args, { binary, cwd: dir })
+  onProgress('Join clips and mix audio')
+  await ffmpeg(args, { binary, timeout, cwd: dir })
   const name = `stitch-${path.basename(dir)}.mp4`
   const output = mediaPath(name)
   fs.mkdirSync(path.dirname(output), { recursive: true })

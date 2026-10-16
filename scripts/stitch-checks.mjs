@@ -31,7 +31,7 @@ await run(['-f', 'lavfi', '-i', 'color=c=red:s=320x180:r=24:d=1.2', '-f', 'lavfi
 await run(['-f', 'lavfi', '-i', 'color=c=blue:s=180x320:r=25:d=1.3', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', blue])
 await run(['-f', 'lavfi', '-i', 'sine=frequency=220:duration=0.3', music])
 console.log('check input validation and system ffmpeg preview')
-const raw = (file, args) => execFileSync(binary, ['-v', 'error', '-i', file, ...args], { maxBuffer: 16 * 1024 * 1024, windowsHide: true })
+const raw = (file, args) => execFileSync(binary, ['-v', 'error', '-i', file, ...args], { maxBuffer: 16 * 1024 * 1024, timeout: 30000, windowsHide: true })
 const frame = (file, at) => raw(file, ['-ss', String(at), '-frames:v', '1', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'])
 const rms = (file, at) => {
   const buf = raw(file, ['-ss', String(at), '-t', '0.06', '-vn', '-ac', '1', '-ar', '48000', '-f', 'f32le', '-'])
@@ -79,7 +79,7 @@ console.log('ok    trims, mixed formats, ordering, captions, clip audio, preview
 
 // Exercise the bundled binary even when system ffmpeg exists, as on this Windows machine.
 console.log(`check bundled preview with ${bundledFfmpeg}`)
-const mixed = await renderStitch({ clips: [{ url: blue, start: 0, end: 1.2, caption: 'Bundled captions' }], aspect: '9:16', music: { url: music, volume: 0.4, fade: 0.3 } }, { home: core.home, mediaPath: core.mediaPath, binary: bundledFfmpeg })
+const mixed = await renderStitch({ clips: [{ url: blue, start: 0, end: 1.2, caption: 'Bundled captions' }], aspect: '9:16', music: { url: music, volume: 0.4, fade: 0.3 } }, { home: core.home, mediaPath: core.mediaPath, binary: bundledFfmpeg, timeout: 30000, onProgress: console.log })
 assert.equal(frame(mixed.path, 0.5).length, 720 * 1280 * 3)
 const middle = rms(mixed.path, 0.55)
 assert.ok(middle > 0.015 && middle < 0.05, `Music volume applied (${middle})`)
@@ -90,7 +90,7 @@ console.log('ok    bundled ffmpeg, portrait aspect, music looping, volume and fa
 const specFile = path.join(dir, 'stitch.json')
 console.log('check CLI subprocess')
 fs.writeFileSync(specFile, JSON.stringify({ clips: [{ url: blue, end: 0.2 }], aspect: '4:5' }))
-const cli = JSON.parse(execFileSync(process.execPath, ['bin/comfyfield.js', 'stitch', '--spec', specFile, '--json'], { encoding: 'utf8', windowsHide: true }))
+const cli = JSON.parse(execFileSync(process.execPath, ['bin/comfyfield.js', 'stitch', '--spec', specFile, '--json'], { encoding: 'utf8', timeout: 30000, windowsHide: true }))
 assert.equal(cli.exported, true)
 assert.equal(cli.width / cli.height, 4 / 5)
 assert.ok(fs.existsSync(cli.path))
