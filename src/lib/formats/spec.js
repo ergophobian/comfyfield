@@ -2,7 +2,7 @@
 export function defineFormat(format) {
   return {
     job: format.blurb || format.name,
-    shape: 'preset',
+    shape: format.prompt ? 'preset' : 'tool',
     ...format,
     steps: format.steps || [{
       id: 'generate',

@@ -23,7 +23,7 @@ export function fill(node, vars) {
 
 export function comfyVars(kind, o) {
   const [width, height] = kind === 'video' ? videoSize(o.aspect) : aspectSize[o.aspect]
-  return { prompt: o.prompt, width, height, count: o.count, frames: o.duration * 24 + 1, seed: Math.floor(Math.random() * 2 ** 31) }
+  return { prompt: o.prompt, width, height, count: o.count, frames: o.duration * 24 + 1, seed: Math.floor(Math.random() * 2 ** 31), ...o.params, ...o.fields }
 }
 
 // Durations a model accepts, in seconds, from its fal schema properties.

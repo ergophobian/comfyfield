@@ -1,10 +1,12 @@
 // Public metadata only. No keys and no generation requests.
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { recipes } from '../src/lib/recipes.js'
+import { allFormats } from '../src/lib/formats/index.js'
+import { stepModel } from '../src/lib/formats/options.js'
 import { falSchema } from '../server/core.js'
 
 const fal = {}
-for (const endpoint of new Set(recipes.map((r) => r.model))) {
+const targets = allFormats.flatMap((f) => f.steps.filter((s) => s.type !== 'approve').map((s) => stepModel(f, s)))
+for (const endpoint of new Set(targets.filter((m) => m?.provider === 'fal').map((m) => m.model))) {
   fal[endpoint] = await falSchema(endpoint)
 }
 const comfy = {}

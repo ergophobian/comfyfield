@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { IconClose } from './Icons.jsx'
 import { Field } from './formats/Fields.jsx'
-import { initialValues, missingInputs, recipeModel, recipeOptions, visibleInputs } from '../lib/recipes.js'
+import { initialValues, missingInputs, recipeModel, visibleInputs } from '../lib/recipes.js'
 import { isWired } from '../lib/formats/index.js'
 import { models as catalog, providerInfo } from '../lib/catalog.js'
 import { estimate, money, useModelMeta } from '../lib/cost.js'
@@ -73,7 +73,7 @@ export function RecipeSheet({ recipe, gens, connections, onClose, initial }) {
   const run = (e) => {
     e.preventDefault()
     if (!wired || missing.length || !connected) return
-    gens.generate(model, recipeOptions(recipe, values))
+    gens.generateFormat(recipe, values).catch((e) => setError(e.message))
     close()
   }
 
