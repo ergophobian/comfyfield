@@ -37,14 +37,14 @@ Each `generate`, `write_prompts` or `run_flow` call requires its own approval. E
 
 `node scripts/agent-checks.mjs` runs in CI on Windows, macOS and Linux. It injects fake generation and estimates, tests Claude/Codex protocol adapters, approval/rejection/expiry/stop, stale plans, shared persistence, flow gates, local route checks, and the actual HTTP/SSE plus stdio MCP bridge. Fixtures stay under ignored `.comfyfield/agent-checks/`. No provider calls are made.
 
-For browser verification, run these fixture servers in separate terminals:
+For browser verification, build the app and run the check:
 
 ```sh
-node scripts/agent-ui-fixture.mjs
-node scripts/agent-ui-fixture.mjs --setup-only
+npx vite build
+node scripts/agent-ui-checks.mjs
 ```
 
-Then run `node scripts/agent-ui-checks.mjs`. It uses a separate headless Chrome profile, checks desktop and 390px layouts, approves a fake generation, verifies presence and stop, recovers from conflicting edits, checks missing-agent setup, and captures the PNGs in this directory. Set `CHROME_PATH` if Chrome is elsewhere. These fixture adapters are injected only by the test script and are unavailable in the normal app.
+The check starts its own fixtures on free ports and one fresh headless Chrome profile, checks desktop and 390px layouts, approves a fake generation, verifies presence and stop, recovers from conflicting edits, checks missing-agent setup, and captures the PNGs in this directory. Set `CHROME_PATH` if Chrome is elsewhere. These fixture adapters are injected only by the test script and are unavailable in the normal app. For manual inspection, `node scripts/agent-ui-fixture.mjs` and its `--setup-only` variant still serve ports 5317 and 5318.
 
 The screenshots show fake-adapter UI activity or simulated missing-agent setup. They contain no generated media. The installed Codex CLI's generated protocol schema was inspected locally with version 0.159.2; live subscription conversations, provider estimates and real media generation remain unverified. Spend: $0.
 

@@ -1,10 +1,9 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
-import { spawn } from 'node:child_process'
 import { createServer } from 'vite'
 import react from '@vitejs/plugin-react'
-import { chromeExecutable } from './browser.mjs'
+import { startBrowser, chromeExecutable, uiTimeout } from './browser.mjs'
 import api from '../server/plugin.js'
 
 const dir = path.resolve('outputs/widget-browser')
@@ -35,46 +34,21 @@ const mock = {
 const vite = await createServer({ configFile: false, envFile: false, cacheDir: 'node_modules/.cache/widget-vite', plugins: [mock, react(), api()], server: { host: '127.0.0.1', port: 0, strictPort: true, watch: { ignored: ['**/outputs/**'] } } })
 await vite.listen()
 const base = `http://127.0.0.1:${vite.httpServer.address().port}`
-const profile = path.join(dir, `chrome-profile-${Date.now()}`)
-const chromePath = process.env.WIDGET_CHROME || chromeExecutable()
-const chrome = spawn(chromePath, ['--headless=new', '--use-mock-keychain', '--password-store=basic', '--no-sandbox', '--disable-gpu', '--disable-extensions', '--no-first-run', '--no-default-browser-check', '--autoplay-policy=no-user-gesture-required', '--remote-debugging-port=0', `--user-data-dir=${profile}`, 'about:blank'], { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] })
-chrome.stderr.on('data', (data) => process.stderr.write(data))
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
-let ws
-const pending = new Map()
-let sequence = 0
+let browser
 try {
-  let pages
-  for (let i = 0; i < 100; i++) {
-    try { const port = fs.readFileSync(path.join(profile, 'DevToolsActivePort'), 'utf8').split('\n')[0].trim(); pages = await fetch(`http://127.0.0.1:${port}/json`).then((r) => r.json()); if (pages.some((p) => p.type === 'page')) break } catch {}
-    await delay(100)
-  }
-  ws = new WebSocket(pages.find((p) => p.type === 'page').webSocketDebuggerUrl)
-  await new Promise((resolve) => ws.addEventListener('open', resolve, { once: true }))
-  ws.addEventListener('message', (event) => {
-    const message = JSON.parse(event.data)
-    if (message.id) {
-      const task = pending.get(message.id)
-      if (!task) return
-      clearTimeout(task.timer)
-      pending.delete(message.id)
-      if (message.error) task.reject(new Error(message.error.message))
-      else task.resolve(message.result)
-    }
+  browser = await startBrowser('widget-browser', {
+    executable: process.env.WIDGET_CHROME || chromeExecutable(),
+    args: ['--autoplay-policy=no-user-gesture-required'],
   })
-  const cdp = (method, params = {}) => new Promise((resolve, reject) => {
-    const id = ++sequence
-    const timer = setTimeout(() => { pending.delete(id); reject(new Error(`CDP timeout: ${method}`)) }, 15000)
-    pending.set(id, { resolve, reject, timer })
-    ws.send(JSON.stringify({ id, method, params }))
-  })
+  const cdp = browser.send
   const js = async (expression) => {
     const result = await cdp('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true })
     if (result.exceptionDetails) throw new Error(result.exceptionDetails.exception.description)
     return result.result.value
   }
   const wait = async (expression) => {
-    for (let i = 0; i < 100; i++) { if (await js(`Boolean(${expression})`)) return; await delay(100) }
+    for (const deadline = Date.now() + uiTimeout; Date.now() < deadline;) { if (await js(`Boolean(${expression})`)) return; await delay(100) }
     throw new Error(`Timed out: ${expression}`)
   }
   const click = async (selector) => {
@@ -202,18 +176,11 @@ try {
   assert.ok(await js('document.documentElement.scrollWidth<=390'), 'inpaint app has no horizontal overflow')
   await screenshot('inpaint-mobile.png')
   console.log('Browser checks passed: PNG mask pixels, face crop and Library pick, aspect ratio, keyboard, touch, video trim/poster, four Flow nodes, 390px layout')
-  await cdp('Browser.close').catch(() => {})
 } catch (error) {
-  if (ws?.readyState === 1) {
-    const id = ++sequence
-    const result = new Promise((resolve, reject) => pending.set(id, { resolve, reject }))
-    ws.send(JSON.stringify({ id, method: 'Page.captureScreenshot', params: { format: 'png', captureBeyondViewport: true } }))
-    const shot = await result
-    fs.writeFileSync(path.join(dir, 'failure.png'), Buffer.from(shot.data, 'base64'))
-  }
+  const shot = await browser?.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true }, 3000).catch(() => null)
+  if (shot) fs.writeFileSync(path.join(dir, 'failure.png'), Buffer.from(shot.data, 'base64'))
   throw error
 } finally {
-  ws?.close()
-  chrome.kill()
+  await browser?.close()
   await vite.close()
 }

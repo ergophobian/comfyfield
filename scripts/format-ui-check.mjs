@@ -1,20 +1,11 @@
 import assert from 'node:assert/strict'
-import { spawn } from 'node:child_process'
-import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import { preview } from 'vite'
+import { startBrowser, uiTimeout } from './browser.mjs'
 import { schemas } from '../src/lib/formats/schemas.js'
 import { allFormats } from '../src/lib/formats/index.js'
 
 // A separate Vite server with an in-process mock API never loads provider routes or keys.
-const executable = process.env.CHROME_PATH || [
-  'C:/Program Files/Google/Chrome/Application/chrome.exe',
-  '/usr/bin/google-chrome',
-  '/usr/bin/chromium',
-  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-].find(existsSync)
-assert(executable, 'Set CHROME_PATH to a local Chrome executable')
-
 const requests = []
 const svg = (label) => `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="750" viewBox="0 0 600 750"><rect width="600" height="750" fill="#e4e9ff"/><circle cx="300" cy="280" r="120" fill="#9b8cf5"/><path d="M100 680 Q100 380 300 390 Q500 380 500 680Z" fill="#6f7fd8"/><text x="300" y="720" text-anchor="middle" font-family="sans-serif" font-size="28" fill="#30384d">${label}</text></svg>`
 const server = await preview({ configFile: false, envFile: false, plugins: [{
@@ -44,40 +35,21 @@ const server = await preview({ configFile: false, envFile: false, plugins: [{
   },
 }], preview: { host: '127.0.0.1', port: 0 } })
 const origin = `http://127.0.0.1:${server.httpServer.address().port}`
-const profile = resolve(`node_modules/.cache/format-chrome-${Date.now()}`)
-mkdirSync(profile, { recursive: true })
-const chrome = spawn(executable, ['--headless=new', '--use-mock-keychain', '--password-store=basic', '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check', '--disable-background-networking', '--disable-gpu', '--no-sandbox', 'about:blank'], { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] })
-chrome.stderr.on('data', (data) => process.stderr.write(data))
 const pause = (ms) => new Promise((r) => setTimeout(r, ms))
-let ws
+let browser
 try {
-  for (let i = 0; i < 100 && !existsSync(`${profile}/DevToolsActivePort`); i++) await pause(100)
-  const port = readFileSync(`${profile}/DevToolsActivePort`, 'utf8').split('\n')[0]
-  const target = await fetch(`http://127.0.0.1:${port}/json/new?about:blank`, { method: 'PUT' }).then((r) => r.json())
-  ws = new WebSocket(target.webSocketDebuggerUrl)
-  await new Promise((r) => ws.addEventListener('open', r, { once: true }))
-  let id = 0
-  const pending = new Map()
   const errors = []
-  ws.addEventListener('message', (event) => {
-    const msg = JSON.parse(event.data)
-    if (msg.id) {
-      const p = pending.get(msg.id)
-      if (!p) return
-      clearTimeout(p.timer)
-      pending.delete(msg.id)
-      if (msg.error) p.reject(new Error(JSON.stringify(msg.error)))
-      else p.resolve(msg.result)
-    } else if (msg.method === 'Runtime.exceptionThrown') errors.push(msg.params.exceptionDetails.exception?.description || msg.params.exceptionDetails.text)
-  })
-  const cdp = (method, params = {}) => new Promise((resolve, reject) => { const key = ++id; const timer = setTimeout(() => { pending.delete(key); reject(new Error(`CDP timeout: ${method}`)) }, 15000); pending.set(key, { resolve, reject, timer }); ws.send(JSON.stringify({ id: key, method, params })) })
+  browser = await startBrowser('format-ui', { onEvent(msg) {
+    if (msg.method === 'Runtime.exceptionThrown') errors.push(msg.params.exceptionDetails.exception?.description || msg.params.exceptionDetails.text)
+  } })
+  const cdp = browser.send
   const evaluate = async (expression) => {
     const result = await cdp('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true })
     if (result.exceptionDetails) throw new Error(JSON.stringify(result.exceptionDetails))
     return result.result.value
   }
   const wait = async (expression) => {
-    for (let i = 0; i < 100; i++) { if (await evaluate(`Boolean(${expression})`)) return; await pause(100) }
+    for (const deadline = Date.now() + uiTimeout; Date.now() < deadline;) { if (await evaluate(`Boolean(${expression})`)) return; await pause(100) }
     throw new Error(`Timed out: ${expression}\n${await evaluate('document.body.innerText')}\n${JSON.stringify(errors)}`)
   }
   const goto = async (path) => { await cdp('Page.navigate', { url: `${origin}${path}` }); await wait('document.querySelector("main") && document.readyState === "complete"') }
@@ -165,9 +137,7 @@ try {
   await wait('document.body.innerText.includes("Nothing lives at this address")')
   assert.deepEqual(errors, [], 'No browser runtime exceptions')
   console.log('UI mock checks ok: app runner, shared sheet, Library after reload, 390px layout, Create generation/feed/camera presets and hidden invalid route. Four mocked generations and one reviewed writer request; no provider calls. Six screenshots saved.')
-  await cdp('Browser.close').catch(() => {})
 } finally {
-  ws?.close()
-  chrome.kill()
+  await browser?.close()
   await server.close()
 }

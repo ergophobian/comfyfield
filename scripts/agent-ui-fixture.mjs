@@ -8,7 +8,7 @@ import { createHarness } from '../server/agent-harness.js'
 
 for (const key of ['FAL_KEY', 'GEMINI_API_KEY', 'ELEVENLABS_API_KEY', 'COMFY_API_KEY', 'COMFY_URL', 'COMFY_MODE']) delete process.env[key]
 
-export async function startFixture(setupOnly = false) {
+export async function startFixture(setupOnly = false, port = 0) {
   const directory = path.resolve('.comfyfield', 'agent-ui-fixture', `${Date.now()}-${setupOnly}`)
   fs.mkdirSync(directory, { recursive: true })
   process.env.COMFYFIELD_HOME = directory
@@ -46,11 +46,10 @@ export async function startFixture(setupOnly = false) {
       { id: 'output', type: 'output', position: { x: 700, y: 0 }, data: {} },
     ], edges: [{ id: 'p-m', source: 'prompt', target: 'model' }, { id: 'm-o', source: 'model', target: 'output' }],
   }] })
-  const port = setupOnly ? 5318 : 5317
   const server = await preview({ configFile: false, envFile: false, plugins: [comfyfieldApi({ harness })], preview: { host: '127.0.0.1', port, strictPort: true } })
-  console.log(`Agent UI fixture: http://127.0.0.1:${port}/assistant`)
+  console.log(`Agent UI fixture: http://127.0.0.1:${server.httpServer.address().port}/assistant`)
 
   return server
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) await startFixture(process.argv.includes('--setup-only'))
+if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) await startFixture(process.argv.includes('--setup-only'), process.argv.includes('--setup-only') ? 5318 : 5317)

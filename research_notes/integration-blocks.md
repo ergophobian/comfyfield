@@ -87,6 +87,10 @@ Passed locally on Windows with Node 24:
 - `node scripts/verify.mjs`: all 14 scripts below passed
 - `node bin/comfyfield.js --help`
 - `git diff --check`
+- Browser hardening: baseline passed before edits; all 14 checks passed again
+  locally and with `CI=true`. An additional local lifecycle probe verified normal
+  completion, an intentional failure, cooperative timeout shutdown and a missing
+  Chrome executable. Owned Chrome processes exited and DevTools ports closed.
 
 | Script | Result |
 | --- | --- |
@@ -105,8 +109,16 @@ Passed locally on Windows with Node 24:
 | `agent-ui-checks.mjs` | Desktop/390px chat, approval, presence, stop, conflict recovery and missing-agent setup |
 | `integration-checks.mjs` | 45 effects × 3 render choices; widget mappings; persisted Writer edits; downstream Stitch; real CLI MCP tool discovery; agent Writer approval |
 
-All checks run in CI on Windows, macOS and Linux. Browser checks start isolated
-fixtures, use separate Chrome profiles/caches and never use live providers. The
+All checks run in CI on Windows, macOS and Linux. `verify.mjs` awaits each check's
+exit, then runs the three browser checks sequentially. Each starts one fresh
+Chrome with an OS-assigned DevTools port and a unique temporary profile retained
+under ignored `outputs/browser-profiles/`. Fixture servers also use free ports.
+The shared browser helper polls the DevTools HTTP endpoints before connecting,
+bounds WebSocket startup and every CDP command (60 seconds in CI, 20 locally),
+and closes Chrome in `finally`, awaiting exit with an owned-process-tree fallback.
+The runner requests cooperative cleanup over IPC before enforcing its timeout,
+including on Windows. Browser UI readiness gets 30 seconds in CI. No browser
+checks are skipped on any OS, and no live providers are used. The
 format and agent UI checks serve the production build to avoid optimizer reloads;
 run the build before these checks. Browser transport uses Node's WebSocket client,
 with bounded protocol waits and mock-keychain Chrome flags. CI pins Chrome's
