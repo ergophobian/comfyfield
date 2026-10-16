@@ -71,7 +71,7 @@ export async function run(model, opts) {
     return (await post('/api/fal', { model: endpoint, input: falInput(properties, opts) })).files
   }
   if (model.provider === 'google') {
-    return (await post('/api/google', { model: model.model, mode: model.mode, prompt: opts.prompt, aspect: opts.aspect, count: opts.count, duration: opts.duration, images: opts.images })).files
+    return (await post('/api/google', { model: model.model, mode: model.mode, prompt: opts.prompt, aspect: opts.aspect, count: opts.count, duration: opts.duration, images: opts.images || (opts.image ? [opts.image] : []) })).files
   }
   if (model.provider === 'elevenlabs') {
     return (await post('/api/elevenlabs', { mode: model.mode, text: opts.prompt })).files

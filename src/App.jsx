@@ -3,6 +3,7 @@ import NavTabs from './components/NavTabs.jsx'
 import Create from './pages/Create.jsx'
 import Library from './pages/Library.jsx'
 import Connections from './pages/Connections.jsx'
+import Flows from './pages/Flows.jsx'
 import Models from './pages/Models.jsx'
 import { useGenerations } from './lib/useGenerations.js'
 import { usePicker } from './lib/usePicker.js'
@@ -23,6 +24,7 @@ export default function App() {
       <div className="route" key={pathname}>
       <Routes>
         <Route path="/" element={<Create gens={gens} picker={picker} />} />
+        <Route path="/flows" element={<Flows picker={picker} />} />
         <Route path="/models" element={<Models picker={picker} />} />
         <Route path="/library" element={<Library gens={gens} />} />
         <Route path="/connections" element={<Connections />} />

@@ -19,6 +19,7 @@ export function usePicker() {
 
   return {
     kind: state.kind,
+    all,
     model,
     options: all.filter((m) => m.kind === state.kind),
     setKind: (kind) => setState((s) => ({ ...s, kind })),

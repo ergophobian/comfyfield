@@ -45,6 +45,8 @@ export function mimeExt(mime) {
 
 // Reads one of our saved files back by its /media/... URL.
 export function readLocal(url) {
+  const m = /^data:([^;,]+);base64,(.*)$/s.exec(url)
+  if (m) return { buf: Buffer.from(m[2], 'base64'), mime: m[1] }
   const file = mediaPath(url)
   if (!fs.existsSync(file)) throw Object.assign(new Error('An attached image is missing. Attach it again.'), { status: 400 })
   return { buf: fs.readFileSync(file), mime: mediaTypes[path.extname(file).slice(1).toLowerCase()] || 'image/png' }

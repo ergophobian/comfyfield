@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 
-const tabs = [['/', 'Create'], ['/models', 'Models'], ['/library', 'Library'], ['/connections', 'Connections']]
+const tabs = [['/', 'Create'], ['/flows', 'Flows'], ['/models', 'Models'], ['/library', 'Library'], ['/connections', 'Connections']]
 
 // Top tabs with an underline that slides between routes.
 export default function NavTabs() {

@@ -1,0 +1,140 @@
+import { createContext, useContext, useRef } from 'react'
+import { Handle, Position } from '@xyflow/react'
+import { Logo, brandOf } from '../../lib/brands.jsx'
+import { nodeLabels } from '../../lib/flowStore.js'
+import { promptsOf } from '../../lib/flowEngine.js'
+
+export const FlowCtx = createContext(null)
+const useFlow = () => useContext(FlowCtx)
+
+const gateText = { empty: 'Empty', reviewing: 'Reviewing', sent: 'Sent', stopped: 'Stopped' }
+
+const Check = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"><path d="m5 12 5 5 9-10" /></svg>
+
+function Shell({ type, selected, title, tag, input, output, wide, children }) {
+  return (
+    <div className={`fnode f-${type}${selected ? ' sel' : ''}${wide ? ' wide' : ''}`}>
+      {input && <Handle type="target" position={Position.Left} />}
+      <header><i className="fdot" /><span>{title || nodeLabels[type]}</span>{tag && <em>{tag}</em>}</header>
+      <div className="fbody">{children}</div>
+      {output && <Handle type="source" position={Position.Right} />}
+    </div>
+  )
+}
+
+export function Media({ it }) {
+  if (it.kind === 'video') return <video src={it.url} muted loop playsInline autoPlay preload="metadata" />
+  if (it.kind === 'audio') return <span className="fm-audio" title={it.prompt}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 10v4M9 7v10M13 4v16M17 8v8M21 11v2" /></svg></span>
+  return <img src={it.url} alt={it.prompt || ''} />
+}
+
+const ratio = (a) => (a || '1:1').replace(':', ' / ')
+
+export function PromptNode({ data, selected }) {
+  const n = promptsOf({ data })
+  return (
+    <Shell type="prompt" selected={selected} output tag={data.mode === 'rows' ? `${n.length} ${n.length === 1 ? 'prompt' : 'prompts'}` : null}>
+      {n.length ? <p className="fclamp">{n[0]}</p> : <p className="fhint">Select to write a prompt</p>}
+      {n.length > 1 && <p className="fhint">and {n.length - 1} more</p>}
+    </Shell>
+  )
+}
+
+export function ImageNode({ id, data, selected }) {
+  const { upload } = useFlow()
+  const file = useRef(null)
+  return (
+    <Shell type="image" selected={selected} output>
+      <input ref={file} type="file" accept="image/*" hidden onChange={(e) => e.target.files[0] && upload(id, e.target.files[0])} />
+      {data.url ? (
+        <button type="button" className="fthumb nodrag" onClick={() => file.current.click()} title="Replace image"><img src={data.url} alt={data.name || ''} /></button>
+      ) : (
+        <button type="button" className="fdrop nodrag" onClick={() => file.current.click()}>Upload an image</button>
+      )}
+    </Shell>
+  )
+}
+
+export function ModelNode({ id, data, selected }) {
+  const { flow, engine, state, act } = useFlow()
+  const st = state[id] || {}
+  const items = st.items || []
+  const done = items.filter((i) => i.status === 'done')
+  const failed = items.filter((i) => i.status === 'failed').length
+  const plan = engine.plan(flow, id)
+  const busy = (st.running || 0) > 0
+  const gated = flow.edges.some((e) => e.source === id && flow.nodes.find((n) => n.id === e.target)?.type === 'approve')
+  const total = items.length
+  const line = busy ? `${done.length} of ${total} done`
+    : plan.blocked ? 'Waiting for its inputs'
+    : done.length ? `${done.length} ${done.length === 1 ? 'result' : 'results'}${failed ? ` · ${failed} failed` : ''}`
+    : failed ? `${failed} failed` : `${plan.units.length} to make`
+  const m = data.model
+  return (
+    <Shell type="model" selected={selected} input output tag={data.kind}>
+      <div className="fmodel">{m && <Logo brand={brandOf(m)} size={14} />}<strong>{m?.name || 'Pick a model'}</strong></div>
+      <p className="fhint">{[data.aspect, data.kind === 'video' && `${data.duration}s`, `${data.takes || 1} ${(data.takes || 1) === 1 ? 'take' : 'takes'}`].filter(Boolean).join(' · ')}</p>
+      {done.length > 0 && <div className="fstrip">{done.slice(0, 4).map((it) => <span key={it.id} style={{ '--ar': ratio(it.aspect) }}><Media it={it} /></span>)}{done.length > 4 && <b>+{done.length - 4}</b>}</div>}
+      {busy && <i className="fbar" style={{ '--p': `${(done.length / Math.max(1, total)) * 100}%` }} />}
+      <div className="frow">
+        <span className={`fstat${failed ? ' bad' : ''}`}>{line}</span>
+        {!gated && done.length > 0 && !busy && <button type="button" className="fbtn nodrag" onClick={() => act.rerun(id)}>Rerun</button>}
+      </div>
+    </Shell>
+  )
+}
+
+export function ApproveNode({ id, selected }) {
+  const { flow, engine, state, act } = useFlow()
+  const g = engine.gate(id)
+  const items = engine.reviewItems(flow, id)
+  const busy = flow.edges.some((e) => e.target === id && (state[e.source]?.running || 0) > 0)
+  const can = g.status === 'reviewing' || g.status === 'stopped'
+  return (
+    <Shell type="approve" selected={selected} input output wide tag={gateText[g.status]}>
+      {items.length === 0 ? <p className="fhint">{busy ? 'Waiting for the takes' : 'Nothing to review yet'}</p> : (
+        <div className="fgrid">
+          {items.map((it) => (
+            <div key={it.id} className={`fcell${g.picked.includes(it.id) ? ' on' : ''}`} style={{ '--ar': ratio(it.aspect) }}>
+              <Media it={it} />
+              <button type="button" className="fpick nodrag" aria-pressed={g.picked.includes(it.id)} aria-label="Approve take" onClick={() => act.pick(id, it.id)}><Check /></button>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="frow">
+        <span className="fstat">{g.status === 'sent' ? `${g.sent.length} sent` : g.picked.length ? `${g.picked.length} approved` : items.length ? 'Approve, then send' : ''}</span>
+        <div className="fbtns">
+          {g.status === 'reviewing' && <button type="button" className="fbtn nodrag" onClick={() => act.stop(id)}>Stop</button>}
+          {g.status !== 'empty' && !busy && <button type="button" className="fbtn nodrag" onClick={() => act.rerunGate(id)}>Rerun</button>}
+          <button type="button" className="fbtn go nodrag" disabled={!can} onClick={() => act.send(id)}>Send</button>
+        </div>
+      </div>
+    </Shell>
+  )
+}
+
+export function OutputNode({ id, selected }) {
+  const { flow, engine } = useFlow()
+  const items = engine.reviewItems(flow, id)
+  return (
+    <Shell type="output" selected={selected} input wide tag={items.length ? `${items.length}` : null}>
+      {items.length === 0 ? <p className="fhint">Results land here</p> : (
+        <div className="fgrid">{items.map((it) => (
+          <a key={it.id} className="fcell" href={it.url} target="_blank" rel="noreferrer" style={{ '--ar': ratio(it.aspect) }}><Media it={it} /></a>
+        ))}</div>
+      )}
+    </Shell>
+  )
+}
+
+export function NoteNode({ id, data, selected }) {
+  const { patch } = useFlow()
+  return (
+    <div className={`fnode f-note${selected ? ' sel' : ''}`}>
+      <textarea className="nodrag nowheel" value={data.text} placeholder="Write a note" rows={3} onChange={(e) => patch(id, { text: e.target.value })} />
+    </div>
+  )
+}
+
+export const nodeTypes = { prompt: PromptNode, image: ImageNode, model: ModelNode, approve: ApproveNode, output: OutputNode, note: NoteNode }
