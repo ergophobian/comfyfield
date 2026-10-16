@@ -184,6 +184,55 @@ async function runGoogle({ model, mode, prompt, aspect, count = 1, duration }) {
 
 const mediaTypes = { mp3: 'audio/mpeg', wav: 'audio/wav', mp4: 'video/mp4', png: 'image/png', jpeg: 'image/jpeg', jpg: 'image/jpeg', webp: 'image/webp' }
 
+// Thumbnails and prices for specific fal endpoints. Prices need a fal key; thumbnails do not.
+async function falMeta(ids) {
+  const q = ids.map((id) => `endpoint_id=${encodeURIComponent(id)}`).join('&')
+  const out = Object.fromEntries(ids.map((id) => [id, {}]))
+  const meta = await fetch(`https://api.fal.ai/v1/models?${q}`).then((r) => r.json()).catch(() => ({}))
+  for (const m of meta.models || []) out[m.endpoint_id] = { thumb: m.metadata?.thumbnail_url, description: m.metadata?.description }
+  const { key } = config('fal')
+  if (key) {
+    const pr = await fetch(`https://api.fal.ai/v1/models/pricing?${q}`, { headers: { Authorization: `Key ${key}` } }).then((r) => r.json()).catch(() => ({}))
+    for (const p of pr.prices || []) out[p.endpoint_id].price = { amount: p.unit_price, unit: p.unit }
+  }
+  return out
+}
+
+// What each provider lets us read about remaining balance.
+async function balances() {
+  const out = {}
+  const fal = config('fal').key
+  if (fal) {
+    const r = await fetch('https://api.fal.ai/v1/account/billing?expand=credits', { headers: { Authorization: `Key ${fal}` } })
+    const d = await r.json().catch(() => ({}))
+    const credits = d.credits?.current_balance ?? d.credits?.balance
+    out.fal = r.ok && credits != null ? { usd: credits } : { note: 'Needs an admin key to show balance' }
+  }
+  const el = config('elevenlabs').key
+  if (el) {
+    const d = await fetch('https://api.elevenlabs.io/v1/user/subscription', { headers: { 'xi-api-key': el } }).then((r) => r.json()).catch(() => ({}))
+    if (d.character_limit) out.elevenlabs = { left: d.character_limit - d.character_count, unit: 'characters' }
+  }
+  if (config('google').key) out.google = { note: 'Billed to your Google Cloud account' }
+  return out
+}
+
+// Turns one idea into N distinct prompts with a cheap Gemini text model.
+async function writePrompts({ idea, n = 6, kind = 'video' }) {
+  const { key } = config('google')
+  if (!key) throw Object.assign(new Error('Connect Google AI to write prompts with AI.'), { status: 400 })
+  const ask = `Write ${n} distinct ${kind} generation prompts for this idea: "${idea}". Vary subject, setting, camera and mood. Each prompt is one vivid sentence under 40 words. Return only a JSON array of strings.`
+  const r = await fetch(`${GEMINI}/models/gemini-flash-latest:generateContent`, {
+    method: 'POST', headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ contents: [{ parts: [{ text: ask }] }], generationConfig: { responseMimeType: 'application/json' } }),
+  })
+  const d = await r.json()
+  if (!r.ok) throw new Error(d.error?.message || 'Gemini request failed')
+  const text = d.candidates?.[0]?.content?.parts?.[0]?.text || '[]'
+  const list = JSON.parse(text)
+  return Array.isArray(list) ? list.map(String).slice(0, n) : []
+}
+
 async function testConnection(id) {
   const c = config(id)
   if (id === 'comfy') {
@@ -240,6 +289,9 @@ function mount(app) {
       if (url.pathname === '/api/elevenlabs' && req.method === 'POST') {
         return send(res, 200, { files: await runElevenLabs(await body(req)) })
       }
+      if (url.pathname === '/api/fal/meta') return send(res, 200, await falMeta(url.searchParams.getAll('id')))
+      if (url.pathname === '/api/balance') return send(res, 200, await balances())
+      if (url.pathname === '/api/prompts' && req.method === 'POST') return send(res, 200, { prompts: await writePrompts(await body(req)) })
       if (url.pathname === '/api/google' && req.method === 'POST') {
         return send(res, 200, { files: await runGoogle(await body(req)) })
       }

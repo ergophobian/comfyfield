@@ -1,3 +1,4 @@
+// Google prices are list-price estimates; check ai.google.dev/pricing. fal prices come live from fal.
 // Pinned models in the composer. Any other fal model can be picked from the Models page.
 // provider 'comfy' runs public/workflows/<workflow>.json; 'fal' fills inputs from the model's schema.
 export const models = [
@@ -7,7 +8,7 @@ export const models = [
   { id: 'fal:openai/gpt-image-2', kind: 'image', provider: 'fal', name: 'GPT Image 2', note: 'OpenAI, via fal', model: 'openai/gpt-image-2' },
   { id: 'fal:fal-ai/flux-2-pro', kind: 'image', provider: 'fal', name: 'Flux 2 Pro', note: 'Black Forest Labs, via fal', model: 'fal-ai/flux-2-pro' },
 
-  { id: 'g-nano-banana-pro', kind: 'image', provider: 'google', name: 'Nano Banana Pro', note: 'Gemini 3 Pro Image, your Google key', model: 'gemini-3-pro-image', mode: 'image' },
+  { id: 'g-nano-banana-pro', kind: 'image', provider: 'google', name: 'Nano Banana Pro', note: 'Gemini 3 Pro Image, your Google key', model: 'gemini-3-pro-image', mode: 'image', price: { amount: 0.134, unit: 'image', estimate: true } },
   { id: 'g-nano-banana-2', kind: 'image', provider: 'google', name: 'Nano Banana 2', note: 'Gemini 3.1 Flash Image, your Google key', model: 'gemini-3.1-flash-image', mode: 'image' },
 
   { id: 'comfy-ltx', kind: 'video', provider: 'comfy', name: 'LTX Video', note: 'Open weights on your ComfyUI', workflow: 'video_ltx', durations: [3, 5, 8] },
@@ -16,8 +17,8 @@ export const models = [
   { id: 'fal:minimax/h3/text-to-video', kind: 'video', provider: 'fal', name: 'MiniMax H3', note: 'MiniMax, via fal', model: 'minimax/h3/text-to-video' },
   { id: 'fal:alibaba/wan-3.0/text-to-video', kind: 'video', provider: 'fal', name: 'Wan 3.0', note: 'Alibaba, via fal', model: 'alibaba/wan-3.0/text-to-video' },
 
-  { id: 'g-veo', kind: 'video', provider: 'google', name: 'Veo 3.1', note: 'Video with sound, your Google key', model: 'veo-3.1-generate-preview', mode: 'video', durations: [4, 6, 8] },
-  { id: 'g-veo-fast', kind: 'video', provider: 'google', name: 'Veo 3.1 Fast', note: 'Cheaper and quicker', model: 'veo-3.1-fast-generate-preview', mode: 'video', durations: [4, 6, 8] },
+  { id: 'g-veo', kind: 'video', provider: 'google', name: 'Veo 3.1', note: 'Video with sound, your Google key', model: 'veo-3.1-generate-preview', mode: 'video', durations: [4, 6, 8], price: { amount: 0.4, unit: 'second', estimate: true } },
+  { id: 'g-veo-fast', kind: 'video', provider: 'google', name: 'Veo 3.1 Fast', note: 'Cheaper and quicker', model: 'veo-3.1-fast-generate-preview', mode: 'video', durations: [4, 6, 8], price: { amount: 0.15, unit: 'second', estimate: true } },
   { id: 'g-veo-lite', kind: 'video', provider: 'google', name: 'Veo 3.1 Lite', note: 'Lowest cost Veo', model: 'veo-3.1-lite-generate-preview', mode: 'video', durations: [4, 6, 8] },
 
   { id: 'g-tts', kind: 'audio', provider: 'google', name: 'Gemini voice', note: 'Text to speech, your Google key', model: 'gemini-3.8-flash-tts', mode: 'speech' },

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { brands, brandOf, Logo } from '../lib/brands.jsx'
-import { providerInfo } from '../lib/catalog.js'
+import { useModelMeta, money } from '../lib/cost.js'
 
 const Star = ({ on }) => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill={on ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinejoin="round">
@@ -11,19 +11,37 @@ const Star = ({ on }) => (
 const Chevron = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="m6 9 6 6 6-6" /></svg>
 const isMac = typeof navigator !== 'undefined' && /Mac/.test(navigator.platform)
 
-// Model menu: brand rail on the left, search and list on the right, ⌘1–9 to pick, star to favorite.
+const unitLabel = (p) => {
+  const u = p.unit.toLowerCase()
+  if (u.includes('megapixel')) return 'per MP'
+  if (u.includes('second')) return 'per sec'
+  if (u.includes('image')) return 'per image'
+  if (u.includes('video')) return 'per video'
+  if (u.includes('token')) return 'per 1K tokens'
+  if (u.includes('character')) return 'per 1K chars'
+  return `per ${p.unit}`
+}
+export const priceText = (p) => (p ? `${p.estimate ? '≈' : ''}$${p.amount < 0.01 ? p.amount.toFixed(4) : p.amount.toFixed(3).replace(/0$/, '')} ${unitLabel(p)}` : null)
+
+// Model menu: brand rail, search, list grouped by company with prices, and a preview of the hovered model.
 export default function ModelPicker({ model, options, favorites, toggleFavorite, choose, connections }) {
   const [open, setOpen] = useState(false)
   const [rail, setRail] = useState('all')
   const [q, setQ] = useState('')
+  const [hover, setHover] = useState(null)
   const ref = useRef(null)
   const search = useRef(null)
+  const metaOf = useModelMeta(options)
 
   const withBrand = useMemo(() => options.map((m) => ({ ...m, brand: brandOf(m) })), [options])
   const railBrands = [...new Set(withBrand.map((m) => m.brand))]
   const list = withBrand.filter((m) =>
     (rail === 'all' || (rail === 'fav' ? favorites.includes(m.id) : m.brand === rail)) &&
     (!q || `${m.name} ${brands[m.brand]?.name}`.toLowerCase().includes(q.toLowerCase())))
+  // Group by company so the list reads as providers, not one long column.
+  const groups = railBrands.map((b) => [b, list.filter((m) => m.brand === b)]).filter(([, ms]) => ms.length)
+  const ordered = groups.flatMap(([, ms]) => ms)
+  const preview = withBrand.find((m) => m.id === (hover || model.id)) || withBrand[0]
 
   useEffect(() => {
     if (!open) return
@@ -32,18 +50,19 @@ export default function ModelPicker({ model, options, favorites, toggleFavorite,
     const keys = (e) => {
       if (e.key === 'Escape') setOpen(false)
       const n = Number(e.key)
-      if ((e.metaKey || e.ctrlKey) && n >= 1 && n <= 9 && list[n - 1]) {
+      if ((e.metaKey || e.ctrlKey) && n >= 1 && n <= 9 && ordered[n - 1]) {
         e.preventDefault()
-        choose(list[n - 1].id)
+        choose(ordered[n - 1].id)
         setOpen(false)
       }
     }
     document.addEventListener('pointerdown', away)
     document.addEventListener('keydown', keys)
     return () => { document.removeEventListener('pointerdown', away); document.removeEventListener('keydown', keys) }
-  }, [open, list])
+  }, [open, ordered])
 
-  const via = (m) => (m.provider === 'fal' ? 'via fal' : m.provider === 'comfy' ? 'on your ComfyUI' : 'your key')
+  const via = (m) => (m.provider === 'fal' ? 'via fal' : m.provider === 'comfy' ? 'your ComfyUI' : 'your key')
+  const pm = metaOf(preview)
 
   return (
     <div className="picker" ref={ref}>
@@ -69,26 +88,46 @@ export default function ModelPicker({ model, options, favorites, toggleFavorite,
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><circle cx="11" cy="11" r="6.5" /><path d="m20 20-4.2-4.2" /></svg>
               <input ref={search} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search models" />
             </label>
-            <div className="picker-list">
-              {list.map((m, i) => {
-                const off = m.provider !== 'comfy' && !connections[m.provider]?.connected
-                return (
-                  <div key={m.id} className={`picker-row${m.id === model.id ? ' on' : ''}`} style={{ '--i': i }}>
-                    <button type="button" className="picker-pick" onClick={() => { choose(m.id); setOpen(false) }}>
-                      <span className="picker-name">{m.name}</span>
-                      <span className="picker-sub"><Logo brand={m.brand} size={12} />{brands[m.brand]?.name} · {via(m)}{off && <em> · add key</em>}</span>
-                    </button>
-                    {i < 9 && <kbd>{isMac ? '⌘' : 'Ctrl '}{i + 1}</kbd>}
-                    <button type="button" className={`picker-star${favorites.includes(m.id) ? ' on' : ''}`} onClick={() => toggleFavorite(m.id)} aria-label="Favorite"><Star on={favorites.includes(m.id)} /></button>
-                  </div>
-                )
-              })}
-              {!list.length && <p className="picker-empty">{rail === 'fav' ? 'Star a model to keep it here.' : 'No models match.'}</p>}
+            <div className="picker-list" onMouseLeave={() => setHover(null)}>
+              {groups.map(([b, ms]) => (
+                <div key={b} className="picker-group">
+                  {groups.length > 1 && <div className="picker-head"><Logo brand={b} size={12} />{brands[b]?.name}</div>}
+                  {ms.map((m) => {
+                    const i = ordered.indexOf(m)
+                    const off = m.provider !== 'comfy' && !connections[m.provider]?.connected
+                    const price = priceText(metaOf(m).price)
+                    return (
+                      <div key={m.id} className={`picker-row${m.id === model.id ? ' on' : ''}`} style={{ '--i': i }} onMouseEnter={() => setHover(m.id)}>
+                        <button type="button" className="picker-pick" onClick={() => { choose(m.id); setOpen(false) }}>
+                          <span className="picker-name">{m.name}</span>
+                          <span className="picker-sub">{via(m)}{price && ` · ${price}`}{off && <em> · add key</em>}</span>
+                        </button>
+                        {i < 9 && <kbd>{isMac ? '⌘' : 'Ctrl '}{i + 1}</kbd>}
+                        <button type="button" className={`picker-star${favorites.includes(m.id) ? ' on' : ''}`} onClick={() => toggleFavorite(m.id)} aria-label="Favorite"><Star on={favorites.includes(m.id)} /></button>
+                      </div>
+                    )
+                  })}
+                </div>
+              ))}
+              {!ordered.length && <p className="picker-empty">{rail === 'fav' ? 'Star a model to keep it here.' : 'No models match.'}</p>}
             </div>
-            <Link to="/models" className="picker-more" onClick={() => setOpen(false)}>Browse all {providerInfo.fal.name} models</Link>
+            <Link to="/models" className="picker-more" onClick={() => setOpen(false)}>Browse all models</Link>
           </div>
+          {preview && (
+            <aside className="picker-preview" key={preview.id}>
+              <div className="pv-thumb" style={pm.thumb ? { backgroundImage: `url(${pm.thumb})` } : undefined}>
+                {!pm.thumb && <Logo brand={preview.brand} size={34} />}
+              </div>
+              <strong>{preview.name}</strong>
+              <span className="pv-brand"><Logo brand={preview.brand} size={12} />{brands[preview.brand]?.name}</span>
+              <p>{(pm.description || preview.note || '').split('\n')[0].slice(0, 140)}</p>
+              {pm.price && <span className="pv-price">{priceText(pm.price)}</span>}
+            </aside>
+          )}
         </div>
       )}
     </div>
   )
 }
+
+export { money }

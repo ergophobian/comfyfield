@@ -1,6 +1,7 @@
 // Company behind each model, for logos in the picker. Logos live in public/logos.
 export const brands = {
   google: { name: 'Google', logo: '/logos/google.svg' },
+  gemini: { name: 'Gemini', logo: '/logos/gemini.svg' },
   openai: { name: 'OpenAI', logo: '/logos/openai.svg' },
   bytedance: { name: 'ByteDance', logo: '/logos/bytedance.svg' },
   kling: { name: 'Kling', logo: '/logos/kling.png' },
@@ -15,7 +16,8 @@ export const brands = {
 const rules = [
   [/kling/, 'kling'],
   [/flux|bfl|black-forest/, 'bfl'],
-  [/nano-banana|gemini|veo|imagen|lyria|google/, 'google'],
+  [/nano-banana|gemini|imagen|g-tts|g-nano/, 'gemini'],
+  [/veo|lyria|google/, 'google'],
   [/openai|gpt-image|sora|dall/, 'openai'],
   [/bytedance|seedance|seedream|omnihuman/, 'bytedance'],
   [/minimax|hailuo/, 'minimax'],

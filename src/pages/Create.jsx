@@ -1,27 +1,46 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import Composer, { Chip, Option } from '../components/Composer.jsx'
+import { Chip, Option } from '../components/Composer.jsx'
+import Segmented from '../components/Segmented.jsx'
 import Results from '../components/Results.jsx'
 import ModelPicker from '../components/ModelPicker.jsx'
+import PromptList, { newRows } from '../components/Batch.jsx'
+import Board from '../components/Board.jsx'
 import { IconAspect, IconClock, IconStack, IconSpark } from '../components/Icons.jsx'
 import { aspects, styles, providerInfo } from '../lib/catalog.js'
 import { durationsFor, getConnections } from '../lib/providers.js'
+import { useModelMeta, estimate, money, useBalance } from '../lib/cost.js'
 
 const placeholders = {
   image: 'Describe the image you want',
   video: 'Describe a shot, a scene or a moment in motion',
   audio: 'Type a line to voice, or describe a sound',
 }
+const noun = { image: ['image', 'images'], video: ['video', 'videos'], audio: ['clip', 'clips'] }
+
+function balanceText(b, provider) {
+  const x = b[provider]
+  if (!x) return null
+  if (x.usd != null) return `${money(x.usd)} left on ${providerInfo[provider].name}`
+  if (x.left != null) return `${x.left.toLocaleString()} ${x.unit} left`
+  return x.note
+}
 
 export default function Create({ gens, picker }) {
   const { kind, model, options, setKind, choose } = picker
+  const [batchMode, setBatchMode] = useState(false)
   const [prompt, setPrompt] = useState('')
+  const [rows, setRows] = useState(newRows)
   const [aspect, setAspect] = useState('1:1')
   const [count, setCount] = useState(1)
+  const [takes, setTakes] = useState(1)
   const [durations, setDurations] = useState([])
   const [duration, setDuration] = useState(5)
   const [style, setStyle] = useState(null)
   const [connections, setConnections] = useState({})
+  const [batches, setBatches] = useState([])
+  const balance = useBalance()
+  const metaOf = useModelMeta([model])
 
   useEffect(() => { getConnections().then(setConnections) }, [])
   useEffect(() => { setAspect(kind === 'video' ? '16:9' : '1:1'); setStyle(null) }, [kind])
@@ -36,12 +55,25 @@ export default function Create({ gens, picker }) {
   }, [model?.id])
 
   const styleItem = styles.flatMap((g) => g.items).find((s) => s.id === style)
-  const connected = connections[model.provider]?.connected
-  const recent = gens.items.slice(0, 12)
+  const connected = model.provider === 'comfy' || connections[model.provider]?.connected
+  const prompts = batchMode ? rows.map((r) => r.text.trim()).filter(Boolean) : prompt.trim() ? [prompt.trim()] : []
+  const perPrompt = kind === 'image' ? count * takes : takes
+  const total = prompts.length * perPrompt
+  const opts = { aspect, count, duration }
+  const avgChars = prompts.reduce((n, p) => n + p.length, 0) / Math.max(1, prompts.length)
+  const each = estimate(model, metaOf(model), { ...opts, takes, chars: avgChars })
+  const cost = each && prompts.length ? { usd: each.usd * prompts.length, approx: each.approx } : null
 
-  const onGenerate = () => {
-    const full = [prompt.trim(), styleItem?.prompt].filter(Boolean).join(', ')
-    gens.generate(model, { prompt: full, caption: prompt.trim(), aspect, count, duration })
+  const go = () => {
+    if (!prompts.length || !connected) return
+    const batch = { id: crypto.randomUUID(), prompts, total, model: model.name, kind }
+    if (batchMode) setBatches((bs) => [batch, ...bs])
+    prompts.forEach((p, r) => {
+      const full = [p, styleItem?.prompt].filter(Boolean).join(', ')
+      for (let t = 0; t < takes; t++) {
+        gens.generate(model, { prompt: full, caption: p, ...opts }, batchMode ? { batch: batch.id, row: r } : {})
+      }
+    })
   }
 
   const chips = [
@@ -53,8 +85,8 @@ export default function Create({ gens, picker }) {
       </Chip>
     ),
     kind === 'image' && (
-      <Chip key="count" icon={<IconStack />} label={`${count} ${count === 1 ? 'image' : 'images'}`}>
-        {[1, 2, 3, 4].map((n) => <Option key={n} on={n === count} label={`${n} ${n === 1 ? 'image' : 'images'}`} onClick={() => setCount(n)} />)}
+      <Chip key="count" icon={<IconStack />} label={`${count} per run`}>
+        {[1, 2, 3, 4].map((n) => <Option key={n} on={n === count} label={`${n} ${noun.image[n === 1 ? 0 : 1]} per run`} onClick={() => setCount(n)} />)}
       </Chip>
     ),
     kind === 'video' && durations.length > 0 && (
@@ -62,6 +94,9 @@ export default function Create({ gens, picker }) {
         {durations.map((d) => <Option key={d} on={d === duration} label={`${d} seconds`} onClick={() => setDuration(d)} />)}
       </Chip>
     ),
+    <Chip key="takes" icon={<IconStack />} label={`${takes} ${takes === 1 ? 'take' : 'takes'}`}>
+      {[1, 2, 3, 4].map((n) => <Option key={n} on={n === takes} label={`${n} ${n === 1 ? 'take' : 'takes'} per prompt`} note={n > 1 ? 'Pick the best one after' : null} onClick={() => setTakes(n)} />)}
+    </Chip>,
     kind !== 'audio' && (
       <Chip key="style" icon={<IconSpark />} label={styleItem?.name || 'Style'} lit={Boolean(styleItem)}>
         <Option on={!style} label="None" onClick={() => setStyle(null)} />
@@ -75,23 +110,53 @@ export default function Create({ gens, picker }) {
     ),
   ]
 
+  const singles = gens.items.filter((i) => !i.batch && !i.failed).slice(0, 12)
+  const bal = balanceText(balance, model.provider)
+
   return (
     <main>
       <section className="hero rise">
         <h1>Create with <em>any model</em><br />using your own keys</h1>
-        <p>Images, video and audio from ComfyUI, Google, fal and ElevenLabs. Open source, and it runs on your machine.</p>
+        <p>One prompt or a whole content batch. Images, video and audio from ComfyUI, Google, fal and ElevenLabs.</p>
       </section>
-      <Composer kind={kind} setKind={setKind} prompt={prompt} setPrompt={setPrompt} placeholder={placeholders[kind]}
-        chips={chips} onGenerate={onGenerate} busy={gens.busy} />
-      {!connected && model.provider !== 'comfy' && (
+
+      <form className={`composer glass${batchMode ? ' is-batch' : ''}`} onSubmit={(e) => { e.preventDefault(); go() }}>
+        <div className="composer-inner">
+          <div className="composer-top">
+            <Segmented value={kind} onChange={setKind}
+              options={['image', 'video', 'audio'].map((k) => ({ value: k, label: k[0].toUpperCase() + k.slice(1) }))} />
+            <Segmented className="seg-sm" value={batchMode ? 'batch' : 'single'} onChange={(v) => setBatchMode(v === 'batch')}
+              options={[{ value: 'single', label: 'Single' }, { value: 'batch', label: 'Batch' }]} />
+          </div>
+          <div className="composer-body" key={batchMode ? 'b' : 's'}>
+            {batchMode ? <PromptList rows={rows} setRows={setRows} kind={kind} /> : (
+              <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={2} placeholder={placeholders[kind]}
+                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), go())} />
+            )}
+          </div>
+          <div className="chips">{chips}</div>
+          <div className="composer-foot">
+            <div className="summary">
+              {total > 0 ? (
+                <span><strong>{batchMode ? `${prompts.length} ${prompts.length === 1 ? 'prompt' : 'prompts'} × ${perPrompt} = ` : ''}{total} {noun[kind][total === 1 ? 0 : 1]}</strong>
+                  {cost ? ` · ${cost.approx ? '≈' : ''}${money(cost.usd)}` : model.provider === 'comfy' ? ' · runs on your GPU, no API cost' : ''}</span>
+              ) : <span className="muted">{batchMode ? 'Add prompts to see the total' : 'The cost shows here before you run'}</span>}
+              {bal && <span className="muted">{bal}</span>}
+            </div>
+            <button className="btn-blue" disabled={!total || !connected}>{total > 1 ? `Generate ${total}` : 'Generate'}</button>
+          </div>
+        </div>
+      </form>
+
+      {!connected && (
         <div className="notice glass">{model.name} runs on {providerInfo[model.provider].name}. <Link to="/connections">Add your key</Link> to use it.</div>
       )}
       {gens.error && <div className="notice glass error">{gens.error}</div>}
-      {recent.length > 0 && (
-        <section className="results-wrap">
-          <Results items={recent} />
-        </section>
-      )}
+
+      <div className="results-wrap">
+        {batches.map((b) => <Board key={b.id} batch={b} items={gens.items} onApprove={gens.toggleApprove} onDismiss={gens.dismiss} />)}
+        {singles.length > 0 && <Results items={singles} />}
+      </div>
     </main>
   )
 }
