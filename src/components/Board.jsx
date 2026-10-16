@@ -1,4 +1,4 @@
-const ratio = (a) => (a || '1:1').replace(':', ' / ')
+const ratio = (a) => (/^\d+:\d+$/.test(a) ? a.replace(':', ' / ') : '1 / 1')
 
 function Take({ it, onApprove, onDismiss }) {
   return (

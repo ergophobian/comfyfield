@@ -34,9 +34,20 @@ export function durationsFromProps(props) {
 }
 
 // Maps the composer's settings onto whatever inputs this fal model declares.
+const singleImage = ['image_url', 'start_image_url', 'first_frame_url', 'input_image_url', 'image']
+const manyImages = ['image_urls', 'input_image_urls', 'reference_image_urls']
+
 export function falInput(props, o) {
   const input = {}
-  input[props.prompt || !props.text ? 'prompt' : 'text'] = o.prompt
+  if (o.prompt) input[props.prompt || !props.text ? 'prompt' : 'text'] = o.prompt
+  const images = o.images || (o.image ? [o.image] : [])
+  if (images.length) {
+    const many = manyImages.find((k) => props[k])
+    const one = singleImage.find((k) => props[k])
+    if (many && (!one || images.length > 1 || many === 'image_urls')) input[many] = images
+    else if (one) input[one] = images[0]
+  }
+  Object.assign(input, o.fields)
   if (props.aspect_ratio) {
     const e = props.aspect_ratio.enum
     if (!e || e.includes(o.aspect)) input.aspect_ratio = o.aspect
@@ -55,13 +66,7 @@ export function falInput(props, o) {
       input.duration = d.type === 'string' ? String(o.duration) : o.duration
     }
   }
-  if (o.image) {
-    if (props.image_url) input.image_url = o.image
-    else if (props.image_urls) input.image_urls = [o.image]
-    else if (props.start_image_url) input.start_image_url = o.image
-    else if (props.input_image_url) input.input_image_url = o.image
-  }
-  return input
+  return { ...input, ...o.params }
 }
 
 // Price per run in USD, or null when the unit can't be estimated from the settings.

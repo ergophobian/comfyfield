@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Chip, Option } from '../components/Composer.jsx'
 import Segmented from '../components/Segmented.jsx'
@@ -6,12 +6,17 @@ import Results from '../components/Results.jsx'
 import ModelPicker from '../components/ModelPicker.jsx'
 import PromptList, { newRows } from '../components/Batch.jsx'
 import Board from '../components/Board.jsx'
-import { IconAspect, IconClock, IconStack, IconSpark, IconLibrary, IconClose } from '../components/Icons.jsx'
+import { RecipeRow, RecipeLibrary, RecipeSheet } from '../components/Recipes.jsx'
+import { IconAspect, IconClock, IconStack, IconSpark, IconClip, IconLibrary, IconClose } from '../components/Icons.jsx'
 import { useLibrary, toRef } from '../lib/useLibrary.js'
 import { aspects, styles, providerInfo } from '../lib/catalog.js'
-import { durationsFor, getConnections } from '../lib/providers.js'
+import { durationsFor, getConnections, uploadImage } from '../lib/providers.js'
 import { useModelMeta, estimate, money, useBalance } from '../lib/cost.js'
 
+const attachedPlaceholders = {
+  image: 'Describe what should change',
+  video: 'Describe how the image should move',
+}
 const placeholders = {
   image: 'Describe the image you want',
   video: 'Describe a shot, a scene or a moment in motion',
@@ -42,6 +47,13 @@ export default function Create({ gens, picker }) {
   const [refs, setRefs] = useState([])
   const lib = useLibrary()
   const [batches, setBatches] = useState([])
+  const [attached, setAttached] = useState(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState(null)
+  const [dragging, setDragging] = useState(false)
+  const [recipe, setRecipe] = useState(null)
+  const [allRecipes, setAllRecipes] = useState(false)
+  const fileRef = useRef(null)
   const balance = useBalance()
   const metaOf = useModelMeta([model])
 
@@ -67,6 +79,18 @@ export default function Create({ gens, picker }) {
   const each = estimate(model, metaOf(model), { ...opts, takes, chars: avgChars })
   const cost = each && prompts.length ? { usd: each.usd * prompts.length, approx: each.approx } : null
 
+  const canAttach = kind !== 'audio' && model.provider !== 'comfy'
+  // Library characters and products ride along as reference images when the model takes images.
+  const images = canAttach ? [attached?.url, ...refs.flatMap((r) => r.images.slice(0, 1))].filter(Boolean) : []
+
+  const attach = async (file) => {
+    if (!file || !canAttach) return
+    setUploading(true)
+    setUploadError(null)
+    try { setAttached(await uploadImage(file)) } catch (e) { setUploadError(e.message) }
+    setUploading(false)
+  }
+
   const go = () => {
     if (!prompts.length || !connected) return
     const batch = { id: crypto.randomUUID(), prompts, total, model: model.name, kind }
@@ -74,12 +98,22 @@ export default function Create({ gens, picker }) {
     prompts.forEach((p, r) => {
       const full = [p, styleItem?.prompt].filter(Boolean).join(', ')
       for (let t = 0; t < takes; t++) {
-        gens.generate(model, { prompt: full, caption: p, ...opts, ...(refs.length && { refs }) }, batchMode ? { batch: batch.id, row: r } : {})
+        gens.generate(model, { prompt: full, caption: p, ...opts, images, ...(refs.length && { refs }) }, batchMode ? { batch: batch.id, row: r } : {})
       }
     })
   }
 
   const chips = [
+    canAttach && (
+      <div key="attach" className={`chip attach${attached ? ' has' : ''}`}>
+        <button type="button" className={attached ? 'lit' : ''} onClick={() => (attached ? setAttached(null) : fileRef.current.click())}
+          title={attached ? 'Remove image' : 'Attach an image for image to video or editing'}>
+          {attached ? <img src={attached.url} alt="" /> : <IconClip />}
+          {uploading ? 'Uploading' : attached ? 'Image attached' : 'Image'}
+          {attached && <IconClose />}
+        </button>
+      </div>
+    ),
     <ModelPicker key="model" model={model} options={options} favorites={picker.favorites}
       toggleFavorite={picker.toggleFavorite} choose={choose} connections={connections} />,
     kind !== 'audio' && (
@@ -138,7 +172,10 @@ export default function Create({ gens, picker }) {
         <p>One prompt or a whole content batch. Images, video and audio from ComfyUI, Google, fal and ElevenLabs.</p>
       </section>
 
-      <form className={`composer glass${batchMode ? ' is-batch' : ''}`} onSubmit={(e) => { e.preventDefault(); go() }}>
+      <form className={`composer glass${batchMode ? ' is-batch' : ''}${dragging ? ' dragging' : ''}`} onSubmit={(e) => { e.preventDefault(); go() }}
+        onDragOver={(e) => { if (canAttach && e.dataTransfer.types.includes('Files')) { e.preventDefault(); setDragging(true) } }}
+        onDragLeave={(e) => !e.currentTarget.contains(e.relatedTarget) && setDragging(false)}
+        onDrop={(e) => { if (!canAttach) return; e.preventDefault(); setDragging(false); attach(e.dataTransfer.files[0]) }}>
         <div className="composer-inner">
           <div className="composer-top">
             <Segmented value={kind} onChange={setKind}
@@ -148,7 +185,7 @@ export default function Create({ gens, picker }) {
           </div>
           <div className="composer-body" key={batchMode ? 'b' : 's'}>
             {batchMode ? <PromptList rows={rows} setRows={setRows} kind={kind} /> : (
-              <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={2} placeholder={placeholders[kind]}
+              <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={2} placeholder={(attached && canAttach && attachedPlaceholders[kind]) || placeholders[kind]}
                 onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), go())} />
             )}
           </div>
@@ -163,6 +200,8 @@ export default function Create({ gens, picker }) {
             </div>
           )}
           <div className="chips">{chips}</div>
+          <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden
+            onChange={(e) => { attach(e.target.files[0]); e.target.value = '' }} />
           <div className="composer-foot">
             <div className="summary">
               {total > 0 ? (
@@ -176,9 +215,14 @@ export default function Create({ gens, picker }) {
         </div>
       </form>
 
+      <RecipeRow kind={kind} onOpen={setRecipe} onAll={() => setAllRecipes(true)} />
+      {allRecipes && <RecipeLibrary onOpen={setRecipe} onClose={() => setAllRecipes(false)} />}
+      {recipe && <RecipeSheet key={recipe.id} recipe={recipe} gens={gens} connections={connections} onClose={() => setRecipe(null)} />}
+
       {!connected && (
         <div className="notice glass">{model.name} runs on {providerInfo[model.provider].name}. <Link to="/connections">Add your key</Link> to use it.</div>
       )}
+      {uploadError && <div className="notice glass error">{uploadError}</div>}
       {gens.error && <div className="notice glass error">{gens.error}</div>}
 
       <div className="results-wrap">

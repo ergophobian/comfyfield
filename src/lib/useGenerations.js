@@ -31,7 +31,7 @@ export function useGenerations() {
   // meta can carry batch, row and prompt so the board can group results.
   function generate(model, opts, meta = {}) {
     const id = crypto.randomUUID()
-    const base = { aspect: opts.aspect, caption: opts.caption, model: model.name, kind: model.kind, ...meta }
+    const base = { aspect: opts.shape || opts.aspect, caption: opts.caption, model: model.name, kind: model.kind, ...meta }
     setError(null)
     setItems((xs) => [{ id, pending: true, ...base }, ...xs])
     waiting.current.push(async () => {

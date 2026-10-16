@@ -386,3 +386,73 @@ code { font-size: .92em; }
   .viewer-nav.next { right: 18px; }
   .viewer-foot { flex-direction: column; align-items: flex-start; }
 }
+/* Image attach */
+.chip.attach > button img { width: 20px; height: 20px; margin-left: -4px; border-radius: 6px; object-fit: cover; }
+.chip.attach > button svg:last-child { margin-right: -4px; }
+.composer.dragging .composer-inner { outline: 2px dashed rgb(47 63 232 / .45); outline-offset: -6px; background: rgb(244 246 255 / .95); }
+
+/* Recipes */
+.recipes { width: min(900px, calc(100% - 32px)); margin: 26px auto 0; }
+.recipes-head { display: flex; align-items: baseline; justify-content: space-between; padding: 0 6px 10px; }
+.recipes-head h2 { margin: 0; font-size: 15px; font-weight: 600; }
+.link-btn { font-size: 14px; font-weight: 600; color: var(--blue); padding: 4px 10px; border-radius: 999px; transition: background .15s; }
+.link-btn:hover { background: rgb(47 63 232 / .07); }
+.recipe-row, .recipe-grid { display: grid; gap: 12px; }
+.recipe-row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.recipe-grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+.recipe-card { display: flex; flex-direction: column; gap: 3px; text-align: left; padding: 8px 8px 12px; border-radius: 20px;
+  background: var(--glass); border: 1px solid var(--glass-line); backdrop-filter: blur(18px) saturate(1.4); -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  box-shadow: var(--shadow); transition: transform .35s var(--spring), box-shadow .35s var(--spring); }
+.recipe-card:hover { transform: translateY(-3px); }
+.recipe-card:active { transform: scale(.97); }
+.recipe-card strong { font-size: 14px; font-weight: 600; padding: 8px 6px 0; }
+.recipe-card small { font-size: 12px; line-height: 1.4; color: var(--muted); padding: 0 6px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.recipe-cover { display: block; aspect-ratio: 16 / 10; border-radius: 14px; box-shadow: inset 0 1px 0 rgb(255 255 255 / .55); }
+@media (max-width: 720px) { .recipe-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+.scrim { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: rgb(20 26 60 / .16);
+  backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); animation: fadein .25s ease both; transition: opacity .18s; }
+.scrim.out { opacity: 0; }
+.scrim.side { place-items: stretch end; }
+.icon-btn { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%; color: var(--ink-2); background: rgb(255 255 255 / .75); transition: background .15s, transform .2s var(--spring); }
+.icon-btn:hover { background: #fff; }
+.icon-btn:active { transform: scale(.9); }
+
+.modal { width: min(860px, 100%); max-height: calc(100vh - 48px); overflow-y: auto; border-radius: 28px; padding: 22px 22px 26px; background: rgb(255 255 255 / .92); animation: rise .5s var(--spring) both; }
+.modal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 6px; }
+.modal-head h2 { margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -.02em; }
+.modal-head p { margin: 4px 0 0; color: var(--ink-2); font-size: 14px; }
+.modal-head .icon-btn { background: rgb(15 18 34 / .05); }
+.modal-group h6 { margin: 20px 4px 10px; font-size: 13px; font-weight: 500; color: var(--muted); }
+
+.sheet { width: min(400px, 100%); display: flex; flex-direction: column; border-radius: 28px; overflow: hidden; background: rgb(255 255 255 / .92);
+  animation: slide .5s var(--spring) both; transition: transform .18s ease; }
+.scrim.out .sheet { transform: translateX(24px); }
+@keyframes slide { from { opacity: 0; transform: translateX(36px); filter: blur(6px); } }
+.sheet-cover { height: 120px; flex-shrink: 0; display: flex; justify-content: flex-end; padding: 14px; }
+.sheet-cover .icon-btn { align-self: flex-start; }
+.sheet-body { flex: 1; overflow-y: auto; padding: 18px 22px 8px; display: flex; flex-direction: column; gap: 14px; }
+.sheet-body h2 { margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -.02em; }
+.sheet-body > p { margin: -10px 0 4px; color: var(--ink-2); font-size: 14px; }
+.sheet-error, .sheet-note { margin: 0; font-size: 13px; }
+.sheet-error { color: #a3261a; }
+.sheet-note { color: var(--ink-2); }
+.sheet-note a { color: var(--blue); font-weight: 600; }
+.sheet-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 22px 20px; border-top: 1px solid var(--line); }
+.muted { color: var(--muted); font-size: 13px; }
+.sheet .field { animation: rise .45s var(--spring) both; }
+
+.drop { position: relative; height: 150px; border-radius: 18px; border: 1.5px dashed rgb(47 63 232 / .3); background: rgb(47 63 232 / .03);
+  display: grid; place-items: center; overflow: hidden; cursor: pointer; transition: background .2s, border-color .2s, transform .3s var(--spring); }
+.drop:hover, .drop.over { background: rgb(47 63 232 / .07); border-color: rgb(47 63 232 / .55); }
+.drop.over { transform: scale(1.01); }
+.drop span { display: flex; flex-direction: column; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2); }
+.drop.has { border-style: solid; border-color: var(--line); background: #fff; }
+.drop img { width: 100%; height: 100%; object-fit: contain; }
+.drop small { position: absolute; right: 8px; bottom: 8px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: rgb(255 255 255 / .85); backdrop-filter: blur(8px); }
+.pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.pills button { height: 32px; padding: 0 13px; border-radius: 999px; font-size: 13px; font-weight: 500; background: #fff; border: 1px solid var(--line); transition: border-color .15s, color .15s, background .15s, transform .2s var(--spring); }
+.pills button:hover { border-color: rgb(47 63 232 / .35); }
+.pills button:active { transform: scale(.95); }
+.pills button.on { background: rgb(47 63 232 / .1); border-color: rgb(47 63 232 / .45); color: var(--blue); }
+@media (max-width: 720px) { .scrim.side { place-items: end stretch; } .sheet { width: 100%; max-height: 92vh; } }

@@ -38,12 +38,57 @@ export const mask = (v) => (v ? `${v.slice(0, 4)}…${v.slice(-4)}` : '')
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
+export function mimeExt(mime) {
+  const t = (mime || '').split('/')[1]?.split(';')[0] || 'png'
+  return t === 'jpeg' ? 'jpg' : t === 'svg+xml' ? 'svg' : t.replace(/[^a-z0-9]/gi, '') || 'png'
+}
+
+// Reads one of our saved files back by its /media/... URL.
+export function readLocal(url) {
+  const file = mediaPath(url)
+  if (!fs.existsSync(file)) throw Object.assign(new Error('An attached image is missing. Attach it again.'), { status: 400 })
+  return { buf: fs.readFileSync(file), mime: mediaTypes[path.extname(file).slice(1).toLowerCase()] || 'image/png' }
+}
+
+// Uploads go to fal storage so fal can fetch them: initiate, PUT the bytes, use the returned file_url.
+// If storage is unavailable the file is sent inline as a data URI, which fal also accepts.
+async function falUpload(buf, mime, key) {
+  const init = await fetch('https://rest.alpha.fal.ai/storage/upload/initiate?storage_type=fal-cdn-v3', {
+    method: 'POST', headers: { Authorization: `Key ${key}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content_type: mime, file_name: `upload.${mimeExt(mime)}` }),
+  })
+  if (!init.ok) throw new Error(`fal storage refused the upload (${init.status})`)
+  const { upload_url, file_url } = await init.json()
+  const put = await fetch(upload_url, { method: 'PUT', headers: { 'Content-Type': mime }, body: buf })
+  if (!put.ok) throw new Error(`fal storage upload failed (${put.status})`)
+  return file_url
+}
+
+const dataUri = (buf, mime) => `data:${mime};base64,${buf.toString('base64')}`
+
+// Replaces our local /media/... URLs anywhere in a fal input with URLs fal can reach.
+async function withFalFiles(value, key, cache = new Map()) {
+  if (Array.isArray(value)) return Promise.all(value.map((v) => withFalFiles(v, key, cache)))
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(await Promise.all(Object.entries(value).map(async ([k, v]) => [k, await withFalFiles(v, key, cache)])))
+  }
+  if (typeof value !== 'string' || !value.startsWith('/media/')) return value
+  if (!cache.has(value)) {
+    cache.set(value, (async () => {
+      const file = readLocal(value)
+      return falUpload(file.buf, file.mime, key).catch(() => dataUri(file.buf, file.mime))
+    })())
+  }
+  return cache.get(value)
+}
+
 // fal queue API: submit, poll status, then fetch the result.
 export async function runFal({ model, input }) {
   const { key } = config('fal')
   if (!key) throw Object.assign(new Error('Connect fal in Connections first.'), { status: 400 })
   const headers = { Authorization: `Key ${key}`, 'Content-Type': 'application/json' }
-  const submit = await fetch(`https://queue.fal.run/${model}`, { method: 'POST', headers, body: JSON.stringify(input) })
+  const ready = await withFalFiles(input, key)
+  const submit = await fetch(`https://queue.fal.run/${model}`, { method: 'POST', headers, body: JSON.stringify(ready) })
   if (!submit.ok) throw new Error(`fal rejected the request (${submit.status}): ${(await submit.text()).slice(0, 300)}`)
   const job = await submit.json()
   for (let i = 0; i < 600; i++) {
@@ -126,7 +171,7 @@ function pcmToWav(pcm, rate = 24000) {
 const GEMINI = 'https://generativelanguage.googleapis.com/v1beta'
 
 // Google AI (Gemini API key): image and speech via generateContent, Veo via a long-running operation.
-export async function runGoogle({ model, mode, prompt, aspect, count = 1, duration }) {
+export async function runGoogle({ model, mode, prompt, aspect, count = 1, duration, images = [] }) {
   const { key } = config('google')
   if (!key) throw Object.assign(new Error('Connect Google AI in Connections first.'), { status: 400 })
   const headers = { 'x-goog-api-key': key, 'Content-Type': 'application/json' }
@@ -137,10 +182,17 @@ export async function runGoogle({ model, mode, prompt, aspect, count = 1, durati
     return data
   }
 
+  const inline = images.map((u) => {
+    const f = readLocal(u)
+    return { mimeType: f.mime, data: f.buf.toString('base64') }
+  })
+
   if (mode === 'video') {
     const parameters = { aspectRatio: aspect === '9:16' ? '9:16' : '16:9' }
     if (duration) parameters.durationSeconds = duration
-    let op = await call(`${GEMINI}/models/${model}:predictLongRunning`, { instances: [{ prompt }], parameters })
+    let op = await call(`${GEMINI}/models/${model}:predictLongRunning`, {
+      instances: [inline[0] ? { prompt, image: { bytesBase64Encoded: inline[0].data, mimeType: inline[0].mimeType } } : { prompt }], parameters,
+    })
     for (let i = 0; i < 180 && !op.done; i++) {
       await sleep(5000)
       op = await (await fetch(`${GEMINI}/${op.name}`, { headers })).json()
@@ -162,7 +214,7 @@ export async function runGoogle({ model, mode, prompt, aspect, count = 1, durati
   const runs = mode === 'speech' ? 1 : count
   const files = []
   for (let i = 0; i < runs; i++) {
-    const data = await call(`${GEMINI}/models/${model}:generateContent`, { contents: [{ parts: [{ text: prompt }] }], generationConfig })
+    const data = await call(`${GEMINI}/models/${model}:generateContent`, { contents: [{ parts: [...inline.map((inlineData) => ({ inlineData })), { text: prompt }] }], generationConfig })
     for (const part of data.candidates?.[0]?.content?.parts || []) {
       if (!part.inlineData) continue
       const buf = Buffer.from(part.inlineData.data, 'base64')
@@ -301,7 +353,7 @@ function collectComfy(base, outputs) {
   return files
 }
 
-const dataUri = (p) => {
+const fileDataUri = (p) => {
   const ext = path.extname(p).slice(1).toLowerCase()
   const type = mediaTypes[ext] || 'application/octet-stream'
   return `data:${type};base64,${fs.readFileSync(p).toString('base64')}`
@@ -338,7 +390,7 @@ export async function listModels({ kind, query, includeFal = true, limit = 25 } 
 export async function generate({ model, prompt, aspect = '16:9', count = 1, duration, image }) {
   if (!prompt) throw new Error('A prompt is required.')
   const m = resolveModel(model)
-  const o = { prompt, aspect, count, duration, image: image && !/^(https?:|data:)/.test(image) ? dataUri(image) : image }
+  const o = { prompt, aspect, count, duration, image: image && !/^(https?:|data:|\/media\/)/.test(image) ? fileDataUri(image) : image }
   if (m.provider === 'comfy') return runComfy(m.workflow, comfyVars(m.kind, { ...o, duration: duration || 5 }))
   if (m.provider === 'fal') {
     const { properties } = await falSchema(m.model)
