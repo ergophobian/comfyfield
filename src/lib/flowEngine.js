@@ -1,5 +1,6 @@
 // Flow execution rules, ported from PatchWork's WORKFLOW-SPEC.
 // Pure: no React, no fetch. Generation is injected as run(model, opts) -> files.
+import { widgetTypes, widgetReady, widgetOptions } from '../../shared/widgetInputs.js'
 
 const byId = (flow, id) => flow.nodes.find((n) => n.id === id)
 const sources = (flow, id) => flow.edges.filter((e) => e.target === id).map((e) => e.source)
@@ -90,6 +91,10 @@ export function createEngine({ run, onChange = () => {}, concurrency = 3 } = {})
   // What a node hands downstream. null means the gate is closed or nothing exists yet.
   function itemsOf(flow, id) {
     const n = byId(flow, id)
+    if (widgetTypes.includes(n.type)) {
+      const value = n.data.value
+      return widgetReady(n.type, value) ? [{ id: n.id, kind: n.type === 'video' ? 'video' : 'image', url: n.type === 'face' ? value.faceUrl || value.url : value.url, row: 0, take: 0, prompt: '', inputType: n.type, value }] : []
+    }
     if (n.type === 'image') return n.data.url ? [{ id: n.id, kind: 'image', url: n.data.url, row: 0, take: 0, prompt: '' }] : []
     if (n.type === 'model') return doneItems(id)
     if (n.type === 'approve') return gate(id).status === 'sent' ? gate(id).sent : null
@@ -107,6 +112,8 @@ export function createEngine({ run, onChange = () => {}, concurrency = 3 } = {})
     if (!model) return { blocked: true, units: [] }
     let texts = []
     const images = []
+    const inputs = {}
+    let widgetOpts = {}
     let blocked = false
     let promptEdge = false
     for (const s of sources(flow, id)) {
@@ -114,16 +121,22 @@ export function createEngine({ run, onChange = () => {}, concurrency = 3 } = {})
       if (src.type === 'prompt') { promptEdge = true; texts.push(...promptsOf(src)) } else {
         const out = itemsOf(flow, s)
         if (!out || !out.length) blocked = true
-        else images.push(...out.filter((i) => i.kind === 'image'))
+        else {
+          images.push(...out.filter((i) => i.kind === 'image' && !i.inputType))
+          for (const item of out.filter((i) => i.inputType)) {
+            inputs[item.id] = item.value
+            widgetOpts = { ...widgetOpts, ...widgetOptions(item.inputType, item.value) }
+          }
+        }
       }
     }
     if (promptEdge && !texts.length) blocked = true
     if (!promptEdge && n.data.prompt?.trim()) texts = [n.data.prompt.trim()]
-    if (!texts.length && !images.length) blocked = true
+    if (!texts.length && !images.length && !Object.keys(inputs).length) blocked = true
     if (blocked) return { blocked: true, units: [] }
 
     const takes = Math.max(1, n.data.takes || 1)
-    const base = { aspect: n.data.aspect, duration: n.data.duration, count: n.data.count || 1 }
+    const base = { aspect: n.data.aspect, duration: n.data.duration, count: n.data.count || 1, ...widgetOpts, ...(Object.keys(inputs).length && { inputs }) }
     const units = []
     if (images.length) {
       images.forEach((img, k) => {
@@ -134,7 +147,8 @@ export function createEngine({ run, onChange = () => {}, concurrency = 3 } = {})
         }
       })
     } else {
-      texts.forEach((prompt, row) => {
+      const rows = texts.length ? texts : ['']
+      rows.forEach((prompt, row) => {
         for (let t = 0; t < takes; t++) units.push({ key: `${row}||${t}`, row, take: t, opts: { ...base, prompt, caption: prompt } })
       })
     }

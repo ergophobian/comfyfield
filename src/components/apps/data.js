@@ -1,7 +1,7 @@
 // Grouping and lookup helpers for the Apps, Effects, Motion and Mixed media pages. Everything reads the format data.
 import { appsIn, categories, formats, hubs } from '../../lib/formats/index.js'
 
-const media = ['image', 'video', 'audio', 'draw']
+const media = ['image', 'video', 'audio', 'draw', 'mask', 'face', 'crop']
 export const mainInput = (format) => format.inputs.find((i) => media.includes(i.type))
 
 export const matches = (f, q) => !q || `${f.name} ${f.blurb} ${f.runsOn || ''}`.toLowerCase().includes(q)

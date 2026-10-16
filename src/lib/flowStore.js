@@ -7,10 +7,11 @@ const RUN = 'comfyfield.flowrun.'
 const uid = () => crypto.randomUUID().slice(0, 8)
 const find = (id, kind) => models.find((m) => m.id === id) || models.find((m) => m.kind === kind)
 
-export const nodeLabels = { prompt: 'Prompt', image: 'Image', model: 'Model', approve: 'Approve', output: 'Output', note: 'Note' }
+export const nodeLabels = { prompt: 'Prompt', image: 'Image', mask: 'Mask painter', face: 'Face picker', video: 'Video input', crop: 'Crop and reframe', model: 'Model', approve: 'Approve', output: 'Output', note: 'Note' }
 
 export function defaults(type) {
   if (type === 'prompt') return { mode: 'single', text: '' }
+  if (['mask', 'face', 'video', 'crop'].includes(type)) return { value: null }
   if (type === 'image') return { url: null, name: '' }
   if (type === 'model') return { kind: 'image', model: find(null, 'image'), aspect: '1:1', duration: 5, takes: 1, prompt: '' }
   if (type === 'note') return { text: '' }

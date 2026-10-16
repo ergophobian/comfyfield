@@ -1,3 +1,4 @@
+import { widgetOptions, widgetReady, widgetTypes } from '../../shared/widgetInputs.js'
 // A recipe is a saved generation setup with a few exposed inputs.
 //   model     fal endpoint id (or one of our catalog model ids)
 //   inputs    image | text | choice. An image can name the fal `field` it fills; a choice option can carry `params` and `text`.
@@ -147,7 +148,9 @@ export const initialValues = (recipe) => Object.fromEntries(recipe.inputs.map((i
 export const visibleInputs = (recipe, values) => recipe.inputs.filter((i) => !i.when || values[i.when[0]] === i.when[1])
 
 export const missingInputs = (recipe, values) => visibleInputs(recipe, values)
-  .filter((i) => !i.optional && (textual.includes(i.type) ? !values[i.id]?.trim() : values[i.id] == null || values[i.id] === ''))
+  .filter((i) => !i.optional && (widgetTypes.includes(i.type) || (i.type === 'draw' && i.mode !== 'motion')
+    ? !widgetReady(i.type === 'draw' ? 'mask' : i.type, values[i.id])
+    : textual.includes(i.type) ? !values[i.id]?.trim() : values[i.id] == null || values[i.id] === ''))
 
 // Turns a recipe and the sheet's values into options for gens.generate().
 export function recipeOptions(recipe, values) {
@@ -155,11 +158,22 @@ export function recipeOptions(recipe, values) {
   const fields = {}
   const media = {}
   const refs = []
+  const inputs = {}
   let params = { ...recipe.params }
   const fill = {}
   for (const input of visibleInputs(recipe, values)) {
     const v = values[input.id]
-    if (input.type === 'image') {
+    if (widgetTypes.includes(input.type) || (input.type === 'draw' && input.mode !== 'motion')) {
+      const type = input.type === 'draw' ? 'mask' : input.type
+      if (!widgetReady(type, v)) continue
+      const opts = widgetOptions(type, v)
+      inputs[input.id] = v
+      if (opts.image) images.push(opts.image)
+      if (opts.mask) media[`${input.id}Strokes`] = opts.mask
+      if (opts.video) media[input.id] = opts.video
+      if (input.field) fields[input.field] = opts.image || opts.video
+      fill[input.id] = v.name || ''
+    } else if (input.type === 'image') {
       if (!v) continue
       if (input.field) fields[input.field] = v.url
       else images.push(v.url)
@@ -179,9 +193,10 @@ export function recipeOptions(recipe, values) {
   }
   // Collapse spaces but keep line breaks, so shot lists stay one shot per line.
   const prompt = recipe.prompt.replace(/\{(\w+)\}/g, (_, k) => fill[k] ?? '').replace(/[^\S\n]+/g, ' ').replace(/ *\n\s*/g, '\n').trim()
-  const first = recipe.inputs.find((i) => i.type === 'image' || i.type === 'draw')
+  const first = recipe.inputs.find((i) => i.type === 'image' || i.type === 'draw' || widgetTypes.includes(i.type))
   return {
     prompt, caption: recipe.name, images, fields, params, count: 1,
+    ...(Object.keys(inputs).length && { inputs }),
     ...(Object.keys(media).length && { media }), ...(refs.length && { refs }),
     aspect: recipe.settings.aspect, duration: recipe.settings.duration, shape: first ? values[first.id]?.ratio : undefined,
   }

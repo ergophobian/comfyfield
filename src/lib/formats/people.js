@@ -41,7 +41,7 @@ const characters = [
     runsOn: 'Qwen-Image 2.1', workflow: 'qwen_edit_face_swap',
     inputs: [
       { id: 'photo', type: 'image', label: 'Photo to change' },
-      { id: 'character', type: 'character', label: 'Your own face or a saved character' },
+      { id: 'character', type: 'face', label: 'Your own face or a saved character' },
     ],
     prompt: 'Replace the face of the main person in this photo with the face of {character}. Keep the hair, pose, head angle, expression, outfit, lighting and background of the photo exactly the same, and blend skin tone and light so it looks natural.',
     settings: { aspect: 'auto' },

@@ -107,6 +107,21 @@
 
   /* State */
   --disabled: .45;
+
+  /* Input widgets */
+  --widget-gap: 8px;
+  --widget-space: 12px;
+  --widget-touch: 44px;
+  --widget-stage: 420px;
+  --widget-preview: 96px;
+  --widget-label: 100px;
+  --widget-stroke: 2px;
+  --widget-border: 1px;
+  --widget-outline: 2px;
+  --widget-shade: 0 0 0 100vmax var(--scrim);
+  --mask-on: #fff;
+  --mask-off: #000;
+  --mask-opacity: .55;
 }
 
 * { box-sizing: border-box; }
@@ -2369,3 +2384,27 @@ button.gen-step:active { transform: scale(.97); }
   .ff-bar { position: relative; bottom: auto; }
   .ff-bar .composer-foot { flex-direction: column; align-items: stretch; }
 }
+
+/* Rich format slots and Flow input controls */
+.widget { display: flex; flex-direction: column; gap: var(--widget-gap); min-width: 0; }
+.widget-upload { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--widget-gap); padding: var(--widget-space); border: var(--widget-border) dashed var(--blue-line); border-radius: var(--r-md); background: var(--blue-wash); }
+.widget-upload small { color: var(--muted); font-size: var(--text-xs); text-align: center; }
+.widget-upload .btn-soft, .widget .pills button, .widget-actions button { min-height: var(--widget-touch); }
+.widget-stage { position: relative; align-self: center; max-width: 100%; line-height: 0; overflow: hidden; border-radius: var(--r-md); background: var(--paper); border: var(--widget-border) solid var(--line); }
+.widget-stage img { display: block; max-width: 100%; max-height: var(--widget-stage); user-select: none; }
+.widget-mask canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; opacity: var(--mask-opacity); }
+.widget-mask canvas:focus-visible { outline: var(--widget-outline) solid var(--blue); outline-offset: calc(-1 * var(--widget-outline)); }
+.widget-cursor { position: absolute; aspect-ratio: 1; border: var(--widget-stroke) solid var(--blue); border-radius: var(--r-pill); transform: translate(-50%, -50%); pointer-events: none; }
+.widget-box-stage { touch-action: none; cursor: move; }
+.widget-box { position: absolute; border: var(--widget-stroke) solid var(--blue); box-shadow: var(--widget-shade); background: var(--blue-wash); }
+.widget-controls { display: flex; flex-direction: column; gap: var(--widget-gap); }
+.widget label.widget-control { display: flex; flex-wrap: wrap; align-items: center; gap: var(--widget-gap); font-size: var(--text-xs); color: var(--ink-2); min-width: 0; }
+.widget-control input[type=range] { flex: 1; width: 0; min-width: 0; min-height: var(--widget-touch); padding: 0; accent-color: var(--blue); }
+.widget-control input[type=number] { width: var(--widget-label); min-height: var(--widget-touch); padding: var(--widget-gap); border: var(--widget-border) solid var(--line); border-radius: var(--r-sm); background: var(--paper); }
+.widget-control output { color: var(--muted); }
+.widget-actions { display: flex; flex-wrap: wrap; gap: var(--widget-gap); align-items: center; }
+.widget-fieldset { border: 0; padding: 0; margin: 0; min-width: 0; display: flex; flex-direction: column; gap: var(--widget-gap); }
+.widget-fieldset:disabled { pointer-events: none; opacity: var(--disabled); }
+.widget-video { display: block; width: 100%; max-height: var(--widget-stage); border-radius: var(--r-md); background: var(--ink); }
+.widget-poster, .widget-face-preview { max-width: 100%; width: var(--widget-preview); max-height: var(--widget-preview); object-fit: contain; border-radius: var(--r-sm); }
+.widget .sheet-note { margin: 0; }
