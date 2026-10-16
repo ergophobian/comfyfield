@@ -1,0 +1,306 @@
+// Flow execution rules, ported from PatchWork's WORKFLOW-SPEC.
+// Pure: no React, no fetch. Generation is injected as run(model, opts) -> files.
+
+const byId = (flow, id) => flow.nodes.find((n) => n.id === id)
+const sources = (flow, id) => flow.edges.filter((e) => e.target === id).map((e) => e.source)
+const targets = (flow, id) => flow.edges.filter((e) => e.source === id).map((e) => e.target)
+const cmp = (a, b) => (a.row - b.row) || (a.take - b.take)
+
+export function topoOrder(flow) {
+  const left = new Map(flow.nodes.map((n) => [n.id, sources(flow, n.id).length]))
+  const order = []
+  const queue = flow.nodes.filter((n) => left.get(n.id) === 0).map((n) => n.id)
+  while (queue.length) {
+    const id = queue.shift()
+    order.push(id)
+    for (const t of targets(flow, id)) {
+      left.set(t, left.get(t) - 1)
+      if (left.get(t) === 0) queue.push(t)
+    }
+  }
+  if (order.length < flow.nodes.length) throw new Error('This flow has a loop')
+  return order
+}
+
+export function downstreamOf(flow, id) {
+  const seen = new Set()
+  const walk = (x) => targets(flow, x).forEach((t) => { if (!seen.has(t)) { seen.add(t); walk(t) } })
+  walk(id)
+  return seen
+}
+
+export function csvPrompts(text) {
+  const rows = []
+  let row = []
+  let cell = ''
+  let quoted = false
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i]
+    if (quoted) {
+      if (c === '"' && text[i + 1] === '"') { cell += '"'; i++ } else if (c === '"') quoted = false
+      else cell += c
+    } else if (c === '"') quoted = true
+    else if (c === ',') { row.push(cell); cell = '' }
+    else if (c === '\n' || c === '\r') {
+      if (c === '\r' && text[i + 1] === '\n') i++
+      row.push(cell); rows.push(row); row = []; cell = ''
+    } else cell += c
+  }
+  row.push(cell)
+  rows.push(row)
+  const col = rows.map((r) => (r[0] || '').trim()).filter(Boolean)
+  return /^prompts?$/i.test(col[0] || '') ? col.slice(1) : col
+}
+
+export function promptsOf(node) {
+  const text = node.data.text || ''
+  if (node.data.mode === 'rows') return text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
+  return text.trim() ? [text.trim()] : []
+}
+
+export const emptyGate = () => ({ status: 'empty', picked: [], sent: [] })
+
+export function createEngine({ run, onChange = () => {}, concurrency = 3 } = {}) {
+  let S = {}
+  const subs = new Set()
+  let active = 0
+  let peak = 0
+  const waiting = []
+
+  const emit = () => { subs.forEach((f) => f()); onChange(S) }
+  const edit = (id, fn) => { S = { ...S, [id]: { ...(S[id] || {}), ...fn(S[id] || {}) } }; emit() }
+
+  const pump = () => {
+    while (active < concurrency && waiting.length) {
+      const job = waiting.shift()
+      active++
+      peak = Math.max(peak, active)
+      job().finally(() => { active--; pump() })
+    }
+  }
+  const limit = (fn) => new Promise((resolve, reject) => {
+    waiting.push(() => fn().then(resolve, reject))
+    pump()
+  })
+
+  const doneItems = (id) => (S[id]?.items || []).filter((i) => i.status === 'done').sort(cmp)
+  const running = (id) => (S[id]?.running || 0) > 0
+  const gate = (id) => ({ ...emptyGate(), ...S[id] })
+
+  // What a node hands downstream. null means the gate is closed or nothing exists yet.
+  function itemsOf(flow, id) {
+    const n = byId(flow, id)
+    if (n.type === 'image') return n.data.url ? [{ id: n.id, kind: 'image', url: n.data.url, row: 0, take: 0, prompt: '' }] : []
+    if (n.type === 'model') return doneItems(id)
+    if (n.type === 'approve') return gate(id).status === 'sent' ? gate(id).sent : null
+    return []
+  }
+
+  function reviewItems(flow, id) {
+    return sources(flow, id).flatMap((s) => (byId(flow, s).type === 'prompt' ? [] : itemsOf(flow, s) || []))
+  }
+
+  // Work a model node would do right now: one unit per prompt row (or upstream image) per take.
+  function plan(flow, id) {
+    const n = byId(flow, id)
+    const model = n.data.model
+    if (!model) return { blocked: true, units: [] }
+    let texts = []
+    const images = []
+    let blocked = false
+    let promptEdge = false
+    for (const s of sources(flow, id)) {
+      const src = byId(flow, s)
+      if (src.type === 'prompt') { promptEdge = true; texts.push(...promptsOf(src)) } else {
+        const out = itemsOf(flow, s)
+        if (!out || !out.length) blocked = true
+        else images.push(...out.filter((i) => i.kind === 'image'))
+      }
+    }
+    if (promptEdge && !texts.length) blocked = true
+    if (!promptEdge && n.data.prompt?.trim()) texts = [n.data.prompt.trim()]
+    if (!texts.length && !images.length) blocked = true
+    if (blocked) return { blocked: true, units: [] }
+
+    const takes = Math.max(1, n.data.takes || 1)
+    const base = { aspect: n.data.aspect, duration: n.data.duration, count: n.data.count || 1 }
+    const units = []
+    if (images.length) {
+      images.forEach((img, k) => {
+        const row = img.row ?? k
+        const prompt = promptEdge ? (texts[row] ?? texts[0]) : (texts[0] ?? img.prompt ?? '')
+        for (let t = 0; t < takes; t++) {
+          units.push({ key: `${row}|${img.id}|${t}`, row, take: t, opts: { ...base, prompt, caption: prompt, image: img.url } })
+        }
+      })
+    } else {
+      texts.forEach((prompt, row) => {
+        for (let t = 0; t < takes; t++) units.push({ key: `${row}||${t}`, row, take: t, opts: { ...base, prompt, caption: prompt } })
+      })
+    }
+    return { blocked: false, units }
+  }
+
+  const todo = (flow, id) => {
+    const p = plan(flow, id)
+    const done = new Set(doneItems(id).map((i) => i.unit))
+    return p.units.filter((u) => !done.has(u.key))
+  }
+
+  // Empty -> reviewing only when upstream finished and has something to look at. Never straight to sent.
+  function syncGates(flow) {
+    for (const n of flow.nodes.filter((x) => x.type === 'approve')) {
+      const items = reviewItems(flow, n.id)
+      const busy = sources(flow, n.id).some((s) => running(s))
+      const g = gate(n.id)
+      if (g.status === 'empty' && items.length && !busy) edit(n.id, () => ({ status: 'reviewing' }))
+      else if (g.status === 'reviewing' && !items.length) edit(n.id, () => ({ status: 'empty', picked: [] }))
+      else if (g.status !== 'sent') {
+        const ids = new Set(items.map((i) => i.id))
+        if (g.picked?.some((p) => !ids.has(p))) edit(n.id, (s) => ({ picked: s.picked.filter((p) => ids.has(p)) }))
+      }
+    }
+  }
+
+  // Walk downstream and close the first approval gates reached. Never recurse past one.
+  function resetGatesBelow(flow, id) {
+    const seen = new Set()
+    const walk = (x) => targets(flow, x).forEach((t) => {
+      if (seen.has(t)) return
+      seen.add(t)
+      if (byId(flow, t).type === 'approve') edit(t, () => emptyGate())
+      else walk(t)
+    })
+    walk(id)
+  }
+
+  async function runNode(flow, id) {
+    const n = byId(flow, id)
+    const units = todo(flow, id)
+    if (!units.length) return 0
+    const model = n.data.model
+    const pending = units.map((u) => ({
+      id: `${id}:${u.key}`, unit: u.key, row: u.row, take: u.take, prompt: u.opts.prompt,
+      kind: model.kind, aspect: u.opts.aspect, status: 'pending',
+    }))
+    edit(id, (s) => ({ items: [...(s.items || []).filter((i) => i.status === 'done'), ...pending], running: (s.running || 0) + 1 }))
+    await Promise.all(units.map(async (u, k) => {
+      let next
+      try {
+        const files = await limit(() => run(model, u.opts))
+        next = files.map((f, i) => ({ ...pending[k], id: `${pending[k].id}#${i}`, kind: model.kind, ...f, status: 'done', created: Date.now() }))
+      } catch (e) {
+        next = [{ ...pending[k], status: 'failed', error: e.message || String(e) }]
+      }
+      edit(id, (s) => ({ items: s.items.flatMap((i) => (i.id === pending[k].id ? next : [i])) }))
+    }))
+    edit(id, (s) => ({ running: s.running - 1 }))
+    syncGates(flow)
+    return units.length
+  }
+
+  // Dependency-ordered passes. A node runs once per pass, only when every input has data.
+  async function pass(flow, { only = null, skipWithOutput = false } = {}) {
+    const ran = new Set()
+    let total = 0
+    for (;;) {
+      const ready = topoOrder(flow).filter((id) => {
+        const n = byId(flow, id)
+        return n.type === 'model' && !ran.has(id) && (!only || only.has(id)) && !running(id)
+          && !(skipWithOutput && doneItems(id).length) && todo(flow, id).length > 0
+      })
+      if (!ready.length) break
+      ready.forEach((id) => ran.add(id))
+      total += (await Promise.all(ready.map((id) => runNode(flow, id)))).reduce((a, b) => a + b, 0)
+    }
+    syncGates(flow)
+    return { ran: total }
+  }
+
+  return {
+    get state() { return S },
+    get peak() { return peak },
+    load(state) { S = state || {}; emit() },
+    subscribe(f) { subs.add(f); return () => subs.delete(f) },
+    gate,
+    itemsOf: (flow, id) => itemsOf(flow, id),
+    reviewItems,
+    plan,
+    pending: (flow, id) => todo(flow, id).length,
+    hasOutput: (flow) => flow.nodes.some((n) => n.type === 'model' && doneItems(n.id).length),
+    isRunning: () => Object.values(S).some((s) => s.running > 0),
+
+    // Run: fill gaps only. Kept outputs and sent gates stay; gates still block.
+    async runNew(flow) {
+      topoOrder(flow)
+      syncGates(flow)
+      return pass(flow)
+    },
+
+    // Regenerate all: wipe every model output and gate, then run from scratch.
+    async regenerateAll(flow) {
+      topoOrder(flow)
+      for (const n of flow.nodes) {
+        if (n.type === 'model') edit(n.id, () => ({ items: [], running: 0 }))
+        if (n.type === 'approve') edit(n.id, () => emptyGate())
+      }
+      return pass(flow)
+    },
+
+    // Send: open the gate, then run only downstream nodes that have no output yet. Never touches upstream.
+    async send(flow, id) {
+      const g = gate(id)
+      if (g.status !== 'reviewing' && g.status !== 'stopped') return { ok: false, reason: 'Nothing to send yet' }
+      const items = reviewItems(flow, id)
+      if (!items.length) return { ok: false, reason: 'Nothing to send yet' }
+      const chosen = items.filter((i) => g.picked.includes(i.id))
+      edit(id, () => ({ status: 'sent', sent: chosen.length ? chosen : items }))
+      const res = await pass(flow, { only: downstreamOf(flow, id), skipWithOutput: true })
+      return { ok: true, ...res }
+    },
+
+    stop(flow, id) {
+      if (gate(id).status === 'reviewing') edit(id, () => ({ status: 'stopped' }))
+    },
+
+    // Approve only marks a take. One pick per row. It never sends.
+    togglePick(flow, id, itemId) {
+      const items = reviewItems(flow, id)
+      const it = items.find((i) => i.id === itemId)
+      if (!it) return
+      const on = gate(id).picked.includes(itemId)
+      const sameRow = new Set(items.filter((i) => i.row === it.row).map((i) => i.id))
+      edit(id, (s) => ({ picked: [...(s.picked || []).filter((p) => !sameRow.has(p)), ...(on ? [] : [itemId])] }))
+    },
+
+    // Rerun re-executes this one node. No cascade; downstream gates close.
+    async rerun(flow, id) {
+      const p = plan(flow, id)
+      if (p.blocked) return { ok: false, reason: 'Waiting on an upstream node or approval' }
+      if (running(id)) return { ok: false, reason: 'Already running' }
+      edit(id, () => ({ items: [] }))
+      resetGatesBelow(flow, id)
+      const ran = await runNode(flow, id)
+      return { ok: true, ran }
+    },
+
+    // Rerun from a gate: regenerate the node feeding it and go back to empty.
+    async rerunGate(flow, id) {
+      edit(id, () => emptyGate())
+      let ran = 0
+      for (const s of sources(flow, id)) {
+        if (byId(flow, s).type !== 'model' || running(s) || plan(flow, s).blocked) continue
+        edit(s, () => ({ items: [] }))
+        ran += await runNode(flow, s)
+      }
+      return { ok: true, ran }
+    },
+
+    clearGate(flow, id) {
+      edit(id, () => emptyGate())
+      syncGates(flow)
+    },
+
+    syncGates,
+  }
+}

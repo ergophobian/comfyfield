@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Chip, Option } from '../components/Composer.jsx'
 import Segmented from '../components/Segmented.jsx'
 import Results from '../components/Results.jsx'
@@ -7,6 +7,7 @@ import ModelPicker from '../components/ModelPicker.jsx'
 import PromptList, { newRows } from '../components/Batch.jsx'
 import Board from '../components/Board.jsx'
 import { IconAspect, IconClock, IconStack, IconSpark } from '../components/Icons.jsx'
+import { flowFromBatch, openFlow } from '../lib/flowStore.js'
 import { aspects, styles, providerInfo } from '../lib/catalog.js'
 import { durationsFor, getConnections } from '../lib/providers.js'
 import { useModelMeta, estimate, money, useBalance } from '../lib/cost.js'
@@ -39,6 +40,7 @@ export default function Create({ gens, picker }) {
   const [style, setStyle] = useState(null)
   const [connections, setConnections] = useState({})
   const [batches, setBatches] = useState([])
+  const navigate = useNavigate()
   const balance = useBalance()
   const metaOf = useModelMeta([model])
 
@@ -74,6 +76,11 @@ export default function Create({ gens, picker }) {
         gens.generate(model, { prompt: full, caption: p, ...opts }, batchMode ? { batch: batch.id, row: r } : {})
       }
     })
+  }
+
+  const openAsFlow = () => {
+    openFlow(flowFromBatch({ prompts, model, aspect, duration, takes, count }))
+    navigate('/flows')
   }
 
   const chips = [
@@ -143,7 +150,10 @@ export default function Create({ gens, picker }) {
               ) : <span className="muted">{batchMode ? 'Add prompts to see the total' : 'The cost shows here before you run'}</span>}
               {bal && <span className="muted">{bal}</span>}
             </div>
-            <button className="btn-blue" disabled={!total || !connected}>{total > 1 ? `Generate ${total}` : 'Generate'}</button>
+            <div className="foot-actions">
+              {batchMode && prompts.length > 0 && <button type="button" className="btn-soft" onClick={openAsFlow}>Open as flow</button>}
+              <button className="btn-blue" disabled={!total || !connected}>{total > 1 ? `Generate ${total}` : 'Generate'}</button>
+            </div>
           </div>
         </div>
       </form>

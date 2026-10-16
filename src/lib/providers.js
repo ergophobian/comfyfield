@@ -38,6 +38,11 @@ function falInput(props, o) {
     if (!e || e.includes(falSize[o.aspect])) input.image_size = falSize[o.aspect]
   }
   if (props.num_images) input.num_images = o.count
+  if (o.image) {
+    const key = ['image_url', 'start_image_url', 'first_frame_image', 'image'].find((k) => props[k])
+    if (key) input[key] = o.image
+    else if (props.image_urls) input.image_urls = [o.image]
+  }
   if (props.duration && o.duration) {
     const d = props.duration
     const numeric = d.enum?.filter((v) => !Number.isNaN(num(v)))
@@ -70,7 +75,7 @@ export async function run(model, opts) {
     return (await post('/api/fal', { model: model.model, input: falInput(properties, opts) })).files
   }
   if (model.provider === 'google') {
-    return (await post('/api/google', { model: model.model, mode: model.mode, prompt: opts.prompt, aspect: opts.aspect, count: opts.count, duration: opts.duration })).files
+    return (await post('/api/google', { model: model.model, mode: model.mode, prompt: opts.prompt, aspect: opts.aspect, count: opts.count, duration: opts.duration, image: opts.image })).files
   }
   if (model.provider === 'elevenlabs') {
     return (await post('/api/elevenlabs', { mode: model.mode, text: opts.prompt })).files
