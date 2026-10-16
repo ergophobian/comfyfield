@@ -6,7 +6,8 @@ import Results from '../components/Results.jsx'
 import ModelPicker from '../components/ModelPicker.jsx'
 import PromptList, { newRows } from '../components/Batch.jsx'
 import Board from '../components/Board.jsx'
-import { IconAspect, IconClock, IconStack, IconSpark } from '../components/Icons.jsx'
+import { IconAspect, IconClock, IconStack, IconSpark, IconLibrary, IconClose } from '../components/Icons.jsx'
+import { useLibrary, toRef } from '../lib/useLibrary.js'
 import { aspects, styles, providerInfo } from '../lib/catalog.js'
 import { durationsFor, getConnections } from '../lib/providers.js'
 import { useModelMeta, estimate, money, useBalance } from '../lib/cost.js'
@@ -38,6 +39,8 @@ export default function Create({ gens, picker }) {
   const [duration, setDuration] = useState(5)
   const [style, setStyle] = useState(null)
   const [connections, setConnections] = useState({})
+  const [refs, setRefs] = useState([])
+  const lib = useLibrary()
   const [batches, setBatches] = useState([])
   const balance = useBalance()
   const metaOf = useModelMeta([model])
@@ -71,7 +74,7 @@ export default function Create({ gens, picker }) {
     prompts.forEach((p, r) => {
       const full = [p, styleItem?.prompt].filter(Boolean).join(', ')
       for (let t = 0; t < takes; t++) {
-        gens.generate(model, { prompt: full, caption: p, ...opts }, batchMode ? { batch: batch.id, row: r } : {})
+        gens.generate(model, { prompt: full, caption: p, ...opts, ...(refs.length && { refs }) }, batchMode ? { batch: batch.id, row: r } : {})
       }
     })
   }
@@ -97,6 +100,21 @@ export default function Create({ gens, picker }) {
     <Chip key="takes" icon={<IconStack />} label={`${takes} ${takes === 1 ? 'take' : 'takes'}`}>
       {[1, 2, 3, 4].map((n) => <Option key={n} on={n === takes} label={`${n} ${n === 1 ? 'take' : 'takes'} per prompt`} note={n > 1 ? 'Pick the best one after' : null} onClick={() => setTakes(n)} />)}
     </Chip>,
+    (lib.characters.length > 0 || lib.products.length > 0 || refs.length > 0) && (
+      <Chip key="lib" icon={<IconLibrary />} label={refs.length ? `${refs.length} from Library` : 'Library'} lit={refs.length > 0}>
+        {[['character', 'Characters', lib.characters], ['product', 'Products', lib.products]].filter(([, , xs]) => xs.length).map(([type, title, xs]) => (
+          <div key={type}>
+            <h6>{title}</h6>
+            {xs.map((x) => {
+              const on = refs.some((r) => r.id === x.id)
+              return <Option key={x.id} on={on} label={x.name} note={on ? 'Attached, click to remove' : null}
+                onClick={() => setRefs((rs) => (on ? rs.filter((r) => r.id !== x.id) : [...rs, toRef(type, x)]))} />
+            })}
+          </div>
+        ))}
+        <Link className="menu-link" to="/library">Open Library</Link>
+      </Chip>
+    ),
     kind !== 'audio' && (
       <Chip key="style" icon={<IconSpark />} label={styleItem?.name || 'Style'} lit={Boolean(styleItem)}>
         <Option on={!style} label="None" onClick={() => setStyle(null)} />
@@ -134,6 +152,16 @@ export default function Create({ gens, picker }) {
                 onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), go())} />
             )}
           </div>
+          {refs.length > 0 && (
+            <div className="refs">
+              {refs.map((r) => (
+                <span key={r.id} className="ref pop">
+                  {r.images[0] && <img src={r.images[0]} alt="" />}{r.name}
+                  <button type="button" aria-label={`Remove ${r.name}`} onClick={() => setRefs((rs) => rs.filter((x) => x.id !== r.id))}><IconClose /></button>
+                </span>
+              ))}
+            </div>
+          )}
           <div className="chips">{chips}</div>
           <div className="composer-foot">
             <div className="summary">

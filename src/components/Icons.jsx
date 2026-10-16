@@ -7,3 +7,12 @@ export const IconStack = () => <svg {...s}><rect x="4" y="4" width="12" height="
 export const IconSpark = () => <svg {...s}><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18" /></svg>
 export const IconSearch = () => <svg {...s} strokeWidth={2.4}><circle cx="11" cy="11" r="6.5" /><path d="m20 20-4.2-4.2" /></svg>
 export const IconArrow = () => <svg {...s} strokeWidth={2.4}><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+export const IconCheck = () => <svg {...s} strokeWidth={2.6}><path d="m5 12 5 5 9-10" /></svg>
+export const IconDownload = () => <svg {...s}><path d="M12 4v11M7 11l5 5 5-5M5 20h14" /></svg>
+export const IconCopy = () => <svg {...s}><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V6a2 2 0 0 1 2-2h8" /></svg>
+export const IconTrash = () => <svg {...s}><path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13" /></svg>
+export const IconPlus = () => <svg {...s} strokeWidth={2.4}><path d="M12 5v14M5 12h14" /></svg>
+export const IconClose = () => <svg {...s} strokeWidth={2.4}><path d="M6 6l12 12M18 6 6 18" /></svg>
+export const IconChevron = ({ dir = 'right' }) => <svg {...s} strokeWidth={2.4} style={{ transform: dir === 'left' ? 'scaleX(-1)' : undefined }}><path d="m9 5 7 7-7 7" /></svg>
+export const IconLink = () => <svg {...s}><path d="M10 14a4 4 0 0 0 5.6 0l3-3a4 4 0 0 0-5.6-5.6l-1 1M14 10a4 4 0 0 0-5.6 0l-3 3a4 4 0 0 0 5.6 5.6l1-1" /></svg>
+export const IconLibrary = () => <svg {...s}><path d="M5 4v16M10 4v16M15 5l4 14" /></svg>

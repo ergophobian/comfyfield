@@ -1,0 +1,60 @@
+import { useEffect, useSyncExternalStore } from 'react'
+
+const types = ['characters', 'products', 'brands']
+let state = { characters: [], products: [], brands: [], ready: false }
+let started = false
+const subs = new Set()
+
+const set = (patch) => { state = { ...state, ...patch }; subs.forEach((f) => f()) }
+const subscribe = (f) => { subs.add(f); return () => subs.delete(f) }
+
+async function call(url, method = 'GET', data) {
+  const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: data ? JSON.stringify(data) : undefined })
+  const out = await r.json().catch(() => ({}))
+  if (!r.ok) throw new Error(out.error || 'Something went wrong.')
+  return out
+}
+
+async function refresh() {
+  const lists = await Promise.all(types.map((t) => call(`/api/library/${t}`).catch(() => [])))
+  set({ ...Object.fromEntries(types.map((t, i) => [t, lists[i]])), ready: true })
+}
+
+export const upload = (file) => new Promise((resolve, reject) => {
+  const reader = new FileReader()
+  reader.onerror = () => reject(new Error('Could not read that file.'))
+  reader.onload = () => call('/api/upload', 'POST', { name: file.name, dataUrl: reader.result }).then((r) => resolve(r.url), reject)
+  reader.readAsDataURL(file)
+})
+
+export const create = async (type, data) => {
+  const item = await call(`/api/library/${type}`, 'POST', data)
+  set({ [type]: [item, ...state[type]] })
+  return item
+}
+
+export const update = async (type, id, data) => {
+  const item = await call(`/api/library/${type}/${id}`, 'PATCH', data)
+  set({ [type]: state[type].map((x) => (x.id === id ? item : x)) })
+  return item
+}
+
+export const remove = async (type, id) => {
+  await call(`/api/library/${type}/${id}`, 'DELETE')
+  set({ [type]: state[type].filter((x) => x.id !== id) })
+}
+
+export const importUrl = (url) => call('/api/library/import', 'POST', { url })
+
+// Shared across the app: composer, recipes and flows read the same lists.
+export function useLibrary() {
+  const snap = useSyncExternalStore(subscribe, () => state)
+  useEffect(() => { if (!started) { started = true; refresh() } }, [])
+  return { ...snap, refresh, create, update, remove, upload, importUrl }
+}
+
+// What a generate call receives in opts.refs.
+export const toRef = (type, item) => ({
+  type, id: item.id, name: item.name, images: item.images || [],
+  ...(type === 'product' ? { description: item.description, price: item.price } : { notes: item.notes }),
+})
