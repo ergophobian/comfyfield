@@ -26,7 +26,7 @@ export async function durationsFor(model) {
 }
 
 // Maps the composer's settings onto whatever inputs this fal model declares.
-function falInput(props, o) {
+export function falInput(props, o) {
   const input = {}
   input[props.prompt || !props.text ? 'prompt' : 'text'] = o.prompt
   if (props.aspect_ratio) {

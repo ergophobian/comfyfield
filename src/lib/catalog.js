@@ -9,7 +9,7 @@ export const models = [
   { id: 'fal:fal-ai/flux-2-pro', kind: 'image', provider: 'fal', name: 'Flux 2 Pro', note: 'Black Forest Labs, via fal', model: 'fal-ai/flux-2-pro' },
 
   { id: 'g-nano-banana-pro', kind: 'image', provider: 'google', name: 'Nano Banana Pro', note: 'Gemini 3 Pro Image, your Google key', model: 'gemini-3-pro-image', mode: 'image', price: { amount: 0.134, unit: 'image', estimate: true } },
-  { id: 'g-nano-banana-2', kind: 'image', provider: 'google', name: 'Nano Banana 2', note: 'Gemini 3.1 Flash Image, your Google key', model: 'gemini-3.1-flash-image', mode: 'image' },
+  { id: 'g-nano-banana-2', kind: 'image', provider: 'google', name: 'Nano Banana 2', note: 'Gemini 3.1 Flash Image, your Google key', model: 'gemini-3.1-flash-image', mode: 'image', price: { amount: 0.067, unit: 'image', estimate: true } },
 
   { id: 'comfy-ltx', kind: 'video', provider: 'comfy', name: 'LTX Video', note: 'Open weights on your ComfyUI', workflow: 'video_ltx', durations: [3, 5, 8] },
   { id: 'fal:bytedance/seedance-2.5/text-to-video', kind: 'video', provider: 'fal', name: 'Seedance 2.5', note: 'ByteDance, via fal', model: 'bytedance/seedance-2.5/text-to-video' },
@@ -19,7 +19,7 @@ export const models = [
 
   { id: 'g-veo', kind: 'video', provider: 'google', name: 'Veo 3.1', note: 'Video with sound, your Google key', model: 'veo-3.1-generate-preview', mode: 'video', durations: [4, 6, 8], price: { amount: 0.4, unit: 'second', estimate: true } },
   { id: 'g-veo-fast', kind: 'video', provider: 'google', name: 'Veo 3.1 Fast', note: 'Cheaper and quicker', model: 'veo-3.1-fast-generate-preview', mode: 'video', durations: [4, 6, 8], price: { amount: 0.15, unit: 'second', estimate: true } },
-  { id: 'g-veo-lite', kind: 'video', provider: 'google', name: 'Veo 3.1 Lite', note: 'Lowest cost Veo', model: 'veo-3.1-lite-generate-preview', mode: 'video', durations: [4, 6, 8] },
+  { id: 'g-veo-lite', kind: 'video', provider: 'google', name: 'Veo 3.1 Lite', note: 'Lowest cost Veo', model: 'veo-3.1-lite-generate-preview', mode: 'video', durations: [4, 6, 8], price: { amount: 0.05, unit: 'second', estimate: true } },
 
   { id: 'g-tts', kind: 'audio', provider: 'google', name: 'Gemini voice', note: 'Text to speech, your Google key', model: 'gemini-3.8-flash-tts', mode: 'speech' },
   { id: 'el-speech', kind: 'audio', provider: 'elevenlabs', name: 'ElevenLabs voice', note: 'Text to speech with your key', mode: 'speech' },
