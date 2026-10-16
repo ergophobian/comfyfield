@@ -128,7 +128,7 @@ function Editor({ type, item, onClose }) {
 
   return (
     <div className="viewer" onClick={onClose} role="dialog" aria-label={k.add}>
-      <form className="sheet glass pop" onClick={(e) => e.stopPropagation()} onSubmit={save}>
+      <form className="form-sheet glass pop" onClick={(e) => e.stopPropagation()} onSubmit={save}>
         <h3>{item ? `Edit ${k.one}` : k.add}</h3>
         {type !== 'characters' && (
           <div className="import">
@@ -157,9 +157,9 @@ function Editor({ type, item, onClose }) {
           <Text label="Voice notes" area value={f.voice} onChange={(v) => set({ voice: v })} placeholder="Warm, plain words, never salesy" />
         </>}
         {err && <p className="plist-note">{err}</p>}
-        <div className="sheet-foot">
+        <div className="form-sheet-foot">
           {item && <button type="button" className="btn-soft danger" onClick={async () => { await lib.remove(type, item.id); onClose() }}><IconTrash />Delete</button>}
-          <span style={{ flex: 1 }} />
+          <span className="grow" />
           <button type="button" className="btn-soft" onClick={onClose}>Cancel</button>
           <button className="btn-blue sm" disabled={busy}>Save</button>
         </div>

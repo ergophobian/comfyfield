@@ -153,7 +153,7 @@ export default function Create({ gens, picker }) {
             })}
           </div>
         ))}
-        <Link className="menu-link" to="/library">Open Library</Link>
+        <Link className="link-btn menu-foot" to="/library">Open Library</Link>
       </Chip>
     ),
     kind !== 'audio' && (

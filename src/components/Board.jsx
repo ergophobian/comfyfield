@@ -37,7 +37,7 @@ export default function Board({ items, batch, onApprove, onDismiss }) {
         </div>
       </header>
       {rows.map(({ p, takes }, r) => (
-        <div className="board-row" key={r} style={{ '--i': r }}>
+        <div className="board-row" key={r} style={{ '--i': Math.min(r, 12) }}>
           <div className="board-prompt"><span>{r + 1}</span><p>{p}</p></div>
           <div className="board-takes">
             {takes.map((t) => <Take key={t.id} it={t} onApprove={onApprove} onDismiss={onDismiss} />)}

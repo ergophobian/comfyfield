@@ -72,7 +72,7 @@ export default function Models({ picker }) {
       <div className="model-list glass" key={category}>
         {!items.length && !error && Array.from({ length: 6 }, (_, i) => <div key={i} className="model-row skeleton" />)}
         {shown.map((m, i) => (
-          <button key={m.endpoint_id} className="model-row" style={{ '--i': i }} onClick={() => use(m)}>
+          <button key={m.endpoint_id} className="model-row" style={{ '--i': Math.min(i, 12) }} onClick={() => use(m)}>
             <span className="model-logo"><Logo brand={m.brand} size={20} /></span>
             <span className="model-text">
               <strong>{m.metadata.display_name.trim()}</strong>
@@ -84,7 +84,7 @@ export default function Models({ picker }) {
         {items.length > 0 && !shown.length && <p className="picker-empty">No models match “{q}”.</p>}
       </div>
       {!q && !more && matches.length > FIRST && (
-        <button className="show-more" onClick={() => setMore(true)}>Show all {matches.length}</button>
+        <button className="link-btn show-more" onClick={() => setMore(true)}>Show all {matches.length}</button>
       )}
     </main>
   )

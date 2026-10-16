@@ -3,6 +3,7 @@ import { ReactFlow, ReactFlowProvider, Background, Controls, MiniMap, applyNodeC
 import '@xyflow/react/dist/style.css'
 import { nodeTypes, FlowCtx } from '../components/flow/nodes.jsx'
 import Panel from '../components/flow/Panel.jsx'
+import { IconClose } from '../components/Icons.jsx'
 import { downstreamOf } from '../lib/flowEngine.js'
 import { loadFlows, saveFlows, engineFor, starters, makeNode, blankFlow, exportJson, parseFlow, nodeLabels } from '../lib/flowStore.js'
 import { getConnections } from '../lib/providers.js'
@@ -139,7 +140,7 @@ function Canvas({ picker }) {
             {store.flows.map((f) => (
               <div key={f.id} className="fl-row">
                 <button type="button" className={f.id === flow.id ? 'on' : ''} onClick={() => open(f.id)}>{f.name}<small>{f.nodes.length} nodes</small></button>
-                <button type="button" className="fl-x" aria-label={`Delete ${f.name}`} onClick={() => drop(f.id)}>×</button>
+                <button type="button" className="fl-x" aria-label={`Delete ${f.name}`} onClick={() => drop(f.id)}><IconClose /></button>
               </div>
             ))}
             <button type="button" onClick={newFlow}>New flow</button>

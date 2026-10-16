@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { IconClose } from './Icons.jsx'
 
 let seq = 0
 const row = (text = '') => ({ id: ++seq, text })
@@ -59,7 +60,7 @@ export default function PromptList({ rows, setRows, kind }) {
             <span className="plist-n">{i + 1}</span>
             <input value={r.text} onChange={(e) => update(r.id, e.target.value)} onPaste={(e) => onPaste(e, r.id)}
               placeholder={i === rows.length - 1 ? (i ? 'Add another prompt' : 'First prompt, or paste a list') : ''} />
-            {r.text && <button type="button" className="plist-x" onClick={() => remove(r.id)} aria-label="Remove prompt">×</button>}
+            {r.text && <button type="button" className="plist-x" onClick={() => remove(r.id)} aria-label="Remove prompt"><IconClose /></button>}
           </li>
         ))}
       </ol>

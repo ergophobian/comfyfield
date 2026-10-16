@@ -24,7 +24,7 @@ export function RecipeRow({ kind, onOpen, onAll }) {
   return (
     <section className="recipes" key={kind}>
       <div className="recipes-head">
-        <h2>Recipes</h2>
+        <h2>Formats</h2>
         <button type="button" className="link-btn" onClick={onAll}>See all</button>
       </div>
       <div className="recipe-row">
@@ -54,11 +54,11 @@ export function RecipeLibrary({ onOpen, onClose }) {
   const groups = [['Video', 'video'], ['Image', 'image']]
   return (
     <div className={`scrim${leaving ? ' out' : ''}`} onPointerDown={(e) => e.target === e.currentTarget && close()}>
-      <div className="modal glass" role="dialog" aria-label="All recipes">
+      <div className="modal glass" role="dialog" aria-label="All formats">
         <div className="modal-head">
           <div>
-            <h2>All recipes</h2>
-            <p>A recipe is a saved setup. Add a photo, change a few words, run it.</p>
+            <h2>All formats</h2>
+            <p>A format is a saved setup. Add a photo, change a few words, run it.</p>
           </div>
           <button type="button" className="icon-btn" onClick={close} aria-label="Close"><IconClose /></button>
         </div>

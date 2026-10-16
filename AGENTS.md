@@ -14,6 +14,7 @@ Competition: Open Source Higgsfield, submissions close 10/30 9am PT. Entries mus
 npm install
 npm run dev            # app + local API on one port
 node scripts/flow-checks.mjs   # Flows engine invariants
+node scripts/theme-check.mjs   # theme tokens only, no raw colors or sizes
 npx vite build         # must pass before any PR
 ```
 
@@ -35,7 +36,7 @@ Keys go in Connections (saved to `.comfyfield/keys.json`, gitignored) or `.env` 
 1. Pick an issue labelled `agent-ready` in your area. Assign yourself.
 2. One branch per issue: `issue-<number>-<short-name>`. One PR per issue, linked with `Closes #<number>`.
 3. A PR is ready when:
-   - `npx vite build` and `node scripts/flow-checks.mjs` pass (CI runs both)
+   - `npx vite build`, `node scripts/flow-checks.mjs` and `node scripts/theme-check.mjs` pass (CI runs all three)
    - every acceptance criterion in the issue is met
    - the PR shows a screenshot or short GIF of the change working. No placeholders: if something is not real yet, say so in the PR
 4. Do not push to `main`. One person merges.
@@ -45,7 +46,7 @@ Keys go in Connections (saved to `.comfyfield/keys.json`, gitignored) or `.env` 
 ## Design rules
 
 - Sentence case everywhere. Never ALL CAPS, no `text-transform: uppercase`.
-- Light glass UI: tokens in `src/styles.css` (`--blue`, `--glass`, `--spring`). Indigo pill buttons are `.btn-blue`.
+- Light glass UI: every color, size, radius, blur and duration is a token in `:root` in `src/styles.css`. Use the token, never a raw value; `theme-check` enforces it. Indigo pill buttons are `.btn-blue`.
 - Motion uses the existing `rise` / `pop` keyframes and `--spring` easing, and must respect `prefers-reduced-motion`.
 - No emoji in the UI. No new tabs: new features become formats, flow nodes or Library types.
 - Copy names things the way users see them, active voice, short.

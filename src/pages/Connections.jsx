@@ -40,7 +40,7 @@ function Provider({ id, info, state, onSaved }) {
       ))}
       <div className="conn-actions">
         <button className="btn-blue" onClick={save} disabled={saving}>{saving ? 'Checking' : 'Save and test'}</button>
-        {msg && <span className="muted" style={{ fontSize: 13 }}>{msg}</span>}
+        {msg && <span className="muted">{msg}</span>}
         <a href={info.link} target="_blank" rel="noreferrer">Get a key ›</a>
       </div>
     </div>

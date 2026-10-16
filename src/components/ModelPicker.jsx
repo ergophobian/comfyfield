@@ -97,7 +97,7 @@ export default function ModelPicker({ model, options, favorites, toggleFavorite,
                     const off = m.provider !== 'comfy' && !connections[m.provider]?.connected
                     const price = priceText(metaOf(m).price)
                     return (
-                      <div key={m.id} className={`picker-row${m.id === model.id ? ' on' : ''}`} style={{ '--i': i }} onMouseEnter={() => setHover(m.id)}>
+                      <div key={m.id} className={`picker-row${m.id === model.id ? ' on' : ''}`} style={{ '--i': Math.min(i, 12) }} onMouseEnter={() => setHover(m.id)}>
                         <button type="button" className="picker-pick" onClick={() => { choose(m.id); setOpen(false) }}>
                           <span className="picker-name">{m.name}</span>
                           <span className="picker-sub">{via(m)}{price && ` · ${price}`}{off && <em> · add key</em>}</span>
@@ -111,7 +111,7 @@ export default function ModelPicker({ model, options, favorites, toggleFavorite,
               ))}
               {!ordered.length && <p className="picker-empty">{rail === 'fav' ? 'Star a model to keep it here.' : 'No models match.'}</p>}
             </div>
-            <Link to="/models" className="picker-more" onClick={() => setOpen(false)}>Browse all models</Link>
+            <Link to="/models" className="link-btn menu-foot" onClick={() => setOpen(false)}>Browse all models</Link>
           </div>
           {preview && (
             <aside className="picker-preview" key={preview.id}>

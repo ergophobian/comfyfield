@@ -78,7 +78,7 @@ export function ModelNode({ id, data, selected }) {
       {busy && <i className="fbar" style={{ '--p': `${(done.length / Math.max(1, total)) * 100}%` }} />}
       <div className="frow">
         <span className={`fstat${failed ? ' bad' : ''}`}>{line}</span>
-        {!gated && done.length > 0 && !busy && <button type="button" className="fbtn nodrag" onClick={() => act.rerun(id)}>Rerun</button>}
+        {!gated && done.length > 0 && !busy && <button type="button" className="btn-soft xs nodrag" onClick={() => act.rerun(id)}>Rerun</button>}
       </div>
     </Shell>
   )
@@ -105,9 +105,9 @@ export function ApproveNode({ id, selected }) {
       <div className="frow">
         <span className="fstat">{g.status === 'sent' ? `${g.sent.length} sent` : g.picked.length ? `${g.picked.length} approved` : items.length ? 'Approve, then send' : ''}</span>
         <div className="fbtns">
-          {g.status === 'reviewing' && <button type="button" className="fbtn nodrag" onClick={() => act.stop(id)}>Stop</button>}
-          {g.status !== 'empty' && !busy && <button type="button" className="fbtn nodrag" onClick={() => act.rerunGate(id)}>Rerun</button>}
-          <button type="button" className="fbtn go nodrag" disabled={!can} onClick={() => act.send(id)}>Send</button>
+          {g.status === 'reviewing' && <button type="button" className="btn-soft xs nodrag" onClick={() => act.stop(id)}>Stop</button>}
+          {g.status !== 'empty' && !busy && <button type="button" className="btn-soft xs nodrag" onClick={() => act.rerunGate(id)}>Rerun</button>}
+          <button type="button" className="btn-blue xs nodrag" disabled={!can} onClick={() => act.send(id)}>Send</button>
         </div>
       </div>
     </Shell>
