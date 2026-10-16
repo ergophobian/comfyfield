@@ -288,6 +288,44 @@ check('writer failures retry without rendering and respect upstream gates', asyn
   assert.equal(m.calls[0].prompt, 'Recovered')
 })
 
+check('widget inputs hold until ready and pass structured values through approval gates', async () => {
+  const values = {
+    mask: { url: '/media/photo.png', maskUrl: '/media/mask.png' },
+    face: { url: '/media/group.png', faceUrl: '/media/face.png', box: { x: 0.1, y: 0.1, width: 0.3, height: 0.3 } },
+    video: { url: '/media/clip.mp4', duration: 4, trim: { start: 1, end: 3 }, posterUrl: '/media/poster.png', posterTime: 2 },
+    crop: { url: '/media/photo.png', aspect: '9:16', box: { x: 0.2, y: 0, width: 0.4, height: 1 } },
+  }
+  for (const [type, value] of Object.entries(values)) {
+    const m = mock()
+    const eng = createEngine({ run: m.run })
+    const f = { nodes: [n('w', type, { value: null }), n('a', 'approve'), n('m', 'model', { model: img, prompt: 'edit' })], edges: [e('w', 'a'), e('a', 'm')] }
+    await eng.runNew(f)
+    assert.equal(m.calls.length, 0)
+    f.nodes[0].data.value = value
+    await eng.runNew(f)
+    assert.equal(m.calls.length, 0, 'approval still holds the widget')
+    await eng.send(f, 'a')
+    assert.deepEqual(m.calls[0].inputs.w, value)
+    if (type === 'mask') assert.equal(m.calls[0].mask, value.maskUrl)
+    if (type === 'face') assert.equal(m.calls[0].face.faceUrl, value.faceUrl)
+    if (type === 'video') assert.deepEqual(m.calls[0].trim, value.trim)
+    if (type === 'crop') assert.deepEqual(m.calls[0].crop, value.box)
+    await eng.runNew(f)
+    assert.equal(m.calls.length, 1, 'Run does not repeat the model')
+  }
+})
+
+check('widget references supplement image rows instead of adding unwanted generations', async () => {
+  const m = mock()
+  const eng = createEngine({ run: m.run })
+  const face = { url: '/media/face.png', characterId: 'actor' }
+  const f = { nodes: [n('i', 'image', { url: '/media/source.png' }), n('f', 'face', { value: face }), n('m', 'model', { model: img })], edges: [e('i', 'm'), e('f', 'm')] }
+  await eng.runNew(f)
+  assert.equal(m.calls.length, 1)
+  assert.equal(m.calls[0].image, '/media/source.png')
+  assert.deepEqual(m.calls[0].face, face)
+})
+
 let bad = 0
 for (const [name, fn] of checks) {
   try { await fn(); console.log('ok   ', name) } catch (err) { bad++; console.log('FAIL ', name, '\n     ', err.message) }

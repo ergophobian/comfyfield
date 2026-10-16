@@ -3,6 +3,7 @@ import { ReactFlow, ReactFlowProvider, Background, Controls, MiniMap, applyNodeC
 import '@xyflow/react/dist/style.css'
 import { nodeTypes, FlowCtx } from '../components/flow/nodes.jsx'
 import Panel from '../components/flow/Panel.jsx'
+import { widgetTypes } from '../../shared/widgetInputs.js'
 import { IconClose } from '../components/Icons.jsx'
 import { downstreamOf } from '../lib/flowEngine.js'
 import { loadFlows, saveFlows, engineFor, starters, makeNode, blankFlow, exportJson, parseFlow, nodeLabels } from '../lib/flowStore.js'
@@ -12,6 +13,10 @@ const addable = [
   ['prompt', 'Text or a list of prompts'],
   ['image', 'Upload a reference image'],
   ['writer', 'Write a prompt, then review and send'],
+  ['mask', 'Paint an area to change'],
+  ['face', 'Choose a face or Library character'],
+  ['video', 'Upload, trim and pick a poster'],
+  ['crop', 'Choose an aspect and crop area'],
   ['model', 'Any image, video or audio model'],
   ['approve', 'A gate you open with Send'],
   ['output', 'A gallery of results'],
@@ -99,7 +104,7 @@ function Canvas({ picker }) {
     const s = flow.nodes.find((n) => n.id === c.source)
     const t = flow.nodes.find((n) => n.id === c.target)
     if (!s || !t || s.id === t.id) return false
-    if (['output', 'note'].includes(s.type) || ['prompt', 'image', 'note'].includes(t.type)) return false
+    if (['output', 'note'].includes(s.type) || ['prompt', 'image', 'note', ...widgetTypes].includes(t.type)) return false
     if (s.type === 'prompt' && !['model', 'writer'].includes(t.type)) return false
     return !downstreamOf(flow, t.id).has(s.id) && !flow.edges.some((e) => e.source === s.id && e.target === t.id)
   }, [flow])
@@ -166,7 +171,7 @@ function Canvas({ picker }) {
           defaultEdgeOptions={{ type: 'default' }} fitView fitViewOptions={{ padding: 0.3, maxZoom: 1 }}
           minZoom={0.25} maxZoom={1.6} deleteKeyCode={['Backspace', 'Delete']} proOptions={{ hideAttribution: true }}>
           <Background gap={22} size={1.6} color="rgb(15 18 34 / .16)" />
-          <MiniMap pannable zoomable nodeColor={(n) => miniColor[n.type]} maskColor="rgb(255 255 255 / .55)" />
+          <MiniMap pannable zoomable nodeColor={(n) => miniColor[n.type] || miniColor.image} maskColor="rgb(255 255 255 / .55)" />
           <Controls showInteractive={false} />
         </ReactFlow>
 

@@ -8,6 +8,8 @@ import { durationsFor } from '../../lib/providers.js'
 import { csvPrompts, promptsOf } from '../../lib/flowEngine.js'
 import { nodeLabels } from '../../lib/flowStore.js'
 import { WriterReview } from './nodes.jsx'
+import { widgetTypes } from '../../../shared/widgetInputs.js'
+import { Field } from '../formats/Fields.jsx'
 
 const blurbs = {
   approve: 'Nothing passes this gate until you approve takes and press Send. Send only starts nodes after it that have no results yet.',
@@ -125,10 +127,14 @@ function WriterPanel({ node, patch }) {
 }
 
 export default function Panel({ node, patch, picker, connections, upload, remove }) {
+  const [error, setError] = useState(null)
+  useEffect(() => setError(null), [node.id])
   return (
     <aside className="fpanel glass pop" key={node.id}>
       <h3>{nodeLabels[node.type]}</h3>
       {node.type === 'prompt' && <PromptPanel node={node} patch={patch} />}
+      {widgetTypes.includes(node.type) && <Field input={{ id: node.id, type: node.type, label: nodeLabels[node.type] }} value={node.data.value} onChange={(value) => patch(node.id, { value })} setError={setError} />}
+      {error && <p className="sheet-error" role="alert">{error}</p>}
       {node.type === 'image' && <ImagePanel node={node} patch={patch} upload={upload} />}
       {node.type === 'writer' && <WriterPanel node={node} patch={patch} />}
       {node.type === 'model' && <ModelPanel node={node} patch={patch} picker={picker} connections={connections} />}

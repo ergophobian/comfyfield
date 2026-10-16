@@ -3,6 +3,7 @@ import { Handle, Position } from '@xyflow/react'
 import { Logo, brandOf } from '../../lib/brands.jsx'
 import { nodeLabels } from '../../lib/flowStore.js'
 import { promptsOf } from '../../lib/flowEngine.js'
+import { widgetReady } from '../../../shared/widgetInputs.js'
 
 export const FlowCtx = createContext(null)
 const useFlow = () => useContext(FlowCtx)
@@ -171,4 +172,15 @@ export function NoteNode({ id, data, selected }) {
   )
 }
 
-export const nodeTypes = { prompt: PromptNode, image: ImageNode, writer: WriterNode, model: ModelNode, approve: ApproveNode, output: OutputNode, note: NoteNode }
+export function WidgetNode({ type, data, selected }) {
+  const value = data.value
+  const ready = widgetReady(type, value)
+  const image = type === 'video' ? value?.posterUrl : type === 'face' ? value?.faceUrl || value?.url : value?.url
+  return <Shell type={type} selected={selected} output tag={ready ? 'Ready' : 'Set input'}>
+    {image && <img className="fp-img" src={image} alt="Input preview" />}
+    <p className="fhint">{value?.name || 'Select this node to set its input'}</p>
+    {type === 'video' && value?.trim && <p className="fhint">{value.trim.start.toFixed(2)} to {value.trim.end.toFixed(2)} seconds</p>}
+  </Shell>
+}
+
+export const nodeTypes = { mask: WidgetNode, face: WidgetNode, video: WidgetNode, crop: WidgetNode, prompt: PromptNode, image: ImageNode, writer: WriterNode, model: ModelNode, approve: ApproveNode, output: OutputNode, note: NoteNode }

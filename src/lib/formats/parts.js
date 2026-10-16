@@ -17,14 +17,19 @@ import { defineFormat } from './spec.js'
 // kind is image, video, audio or 3d. 3d has no composer, so its formats are the only way in.
 //
 // Input types:
-//   image | video | audio            value { url, name, ratio, local? }
+//   image | audio                    value { url, name, ratio, local? }
+//   video                            uploaded { url, name, ratio, duration, trim: { start, end }, posterUrl?, posterTime? }
+//   mask                             uploaded image plus maskUrl (white changes, black stays), strokes aliases maskUrl
+//   face                             image plus faceUrl and box, or characterId and Library images
+//   crop                             image plus normalized box { x, y, width, height } and aspect
 //   text | longtext                  value string, optional placeholder
 //   choice                           options [{ id, label, text?, note?, params? }], default
 //   count                            options [numbers], default, unit ('shots')
 //   character | product | brand | voice   a Library pick, value is a toRef() object
 //   draw                             an image you draw on. mode 'mask' paints the area to change,
 //                                    mode 'motion' draws arrows for where things should move.
-//                                    value { url, name, ratio, strokes } where strokes is a PNG data URL
+//                                    mask mode aliases the mask widget; motion strokes remain a PNG data URL
+// See docs/input-widgets.md for the format-runner and Flow input contract.
 // Any input can set optional, when: ['choiceId', 'optionId'] to show only for that option,
 // and half: true to take one column in the wide layout.
 
