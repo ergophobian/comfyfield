@@ -1,5 +1,5 @@
 import { generate as runComfy } from './comfy.js'
-import { comfyVars, falInput, durationsFromProps } from '../../shared/mapping.js'
+import { comfyVars, comfyRouterInput, falInput, durationsFromProps } from '../../shared/mapping.js'
 
 const schemas = new Map()
 export async function falSchema(endpoint) {
@@ -17,6 +17,8 @@ const manyImages = ['image_urls', 'input_image_urls', 'reference_image_urls']
 const hasImageInput = (props) => [...singleImage, ...manyImages].some((k) => props[k])
 
 export function acceptsImage(model, props) {
+  if (model.provider === 'comfy') return ['ltx_i2v', 'h3_i2v'].includes(model.workflow)
+  if (model.provider === 'comfyRouter') return model.kind === 'video'
   if (model.provider === 'google') return true
   if (model.provider === 'fal') return hasImageInput(props || {})
   return false
@@ -62,6 +64,13 @@ async function post(url, payload) {
 }
 
 export async function run(model, opts) {
+  if (model.provider === 'comfyRouter') {
+    const files = []
+    for (let i = 0; i < (model.kind === 'image' ? opts.count || 1 : 1); i++) {
+      files.push(...(await post('/api/comfy/router', { model: model.model, input: comfyRouterInput(model.model, opts) })).files)
+    }
+    return files
+  }
   if (model.provider === 'comfy') {
     return runComfy(model.workflow, comfyVars(model.kind, opts))
   }

@@ -79,7 +79,7 @@ export default function ModelPicker({ model, options, open = [], favorites, togg
     return () => { document.removeEventListener('pointerdown', away); document.removeEventListener('keydown', keys) }
   }, [isOpen, ordered])
 
-  const via = (m) => (m.provider === 'fal' ? 'via fal' : m.provider === 'comfy' ? 'your ComfyUI' : 'your key')
+  const via = (m) => (m.provider === 'fal' ? 'via fal' : m.provider === 'comfyRouter' ? 'via Comfy Router' : m.provider === 'comfy' ? connections.comfy?.mode === 'cloud' ? 'via Comfy Cloud' : 'your ComfyUI' : 'your key')
   const pm = preview && !preview.open ? metaOf(preview) : {}
   const pick = (id) => { choose(id); setOpen(false) }
   const nothing = !ordered.length && !openList.length

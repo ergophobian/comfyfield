@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { models as pinned } from './catalog.js'
 
 const KEY = 'comfyfield.picker'
-const first = (kind) => pinned.find((m) => m.kind === kind).id
+const first = (kind) => pinned.find((m) => m.kind === kind && m.provider !== 'comfyRouter' && !m.workflow?.endsWith('_i2v')).id
 const initial = { kind: 'image', chosen: { image: first('image'), video: first('video'), audio: first('audio') }, extra: [], favorites: [] }
 
 function load() {
@@ -10,11 +10,11 @@ function load() {
 }
 
 // Which mode and model the composer is on, plus fal models added from the Models page.
-export function usePicker() {
+export function usePicker(connections = {}) {
   const [state, setState] = useState(load)
   useEffect(() => { try { localStorage.setItem(KEY, JSON.stringify(state)) } catch {} }, [state])
 
-  const all = [...pinned, ...state.extra.filter((x) => !pinned.some((p) => p.id === x.id))]
+  const all = [...pinned, ...state.extra.filter((x) => !pinned.some((p) => p.id === x.id))].filter((m) => m.provider !== 'comfyRouter' || connections.comfyRouter?.connected)
   const model = all.find((m) => m.id === state.chosen[state.kind]) || all.find((m) => m.kind === state.kind)
 
   return {

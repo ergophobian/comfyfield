@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { providerInfo, plannedAccounts } from '../lib/catalog.js'
 import { getConnections, saveConnection, testConnection } from '../lib/providers.js'
+import { useApp } from '../lib/appContext.js'
 
 function Provider({ id, info, state, onSaved }) {
   const [values, setValues] = useState({})
@@ -26,16 +27,19 @@ function Provider({ id, info, state, onSaved }) {
         <span className={`status${state?.connected ? ' ok' : ''}`}>{state?.connected ? 'Connected' : 'Not connected'}</span>
       </div>
       <p>{info.blurb}</p>
-      {info.fields.map((f) => (
+      {info.fields.filter((f) => !(id === 'comfy' && f.id === 'url' && (values.mode || state?.mode) === 'cloud')).map((f) => (
         <div className="field" key={f.id}>
-          <label>{f.label}</label>
-          <input
+          <label htmlFor={`${id}-${f.id}`}>{f.label}</label>
+          {f.options ? <select className="sb-select" id={`${id}-${f.id}`} value={values[f.id] || state?.[f.id] || 'local'} onChange={(e) => setValues((v) => ({ ...v, [f.id]: e.target.value }))}>
+            {f.options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select> : <input
+            id={`${id}-${f.id}`}
             type={f.secret ? 'password' : 'text'}
             value={values[f.id] || ''}
             onChange={(e) => setValues((v) => ({ ...v, [f.id]: e.target.value }))}
             placeholder={(f.secret ? state?.key : state?.[f.id]) || f.placeholder}
             autoComplete="off"
-          />
+          />}
         </div>
       ))}
       <div className="conn-actions">
@@ -48,8 +52,9 @@ function Provider({ id, info, state, onSaved }) {
 }
 
 export default function Connections() {
+  const { refreshConnections } = useApp()
   const [state, setState] = useState({})
-  const refresh = () => getConnections().then(setState)
+  const refresh = () => getConnections().then((next) => { setState(next); refreshConnections() })
   useEffect(() => { refresh() }, [])
 
   return (
