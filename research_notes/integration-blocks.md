@@ -108,8 +108,10 @@ Passed locally on Windows with Node 24:
 All checks run in CI on Windows, macOS and Linux. Browser checks start isolated
 fixtures, use separate Chrome profiles/caches and never use live providers. The
 format and agent UI checks serve the production build to avoid optimizer reloads;
-run the build before these checks. Browser transport uses the test-only ws
-dependency, with bounded protocol waits and mock-keychain Chrome flags.
+run the build before these checks. Browser transport uses Node's WebSocket client,
+with bounded protocol waits and mock-keychain Chrome flags. CI pins Chrome's
+explicit version because setup-chrome's channel installer drops the macOS `.app`
+bundle; see [upstream issue #658](https://github.com/browser-actions/setup-chrome/issues/658).
 Synthetic artifacts are labeled mock media. New integration screenshots:
 
 - [Effect prompt review at desktop width](format-runner/mock-writer-review-desktop.png)

@@ -1,4 +1,3 @@
-import WebSocket from 'ws'
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs'

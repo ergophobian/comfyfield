@@ -1,4 +1,3 @@
-import WebSocket from 'ws'
 // Run against scripts/agent-ui-fixture.mjs. Uses a separate headless Chrome profile.
 import assert from 'node:assert/strict'
 import fs from 'node:fs'

@@ -22,7 +22,8 @@ jobs:
       - uses: browser-actions/setup-chrome@v2
         id: chrome
         with:
-          chrome-version: stable
+          # Explicit versions preserve the macOS .app bundle (setup-chrome #658).
+          chrome-version: 155.0.8059.84
       - run: npx vite build
       - run: node scripts/verify.mjs
         env:
