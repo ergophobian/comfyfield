@@ -49,8 +49,13 @@ function collect(outputs) {
   return files
 }
 
-export async function generate(workflow, vars, opts) {
-  const graph = await loadWorkflow(workflow, vars)
-  const id = await queue(graph)
-  return waitFor(id, opts)
+export async function generate(workflow, vars) {
+  const res = await fetch('/api/comfy/run', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ workflow, vars }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || `Comfy request failed (${res.status})`)
+  return data.files
 }

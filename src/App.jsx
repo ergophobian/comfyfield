@@ -42,15 +42,16 @@ import { usePicker } from './lib/usePicker.js'
 export default function App() {
   // Lifted here so a render keeps going when you switch pages.
   const gens = useGenerations()
-  const picker = usePicker()
   const { pathname, search } = useLocation()
   const [connections, setConnections] = useState({})
+  const picker = usePicker(connections)
   const [sheet, setSheet] = useState(null)
   useEffect(() => { getConnections().then(setConnections) }, [])
 
   // One format sheet for the whole app, so any page, card or "Use in" menu can open a format.
   const ctx = useMemo(() => ({
     gens, picker, connections,
+    refreshConnections: () => getConnections().then(setConnections),
     openFormat: (f, initial) => {
       const format = typeof f === 'string' ? formatById(f) : f
       if (format && isWired(format)) setSheet({ format, initial })

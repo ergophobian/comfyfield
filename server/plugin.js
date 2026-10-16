@@ -187,6 +187,14 @@ function mount(app) {
         return send(res, 200, { files: await core.runFal(await body(req)) })
       }
       if (url.pathname === '/api/fal/models') return send(res, 200, await core.falModels(url.searchParams.toString()))
+      if (url.pathname === '/api/comfy/router/models') return send(res, 200, await core.listComfyRouterModels(Object.fromEntries(url.searchParams)))
+      if (url.pathname === '/api/comfy/router' && req.method === 'POST') return send(res, 200, { files: await core.runComfyRouter(await body(req)) })
+      if (url.pathname === '/api/comfy/run' && req.method === 'POST') {
+        const { workflow, vars } = await body(req)
+        const files = await core.runComfy(workflow, vars)
+        const base = (core.config('comfy').url || 'http://127.0.0.1:8188').replace(/\/+$/, '')
+        return send(res, 200, { files: files.map(({ path: localPath, ...f }) => ({ ...f, url: f.url.startsWith(`${base}/`) ? `/comfy${f.url.slice(base.length)}` : f.url })) })
+      }
       if (url.pathname === '/api/fal/schema') return send(res, 200, await core.falSchema(url.searchParams.get('id')))
       if (url.pathname === '/api/elevenlabs' && req.method === 'POST') {
         return send(res, 200, { files: await core.runElevenLabs(await body(req)) })
@@ -231,7 +239,7 @@ function mount(app) {
 
 async function proxyComfy(req, res, url) {
   const c = core.config('comfy')
-  const target = `${c.url || 'http://127.0.0.1:8188'}${url.pathname.replace(/^\/comfy/, '')}${url.search}`
+  const target = `${(c.url || 'http://127.0.0.1:8188').replace(/\/+$/, '')}${url.pathname.replace(/^\/comfy/, '')}${url.search}`
   const headers = { 'Content-Type': req.headers['content-type'] || 'application/json' }
   if (c.key) headers['X-API-Key'] = c.key
   let upstream

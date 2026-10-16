@@ -53,8 +53,8 @@ function CreateVideo({ preset, onPresets, setError, onRan, addBatch }) {
   const durations = useDurations(model)
   const inputs = useModelInputs(model, Boolean(start))
 
-  // LTX on ComfyUI starts from text only; every other model takes a start frame.
-  const canAttach = model.open || model.provider !== 'comfy'
+  const canAttach = model.open || model.provider !== 'comfy' || ['ltx_i2v', 'h3_i2v'].includes(model.workflow)
+  const needsFrame = ['ltx_i2v', 'h3_i2v'].includes(model.workflow)
   const endOk = model.open || (Boolean(inputs.endFrame) && Boolean(start))
   const endNote = !canAttach ? `${model.name} starts from text only` : !model.open && !inputs.endFrame ? `${model.name} takes a start frame only` : 'Add a start frame first'
   const images = canAttach ? [start?.url, ...refs.flatMap((r) => r.images.slice(0, 1))].filter(Boolean) : []
@@ -78,7 +78,7 @@ function CreateVideo({ preset, onPresets, setError, onRan, addBatch }) {
 
   const go = (e) => {
     e?.preventDefault()
-    if (!prompts.length || !connected) return
+    if (!prompts.length || !connected || (needsFrame && !start)) return
     const batch = { id: crypto.randomUUID(), prompts, total, model: model.name, kind: 'video' }
     if (batching) addBatch(batch)
     const params = paramsFor(inputs, { resolution, sound, endFrame: endOk && start && end ? end.url : null })
@@ -104,7 +104,7 @@ function CreateVideo({ preset, onPresets, setError, onRan, addBatch }) {
     <form className="gen-form" onSubmit={go}>
       <PresetCard preset={preset} model={model} onChange={onPresets} />
       <div className="gen-frames">
-        <Slot id="start-frame" title="Start frame" tag="Optional" value={start} onChange={(v) => { setStart(v); if (!v) setEnd(null) }} setError={setError}
+        <Slot id="start-frame" title="Start frame" tag={needsFrame ? 'Required' : 'Optional'} value={start} onChange={(v) => { setStart(v); if (!v) setEnd(null) }} setError={setError}
           disabled={!canAttach} note={`${model.name} starts from text only`} hint="Image to animate" />
         <Slot title="End frame" tag="Optional" value={end} onChange={setEnd} setError={setError} disabled={!endOk} note={endNote} hint="Where the shot lands" />
       </div>
@@ -175,14 +175,14 @@ function CreateVideo({ preset, onPresets, setError, onRan, addBatch }) {
       <StatusNote model={model} connected={connected} />
       <div className="gen-go-row">
         {batching && prompts.length > 0 && !model.open && <button type="button" className="btn-soft" onClick={openAsFlow}>Open as flow</button>}
-        <GoButton total={total} cost={costText(cost)} disabled={!total || !connected} />
+        <GoButton total={total} cost={costText(cost)} disabled={!total || !connected || (needsFrame && !start)} />
       </div>
       {connected && (
         <p className="gen-sum">
           {total > 0 ? (
             <>
               <strong>{batching ? `${prompts.length} ${prompts.length === 1 ? 'prompt' : 'prompts'} × ${perPrompt} = ` : ''}{total} {noun.video[total === 1 ? 0 : 1]}</strong>
-              {cost ? ` · ${costText(cost)}` : model.provider === 'comfy' ? ' · runs on your GPU, no API cost' : ''}
+              {cost ? ` · ${costText(cost)}` : model.provider === 'comfy' ? connections.comfy?.mode === 'cloud' || model.workflow === 'h3_i2v' ? ' · uses Comfy credits' : ' · runs on your GPU' : model.provider === 'comfyRouter' ? ' · uses Comfy credits' : ''}
             </>
           ) : 'The cost shows on Generate before you run'}
           {bal && <span>{bal}</span>}

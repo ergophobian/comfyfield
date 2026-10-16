@@ -23,7 +23,19 @@ export function fill(node, vars) {
 
 export function comfyVars(kind, o) {
   const [width, height] = kind === 'video' ? videoSize(o.aspect) : aspectSize[o.aspect]
-  return { prompt: o.prompt, width, height, count: o.count, frames: o.duration * 24 + 1, seed: Math.floor(Math.random() * 2 ** 31), ...o.params, ...o.fields }
+  return { prompt: o.prompt, width, height, count: o.count || 1, frames: (o.duration || 5) * 24 + 1, duration: o.duration || 5, image: o.images?.[0] || o.image, seed: Math.floor(Math.random() * 2 ** 31), ...o.params, ...o.fields }
+}
+
+export function comfyRouterInput(model, o) {
+  if (model === 'bfl/flux-2-pro') {
+    const [width, height] = aspectSize[o.aspect || '16:9']
+    return { prompt: o.prompt, width, height, ...o.params }
+  }
+  if (model === 'byteplus/dreamina-seedance-2-5-260628') {
+    const image = o.images?.[0] || o.image
+    return { content: [{ type: 'text', text: o.prompt }, ...(image ? [{ type: 'image_url', image_url: { url: image }, role: 'first_frame' }] : [])], duration: o.duration || 5, resolution: '720p', ...(image ? {} : { ratio: o.aspect || '16:9' }), ...o.params }
+  }
+  throw new Error('This Router model needs its native input body. Call runComfyRouter with input.')
 }
 
 // Durations a model accepts, in seconds, from its fal schema properties.

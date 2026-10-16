@@ -2,6 +2,10 @@
 // Pinned models in the composer. Any other fal model can be picked from the Models page.
 // provider 'comfy' runs public/workflows/<workflow>.json; 'fal' fills inputs from the model's schema.
 export const models = [
+  { id: 'comfy-router-flux', kind: 'image', provider: 'comfyRouter', name: 'Flux 2 Pro', note: 'Hosted through Comfy Router', model: 'bfl/flux-2-pro' },
+  { id: 'comfy-router-seedance', kind: 'video', provider: 'comfyRouter', name: 'Seedance 2.5', note: 'Hosted through Comfy Router', model: 'byteplus/dreamina-seedance-2-5-260628', durations: [5, 8, 10] },
+  { id: 'comfy-ltx-i2v', kind: 'video', provider: 'comfy', name: 'LTX image to video', note: 'LTX Video 2B on Local or Comfy Cloud. Attach a start image.', workflow: 'ltx_i2v', durations: [3, 5, 8] },
+  { id: 'comfy-h3-i2v', kind: 'video', provider: 'comfy', name: 'MiniMax H3 image to video', note: 'Comfy partner node on Local or Comfy Cloud. Attach a start image. Uses Comfy credits.', workflow: 'h3_i2v', durations: [5, 8, 10] },
   { id: 'comfy-flux', kind: 'image', provider: 'comfy', name: 'FLUX', note: 'On your ComfyUI', workflow: 'image_flux' },
   { id: 'comfy-sdxl', kind: 'image', provider: 'comfy', name: 'SDXL', note: 'On your ComfyUI', workflow: 'image_sdxl' },
   { id: 'fal:fal-ai/nano-banana-pro', kind: 'image', provider: 'fal', name: 'Nano Banana Pro', note: 'Google, via fal', model: 'fal-ai/nano-banana-pro' },
@@ -36,9 +40,10 @@ export const falCategories = [
 ]
 
 export const providerInfo = {
-  comfy: { name: 'ComfyUI', blurb: 'Your own ComfyUI, local or hosted. Runs the open workflows in this repo.', fields: [
+  comfy: { name: 'ComfyUI', blurb: 'Run workflows on your own ComfyUI or Comfy Cloud. Your Comfy key also unlocks hosted models through Comfy Router.', fields: [
+    { id: 'mode', label: 'Run workflows on', options: [{ value: 'local', label: 'Local' }, { value: 'cloud', label: 'Comfy Cloud' }] },
     { id: 'url', label: 'Server URL', placeholder: 'http://127.0.0.1:8188' },
-    { id: 'key', label: 'Comfy API key (optional)', placeholder: 'Needed for partner nodes like Kling, Veo and Seedance', secret: true },
+    { id: 'key', label: 'Comfy API key', placeholder: 'Required for Cloud, Router and partner nodes', secret: true },
   ], link: 'https://docs.comfy.org' },
   fal: { name: 'fal', blurb: 'One key for hosted FLUX, Kling, Seedance, Veo and more. Pay per run.', fields: [
     { id: 'key', label: 'API key', placeholder: 'fal key', secret: true },
