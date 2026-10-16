@@ -1,3 +1,5 @@
+import { defineFormat } from './formats/spec.js'
+
 // A recipe is a saved generation setup with a few exposed inputs.
 //   model     fal endpoint id (or one of our catalog model ids)
 //   inputs    image | text | choice. An image can name the fal `field` it fills; a choice option can carry `params` and `text`.
@@ -128,7 +130,7 @@ export const recipes = [
     settings: { aspect: 'auto' },
     cover: gradient('#d4e4ff', '#9cc0ff', '#6a98f5'),
   },
-]
+].map(defineFormat)
 
 export const recipesFor = (kind) => recipes.filter((r) => r.kind === kind)
 
