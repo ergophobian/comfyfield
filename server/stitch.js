@@ -130,9 +130,13 @@ export async function renderStitch(options, { home, mediaPath, binary, timeout, 
   const args = ['-y', '-f', 'concat', '-safe', '1', '-i', 'clips.txt']
   if (opts.music) {
     const file = await localFile(opts.music.url, dir, 'music-input', mediaPath)
-    if (!(await inspect(file, binary, timeout)).audio) throw invalid('The music track has no audio.')
+    const track = await inspect(file, binary, timeout)
+    if (!track.audio || track.duration <= 0) throw invalid('The music track has no playable audio.')
+    fs.copyFileSync(file, path.join(dir, 'music-source'))
+    // A finite playlist avoids ffmpeg 6's looped-input shutdown hang on Apple Silicon.
+    fs.writeFileSync(path.join(dir, 'music.txt'), Array.from({ length: Math.ceil(duration / track.duration) }, () => "file 'music-source'").join('\n'))
     const fade = Math.min(opts.music.fade, duration / 2)
-    args.push('-stream_loop', '-1', '-t', String(duration), '-protocol_whitelist', 'file,pipe', '-i', file,
+    args.push('-f', 'concat', '-safe', '1', '-i', 'music.txt',
       '-filter_complex', `[1:a]aresample=48000,volume=${opts.music.volume},atrim=duration=${duration},afade=t=in:d=${fade},afade=t=out:st=${duration - fade}:d=${fade}[music];[0:a][music]amix=inputs=2:duration=first:normalize=0[audio]`,
       '-map', '0:v:0', '-map', '[audio]')
   } else args.push('-map', '0:v:0', '-map', '0:a:0')
