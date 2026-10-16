@@ -51,7 +51,7 @@ const extOf = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', '
 function saveDataUrl(dataUrl) {
   const m = /^data:([\w.+/-]+);base64,(.+)$/s.exec(dataUrl || '')
   if (!m || !extOf[m[1]]) throw Object.assign(new Error('Upload a png, jpg, webp, gif or svg image.'), { status: 400 })
-  return core.saveMedia(Buffer.from(m[2], 'base64'), extOf[m[1]])
+  return core.saveMedia(Buffer.from(m[2], "base64"), extOf[m[1]]).url
 }
 
 async function libraryRoute(req, res, url) {
@@ -137,7 +137,7 @@ async function pullImage(src) {
     const type = (r.headers.get('content-type') || '').split(';')[0].trim()
     if (!r.ok || !extOf[type]) return null
     const buf = Buffer.from(await r.arrayBuffer())
-    return buf.length < 8_000_000 ? core.saveMedia(buf, extOf[type]) : null
+    return buf.length < 8_000_000 ? core.saveMedia(buf, extOf[type]).url : null
   } catch { return null }
 }
 
