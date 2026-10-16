@@ -4,6 +4,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
 import * as core from './core.js'
+import { upload } from './upload.js'
+import { serveMedia } from './serveMedia.js'
 
 export { providers } from './core.js'
 
@@ -11,36 +13,6 @@ async function body(req) {
   let raw = ''
   for await (const chunk of req) raw += chunk
   return raw ? JSON.parse(raw) : {}
-}
-
-async function rawBody(req, limit = 40 * 1024 * 1024) {
-  const chunks = []
-  let size = 0
-  for await (const chunk of req) {
-    size += chunk.length
-    if (size > limit) throw Object.assign(new Error('That file is too large (40 MB max).'), { status: 413 })
-    chunks.push(chunk)
-  }
-  return Buffer.concat(chunks)
-}
-
-// Accepts a raw image body, or JSON { dataUrl } / { data, type } where data is base64 or a data URI.
-async function upload(req) {
-  const type = (req.headers['content-type'] || '').split(';')[0]
-  let buf
-  let mime = type
-  if (type === 'application/json') {
-    const json = JSON.parse((await rawBody(req)).toString('utf8') || '{}')
-    const data = json.dataUrl || json.data || ''
-    const m = /^data:([^;,]+);base64,/.exec(data)
-    mime = m ? m[1] : json.type || 'image/png'
-    buf = Buffer.from(m ? data.slice(m[0].length) : data, 'base64')
-  } else {
-    buf = await rawBody(req)
-  }
-  if (!buf.length) throw Object.assign(new Error('No file received.'), { status: 400 })
-  if (!/^image\/(png|jpe?g|webp|gif|svg\+xml)$/.test(mime)) throw Object.assign(new Error('Attach a PNG, JPG, WebP, GIF or SVG image.'), { status: 415 })
-  return { url: core.saveMedia(buf, core.mimeExt(mime)).url, type: mime }
 }
 
 function send(res, status, data) {
@@ -225,14 +197,13 @@ function mount(app) {
       if (url.pathname === '/api/google' && req.method === 'POST') {
         return send(res, 200, { files: await core.runGoogle(await body(req)) })
       }
-      if (url.pathname === '/api/upload' && req.method === 'POST') return send(res, 200, await upload(req))
+      if (url.pathname === '/api/upload' && req.method === 'POST') return send(res, 200, await upload(req, core.saveMedia))
       if (url.pathname === '/api/library/import' && req.method === 'POST') return send(res, 200, await importUrl(await body(req)))
       if (url.pathname.startsWith('/api/library/') && await libraryRoute(req, res, url)) return
       if (url.pathname.startsWith('/media/')) {
         const file = core.mediaPath(url.pathname)
         if (!fs.existsSync(file)) return send(res, 404, { error: 'Not found' })
-        res.setHeader('Content-Type', core.mediaTypes[path.extname(file).slice(1)] || 'application/octet-stream')
-        return fs.createReadStream(file).pipe(res)
+        return serveMedia(req, res, file, core.mediaTypes[path.extname(file).slice(1)] || 'application/octet-stream')
       }
       if (url.pathname.startsWith('/comfy/')) return proxyComfy(req, res, url)
     } catch (e) {
