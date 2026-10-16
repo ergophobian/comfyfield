@@ -11,12 +11,13 @@ import { getConnections } from '../lib/providers.js'
 const addable = [
   ['prompt', 'Text or a list of prompts'],
   ['image', 'Upload a reference image'],
+  ['writer', 'Write a prompt, then review and send'],
   ['model', 'Any image, video or audio model'],
   ['approve', 'A gate you open with Send'],
   ['output', 'A gallery of results'],
   ['note', 'A note for yourself'],
 ]
-const miniColor = { prompt: '#8a8fa6', image: '#8a8fa6', model: '#4a5bff', approve: '#f5b301', output: '#138a4b', note: '#c3c6d4' }
+const miniColor = { prompt: '#8a8fa6', image: '#8a8fa6', writer: 'var(--blue)', model: '#4a5bff', approve: '#f5b301', output: '#138a4b', note: '#c3c6d4' }
 
 function Pop({ label, children, align = 'left' }) {
   const [open, setOpen] = useState(false)
@@ -66,6 +67,8 @@ function Canvas({ picker }) {
     pick: (id, item) => engine.togglePick(flow, id, item),
     stop: (id) => engine.stop(flow, id),
     send: async (id) => say(await engine.send(flow, id)),
+    editWriter: (id, text) => engine.editWriter(flow, id, text),
+    sendWriter: async (id) => say(await engine.sendWriter(flow, id)),
     rerun: async (id) => say(await engine.rerun(flow, id)),
     rerunGate: async (id) => say(await engine.rerunGate(flow, id)),
   }
@@ -97,7 +100,7 @@ function Canvas({ picker }) {
     const t = flow.nodes.find((n) => n.id === c.target)
     if (!s || !t || s.id === t.id) return false
     if (['output', 'note'].includes(s.type) || ['prompt', 'image', 'note'].includes(t.type)) return false
-    if (s.type === 'prompt' && t.type !== 'model') return false
+    if (s.type === 'prompt' && !['model', 'writer'].includes(t.type)) return false
     return !downstreamOf(flow, t.id).has(s.id) && !flow.edges.some((e) => e.source === s.id && e.target === t.id)
   }, [flow])
 
@@ -155,7 +158,7 @@ function Canvas({ picker }) {
           </Pop>
           <button type="button" className="btn-soft" onClick={download} disabled={!flow.nodes.length}>Export</button>
           {hasOutput && <button type="button" className="btn-soft" onClick={regenerate} disabled={busy}>{wipe ? 'Wipe and re-run?' : 'Regenerate all'}</button>}
-          <button type="button" className="btn-blue sm" onClick={run} disabled={busy || !flow.nodes.some((n) => n.type === 'model')}>{busy ? 'Running' : 'Run'}</button>
+          <button type="button" className="btn-blue sm" onClick={run} disabled={busy || !flow.nodes.some((n) => ['model', 'writer'].includes(n.type))}>{busy ? 'Running' : 'Run'}</button>
         </div>
 
         <ReactFlow key={flow.id} nodes={flow.nodes} edges={edges} nodeTypes={nodeTypes}

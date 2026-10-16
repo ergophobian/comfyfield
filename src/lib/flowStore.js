@@ -1,5 +1,5 @@
 import { models } from './catalog.js'
-import { run } from './providers.js'
+import { run, writePrompt } from './providers.js'
 import { createEngine } from './flowEngine.js'
 
 const KEY = 'comfyfield.flows'
@@ -7,11 +7,12 @@ const RUN = 'comfyfield.flowrun.'
 const uid = () => crypto.randomUUID().slice(0, 8)
 const find = (id, kind) => models.find((m) => m.id === id) || models.find((m) => m.kind === kind)
 
-export const nodeLabels = { prompt: 'Prompt', image: 'Image', model: 'Model', approve: 'Approve', output: 'Output', note: 'Note' }
+export const nodeLabels = { prompt: 'Prompt', image: 'Image', writer: 'Writer', model: 'Model', approve: 'Approve', output: 'Output', note: 'Note' }
 
 export function defaults(type) {
   if (type === 'prompt') return { mode: 'single', text: '' }
   if (type === 'image') return { url: null, name: '' }
+  if (type === 'writer') return { instructions: 'Write one vivid generation prompt from the reference images and user note. Preserve visible details. Return only the finished prompt.', note: '', target: 'image' }
   if (type === 'model') return { kind: 'image', model: find(null, 'image'), aspect: '1:1', duration: 5, takes: 1, prompt: '' }
   if (type === 'note') return { text: '' }
   return {}
@@ -29,6 +30,18 @@ const imageModel = () => find('g-nano-banana-2', 'image')
 const videoModel = () => find('g-veo-fast', 'video')
 
 export const starters = [
+  {
+    id: 'write-then-render',
+    name: 'Write then render',
+    blurb: 'Turn a short note into a full prompt. Review and edit it before you send.',
+    steps: ['Note', 'Writer', 'Model', 'Output'],
+    make: () => build('Write then render', [
+      ['p', 'prompt', 0, 40, { text: 'A paper boat on a rainy street at dusk, warm window light' }],
+      ['w', 'writer', 340, 40],
+      ['m', 'model', 720, 40, { kind: 'image', model: imageModel(), aspect: '16:9', takes: 1 }],
+      ['o', 'output', 1080, 40],
+    ], [['p', 'w'], ['w', 'm'], ['m', 'o']]),
+  },
   {
     id: 'prompt-list-video',
     name: 'Prompt list to video',
@@ -153,6 +166,7 @@ export function engineFor(id) {
   let timer
   const eng = createEngine({
     run,
+    writePrompt,
     onChange: (state) => {
       clearTimeout(timer)
       timer = setTimeout(() => {

@@ -200,6 +200,94 @@ check('fan-in waits for every input', async () => {
   assert.equal(m.count('Vid'), 2)
 })
 
+const writerFlow = () => ({
+  nodes: [n('p', 'prompt', { text: 'Keep the red coat' }), n('i', 'image', { url: 'mock://reference' }),
+    n('w', 'writer', { instructions: 'Describe the images', note: 'At dusk', target: 'video' }),
+    n('v', 'model', { model: vid, takes: 1 })],
+  edges: [e('p', 'w'), e('i', 'w'), e('w', 'v')],
+})
+
+check('writer gathers images and note, waits for review, sends edited text without rewriting', async () => {
+  const m = mock()
+  const writes = []
+  const eng = createEngine({ run: m.run, writePrompt: async (input) => { writes.push(input); return 'A red coat at dusk' } })
+  const f = writerFlow()
+  assert.equal((await eng.sendWriter(f, 'w')).ok, false)
+  await eng.runNew(f)
+  assert.deepEqual(writes, [{ instructions: 'Describe the images', note: 'At dusk\n\nKeep the red coat', images: ['mock://reference'], target: 'video' }])
+  assert.equal(eng.hasOutput(f), true)
+  assert.equal(eng.state.w.items[0].text, 'A red coat at dusk')
+  assert.equal(eng.itemsOf(f, 'w'), null)
+  assert.equal(m.calls.length, 0)
+  await eng.runNew(f)
+  assert.equal(writes.length, 1)
+  eng.editWriter(f, 'w', '')
+  assert.equal((await eng.sendWriter(f, 'w')).ok, false)
+  eng.editWriter(f, 'w', 'Edited prompt')
+  assert.equal((await eng.sendWriter(f, 'w')).ok, true)
+  assert.equal(m.calls[0].prompt, 'Edited prompt')
+  assert.equal(writes.length, 1)
+  assert.equal((await eng.sendWriter(f, 'w')).ok, false)
+  eng.editWriter(f, 'w', 'Second edit')
+  await eng.sendWriter(f, 'w')
+  assert.equal(m.calls.length, 1, 'Send preserves existing model output')
+  await eng.rerun(f, 'v')
+  assert.equal(m.calls[1].prompt, 'Second edit')
+})
+
+check('writer works with approval gates, persistence, rerun and regenerate all', async () => {
+  const m = mock()
+  let writes = 0
+  const opts = { run: m.run, writePrompt: async () => `Draft ${++writes}` }
+  const eng = createEngine(opts)
+  const f = writerFlow()
+  f.nodes.push(n('a', 'approve'))
+  f.edges = [e('p', 'w'), e('i', 'w'), e('w', 'a'), e('a', 'v')]
+  await eng.runNew(f)
+  await eng.sendWriter(f, 'w')
+  assert.equal(eng.gate('a').status, 'reviewing')
+  assert.equal(eng.reviewItems(f, 'a')[0].kind, 'text')
+  assert.equal(m.calls.length, 0)
+  eng.editWriter(f, 'w', 'Final draft')
+  assert.equal(eng.gate('a').status, 'empty')
+  await eng.sendWriter(f, 'w')
+  const restored = createEngine(opts)
+  restored.load(JSON.parse(JSON.stringify(eng.state)))
+  await restored.send(f, 'a')
+  assert.equal(m.calls[0].prompt, 'Final draft')
+  assert.equal(writes, 1)
+  await restored.rerunGate(f, 'a')
+  assert.equal(writes, 2)
+  assert.equal(restored.itemsOf(f, 'w'), null)
+  assert.equal(restored.gate('a').status, 'empty')
+  await restored.sendWriter(f, 'w')
+  await restored.send(f, 'a')
+  assert.equal(m.calls.length, 1)
+  await restored.regenerateAll(f)
+  assert.equal(writes, 3)
+  assert.equal(restored.state.v.items.length, 0)
+  assert.equal(restored.itemsOf(f, 'w'), null)
+})
+
+check('writer failures retry without rendering and respect upstream gates', async () => {
+  const m = mock()
+  let writes = 0
+  const eng = createEngine({ run: m.run, writePrompt: async () => { if (++writes === 1) throw new Error('LLM unavailable'); return 'Recovered' } })
+  const f = writerFlow()
+  f.nodes.push(n('a', 'approve'))
+  f.edges = [e('i', 'a'), e('a', 'w'), e('p', 'w'), e('w', 'v')]
+  await eng.runNew(f)
+  assert.equal(writes, 0)
+  await eng.send(f, 'a')
+  assert.equal(eng.state.w.items[0].error, 'LLM unavailable')
+  assert.equal(m.calls.length, 0)
+  await eng.runNew(f)
+  assert.equal(writes, 2)
+  assert.equal(m.calls.length, 0)
+  await eng.sendWriter(f, 'w')
+  assert.equal(m.calls[0].prompt, 'Recovered')
+})
+
 let bad = 0
 for (const [name, fn] of checks) {
   try { await fn(); console.log('ok   ', name) } catch (err) { bad++; console.log('FAIL ', name, '\n     ', err.message) }
