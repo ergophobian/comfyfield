@@ -109,8 +109,8 @@ try {
   assert.equal(errors.length, 0, JSON.stringify(errors))
   console.log('ok    desktop/mobile chat, approval, canvas presence, stop, conflicting edits and missing-agent setup; screenshots saved')
 } finally {
-  await Promise.all(fixtures.map((server) => server.close()))
   socket?.close()
   chrome.kill()
+  await Promise.all(fixtures.map((server) => server.close()))
   for (const p of pending.values()) { clearTimeout(p.timer); p.reject(new Error('Chrome closed')) }
 }

@@ -9,7 +9,7 @@ import api from '../server/plugin.js'
 
 const dir = path.resolve('outputs/widget-browser')
 fs.mkdirSync(dir, { recursive: true })
-process.env.COMFYFIELD_HOME = dir
+process.env.COMFYFIELD_HOME = fs.mkdtempSync(path.join(dir, 'storage-'))
 const fixtureImage = '/widget-fixture.png'
 const mock = {
   name: 'widget-check-fixtures',
@@ -172,7 +172,7 @@ try {
   await cdp('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
   assert.ok((await values()).crop.box.x > before, 'touch drag moves crop')
   await cdp('Page.navigate', { url: `${base}/flows` })
-  await wait(`document.querySelector('.flows') && document.querySelector('.react-flow__renderer') && !document.body.textContent.includes('Loading flows')`)
+  await wait(`document.querySelector('.flows') && document.querySelector('.react-flow__renderer') && !document.querySelector('.agent-flow-status')`)
   for (const type of ['mask', 'face', 'video', 'crop']) {
     await js(`(()=>{const b=[...document.querySelectorAll('.ftool button')].find(b=>b.textContent==='Add');b.click()})()`)
     await wait(`[...document.querySelectorAll('.fpop .menu button')].some(b=>b.textContent.startsWith('Mask painter'))`)
