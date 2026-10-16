@@ -2,11 +2,11 @@ import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { IconClose } from '../Icons.jsx'
 import { IconPen } from './icons.jsx'
-import { formatsFor } from '../../lib/formats/index.js'
+import { allFormats } from '../../lib/formats/index.js'
 import { covers } from '../../lib/formats/parts.js'
 
 // Motion presets are the camera move formats. In Create video a preset adds its move to the prompt for whichever model runs.
-export const cameraPresets = () => formatsFor({ kind: 'video', category: 'camera', openOnly: false })
+export const cameraPresets = () => allFormats.filter((f) => f.kind === 'video' && f.category === 'camera')
 
 export const general = { id: 'general', name: 'General', blurb: 'No preset. Your prompt drives the camera.', cover: covers.slate }
 

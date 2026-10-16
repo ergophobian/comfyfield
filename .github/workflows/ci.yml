@@ -22,4 +22,8 @@ jobs:
       - run: npx vite build
       - run: node scripts/flow-checks.mjs
       - run: node scripts/theme-check.mjs
+      - run: node scripts/format-check.mjs
+      - run: node scripts/format-runner-checks.mjs
+      - run: node scripts/format-ui-check.mjs
+        if: runner.os == 'Linux'
       - run: node bin/comfyfield.js --help

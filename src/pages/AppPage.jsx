@@ -7,7 +7,7 @@ import { mainInput, pathFor, valuesFrom } from '../components/apps/data.js'
 import { IconAudio, IconChevron, IconCube, IconImage, IconSpark, IconVideo } from '../components/Icons.jsx'
 import { useApp } from '../lib/appContext.js'
 import { appsIn, categoryOf, formatById, formats, hubs, isWired } from '../lib/formats/index.js'
-import { initialValues, missingInputs, recipeModel, recipeOptions, visibleInputs } from '../lib/recipes.js'
+import { initialValues, missingInputs, recipeModel, visibleInputs } from '../lib/recipes.js'
 import { models as catalog, providerInfo } from '../lib/catalog.js'
 import { estimate, money, useModelMeta } from '../lib/cost.js'
 
@@ -21,7 +21,8 @@ export default function AppPage() {
   const { id } = useParams()
   const { pathname } = useLocation()
   const motion = pathname.startsWith('/motion')
-  const format = formatById(id)
+  const found = formatById(id)
+  const format = found && isWired(found) ? found : null
   const home = motion ? { to: '/motion', name: 'Motion presets' } : { to: '/apps', name: 'Apps' }
   // Cards at the foot of the page open another app, which should start at its top.
   useEffect(() => { window.scrollTo(0, 0) }, [id])
@@ -85,7 +86,7 @@ function AppView({ format, motion }) {
   const run = (e) => {
     e.preventDefault()
     if (!wired || missing.length || !connected) return
-    gens.generate(model, recipeOptions(format, values), { formatId: format.id })
+    gens.generateFormat(format, values).catch((e) => setError(e.message))
   }
   const use = (id, initial) => {
     const f = formatById(id)

@@ -1,10 +1,12 @@
+import { defineFormat } from './spec.js'
+
 // Shared building blocks for format definitions.
 //
 // A format is data: inputs the sheet renders, a prompt template and the workflow it will run.
 //   id, name, kind (image | video | audio), category (see index.js), blurb
 //   engine    'comfy' for open weights. The teammate's fal recipes are tagged 'fal' in index.js
 //   runsOn    model label shown on cards and the sheet, checked against Comfy Cloud and Runpod in the backend pass
-//   workflow  planned public/workflows/<id>.json. A format is wired once its workflow is in readyWorkflows
+//   workflow  public/workflows/<id>.json. Missing workflows keep the format out of runnable galleries
 //   inputs    see below. prompt fills {inputId} with the value (a choice uses its option text or label)
 //   settings  aspect ('auto' keeps the source shape), duration
 //   featured  suggested under the composer. layout 'wide' gives the sheet two columns
@@ -46,4 +48,4 @@ export const clip = { id: 'video', type: 'video', label: 'Video' }
 export const sound = { id: 'audio', type: 'audio', label: 'Audio' }
 export const note = { id: 'note', type: 'text', label: 'Extra direction', optional: true, placeholder: 'Anything else to add' }
 
-export const open = (f) => ({ engine: 'comfy', settings: {}, prompt: '', ...f })
+export const open = (f) => defineFormat({ engine: 'comfy', settings: {}, prompt: '', ...f })

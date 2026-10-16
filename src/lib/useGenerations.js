@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { run } from './providers.js'
+import { runFormat } from './formats/runner.js'
 
 const KEY = 'comfyfield.library'
 const MAX_PARALLEL = 3
@@ -29,28 +30,35 @@ export function useGenerations() {
   }
 
   // meta can carry batch, row and prompt so the board can group results.
-  function generate(model, opts, meta = {}) {
+  function execute(model, opts, meta = {}) {
     const id = crypto.randomUUID()
     const base = { aspect: opts.shape || opts.aspect, caption: opts.caption, model: model.name, kind: model.kind, ...meta }
     setError(null)
     setItems((xs) => [{ id, pending: true, ...base }, ...xs])
-    waiting.current.push(async () => {
-      setItems((xs) => xs.map((x) => (x.id === id ? { ...x, started: true } : x)))
-      try {
-        const files = await run(model, opts)
-        setItems((xs) => xs.flatMap((x) => (x.id === id
-          ? files.map((f, i) => ({ id: `${id}-${i}`, ...base, ...f, created: Date.now() }))
-          : [x])))
-      } catch (e) {
-        setError(e.message)
-        setItems((xs) => xs.map((x) => (x.id === id ? { ...base, id, failed: e.message } : x)))
-      }
+    return new Promise((resolve, reject) => {
+      waiting.current.push(async () => {
+        setItems((xs) => xs.map((x) => (x.id === id ? { ...x, started: true } : x)))
+        try {
+          const files = await run(model, opts)
+          setItems((xs) => xs.flatMap((x) => (x.id === id
+            ? files.map((f, i) => ({ id: `${id}-${i}`, ...base, ...f, created: Date.now() }))
+            : [x])))
+          resolve(files)
+        } catch (e) {
+          setError(e.message)
+          setItems((xs) => xs.map((x) => (x.id === id ? { ...base, id, failed: e.message } : x)))
+          reject(e)
+        }
+      })
+      pump()
     })
-    pump()
   }
+
+  const generate = (model, opts, meta) => { execute(model, opts, meta).catch(() => {}) }
+  const generateFormat = (format, values) => runFormat(format, values, { run: execute })
 
   const toggleApprove = (id) => setItems((xs) => xs.map((x) => (x.id === id ? { ...x, approved: !x.approved } : x)))
   const dismiss = (id) => setItems((xs) => xs.filter((x) => x.id !== id))
 
-  return { items, error, busy, generate, toggleApprove, dismiss, clear: () => setItems([]) }
+  return { items, error, busy, generate, generateFormat, toggleApprove, dismiss, clear: () => setItems([]) }
 }
