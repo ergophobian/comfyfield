@@ -1,36 +1,45 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { IconClose, IconUpload } from './Icons.jsx'
-import { initialValues, missingInputs, recipeModel, recipeOptions, recipesFor } from '../lib/recipes.js'
+import { IconClose } from './Icons.jsx'
+import { Field } from './formats/Fields.jsx'
+import { initialValues, missingInputs, recipeModel, recipeOptions, visibleInputs } from '../lib/recipes.js'
+import { isWired } from '../lib/formats/index.js'
 import { models as catalog, providerInfo } from '../lib/catalog.js'
-import { uploadImage } from '../lib/providers.js'
 import { estimate, money, useModelMeta } from '../lib/cost.js'
 
-const VISIBLE = 4
+const calm = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
-function Card({ recipe, onOpen, i = 0 }) {
+function Card({ format, onOpen, i = 0 }) {
+  const ref = useRef(null)
+  const [live, setLive] = useState(false)
+  const preview = (on) => {
+    const v = ref.current
+    if (!v || (on && calm())) return
+    setLive(on)
+    if (on) v.play().catch(() => {})
+    else { v.pause(); v.currentTime = 0 }
+  }
   return (
-    <button type="button" className="recipe-card rise" style={{ '--d': `${i * 45}ms` }} onClick={() => onOpen(recipe)}>
-      <span className="recipe-cover" style={{ background: recipe.cover }} />
-      <strong>{recipe.name}</strong>
-      <small>{recipe.blurb}</small>
+    <button type="button" className="recipe-card rise" style={{ '--d': `calc(${Math.min(i, 12)} * var(--stagger))` }} onClick={() => onOpen(format)}
+      onPointerEnter={() => preview(true)} onPointerLeave={() => preview(false)} onFocus={() => preview(true)} onBlur={() => preview(false)}>
+      <span className="recipe-cover" style={{ background: format.cover }}>
+        {format.preview && <video ref={ref} className={live ? 'on' : ''} src={format.preview} muted loop playsInline preload="none" />}
+      </span>
+      <strong>{format.name}</strong>
+      <small>{format.blurb}</small>
+      <span className="recipe-tags">
+        {format.runsOn && <em title={format.runsOn}>{format.runsOn}</em>}
+        {!isWired(format) && <em className="todo">Not wired yet</em>}
+      </span>
     </button>
   )
 }
 
-export function RecipeRow({ kind, onOpen, onAll }) {
-  const list = recipesFor(kind)
-  if (!list.length) return null
+export function FormatGrid({ list, onOpen }) {
   return (
-    <section className="recipes" key={kind}>
-      <div className="recipes-head">
-        <h2>Formats</h2>
-        <button type="button" className="link-btn" onClick={onAll}>See all</button>
-      </div>
-      <div className="recipe-row">
-        {list.slice(0, VISIBLE).map((r, i) => <Card key={r.id} recipe={r} i={i} onOpen={onOpen} />)}
-      </div>
-    </section>
+    <div className="recipe-grid">
+      {list.map((f, i) => <Card key={f.id} format={f} i={i} onOpen={onOpen} />)}
+    </div>
   )
 }
 
@@ -49,116 +58,52 @@ function useDismiss(onClose) {
   return [leaving, close]
 }
 
-export function RecipeLibrary({ onOpen, onClose }) {
+export function RecipeSheet({ recipe, gens, connections, onClose, initial }) {
   const [leaving, close] = useDismiss(onClose)
-  const groups = [['Video', 'video'], ['Image', 'image']]
-  return (
-    <div className={`scrim${leaving ? ' out' : ''}`} onPointerDown={(e) => e.target === e.currentTarget && close()}>
-      <div className="modal glass" role="dialog" aria-label="All formats">
-        <div className="modal-head">
-          <div>
-            <h2>All formats</h2>
-            <p>A format is a saved setup. Add a photo, change a few words, run it.</p>
-          </div>
-          <button type="button" className="icon-btn" onClick={close} aria-label="Close"><IconClose /></button>
-        </div>
-        {groups.map(([label, kind]) => (
-          <div key={kind} className="modal-group">
-            <h6>{label}</h6>
-            <div className="recipe-grid">
-              {recipesFor(kind).map((r, i) => <Card key={r.id} recipe={r} i={i} onOpen={(x) => { onOpen(x); onClose() }} />)}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function ImageField({ input, value, onChange, setError }) {
-  const [busy, setBusy] = useState(false)
-  const [over, setOver] = useState(false)
-  const ref = useRef(null)
-  const take = async (file) => {
-    if (!file) return
-    setBusy(true)
-    setError(null)
-    try { onChange(await uploadImage(file)) } catch (e) { setError(e.message) }
-    setBusy(false)
-  }
-  return (
-    <div className="field">
-      <label>{input.label}</label>
-      <div className={`drop${over ? ' over' : ''}${value ? ' has' : ''}`}
-        onClick={() => ref.current.click()}
-        onDragOver={(e) => { e.preventDefault(); setOver(true) }}
-        onDragLeave={() => setOver(false)}
-        onDrop={(e) => { e.preventDefault(); setOver(false); take(e.dataTransfer.files[0]) }}>
-        {value ? <img src={value.url} alt="" /> : (
-          <span><IconUpload />{busy ? 'Uploading' : 'Drop an image or click to choose'}</span>
-        )}
-        {value && <small>{busy ? 'Uploading' : 'Replace'}</small>}
-        <input ref={ref} type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden
-          onChange={(e) => { take(e.target.files[0]); e.target.value = '' }} />
-      </div>
-    </div>
-  )
-}
-
-export function RecipeSheet({ recipe, gens, connections, onClose }) {
-  const [leaving, close] = useDismiss(onClose)
-  const [values, setValues] = useState(() => initialValues(recipe))
+  const [values, setValues] = useState(() => ({ ...initialValues(recipe), ...initial }))
   const [error, setError] = useState(null)
   const model = recipeModel(recipe, catalog)
   const metaOf = useModelMeta([model])
   const set = (id, v) => setValues((x) => ({ ...x, [id]: v }))
+  const wired = isWired(recipe)
   const connected = model.provider === 'comfy' || connections[model.provider]?.connected
   const missing = missingInputs(recipe, values)
-  const each = estimate(model, metaOf(model), { aspect: '1:1', count: 1, duration: recipe.settings.duration })
+  const each = estimate(model, metaOf(model), { aspect: '1:1', count: 1, duration: recipe.settings?.duration })
 
   const run = (e) => {
     e.preventDefault()
-    if (missing.length || !connected) return
+    if (!wired || missing.length || !connected) return
     gens.generate(model, recipeOptions(recipe, values))
     close()
   }
 
   return (
     <div className={`scrim side${leaving ? ' out' : ''}`} onPointerDown={(e) => e.target === e.currentTarget && close()}>
-      <form className="sheet glass" onSubmit={run} role="dialog" aria-label={recipe.name}>
+      <form className={`sheet glass${recipe.layout === 'wide' ? ' wide' : ''}`} onSubmit={run} role="dialog" aria-label={recipe.name}>
         <div className="sheet-cover" style={{ background: recipe.cover }}>
+          {recipe.preview && <video src={recipe.preview} muted loop playsInline autoPlay={!calm()} />}
           <button type="button" className="icon-btn" onClick={close} aria-label="Close"><IconClose /></button>
+          {recipe.runsOn && <span className="sheet-tag">{recipe.runsOn}</span>}
         </div>
         <div className="sheet-body">
           <h2>{recipe.name}</h2>
-          <p>{recipe.blurb}</p>
-          {recipe.inputs.map((input) => (
-            <div key={input.id}>
-              {input.type === 'image' && <ImageField input={input} value={values[input.id]} onChange={(v) => set(input.id, v)} setError={setError} />}
-              {input.type === 'text' && (
-                <div className="field">
-                  <label>{input.label}</label>
-                  <input value={values[input.id]} onChange={(e) => set(input.id, e.target.value)} placeholder={input.placeholder} />
-                </div>
-              )}
-              {input.type === 'choice' && (
-                <div className="field">
-                  <label>{input.label}</label>
-                  <div className="pills">
-                    {input.options.map((o) => (
-                      <button key={o.id} type="button" className={values[input.id] === o.id ? 'on' : ''} onClick={() => set(input.id, o.id)}>{o.label}</button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
+          <p className="sheet-blurb">{recipe.blurb}</p>
+          {recipe.output && <p className="sheet-output"><strong>You get</strong> {recipe.output}</p>}
+          <div className="sheet-fields">
+            {visibleInputs(recipe, values).map((input) => (
+              <Field key={input.id} input={input} value={values[input.id]} onChange={(v) => set(input.id, v)} setError={setError} />
+            ))}
+          </div>
           {error && <p className="sheet-error">{error}</p>}
-          {!connected && <p className="sheet-note">This runs on {providerInfo[model.provider].name}. <Link to="/connections">Add your key</Link> to use it.</p>}
+          {wired && !connected && <p className="sheet-note">This runs on {providerInfo[model.provider].name}. <Link to="/connections">Add your key</Link> to use it.</p>}
         </div>
         <div className="sheet-foot">
-          <span className="muted">{each ? `${each.approx ? '≈' : ''}${money(each.usd)} per run` : `Runs on ${providerInfo[model.provider].name}`}</span>
-          <button className="btn-blue" disabled={missing.length > 0 || !connected}>Run</button>
+          {wired ? (
+            <span className="muted">{each ? `${each.approx ? '≈' : ''}${money(each.usd)} per run` : `Runs on ${providerInfo[model.provider].name}`}</span>
+          ) : (
+            <span className="muted">Not wired yet. Runs on {recipe.runsOn || 'open weights'} once the engine is connected.</span>
+          )}
+          <button className="btn-blue" disabled={!wired || missing.length > 0 || !connected}>Run</button>
         </div>
       </form>
     </div>

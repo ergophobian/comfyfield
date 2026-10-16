@@ -142,6 +142,16 @@ function Editor({ type, item, onClose }) {
         {type === 'characters' && <>
           <Pictures label="Reference images, up to 6" max={6} value={f.images} onChange={(v) => set({ images: v })} upload={lib.upload} />
           <Text label="Notes" area value={f.notes} onChange={(v) => set({ notes: v })} placeholder="Age, outfit, anything the images do not show" />
+          <div className="field">
+            <label>Consistency</label>
+            <div className="consist">
+              <p>Train a small model on these images so the face stays the same in every shot.</p>
+              <div className="consist-row">
+                <button type="button" className="btn-soft sm" disabled>Train a character model</button>
+                <span className="soon-tag">Not wired yet</span>
+              </div>
+            </div>
+          </div>
         </>}
         {type === 'products' && <>
           <div className="row2">

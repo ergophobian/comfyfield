@@ -1,8 +1,15 @@
+import UseIn from './formats/UseIn.jsx'
+import { useApp } from '../lib/appContext.js'
+
 const ratio = (a) => (/^\d+:\d+$/.test(a) ? a.replace(':', ' / ') : '1 / 1')
 
-export default function Results({ items }) {
+// Finished and rendering generations. "Use in" opens a format with the result attached, through the app's shared sheet
+// unless the page passes its own onUse. size 'large' shows bigger tiles.
+export default function Results({ items, onUse, size }) {
+  const app = useApp()
+  const use = onUse || app?.openFormat
   return (
-    <div className="results">
+    <div className={`results${size === 'large' ? ' large' : ''}`}>
       {items.map((it) => (
         <div key={it.id} className={`result glass${it.pending ? ' pending' : ''}${it.kind === 'audio' ? ' audio' : ''}`}
           style={{ '--ar': it.kind === 'audio' ? '2 / 1' : ratio(it.aspect) }}>
@@ -11,6 +18,7 @@ export default function Results({ items }) {
             : it.kind === 'audio' ? <div className="audio-card"><p>{it.caption}</p><audio src={it.url} controls /></div>
             : <a href={it.url} target="_blank" rel="noreferrer"><img src={it.url} alt={it.caption} /></a>}
           {!it.pending && it.kind !== 'audio' && <div className="result-cap">{it.model} · {it.caption}</div>}
+          {use && !it.pending && it.url && it.kind !== 'audio' && <UseIn item={it} onUse={use} />}
         </div>
       ))}
     </div>

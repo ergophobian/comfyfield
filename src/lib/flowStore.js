@@ -66,6 +66,33 @@ export const starters = [
       ['o', 'output', 1420, 40],
     ], [['p', 'i'], ['i', 'a'], ['a', 'v'], ['v', 'o']]),
   },
+  {
+    id: 'storyboard-to-video',
+    name: 'Storyboard to video',
+    blurb: 'Write the shots, approve the frames, then animate each one.',
+    steps: ['Shots', 'Frames', 'Approve', 'Video'],
+    make: () => build('Storyboard to video', [
+      ['p', 'prompt', 0, 40, { mode: 'rows', text: 'Wide shot, a lighthouse keeper climbs a spiral stair at dusk\nClose up, his hand switches on the brass lamp\nThe beam sweeps across a dark, stormy sea\nDawn, the keeper sips tea as the storm clears' }],
+      ['i', 'model', 340, 20, { kind: 'image', model: find('comfy-flux', 'image'), aspect: '16:9', takes: 2 }],
+      ['a', 'approve', 680, 40],
+      ['v', 'model', 1060, 20, { kind: 'video', model: find('comfy-ltx', 'video'), aspect: '16:9', duration: 5, takes: 1 }],
+      ['o', 'output', 1420, 40],
+    ], [['p', 'i'], ['i', 'a'], ['a', 'v'], ['v', 'o']]),
+  },
+  {
+    id: 'draft-then-final',
+    name: 'Draft then final',
+    blurb: 'Cheap drafts first. Only the take you approve gets the full render.',
+    steps: ['Prompt', 'Drafts', 'Approve', 'Final'],
+    make: () => build('Draft then final', [
+      ['p', 'prompt', 0, 60, { mode: 'single', text: 'A hot air balloon rising over misty hills at sunrise, slow and calm' }],
+      ['d', 'model', 340, 20, { kind: 'video', model: find('comfy-ltx', 'video'), aspect: '16:9', duration: 3, takes: 3 }],
+      ['a', 'approve', 680, 40],
+      ['f', 'model', 1060, 20, { kind: 'video', model: find('comfy-ltx', 'video'), aspect: '16:9', duration: 8, takes: 1, prompt: 'Same shot, full length' }],
+      ['o', 'output', 1420, 40],
+      ['n', 'note', 1060, -170, { text: 'Not wired yet: the final step makes a new full length clip from its prompt. Passing the approved take into it needs video inputs in the flow engine, then a larger open model.' }],
+    ], [['p', 'd'], ['d', 'a'], ['a', 'f'], ['f', 'o']]),
+  },
 ]
 
 // Create's batch list becomes prompt rows feeding one model.

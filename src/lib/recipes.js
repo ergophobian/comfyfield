@@ -132,37 +132,63 @@ export const recipes = [
 
 export const recipesFor = (kind) => recipes.filter((r) => r.kind === kind)
 
-export const initialValues = (recipe) => Object.fromEntries(recipe.inputs.map((i) => [
-  i.id, i.type === 'choice' ? i.default ?? i.options[0].id : i.type === 'image' ? null : '',
-]))
+const textual = ['text', 'longtext']
+const libraryPicks = ['character', 'product', 'brand', 'voice']
 
-export const missingInputs = (recipe, values) => recipe.inputs.filter((i) => !i.optional && (i.type === 'text' ? !values[i.id]?.trim() : !values[i.id]))
+const startValue = (i) => {
+  if (i.type === 'choice') return i.default ?? i.options[0].id
+  if (i.type === 'count') return i.default ?? i.options[0]
+  return textual.includes(i.type) ? '' : null
+}
+
+export const initialValues = (recipe) => Object.fromEntries(recipe.inputs.map((i) => [i.id, startValue(i)]))
+
+// Inputs with `when: [choiceId, optionId]` only show, and only count, while that option is picked.
+export const visibleInputs = (recipe, values) => recipe.inputs.filter((i) => !i.when || values[i.when[0]] === i.when[1])
+
+export const missingInputs = (recipe, values) => visibleInputs(recipe, values)
+  .filter((i) => !i.optional && (textual.includes(i.type) ? !values[i.id]?.trim() : values[i.id] == null || values[i.id] === ''))
 
 // Turns a recipe and the sheet's values into options for gens.generate().
 export function recipeOptions(recipe, values) {
   const images = []
   const fields = {}
+  const media = {}
+  const refs = []
   let params = { ...recipe.params }
   const fill = {}
-  for (const input of recipe.inputs) {
+  for (const input of visibleInputs(recipe, values)) {
     const v = values[input.id]
     if (input.type === 'image') {
+      if (!v) continue
       if (input.field) fields[input.field] = v.url
       else images.push(v.url)
+    } else if (input.type === 'video' || input.type === 'audio') {
+      if (v) media[input.id] = v.url
+    } else if (input.type === 'draw') {
+      if (v) { images.push(v.url); if (v.strokes) media[`${input.id}Strokes`] = v.strokes }
+    } else if (libraryPicks.includes(input.type)) {
+      if (v) { refs.push(v); fill[input.id] = v.name }
     } else if (input.type === 'choice') {
       const opt = input.options.find((o) => o.id === v)
       fill[input.id] = opt?.text || opt?.label || ''
       params = { ...params, ...opt?.params }
+    } else if (input.type === 'count') {
+      fill[input.id] = String(v)
     } else fill[input.id] = (v || '').trim()
   }
-  const prompt = recipe.prompt.replace(/\{(\w+)\}/g, (_, k) => fill[k] ?? '').replace(/\s+/g, ' ').trim()
-  const first = recipe.inputs.find((i) => i.type === 'image')
+  // Collapse spaces but keep line breaks, so shot lists stay one shot per line.
+  const prompt = recipe.prompt.replace(/\{(\w+)\}/g, (_, k) => fill[k] ?? '').replace(/[^\S\n]+/g, ' ').replace(/ *\n\s*/g, '\n').trim()
+  const first = recipe.inputs.find((i) => i.type === 'image' || i.type === 'draw')
   return {
     prompt, caption: recipe.name, images, fields, params, count: 1,
-    aspect: recipe.settings.aspect, duration: recipe.settings.duration, shape: values[first.id]?.ratio,
+    ...(Object.keys(media).length && { media }), ...(refs.length && { refs }),
+    aspect: recipe.settings.aspect, duration: recipe.settings.duration, shape: first ? values[first.id]?.ratio : undefined,
   }
 }
 
 // Recipes run on a fal endpoint unless `model` names one of our catalog ids.
-export const recipeModel = (recipe, catalog) =>
-  catalog.find((m) => m.id === recipe.model) || { id: `recipe:${recipe.id}`, provider: 'fal', kind: recipe.kind, name: recipe.name, model: recipe.model }
+// Open-weight formats run their workflow on Comfy.
+export const recipeModel = (recipe, catalog) => (recipe.engine === 'comfy'
+  ? { id: `format:${recipe.id}`, provider: 'comfy', kind: recipe.kind, name: recipe.runsOn || recipe.name, workflow: recipe.workflow }
+  : catalog.find((m) => m.id === recipe.model) || { id: `recipe:${recipe.id}`, provider: 'fal', kind: recipe.kind, name: recipe.name, model: recipe.model })

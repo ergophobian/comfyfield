@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Segmented from '../Segmented.jsx'
+import UseIn from '../formats/UseIn.jsx'
+import { useApp } from '../../lib/appContext.js'
 import { IconCheck, IconDownload, IconCopy, IconTrash, IconClose, IconChevron } from '../Icons.jsx'
 
 const filters = [
@@ -25,6 +27,7 @@ function Act({ label, on, onClick, children }) {
 
 function Viewer({ items, at, setAt, gens, copy, onClose }) {
   const it = items[at]
+  const { openFormat } = useApp()
   useEffect(() => {
     const key = (e) => {
       if (e.key === 'Escape') onClose()
@@ -46,6 +49,8 @@ function Viewer({ items, at, setAt, gens, copy, onClose }) {
             <span>{it.model}{it.aspect ? ` · ${it.aspect}` : ''}</span>
           </div>
           <div className="viewer-acts">
+            {/* The viewer sits above the format sheet, so it closes first. */}
+            <UseIn item={it} up onUse={(format, values) => { onClose(); openFormat(format, values) }} />
             <Act label={it.approved ? 'Remove approval' : 'Approve'} on={it.approved} onClick={() => gens.toggleApprove(it.id)}><IconCheck /></Act>
             <a className="lib-act" href={it.url} download={`${it.id}.${ext[it.kind] || 'png'}`} aria-label="Download" title="Download"><IconDownload /></a>
             <Act label="Copy prompt" onClick={() => copy(it)}><IconCopy /></Act>

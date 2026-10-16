@@ -8,6 +8,8 @@ An open-source, local-first creative studio: images, video and audio from any mo
 
 Competition: Open Source Higgsfield, submissions close 10/30 9am PT. Entries must use the Comfy Developer Platform (Comfy Router, Comfy API v2 or the Comfy SDK).
 
+Current phase: match Higgsfield screen by screen first, then improve on it. Its structure, layouts and flows are documented with screenshots in `research_notes/Higgsfield feature audit/`. Copy the structure, not the brand: our theme, our copy, our media. Order of work is UI, then UX, then the engine, so most pages show "Not wired yet" for now.
+
 ## Run it
 
 ```bash
@@ -26,9 +28,11 @@ Keys go in Connections (saved to `.comfyfield/keys.json`, gitignored) or `.env` 
 - `server/plugin.js`: HTTP routes inside the Vite dev server
 - `server/mcp.js`, `bin/comfyfield.js`: MCP server and CLI
 - `shared/mapping.js`: maps composer settings onto each model's inputs, and cost estimates
-- `src/pages/`: Create, Flows, Models, Library, Connections
+- `src/lib/tools.js`: every tool page (name, nav menu, route, badge) and the open-weight models per kind. The top nav and Explore read from it
+- `src/App.jsx`: route table, and the shared format sheet via `useApp().openFormat` (`src/lib/appContext.js`)
+- `src/pages/`: one page per tool (generators, studios, apps), plus Flows (Canvas), Library (Assets), Models and Connections
 - `src/lib/flowEngine.js`: Flows execution rules (see below)
-- `src/lib/recipes.js`: formats (being renamed from recipes)
+- `src/lib/formats/`: formats as data (apps, presets, effects, looks, jobs). `index.js` holds categories, app hubs and helpers. `src/lib/recipes.js` keeps the teammate's fal recipes
 - `public/workflows/`: ComfyUI workflows in API format with `{{placeholders}}`
 
 ## How we work
@@ -48,7 +52,8 @@ Keys go in Connections (saved to `.comfyfield/keys.json`, gitignored) or `.env` 
 - Sentence case everywhere. Never ALL CAPS, no `text-transform: uppercase`.
 - Light glass UI: every color, size, radius, blur and duration is a token in `:root` in `src/styles.css`. Use the token, never a raw value; `theme-check` enforces it. Indigo pill buttons are `.btn-blue`.
 - Motion uses the existing `rise` / `pop` keyframes and `--spring` easing, and must respect `prefers-reduced-motion`.
-- No emoji in the UI. No new tabs: new features become formats, flow nodes or Library types.
+- No emoji in the UI. Mirror Higgsfield's structure: a new feature becomes a page listed in `src/lib/tools.js`, a format, a flow node or a Library type.
+- One breakpoint, 720px. Every page works at 390px wide.
 - Copy names things the way users see them, active voice, short.
 
 ## Code style

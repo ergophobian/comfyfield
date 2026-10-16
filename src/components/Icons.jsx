@@ -18,3 +18,8 @@ export const IconPlus = () => <svg {...s} strokeWidth={2.4}><path d="M12 5v14M5 
 export const IconChevron = ({ dir = 'right' }) => <svg {...s} strokeWidth={2.4} style={{ transform: dir === 'left' ? 'scaleX(-1)' : undefined }}><path d="m9 5 7 7-7 7" /></svg>
 export const IconLink = () => <svg {...s}><path d="M10 14a4 4 0 0 0 5.6 0l3-3a4 4 0 0 0-5.6-5.6l-1 1M14 10a4 4 0 0 0-5.6 0l-3 3a4 4 0 0 0 5.6 5.6l1-1" /></svg>
 export const IconLibrary = () => <svg {...s}><path d="M5 4v16M10 4v16M15 5l4 14" /></svg>
+export const IconImage = () => <svg {...s}><rect x="4" y="5" width="16" height="14" rx="2" /><circle cx="9" cy="10" r="1.6" /><path d="m20 16-4.5-4.5L7 19" /></svg>
+export const IconVideo = () => <svg {...s}><rect x="3" y="6" width="13" height="12" rx="2" /><path d="m16 10 5-3v10l-5-3" /></svg>
+export const IconAudio = () => <svg {...s}><path d="M5 10v4M9 7v10M13 4v16M17 8v8M21 11v2" /></svg>
+export const IconCube = () => <svg {...s}><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z" /><path d="m4 7.5 8 4.5 8-4.5M12 12v9" /></svg>
+export const IconSettings =() => <svg {...s}><path d="M4 7h9M17 7h3M4 17h3M11 17h9" /><circle cx="15" cy="7" r="2" /><circle cx="9" cy="17" r="2" /></svg>
