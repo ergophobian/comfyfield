@@ -31,18 +31,22 @@ function die(msg) {
   process.exit(1)
 }
 
+// Starts the app. Extra flags (--port 5300, --host) go straight to Vite.
+function dev(extra) {
+  // Run Vite's JS entry through node so this works on Windows, where .bin/vite is a shell shim.
+  const vite = path.join(ROOT, 'node_modules', 'vite', 'bin', 'vite.js')
+  const child = spawn(process.execPath, [vite, ROOT, '--config', path.join(ROOT, 'vite.config.js'), ...extra],
+    { stdio: 'inherit', env: { ...process.env, COMFYFIELD_HOME: process.env.COMFYFIELD_HOME || process.cwd() } })
+  child.on('exit', (code) => process.exit(code ?? 0))
+}
+
 async function main() {
+  if (process.argv[2] === 'dev') return dev(process.argv.slice(3))
   const { values: v, positionals: [cmd, ...rest] } = parseArgs({ options, allowPositionals: true })
   if (!cmd || v.help || cmd === 'help') return console.log(help)
 
   if (cmd === 'mcp') return (await import('../server/mcp.js')).startMcp()
 
-  if (cmd === 'dev') {
-    // Run Vite's JS entry through node so this works on Windows, where .bin/vite is a shell shim.
-    const vite = path.join(ROOT, 'node_modules', 'vite', 'bin', 'vite.js')
-    const child = spawn(process.execPath, [vite, '--config', path.join(ROOT, 'vite.config.js'), '--root', ROOT], { stdio: 'inherit', env: { ...process.env, COMFYFIELD_HOME: process.env.COMFYFIELD_HOME || process.cwd() } })
-    return child.on('exit', (code) => process.exit(code ?? 0))
-  }
 
   const core = await import('../server/core.js')
 
