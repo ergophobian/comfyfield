@@ -5,7 +5,10 @@ import { nodeTypes, FlowCtx } from '../components/flow/nodes.jsx'
 import Panel from '../components/flow/Panel.jsx'
 import { IconClose } from '../components/Icons.jsx'
 import { downstreamOf } from '../lib/flowEngine.js'
-import { loadFlows, saveFlows, engineFor, starters, makeNode, blankFlow, exportJson, parseFlow, nodeLabels } from '../lib/flowStore.js'
+import { useFlowStorage, engineFor, starters, makeNode, blankFlow, exportJson, parseFlow, nodeLabels } from '../lib/flowStore.js'
+import { reloadFlows } from '../lib/remoteFlows.js'
+import AssistantPanel from '../components/AssistantPanel.jsx'
+import { AgentPresence, useAgentPresence } from '../components/flow/AgentPresence.jsx'
 import { getConnections } from '../lib/providers.js'
 
 const addable = [
@@ -36,7 +39,9 @@ function Pop({ label, children, align = 'left' }) {
 }
 
 function Canvas({ picker }) {
-  const [store, setStore] = useState(loadFlows)
+  const { store, setStore, ready, error } = useFlowStorage()
+  const [assistant, setAssistant] = useState(false)
+  const presence = useAgentPresence()
   const [connections, setConnections] = useState({})
   const [note, setNote] = useState(null)
   const [wipe, setWipe] = useState(false)
@@ -47,7 +52,6 @@ function Canvas({ picker }) {
   const state = useSyncExternalStore(engine.subscribe, () => engine.state)
 
   useEffect(() => { getConnections().then(setConnections) }, [])
-  useEffect(() => { saveFlows(store) }, [store])
   useEffect(() => { if (note) { const t = setTimeout(() => setNote(null), 3600); return () => clearTimeout(t) } }, [note])
   useEffect(() => { if (wipe) { const t = setTimeout(() => setWipe(false), 3000); return () => clearTimeout(t) } }, [wipe])
 
@@ -63,11 +67,11 @@ function Canvas({ picker }) {
 
   const say = (r) => setNote(r?.reason || null)
   const act = {
-    pick: (id, item) => engine.togglePick(flow, id, item),
-    stop: (id) => engine.stop(flow, id),
-    send: async (id) => say(await engine.send(flow, id)),
-    rerun: async (id) => say(await engine.rerun(flow, id)),
-    rerunGate: async (id) => say(await engine.rerunGate(flow, id)),
+    pick: (id, item) => engine.togglePick(flow, id, item).catch((e) => setNote(e.message)),
+    stop: (id) => engine.stop(flow, id).catch((e) => setNote(e.message)),
+    send: async (id) => { try { say(await engine.send(flow, id)) } catch (e) { setNote(e.message) } },
+    rerun: async (id) => { try { say(await engine.rerun(flow, id)) } catch (e) { setNote(e.message) } },
+    rerunGate: async (id) => { try { say(await engine.rerunGate(flow, id)) } catch (e) { setNote(e.message) } },
   }
 
   const run = async () => {
@@ -135,6 +139,7 @@ function Canvas({ picker }) {
   return (
     <FlowCtx.Provider value={ctx}>
       <div className="flows">
+        {!ready && <div className="agent-flow-status glass" role="status">{error || 'Loading shared flows…'}{error && <><button type="button" className="btn-soft" onClick={download}>Export unsaved flow</button><button type="button" className="btn-soft" onClick={() => reloadFlows().catch((e) => setNote(e.message))}>Reload flows</button></>}</div>}
         <div className="ftool glass">
           <Pop label={<>Flows<span className="fcount">{store.flows.filter((f) => f.nodes.length).length || ''}</span></>}>
             {store.flows.map((f) => (
@@ -149,22 +154,24 @@ function Canvas({ picker }) {
           <input ref={importer} type="file" accept=".json,application/json" hidden onChange={(e) => { e.target.files[0] && importFile(e.target.files[0]); e.target.value = '' }} />
           <input className="fname" value={flow.name} aria-label="Flow name" onChange={(e) => update((f) => ({ ...f, name: e.target.value }))} />
           <span className="fgrow" />
+          <button type="button" className="btn-soft" aria-expanded={assistant} onClick={() => setAssistant((value) => !value)}>Assistant</button>
           {note && <span className="fnote pop">{note}</span>}
           <Pop label="Add">
             {addable.map(([t, d]) => <button key={t} type="button" onClick={() => add(t)}>{nodeLabels[t]}<small>{d}</small></button>)}
           </Pop>
           <button type="button" className="btn-soft" onClick={download} disabled={!flow.nodes.length}>Export</button>
           {hasOutput && <button type="button" className="btn-soft" onClick={regenerate} disabled={busy}>{wipe ? 'Wipe and re-run?' : 'Regenerate all'}</button>}
-          <button type="button" className="btn-blue sm" onClick={run} disabled={busy || !flow.nodes.some((n) => n.type === 'model')}>{busy ? 'Running' : 'Run'}</button>
+          <button type="button" className="btn-blue sm" onClick={run} disabled={!ready || busy || !flow.nodes.some((n) => n.type === 'model')}>{busy ? 'Running' : 'Run'}</button>
         </div>
 
-        <ReactFlow key={flow.id} nodes={flow.nodes} edges={edges} nodeTypes={nodeTypes}
+        <ReactFlow key={flow.id} nodes={flow.nodes} edges={edges} nodesDraggable={ready} nodesConnectable={ready} nodeTypes={nodeTypes}
           onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect} isValidConnection={valid}
           defaultEdgeOptions={{ type: 'default' }} fitView fitViewOptions={{ padding: 0.3, maxZoom: 1 }}
           minZoom={0.25} maxZoom={1.6} deleteKeyCode={['Backspace', 'Delete']} proOptions={{ hideAttribution: true }}>
           <Background gap={22} size={1.6} color="rgb(15 18 34 / .16)" />
           <MiniMap pannable zoomable nodeColor={(n) => miniColor[n.type]} maskColor="rgb(255 255 255 / .55)" />
           <Controls showInteractive={false} />
+          <AgentPresence flow={flow} presence={presence} />
         </ReactFlow>
 
         {flow.nodes.length === 0 && (
@@ -183,7 +190,8 @@ function Canvas({ picker }) {
           </div>
         )}
 
-        {node && <Panel node={node} patch={patch} picker={picker} connections={connections} upload={upload} remove={remove} />}
+        {assistant && <aside className="agent-canvas-panel glass"><button type="button" className="btn-soft" onClick={() => setAssistant(false)}>Close assistant</button><AssistantPanel /></aside>}
+        {node && !assistant && ready && <Panel node={node} patch={patch} picker={picker} connections={connections} upload={upload} remove={remove} />}
       </div>
     </FlowCtx.Provider>
   )

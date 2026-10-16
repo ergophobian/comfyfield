@@ -92,9 +92,11 @@ export default function ImageStudio() {
     })
   }
 
-  const openAsFlow = () => {
-    openFlow(flowFromBatch({ prompts, model, aspect: ratio, duration: 5, takes: calls, count: perCall }))
-    navigate('/flows')
+  const openAsFlow = async () => {
+    try {
+      await openFlow(flowFromBatch({ prompts, model, aspect: ratio, duration: 5, takes: calls, count: perCall }))
+      navigate('/flows')
+    } catch (e) { setError(e.message) }
   }
 
   const dropOk = (e) => canAttach && e.dataTransfer.types.includes('Files')

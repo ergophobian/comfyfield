@@ -1,9 +1,9 @@
 import { models } from './catalog.js'
-import { run } from './providers.js'
+import { useEffect, useSyncExternalStore } from 'react'
+import { api, initFlows, changeFlows, flushFlows, refreshFlows, flowSnapshot, subscribeFlows } from './remoteFlows.js'
 import { createEngine } from './flowEngine.js'
 
 const KEY = 'comfyfield.flows'
-const RUN = 'comfyfield.flowrun.'
 const uid = () => crypto.randomUUID().slice(0, 8)
 const find = (id, kind) => models.find((m) => m.id === id) || models.find((m) => m.kind === kind)
 
@@ -118,19 +118,24 @@ const strip = (f) => ({
 export function loadFlows() {
   try {
     const s = JSON.parse(localStorage.getItem(KEY))
-    if (s?.flows?.length) return s
+    if (s?.flows?.length) return { ...s, runs: Object.fromEntries(s.flows.map((f) => {
+      try { return [f.id, JSON.parse(localStorage.getItem(`comfyfield.flowrun.${f.id}`)) || {}] } catch { return [f.id, {}] }
+    })) }
   } catch {}
   const f = blankFlow()
   return { flows: [f], current: f.id }
 }
 
-export function saveFlows(s) {
-  try { localStorage.setItem(KEY, JSON.stringify({ current: s.current, flows: s.flows.map(strip) })) } catch {}
+export function useFlowStorage() {
+  const snapshot = useSyncExternalStore(subscribeFlows, flowSnapshot)
+  useEffect(() => { initFlows(loadFlows()).catch(() => {}) }, [])
+  return { ...snapshot, store: snapshot.store || loadFlows(), setStore: changeFlows }
 }
 
-export function openFlow(flow) {
-  const s = loadFlows()
-  saveFlows({ current: flow.id, flows: [flow, ...s.flows.filter((f) => f.id !== flow.id && f.nodes.length)] })
+export async function openFlow(flow) {
+  await initFlows(loadFlows())
+  changeFlows((s) => ({ ...s, current: flow.id, flows: [flow, ...s.flows.filter((f) => f.id !== flow.id && f.nodes.length)] }))
+  await flushFlows()
 }
 
 export function exportJson(flow) {
@@ -146,24 +151,25 @@ export function parseFlow(text) {
   return { ...strip(f), id: uid(), name: f.name || 'Imported flow', updated: Date.now() }
 }
 
-// One engine per flow so renders keep going when you switch flows or tabs.
+// Planning stays pure in the browser; actions and run state belong to the server.
 const engines = new Map()
 export function engineFor(id) {
   if (engines.has(id)) return engines.get(id)
-  let timer
-  const eng = createEngine({
-    run,
-    onChange: (state) => {
-      clearTimeout(timer)
-      timer = setTimeout(() => {
-        const clean = Object.fromEntries(Object.entries(state).map(([k, v]) => [k, {
-          ...v, running: 0, items: v.items?.filter((i) => i.status === 'done'),
-        }]))
-        try { localStorage.setItem(RUN + id, JSON.stringify(clean)) } catch {}
-      }, 400)
-    },
-  })
-  try { eng.load(JSON.parse(localStorage.getItem(RUN + id))) } catch {}
-  engines.set(id, eng)
-  return eng
+  const engine = createEngine()
+  let previous
+  const sync = () => {
+    const state = flowSnapshot().store?.runs?.[id]
+    if (state !== previous) { previous = state; engine.load(state || {}) }
+  }
+  subscribeFlows(sync)
+  sync()
+  const actions = Object.fromEntries(['runNew', 'regenerateAll', 'send', 'rerun', 'rerunGate', 'togglePick', 'stop'].map((action) => [action, async (flow, node, item) => {
+    await flushFlows()
+    const result = await api(`/api/flows/${id}/action`, 'POST', { action, node, item })
+    await refreshFlows()
+    return result
+  }]))
+  const proxy = { ...engine, ...actions, get state() { return engine.state } }
+  engines.set(id, proxy)
+  return proxy
 }
