@@ -39,6 +39,17 @@ async function body(req) {
   return raw ? JSON.parse(raw) : {}
 }
 
+async function rawBody(req, limit = 40 * 1024 * 1024) {
+  const chunks = []
+  let size = 0
+  for await (const chunk of req) {
+    size += chunk.length
+    if (size > limit) throw Object.assign(new Error('That file is too large (40 MB max).'), { status: 413 })
+    chunks.push(chunk)
+  }
+  return Buffer.concat(chunks)
+}
+
 function send(res, status, data) {
   res.statusCode = status
   res.setHeader('Content-Type', 'application/json')
@@ -52,7 +63,8 @@ async function runFal({ model, input }) {
   const { key } = config('fal')
   if (!key) throw Object.assign(new Error('Connect fal in Connections first.'), { status: 400 })
   const headers = { Authorization: `Key ${key}`, 'Content-Type': 'application/json' }
-  const submit = await fetch(`https://queue.fal.run/${model}`, { method: 'POST', headers, body: JSON.stringify(input) })
+  const ready = await withFalFiles(input, key)
+  const submit = await fetch(`https://queue.fal.run/${model}`, { method: 'POST', headers, body: JSON.stringify(ready) })
   if (!submit.ok) throw new Error(`fal rejected the request (${submit.status}): ${(await submit.text()).slice(0, 300)}`)
   const job = await submit.json()
   for (let i = 0; i < 600; i++) {
@@ -71,6 +83,39 @@ async function runFal({ model, input }) {
   if (out.audio_file?.url) files.push({ url: out.audio_file.url, kind: 'audio' })
   if (!files.length) throw new Error('fal finished but returned no media.')
   return files
+}
+
+// Uploads go to fal storage so fal can fetch them: initiate, PUT the bytes, use the returned file_url.
+// If storage is unavailable the file is sent inline as a data URI, which fal also accepts.
+async function falUpload(buf, mime, key) {
+  const ext = extOf(mime)
+  const init = await fetch('https://rest.alpha.fal.ai/storage/upload/initiate?storage_type=fal-cdn-v3', {
+    method: 'POST', headers: { Authorization: `Key ${key}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content_type: mime, file_name: `upload.${ext}` }),
+  })
+  if (!init.ok) throw new Error(`fal storage refused the upload (${init.status})`)
+  const { upload_url, file_url } = await init.json()
+  const put = await fetch(upload_url, { method: 'PUT', headers: { 'Content-Type': mime }, body: buf })
+  if (!put.ok) throw new Error(`fal storage upload failed (${put.status})`)
+  return file_url
+}
+
+const dataUri = (buf, mime) => `data:${mime};base64,${buf.toString('base64')}`
+
+// Replaces our local /media/... URLs anywhere in a fal input with URLs fal can reach.
+async function withFalFiles(value, key, cache = new Map()) {
+  if (Array.isArray(value)) return Promise.all(value.map((v) => withFalFiles(v, key, cache)))
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(await Promise.all(Object.entries(value).map(async ([k, v]) => [k, await withFalFiles(v, key, cache)])))
+  }
+  if (typeof value !== 'string' || !value.startsWith('/media/')) return value
+  if (!cache.has(value)) {
+    cache.set(value, (async () => {
+      const file = readLocal(value)
+      return falUpload(file.buf, file.mime, key).catch(() => dataUri(file.buf, file.mime))
+    })())
+  }
+  return cache.get(value)
 }
 
 // fal's public catalog, cached for ten minutes per query.
@@ -114,6 +159,36 @@ async function runElevenLabs({ mode, text, voice }) {
   return [{ url: saveMedia(Buffer.from(await r.arrayBuffer()), 'mp3'), kind: 'audio' }]
 }
 
+function extOf(mime) {
+  const t = (mime || '').split('/')[1]?.split(';')[0] || 'png'
+  return t === 'jpeg' ? 'jpg' : t.replace(/[^a-z0-9]/gi, '') || 'png'
+}
+
+// Reads one of our saved files back by its /media/... URL.
+function readLocal(url) {
+  const file = path.join(MEDIA, path.basename(url))
+  if (!fs.existsSync(file)) throw Object.assign(new Error('An attached image is missing. Attach it again.'), { status: 400 })
+  return { buf: fs.readFileSync(file), mime: mediaTypes[path.extname(file).slice(1).toLowerCase()] || 'image/png' }
+}
+
+// Accepts a raw image body, or JSON { data, type } where data is base64 or a data URI.
+async function upload(req) {
+  const type = (req.headers['content-type'] || '').split(';')[0]
+  let buf
+  let mime = type
+  if (type === 'application/json') {
+    const { data = '', type: t } = JSON.parse((await rawBody(req)).toString('utf8') || '{}')
+    const m = /^data:([^;,]+);base64,/.exec(data)
+    mime = m ? m[1] : t || 'image/png'
+    buf = Buffer.from(m ? data.slice(m[0].length) : data, 'base64')
+  } else {
+    buf = await rawBody(req)
+  }
+  if (!buf.length) throw Object.assign(new Error('No file received.'), { status: 400 })
+  if (!/^image\/(png|jpe?g|webp|gif)$/.test(mime)) throw Object.assign(new Error('Attach a PNG, JPG, WebP or GIF image.'), { status: 415 })
+  return { url: saveMedia(buf, extOf(mime)), type: mime }
+}
+
 function saveMedia(buf, ext) {
   fs.mkdirSync(MEDIA, { recursive: true })
   const name = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
@@ -134,7 +209,7 @@ function pcmToWav(pcm, rate = 24000) {
 const GEMINI = 'https://generativelanguage.googleapis.com/v1beta'
 
 // Google AI (Gemini API key): image and speech via generateContent, Veo via a long-running operation.
-async function runGoogle({ model, mode, prompt, aspect, count = 1, duration }) {
+async function runGoogle({ model, mode, prompt, aspect, count = 1, duration, images = [] }) {
   const { key } = config('google')
   if (!key) throw Object.assign(new Error('Connect Google AI in Connections first.'), { status: 400 })
   const headers = { 'x-goog-api-key': key, 'Content-Type': 'application/json' }
@@ -145,10 +220,17 @@ async function runGoogle({ model, mode, prompt, aspect, count = 1, duration }) {
     return data
   }
 
+  const inline = images.map((u) => {
+    const f = readLocal(u)
+    return { mimeType: f.mime, data: f.buf.toString('base64') }
+  })
+
   if (mode === 'video') {
     const parameters = { aspectRatio: aspect === '9:16' ? '9:16' : '16:9' }
     if (duration) parameters.durationSeconds = duration
-    let op = await call(`${GEMINI}/models/${model}:predictLongRunning`, { instances: [{ prompt }], parameters })
+    let op = await call(`${GEMINI}/models/${model}:predictLongRunning`, {
+      instances: [inline[0] ? { prompt, image: { bytesBase64Encoded: inline[0].data, mimeType: inline[0].mimeType } } : { prompt }], parameters,
+    })
     for (let i = 0; i < 180 && !op.done; i++) {
       await sleep(5000)
       op = await (await fetch(`${GEMINI}/${op.name}`, { headers })).json()
@@ -170,7 +252,7 @@ async function runGoogle({ model, mode, prompt, aspect, count = 1, duration }) {
   const runs = mode === 'speech' ? 1 : count
   const files = []
   for (let i = 0; i < runs; i++) {
-    const data = await call(`${GEMINI}/models/${model}:generateContent`, { contents: [{ parts: [{ text: prompt }] }], generationConfig })
+    const data = await call(`${GEMINI}/models/${model}:generateContent`, { contents: [{ parts: [...inline.map((inlineData) => ({ inlineData })), { text: prompt }] }], generationConfig })
     for (const part of data.candidates?.[0]?.content?.parts || []) {
       if (!part.inlineData) continue
       const buf = Buffer.from(part.inlineData.data, 'base64')
@@ -182,7 +264,7 @@ async function runGoogle({ model, mode, prompt, aspect, count = 1, duration }) {
   return files
 }
 
-const mediaTypes = { mp3: 'audio/mpeg', wav: 'audio/wav', mp4: 'video/mp4', png: 'image/png', jpeg: 'image/jpeg', jpg: 'image/jpeg', webp: 'image/webp' }
+const mediaTypes = { mp3: 'audio/mpeg', wav: 'audio/wav', mp4: 'video/mp4', png: 'image/png', gif: 'image/gif', jpeg: 'image/jpeg', jpg: 'image/jpeg', webp: 'image/webp' }
 
 // Thumbnails and prices for specific fal endpoints. Prices need a fal key; thumbnails do not.
 async function falMeta(ids) {
@@ -281,6 +363,7 @@ function mount(app) {
         const { id } = await body(req)
         return send(res, 200, { ok: await testConnection(id).catch(() => false) })
       }
+      if (url.pathname === '/api/upload' && req.method === 'POST') return send(res, 200, await upload(req))
       if (url.pathname === '/api/fal' && req.method === 'POST') {
         return send(res, 200, { files: await runFal(await body(req)) })
       }
