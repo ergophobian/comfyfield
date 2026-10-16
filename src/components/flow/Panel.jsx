@@ -10,6 +10,7 @@ import { nodeLabels } from '../../lib/flowStore.js'
 import { WriterReview } from './nodes.jsx'
 import { widgetTypes } from '../../../shared/widgetInputs.js'
 import { Field } from '../formats/Fields.jsx'
+import StitchPanel from './StitchPanel.jsx'
 
 const blurbs = {
   approve: 'Nothing passes this gate until you approve takes and press Send. Send only starts nodes after it that have no results yet.',
@@ -138,6 +139,7 @@ export default function Panel({ node, patch, picker, connections, upload, remove
       {node.type === 'image' && <ImagePanel node={node} patch={patch} upload={upload} />}
       {node.type === 'writer' && <WriterPanel node={node} patch={patch} />}
       {node.type === 'model' && <ModelPanel node={node} patch={patch} picker={picker} connections={connections} />}
+      {node.type === 'stitch' && <StitchPanel node={node} patch={patch} />}
       {blurbs[node.type] && <p className="muted fp-blurb">{blurbs[node.type]}</p>}
       <button type="button" className="btn-soft sm fp-del" onClick={() => remove(node.id)}>Delete node</button>
     </aside>

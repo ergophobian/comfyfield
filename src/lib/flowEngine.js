@@ -1,12 +1,13 @@
 // Flow execution rules, ported from PatchWork's WORKFLOW-SPEC.
 // Pure: no React, no fetch. Inject run(model, opts) -> files and writePrompt(input) -> text.
 import { widgetTypes, widgetReady, widgetOptions } from '../../shared/widgetInputs.js'
+import { stitchInputs } from './stitch.js'
 
 const byId = (flow, id) => flow.nodes.find((n) => n.id === id)
 const sources = (flow, id) => flow.edges.filter((e) => e.target === id).map((e) => e.source)
 const targets = (flow, id) => flow.edges.filter((e) => e.source === id).map((e) => e.target)
 const cmp = (a, b) => (a.row - b.row) || (a.take - b.take)
-const executable = (n) => n.type === 'model' || n.type === 'writer'
+const executable = (n) => ['model', 'writer', 'stitch'].includes(n.type)
 
 export function topoOrder(flow) {
   const left = new Map(flow.nodes.map((n) => [n.id, sources(flow, n.id).length]))
@@ -62,7 +63,7 @@ export function promptsOf(node) {
 
 export const emptyGate = () => ({ status: 'empty', picked: [], sent: [] })
 
-export function createEngine({ run, writePrompt, onChange = () => {}, concurrency = 3 } = {}) {
+export function createEngine({ run, writePrompt, stitch, onChange = () => {}, concurrency = 3 } = {}) {
   let S = {}
   const subs = new Set()
   let active = 0
@@ -97,7 +98,7 @@ export function createEngine({ run, writePrompt, onChange = () => {}, concurrenc
       return widgetReady(n.type, value) ? [{ id: n.id, kind: n.type === 'video' ? 'video' : 'image', url: n.type === 'face' ? value.faceUrl || value.url : value.url, row: 0, take: 0, prompt: '', inputType: n.type, value }] : []
     }
     if (n.type === 'image') return n.data.url ? [{ id: n.id, kind: 'image', url: n.data.url, row: 0, take: 0, prompt: '' }] : []
-    if (n.type === 'model') return doneItems(id)
+    if (['model', 'stitch'].includes(n.type)) return doneItems(id)
     if (n.type === 'writer') return S[id]?.sent ? doneItems(id) : null
     if (n.type === 'approve') return gate(id).status === 'sent' ? gate(id).sent : null
     return []
@@ -130,6 +131,10 @@ export function createEngine({ run, writePrompt, onChange = () => {}, concurrenc
         }
       }
       return { blocked, units: blocked ? [] : [{ key: 'writer', row: 0, take: 0, opts: { instructions: n.data.instructions, note: notes.filter(Boolean).join('\n\n'), images, target: n.data.target || '' } }] }
+    }
+    if (n.type === 'stitch') {
+      const input = stitchInputs(flow, id, itemsOf, running)
+      return { blocked: input.blocked, units: input.blocked ? [] : [{ key: 'stitch', row: 0, take: 0, opts: input.options, signature: input.signature }] }
     }
     const model = n.data.model
     if (!model) return { blocked: true, units: [] }
@@ -217,16 +222,17 @@ export function createEngine({ run, writePrompt, onChange = () => {}, concurrenc
     const n = byId(flow, id)
     const units = todo(flow, id)
     if (!units.length) return 0
-    const model = n.data.model || { kind: 'text' }
+    const model = n.type === 'stitch' ? { kind: 'video' } : n.data.model || { kind: 'text' }
     const pending = units.map((u) => ({
       id: `${id}:${u.key}`, unit: u.key, row: u.row, take: u.take, prompt: u.opts.prompt,
-      kind: model.kind, aspect: u.opts.aspect, status: 'pending',
+      kind: model.kind, aspect: u.opts.aspect, signature: u.signature, status: 'pending',
     }))
     edit(id, (s) => ({ items: [...(s.items || []).filter((i) => i.status === 'done'), ...pending], running: (s.running || 0) + 1, ...(n.type === 'writer' ? { sent: false } : {}) }))
     await Promise.all(units.map(async (u, k) => {
       let next
       try {
         const files = await limit(async () => {
+          if (n.type === 'stitch') return [await stitch(u.opts)]
           if (n.type !== 'writer') return run(model, u.opts)
           if (!writePrompt) throw new Error('Prompt writing is not connected.')
           const text = await writePrompt(u.opts)

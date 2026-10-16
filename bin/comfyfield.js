@@ -3,6 +3,7 @@ import path from 'node:path'
 import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
+import fs from 'node:fs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -13,6 +14,8 @@ Usage
   comfyfield generate "<prompt>" --model <id> [--ratio 16:9] [--duration 5] [--count 1] [--image <url|file>] [--out ./dir]
   comfyfield connect <comfy|fal|google|elevenlabs> --key <key> [--url <comfy url>]
   comfyfield balance
+  comfyfield stitch <clip> [<clip> ...] [--ratio 16:9] [--music <file>] [--volume 0.25] [--fade 1] [--out ./dir]
+  comfyfield stitch --spec <stitch.json> [--preview] [--out ./dir]
   comfyfield mcp      Start the MCP server on stdio
   comfyfield dev      Start the app
 
@@ -24,6 +27,7 @@ const options = {
   ratio: { type: 'string' }, duration: { type: 'string' }, count: { type: 'string' }, image: { type: 'string' },
   out: { type: 'string', short: 'o' }, key: { type: 'string' }, url: { type: 'string' }, json: { type: 'boolean' },
   help: { type: 'boolean', short: 'h' },
+  spec: { type: 'string' }, music: { type: 'string' }, volume: { type: 'string' }, fade: { type: 'string' }, preview: { type: 'boolean' },
 }
 
 function die(msg) {
@@ -49,6 +53,15 @@ async function main() {
 
 
   const core = await import('../server/core.js')
+
+  if (cmd === 'stitch') {
+    const spec = v.spec ? JSON.parse(fs.readFileSync(v.spec, 'utf8')) : { clips: rest }
+    if (v.ratio) spec.aspect = v.ratio
+    if (v.music) spec.music = { url: v.music, volume: v.volume == null ? 0.25 : Number(v.volume), fade: v.fade == null ? 1 : Number(v.fade) }
+    const file = await core.stitch({ ...spec, preview: Boolean(v.preview) })
+    const saved = v.out ? await core.saveFiles([file], path.resolve(v.out)) : [file.path]
+    return console.log(v.json ? JSON.stringify({ ...file, path: saved[0] }, null, 2) : saved[0])
+  }
 
   if (cmd === 'models') {
     const list = await core.listModels({ kind: v.kind, query: v.search })

@@ -13,6 +13,21 @@ export function createServer() {
   const server = new McpServer({ name: 'comfyfield', version: '0.1.0' })
   const kind = z.enum(['image', 'video', 'audio']).optional().describe('Filter by media kind')
 
+  server.registerTool('stitch', {
+    description: 'Join ordered clips locally with ffmpeg, preserving clip audio. Optional trims, burned captions and looped music with volume and fade. No paid calls. Set preview to review first, then call export_stitch to save that exact file to the Library.',
+    inputSchema: {
+      clips: z.array(z.object({ url: z.string(), start: z.number().min(0).optional(), end: z.number().positive().optional(), caption: z.string().optional() })).min(1).max(50),
+      aspect: z.enum(['16:9', '9:16', '1:1', '4:5']).optional(),
+      music: z.object({ url: z.string(), volume: z.number().min(0).max(2).optional(), fade: z.number().min(0).optional() }).optional(),
+      preview: z.boolean().optional(),
+    },
+  }, tool((args) => core.stitch(args)))
+
+  server.registerTool('export_stitch', {
+    description: 'Save an existing Stitch preview to the Library without rendering again.',
+    inputSchema: { url: z.string().describe('The /media URL returned by stitch') },
+  }, tool(({ url }) => core.exportStitch(url)))
+
   server.registerTool('list_models', {
     description: 'List pinned models and search fal.ai catalog. Ids look like g-veo, comfy-flux or fal:<endpoint>; any fal endpoint can be used as fal:<endpoint>.',
     inputSchema: { kind, query: z.string().optional().describe('Search fal catalog, for example "kling"'), limit: z.number().int().min(1).max(50).optional() },

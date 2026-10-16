@@ -199,6 +199,21 @@ function mount(app) {
         return send(res, 200, { files: await core.runGoogle(await body(req)) })
       }
       if (url.pathname === '/api/upload' && req.method === 'POST') return send(res, 200, await upload(req, core.saveMedia))
+      if (url.pathname === '/api/stitch' && req.method === 'POST') return send(res, 200, await core.stitch(await body(req)))
+      if (url.pathname === '/api/stitch/exports' && req.method === 'GET') return send(res, 200, core.stitchedExports())
+      if (url.pathname === '/api/stitch/export' && req.method === 'POST') return send(res, 200, core.exportStitch((await body(req)).url))
+      if (url.pathname === '/api/stitch/export' && req.method === 'DELETE') {
+        core.dismissStitch((await body(req)).url)
+        return send(res, 200, { ok: true })
+      }
+      if (url.pathname === '/api/stitch/upload' && req.method === 'POST') {
+        const mime = (req.headers['content-type'] || '').split(';')[0]
+        const ext = { 'video/mp4': 'mp4', 'video/webm': 'webm', 'video/quicktime': 'mov', 'audio/mpeg': 'mp3', 'audio/wav': 'wav', 'audio/x-wav': 'wav', 'audio/mp4': 'm4a', 'audio/ogg': 'ogg', 'audio/flac': 'flac' }[mime]
+        if (!ext) return send(res, 415, { error: 'Choose an MP4, WebM, MOV, MP3, WAV, M4A, Ogg or FLAC file.' })
+        const buf = await rawBody(req)
+        if (!buf.length) return send(res, 400, { error: 'No file received.' })
+        return send(res, 200, { url: core.saveMedia(buf, ext).url })
+      }
       if (url.pathname === '/api/library/import' && req.method === 'POST') return send(res, 200, await importUrl(await body(req)))
       if (url.pathname.startsWith('/api/library/') && await libraryRoute(req, res, url)) return
       if (url.pathname.startsWith('/media/')) {

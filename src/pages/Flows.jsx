@@ -18,11 +18,12 @@ const addable = [
   ['video', 'Upload, trim and pick a poster'],
   ['crop', 'Choose an aspect and crop area'],
   ['model', 'Any image, video or audio model'],
+  ['stitch', 'Join clips, captions and music locally'],
   ['approve', 'A gate you open with Send'],
   ['output', 'A gallery of results'],
   ['note', 'A note for yourself'],
 ]
-const miniColor = { prompt: '#8a8fa6', image: '#8a8fa6', writer: 'var(--blue)', model: '#4a5bff', approve: '#f5b301', output: '#138a4b', note: '#c3c6d4' }
+const miniColor = { prompt: '#8a8fa6', image: '#8a8fa6', writer: 'var(--blue)', stitch: 'var(--blue-hi)', model: '#4a5bff', approve: '#f5b301', output: '#138a4b', note: '#c3c6d4' }
 
 function Pop({ label, children, align = 'left' }) {
   const [open, setOpen] = useState(false)
@@ -163,7 +164,7 @@ function Canvas({ picker }) {
           </Pop>
           <button type="button" className="btn-soft" onClick={download} disabled={!flow.nodes.length}>Export</button>
           {hasOutput && <button type="button" className="btn-soft" onClick={regenerate} disabled={busy}>{wipe ? 'Wipe and re-run?' : 'Regenerate all'}</button>}
-          <button type="button" className="btn-blue sm" onClick={run} disabled={busy || !flow.nodes.some((n) => ['model', 'writer'].includes(n.type))}>{busy ? 'Running' : 'Run'}</button>
+          <button type="button" className="btn-blue sm" onClick={run} disabled={busy || !flow.nodes.some((n) => ['model', 'writer', 'stitch'].includes(n.type))}>{busy ? 'Running' : 'Run'}</button>
         </div>
 
         <ReactFlow key={flow.id} nodes={flow.nodes} edges={edges} nodeTypes={nodeTypes}
