@@ -84,6 +84,10 @@ export async function getConnections() {
   return res.ok ? res.json() : {}
 }
 
+export async function writePrompt(input) {
+  return (await post('/api/prompt', input)).text
+}
+
 export async function saveConnection(id, values) {
   await post('/api/connections', { id, values })
 }
