@@ -1,0 +1,1529 @@
+{
+  "version": 1,
+  "count": 45,
+  "jobs": [
+    "ugc",
+    "ads",
+    "influencer",
+    "cinematic",
+    "effects",
+    "edit"
+  ],
+  "specs": [
+    {
+      "id": "airborne-belongings",
+      "name": "Airborne belongings",
+      "job": "ads",
+      "inputs": [
+        {
+          "slot": "character",
+          "label": "Character image (an invented person)"
+        },
+        {
+          "slot": "location",
+          "label": "Location image"
+        },
+        {
+          "slot": "product",
+          "label": "Product image"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Airborne belongings\".\nYou receive: Character image (an invented person); Location image; Product image, plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: the character is knocked backward and her belongings hang in the air in slow motion while the camera glides through tight close-ups of each one, then time resumes and she lands.\nStep 3: use this recipe for timing and camera. Beats: 0-2 s she walks toward the camera on the location; 2-3 s a passer-by clips her shoulder and she tips backward; 3-8 s time nearly stops, her held items (use the product image as one of them) drift in the air and the camera pushes in on each in turn with razor-thin focus, showing label side, edge highlights and a few suspended droplets or glints, while she hangs soft and blurred in the background; 8-10 s speed snaps back, items clatter to the ground in the foreground and she lies on the ground in the background. Camera: backward tracking, then macro orbits, then a low static wide.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 10 seconds at 9:16; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "A woman in a cream knit sweater and wire glasses walks toward the camera across a sunlit brick plaza, a reusable steel bottle in one hand and a phone in the other. A man in a green jacket brushes her shoulder without looking. She tips backward, and at 3 seconds the frame drops into ultra slow motion: the bottle, glasses and phone drift upward and spin, water beads hanging around the bottle. The camera pushes in on the bottle first, its matte surface and silver cap catching low sun, then swings round the glasses with light refracting through the lenses, then the phone slowly opening in the air. She hangs out of focus behind them, hair fanned. At 8 seconds speed snaps back, the items bounce onto the pavement in the foreground and she lies flat in the soft background, laughing. Warm golden hour, shallow depth of field, crisp reflections.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Full-body photo of an invented woman in her late 20s with a short dark bob, round wire glasses and a cream knit sweater, relaxed mid-stride pose, plain light background, natural light, photoreal. Invented subject only, no real person, no logos or brand names."
+        },
+        {
+          "slot": "location",
+          "prompt": "Empty brick pedestrian plaza in golden hour, low sun, long shadows, clean pavement, red-brick buildings on both sides, no people, no signage, photoreal wide shot. No brands or readable text."
+        },
+        {
+          "slot": "extra",
+          "prompt": "Generic brushed steel water bottle with a plain matte body and no logo, centered on a neutral gray backdrop, product photo. Invented subject only, no real person, no logos or brand names."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 10,
+        "aspect_ratio": "9:16",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "studio-cross-wipe",
+      "name": "Studio cross-wipe",
+      "job": "ads",
+      "inputs": [
+        {
+          "slot": "character",
+          "label": "Character image (an invented person)"
+        },
+        {
+          "slot": "product",
+          "label": "Product image"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Studio cross-wipe\".\nYou receive: Character image (an invented person); Product image, plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: the model's own close-up shoulder sweeps across the lens as a wipe and uncovers a second, identical model in full length holding the product further back, repeated twice.\nStep 3: use this recipe for timing and camera. Beats: a foreground close-up of the model in profile on the left edge of frame; a full-length copy of her stands mid-distance holding the product at chest height. She turns and her hair and shoulder pass over the lens, becoming a natural wipe; the copy in the back is now turned the other way. Repeat for three layers. Locked camera, shallow depth of field, seamless warm-colored backdrop, black wardrobe so the product is the colorful or textured accent.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 8 seconds at 9:16; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "In a seamless amber studio, a tall model in a black high-neck blouse stands in extreme close-up on the left, looking out of frame. Behind her at the far right a second identical model stands full length, holding a structured black leather handbag at chest height. At 2 seconds the foreground model turns and her ponytail and shoulder sweep across the lens, wiping the frame; when it clears she passes in profile and the distant model faces camera, showing the bag. At 6 seconds her shoulder sweeps the lens again and the far model glances back over her shoulder. Locked camera, soft directional key light, subtle highlights on the leather, rack focus between planes, black and gold palette.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Waist-up photo of an invented woman with a sleek ponytail in a black high-neck sheer blouse, neutral expression, seamless amber studio backdrop, soft key light. Invented subject only, no real person, no logos or brand names."
+        },
+        {
+          "slot": "location",
+          "prompt": "Empty seamless warm amber studio cyclorama, soft gradient floor, no objects, photoreal. No brands or readable text."
+        },
+        {
+          "slot": "extra",
+          "prompt": "Structured black leather handbag with small floral fabric charms, no logo, on a plain amber backdrop, product photo. Invented subject only, no real person, no logos or brand names."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 8,
+        "aspect_ratio": "9:16",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "dive-into-the-eye",
+      "name": "Dive into the eye",
+      "job": "effects",
+      "inputs": [
+        {
+          "slot": "character",
+          "label": "Character image (an invented person)"
+        },
+        {
+          "slot": "location",
+          "label": "Location image"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Dive into the eye\".\nYou receive: Character image (an invented person); Location image, plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: the camera rushes at the subject's eye and flies through the cornea into a huge glowing iris landscape that ends in the black of the pupil.\nStep 3: use this recipe for timing and camera. Beats: 0-2 s portrait on the location, subject turns and looks into lens; 2-3 s very fast forward push to the eye with a touch of motion blur; 3-7 s continuous macro dive, eyelashes sweep past, the surface of the eye reflects the street, then the iris fibres open like canyons in amber and gold and the frame falls into the dark pupil. Say the iris color of the subject and keep it consistent. Single unbroken move, no cuts.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 7 seconds at 9:16; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "A young man with curly hair and a denim jacket stands on a sunny street corner, turns his head and looks straight into the lens. At 2 seconds the camera accelerates forward at his left eye. Eyelashes whip past the frame edges, the cornea mirrors the street and sky, and the camera pierces it. From 3 seconds it travels through a vast macro landscape of green-brown iris fibres, radial ridges and glowing amber crypts, light scattering through them, speed building until the frame falls into the black pupil. Seamless single take, hyper-detailed macro lighting, subtle motion blur.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Close portrait of an invented young man with curly dark hair, hazel-green eyes and a denim jacket, direct gaze, sunny day, photoreal. Invented subject only, no real person, no logos or brand names."
+        },
+        {
+          "slot": "location",
+          "prompt": "Sunny city street corner with brick buildings and a parked ice cream cart, warm afternoon light, shallow depth of field, no people. No brands or readable text."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 7,
+        "aspect_ratio": "9:16",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "intersection-drift",
+      "name": "Intersection drift",
+      "job": "cinematic",
+      "inputs": [
+        {
+          "slot": "character",
+          "label": "Character image (an invented person)"
+        },
+        {
+          "slot": "location",
+          "label": "Location image"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Intersection drift\".\nYou receive: Character image (an invented person); Location image, plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: a car spins in a drift while its passenger sits half out of the window or on the roof giving a calm thumbs up, with the camera whipping around the spin.\nStep 3: use this recipe for timing and camera. Beats: 0-2 s low chase view behind the rear bumper as the car slides over a crosswalk, white tire smoke; 2-5 s camera whips up into a top-down orbit that rotates with the car, the passenger climbs onto the roof and thumbs-up; 5-7 s high three-quarter view, crowd phones recording; 7-9 s car whips past an ultra-low wheel-level camera. Use the character image as the passenger and the location image as the junction. Insist on motion blur and smoke continuity.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 9 seconds at 9:16; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "At a busy sunlit crosswalk a gloss-black coupe with a wing launches into a drift, tires pouring white smoke. The camera starts low behind the bumper, then whips into a top-down orbit that spins with the car as a young man in a red bomber jacket climbs out of the passenger window onto the roof, looks up and gives a relaxed thumbs-up. Pedestrians on the pavement hold up phones. At 5 seconds the camera pulls back to a high three-quarter angle with the car completing a donut, and at 8 seconds it cuts to wheel height as the car rips past the lens. Harsh midday sun, heavy motion blur on asphalt, saturated colors, fast-paced action film look.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Full-body photo of an invented young man in a red bomber jacket and striped shirt, grinning, plain background, photoreal. Invented subject only, no real person, no logos or brand names."
+        },
+        {
+          "slot": "location",
+          "prompt": "Large city intersection with zebra crosswalks, tall video billboards (blank colored screens), sunlit, empty of cars, wide shot, photoreal. No brands or readable text."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 9,
+        "aspect_ratio": "9:16",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "beer-thief-chase",
+      "name": "Beer thief chase",
+      "job": "ads",
+      "inputs": [
+        {
+          "slot": "character",
+          "label": "Character image (an invented person)"
+        },
+        {
+          "slot": "product",
+          "label": "Product image"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Beer thief chase\".\nYou receive: Character image (an invented person); Product image, plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: a quiet smash of a car window to grab the product, then an instant cut to the thief sprinting in panic while others chase.\nStep 3: use this recipe for timing and camera. Beats: 0-3 s medium interior shot, product on the seat in foreground, thief peeks in from outside; 3-5 s he lifts a rock, window shatters in slow glass bits, he snatches the product; hard smash cut at 6 s to a low backward-tracking shot of him sprinting down a sunlit street clutching it while two shouting pursuers run behind and a patrol-car light flashes. Product must be clear, label facing camera at the snatch. Keep tone comic.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 9 seconds at 9:16; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "Inside a parked vintage car with deep blue seats, a brown glass bottle with a plain amber label sits on the passenger seat. Through the window a man in a green beret and striped rugby shirt leans in, eyes locked on it. At 3 seconds he lifts a rock and the window bursts into slow sparkling shards as his hand grabs the bottle. Hard smash cut at 6 seconds to a low camera moving backward ahead of him as he sprints along a brick street clutching the bottle and screaming, two uniformed pursuers shouting behind, a red and blue light flashing at the end of the street. Golden hour, punchy comedic commercial energy.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Full-body photo of an invented man with glasses in a green beret and yellow-green striped rugby shirt, playful smirk, plain background. Invented subject only, no real person, no logos or brand names."
+        },
+        {
+          "slot": "location",
+          "prompt": "Sunlit urban brick alley with parked cars, golden hour, empty, wide street-level photo. No brands or readable text."
+        },
+        {
+          "slot": "extra",
+          "prompt": "Generic brown glass beer bottle with a blank cream label, no brand, on a neutral gray backdrop, product photo. Invented subject only, no real person, no logos or brand names."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 9,
+        "aspect_ratio": "9:16",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "calm-in-the-chaos",
+      "name": "Calm in the chaos",
+      "job": "effects",
+      "inputs": [
+        {
+          "slot": "character",
+          "label": "Character image (an invented person)"
+        },
+        {
+          "slot": "product",
+          "label": "Product image"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Calm in the chaos\".\nYou receive: Character image (an invented person); Product image, plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: she stands perfectly still holding her props while a violent blur of groceries, rolling bins and animals sweeps behind and around her, then it all clears.\nStep 3: use this recipe for timing and camera. Beats: 0-1 s character motionless, slightly looking up, holding props (coffees, bag); 1-4 s a high-speed stream of objects and legs crosses frame left to right: tumbling grocery bags, rolling fruit, a trash bin, a pigeon walking through; 4-6 s everything gone in an instant, character unmoved. Static high-angle camera, high-key studio, graphic floor pattern. Comedy is the contrast of stillness and mess.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 6 seconds at 9:16; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "In a white studio a young woman in a varsity jacket and long black skirt stands on a black and white crosswalk with a small green pedestrian light beside her, holding two coffee cups and a paper bag, completely motionless, looking slightly upward. At 1 second a chaotic rush crosses the frame: bags of groceries fly, apples roll, a teal ball bounces, a pigeon strolls through, a black trash bin tumbles, blurred legs pass. At 4 seconds it all vanishes and she hasn't moved, the light still green. Static high-angle camera, bright even studio light, deadpan fashion editorial tone.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Full-body photo of an invented young woman in a black and cream varsity jacket and long black skirt holding two paper coffee cups, neutral expression, white studio. Invented subject only, no real person, no logos or brand names."
+        },
+        {
+          "slot": "location",
+          "prompt": "Empty white cyclorama studio floor painted with a black and white zebra crosswalk and a tiny green pedestrian light, high angle. No brands or readable text."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 6,
+        "aspect_ratio": "9:16",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "two-scenes-one-crane",
+      "name": "Two scenes, one crane",
+      "job": "cinematic",
+      "inputs": [
+        {
+          "slot": "character",
+          "label": "Character image (an invented person)"
+        },
+        {
+          "slot": "location",
+          "label": "Location image"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Two scenes, one crane\".\nYou receive: Character image (an invented person); Location image, plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: a cold smooth crane rise reveals the character's dominance from above, then a hard cut to a second, warm moody scene with a different pose.\nStep 3: use this recipe for timing and camera. Two shots. Shot 1 (0-4 s): low-angle wide of the character on an ornate seat in a hazy hall, camera cranes up to a high-angle looking down while they stare into lens. Shot 2 (5-8 s): hard cut, warmer color, the character leans over a table of props, quick tilt-up reveal from table clutter to their face. Use start and last frame images as the two scene compositions if supplied.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 8 seconds at 9:16; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "Shot one: low-angle wide inside a misty stone hall, a man in an oversized cream cable-knit sweater and thick gold chains lounges on a carved wooden throne behind a red draped table of bread and a chalice. The camera cranes smoothly up and over to a high angle looking down at him as he stares coldly into the lens. At 5 seconds hard cut to a dark card room lit warm amber: the same man leans over a poker table stacked with banknotes, chips and a whiskey glass, the camera tilting up from table clutter to his glare, diamonds sparkling. Desaturated haze for the first shot, rich browns and rim light for the second.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Waist-up photo of an invented man with short blond hair, cream cable-knit sweater and gold chain necklaces, cold expression, plain gray background. Invented subject only, no real person, no logos or brand names."
+        },
+        {
+          "slot": "location",
+          "prompt": "Misty cavernous gothic hall with arched windows and a carved wooden throne behind a red draped table; second image: dim card room with a poker table. No brands or readable text."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 8,
+        "aspect_ratio": "9:16",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "giant-in-the-city",
+      "name": "Giant in the city",
+      "job": "cinematic",
+      "inputs": [
+        {
+          "slot": "character",
+          "label": "Character image (an invented person)"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Giant in the city\".\nYou receive: Character image (an invented person), plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: a skyscraper-tall version of the character walks and then leans casually on a tower while helicopters circle her head.\nStep 3: use this recipe for timing and camera. Beats: 0-3 s shaky ultra-low street view, crowds running toward camera, giant strides down an avenue in the background; 3-6 s hard cut to a cockpit view through a windshield, giant leaning on a glass tower; 6-10 s worm's-eye tilt up her leg to the roofline with two helicopters circling. Found-footage disaster film texture, fog, gray overcast, yellow taxis as the only color. The giant stays calm and fashionable.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 10 seconds at 9:16; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "Handheld camera at pavement level, wide lens, a crowd sprints toward us down a foggy city avenue littered with paper while far behind them a gigantic young woman in a brown leather bomber, green plaid trousers and platform shoes walks calmly between the towers, taxis scattered at her feet. At 3 seconds hard cut to a helicopter cockpit view through the windshield as the giant leans on a glass skyscraper, another helicopter circling in the mist. At 6 seconds a worm's-eye tilt up her leg and the building to the rooftop, two helicopters orbiting her head. Overcast gray, desaturated, gritty found-footage disaster style.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Full-body photo of an invented young woman with twin braids, glasses, brown leather bomber jacket, green plaid wide trousers and black platform shoes, plain background. Invented subject only, no real person, no logos or brand names."
+        },
+        {
+          "slot": "location",
+          "prompt": "Foggy Manhattan-style avenue with skyscrapers, yellow taxis and scattered litter, overcast, wide low angle, no people. No brands or readable text."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 10,
+        "aspect_ratio": "9:16",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "exploded-building",
+      "name": "Exploded building",
+      "job": "effects",
+      "inputs": [
+        {
+          "slot": "character",
+          "label": "Character image (an invented person)"
+        },
+        {
+          "slot": "location",
+          "label": "Location image"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Exploded building\".\nYou receive: Character image (an invented person); Location image, plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: the whole building bursts apart into clean floating blocks against a white void, hangs for a beat, then snaps back together around the unmoved character.\nStep 3: use this recipe for timing and camera. Beats: 0-1 s stillness, building intact; 1-4 s structure splits into geometric chunks that drift outward in slow-motion into a pure white space, the character's stair section stays; 4-5 s suspension at maximum spread, Escher-like; 5-7 s fast elastic return to original shape. Static high-angle camera, hard sun, sharp shadows. Everything except the character fragments.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 7 seconds at 9:16; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "A woman in a yellow jacket and wide jeans stands on the landing of a cream modernist housing block with criss-cross walkways and colorful laundry lines. For one second nothing moves. Then the entire complex cracks and bursts outward into clean geometric blocks that float apart into a pure white void while the staircase under her stays in place, walls, pillars and washing lines hanging in space at 4 seconds. At 5 seconds the pieces snap rapidly back and reassemble perfectly. Locked high-angle camera, hard sunlight, crisp shadows.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Full-body photo of an invented woman in a bright yellow jacket, wide-leg jeans and sneakers, standing on a stair landing. Invented subject only, no real person, no logos or brand names."
+        },
+        {
+          "slot": "location",
+          "prompt": "Modernist cream housing complex courtyard with overlapping walkways, balconies, laundry lines, hard sun, high angle. No brands or readable text."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 7,
+        "aspect_ratio": "9:16",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "droste-hand",
+      "name": "Droste hand",
+      "job": "effects",
+      "inputs": [
+        {
+          "slot": "character",
+          "label": "Character image (an invented person)"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Droste hand\".\nYou receive: Character image (an invented person), plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: she holds a tiny copy of herself who holds an even tinier copy, and a pull-back reveals she is standing on the palm of a giant copy.\nStep 3: use this recipe for timing and camera. Beats: 0-1 s medium-close shot, her open hand extended with a mini-her (who holds a micro-her); 1-4 s smooth exponential pull-back showing she stands on a giant her's palm, and that one on another; 4-5 s settle behind the biggest figure looking out. All copies share the same outfit and pose; one continuous zoom-out in a single cold-colored environment.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 5 seconds at 9:16; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "In a deep cyan ice cavern a blonde woman in glasses, a pastel blue track jacket and plaid skirt holds out an open palm. On it stands a perfectly detailed miniature of herself, holding an even tinier version in her own palm. From 1 second the camera pulls back in one smooth exponential move: the first woman is revealed standing on the palm of a giant copy of herself, who is revealed in turn as standing in another palm. The move ends behind the largest figure's shoulder, looking out across the glowing icy cavern. Soft cold ambient light, glassy ice shards, pure teal and white palette.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Full-body photo of an invented blonde woman in thin glasses, pastel blue zip track jacket, plaid pleated midi skirt and white socks, one hand extended palm up. Invented subject only, no real person, no logos or brand names."
+        },
+        {
+          "slot": "location",
+          "prompt": "Deep cyan glacial ice cave with glass-like vertical ice shards and snow on the ground, soft light, wide shot. No brands or readable text."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 5,
+        "aspect_ratio": "9:16",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "frozen-fashion-pose",
+      "name": "Frozen fashion pose",
+      "job": "ads",
+      "inputs": [
+        {
+          "slot": "character",
+          "label": "Character image (an invented person)"
+        },
+        {
+          "slot": "location",
+          "label": "Location image"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Frozen fashion pose\".\nYou receive: Character image (an invented person); Location image, plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: she holds a dramatic, impossible pose with total commitment while ordinary life carries on around her.\nStep 3: use this recipe for timing and camera. Beats: she holds a high-fashion bent pose while handling props on the ground; in the background workers, a van and a cart pass at normal speed; a locked, slightly low camera, hard midday sun and saturated clothing against dull concrete. Tiny micro-movements only on the character.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 5 seconds at 9:16; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "On a concrete loading dock in hard midday sun, a platinum-blonde model in red sunglasses, a navy striped sweater and red striped shorts holds a deep bent editorial pose over a canvas bag of groceries, barely moving. A worker walks past behind her, then a white van streaks across the background, then another worker wheels a cart of colorful produce crates by. She never breaks the pose. Locked low-angle tripod shot, sharp shadows, saturated red and navy against gray concrete.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Full-body photo of an invented platinum blonde woman in red sunglasses, navy white striped knit sweater, red striped shorts and orange shoes, brown shoulder bag. Invented subject only, no real person, no logos or brand names."
+        },
+        {
+          "slot": "location",
+          "prompt": "Industrial warehouse loading dock with yellow parking lines, scattered groceries on the ground, midday sun, wide photo. No brands or readable text."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 5,
+        "aspect_ratio": "9:16",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "folding-city",
+      "name": "Folding city",
+      "job": "effects",
+      "inputs": [
+        {
+          "slot": "character",
+          "label": "Character image (an invented person)"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Folding city\".\nYou receive: Character image (an invented person), plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: the street behind her bends upward ninety degrees and curls over her head while she keeps walking.\nStep 3: use this recipe for timing and camera. Beats: 0-1 s she walks toward camera across a crosswalk; 1-4 s the street bends upward at the horizon until buildings fold overhead; 4-7 s she steps onto the sidewalk as the folded world rotates around her. Camera: wide lens, backward tracking at eye level with a gentle orbit. Subject stays undistorted.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 7 seconds at 9:16; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "A young woman in a cropped blue and white tee, baggy jeans and sunglasses carries an iced green drink across a city crosswalk toward the camera. At 1 second the street behind her bends smoothly upward: the road, brownstones and traffic lights fold ninety degrees over her head, curling into a box of city above the sky. She stops, glances up, then walks on onto the sidewalk while the folded streetscape slowly rotates around her. Wide-angle camera moving backward with a slight orbit, overcast light, grounded realism on her, impossible geometry behind.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Full-body photo of an invented young woman in a cropped blue and white long-sleeve tee, baggy jeans, sunglasses and an iced matcha drink, walking pose. Invented subject only, no real person, no logos or brand names."
+        },
+        {
+          "slot": "location",
+          "prompt": "Overcast city crosswalk intersection with brownstones, traffic lights and open road, wide shot. No brands or readable text."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 7,
+        "aspect_ratio": "9:16",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "shoelace-tightrope",
+      "name": "Shoelace tightrope",
+      "job": "ads",
+      "inputs": [
+        {
+          "slot": "character",
+          "label": "Character image (an invented person)"
+        },
+        {
+          "slot": "product",
+          "label": "Product image"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Shoelace tightrope\".\nYou receive: Character image (an invented person); Product image, plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: a miniature person balances along the taut shoelace stretched between two giant sneakers.\nStep 3: use this recipe for timing and camera. Beats: 0-3 s ground-level wide, tiny runner crosses a green court while a giant lies sideways watching, a huge shoe slams down near the lens; 4-7 s low centered shot between two enormous shoes, the tiny person tightrope-walks along the stretched lace. The product is the shoe; show texture and stitching large.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 7 seconds at 9:16; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "On a vivid green tennis court beside a pool, a tiny man in a beige cap and brown blazer sprints across the foreground while a giant man lies on his side watching. At 3 seconds a colossal olive suede sneaker slams down at the lens. The camera cuts to a symmetrical low angle between two enormous sneakers with a taut white lace stretched between them, and the tiny man balances his arms and calmly tightrope-walks along it. Crisp midday sun, saturated court green, wry Wes Anderson commercial feel.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Full-body photo of an invented man in a beige cap, brown blazer and shorts, one foot raised in a tightrope step. Invented subject only, no real person, no logos or brand names."
+        },
+        {
+          "slot": "location",
+          "prompt": "Stylized outdoor tennis court beside a blue pool with trimmed hedges, clear sky, low angle. No brands or readable text."
+        },
+        {
+          "slot": "extra",
+          "prompt": "Pair of plain olive green suede sneakers with white laces, no logos, on a neutral backdrop, product photo. Invented subject only, no real person, no logos or brand names."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 7,
+        "aspect_ratio": "9:16",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "handshake-with-fire",
+      "name": "Handshake with fire",
+      "job": "cinematic",
+      "inputs": [
+        {
+          "slot": "character",
+          "label": "Character image (an invented person)"
+        },
+        {
+          "slot": "location",
+          "label": "Location image"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Handshake with fire\".\nYou receive: Character image (an invented person); Location image, plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: a calm clone of herself, entirely on fire, walks up and shakes her hand.\nStep 3: use this recipe for timing and camera. Beats: 0-2 s she walks toward camera down a garden path; 2-4 s she stops, an identical clone burning from head to foot appears in front of her; 4-6 s both stand face to face and shake hands formally while flames flicker. Camera dollies back to a symmetrical profile two-shot. Fire lights the surroundings; she is not harmed or reacting.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 6 seconds at 9:16; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "A woman in sunglasses, a white crop top, a black bolero and a long black skirt walks along a stone path in a dusk-lit Japanese garden with a tiered pagoda. At 2 seconds she stops and an identical woman, fully wrapped in roaring flames, steps in front of her. At 4 seconds they shake hands formally, the burning clone's fire casting orange flicker across the bonsai and paving while the original stays calm. The camera dollies backward and widens to a symmetrical profile two-shot against the distant pagoda. Cool lavender twilight with warm firelight.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Full-body photo of an invented woman in dark sunglasses, white crop tank, black long-sleeve bolero and long black skirt, walking pose. Invented subject only, no real person, no logos or brand names."
+        },
+        {
+          "slot": "location",
+          "prompt": "Japanese garden at dusk with sculpted bonsai, stone path and a multi-tier wooden pagoda, lavender sky. No brands or readable text."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 6,
+        "aspect_ratio": "9:16",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "wax-melt",
+      "name": "Wax melt",
+      "job": "effects",
+      "inputs": [
+        {
+          "slot": "character",
+          "label": "Character image (an invented person)"
+        },
+        {
+          "slot": "location",
+          "label": "Location image"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Wax melt\".\nYou receive: Character image (an invented person); Location image, plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: she liquefies from top to bottom and pools into a circular marbled puddle in the colors of her outfit.\nStep 3: use this recipe for timing and camera. Beats: 0-1 s static pose; 1-3 s body drips and sags like hot wax, head slumps, torso pours down; 3-5 s she flattens into a spiraling marbled puddle containing her skin tones and clothing colors, pavement reflects. Static eye-level camera; nothing else in scene moves.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 5 seconds at 9:16; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "A woman in a pink tank top, denim skirt, slouchy black boots and a cap holds a still fashion pose on an asphalt street before a beige wall. At 1 second she starts melting: her face and shoulders sag, torso and legs pour downward like thick wax. At 3 seconds the last of her slides onto the ground and swirls into a round marbled puddle of pink, denim blue, black and skin tone. Static eye-level shot, hard sunlight, sharp shadows, glossy liquid.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Full-body photo of an invented young woman in a pink tank top, distressed denim skirt, black slouchy boots and a cap, fashion pose. Invented subject only, no real person, no logos or brand names."
+        },
+        {
+          "slot": "location",
+          "prompt": "Asphalt street in front of a plain beige building with a black metal door, hard sun, empty. No brands or readable text."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 5,
+        "aspect_ratio": "9:16",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "ticket-carpet",
+      "name": "Ticket carpet",
+      "job": "ads",
+      "inputs": [
+        {
+          "slot": "character",
+          "label": "Character image (an invented person)"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Ticket carpet\".\nYou receive: Character image (an invented person), plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: she walks on a giant boarding pass that rolls under her feet and swaps the backdrop to a new city landmark each time.\nStep 3: use this recipe for timing and camera. Beats: 0-2 s profile walk looking at phone on white; 2-4 s an oversized 3D ticket rolls in as a cylinder wipe, behind her is a first landmark at golden hour; 4-6 s second roll, second landmark at dusk; 6-8 s third roll, third landmark at sunset, she stops, turns to camera and smiles. Camera locked.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 8 seconds at 9:16; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "A young woman in a green soccer jersey, white trousers and red glasses walks in profile across a clean white space, looking at her phone. At 2 seconds a giant 3D airline ticket rolls in under her feet like a curling carpet and wipes the backdrop to an ancient stone arena in golden light. At 4 seconds another roll wipes to a floodlit palace at dusk, and at 6 seconds a third reveals a canal city at sunset. She walks on, reaches the center, stops, turns to camera and smiles. Locked camera, even studio light on her, warm backdrops.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Full-body photo of an invented young woman in a green soccer jersey, white trousers, red glasses and a shoulder bag, side-on walking pose. Invented subject only, no real person, no logos or brand names."
+        },
+        {
+          "slot": "location",
+          "prompt": "Plain white studio floor, clean and empty. No brands or readable text."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 8,
+        "aspect_ratio": "9:16",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "titan-double",
+      "name": "Titan double",
+      "job": "cinematic",
+      "inputs": [
+        {
+          "slot": "character",
+          "label": "Character image (an invented person)"
+        },
+        {
+          "slot": "location",
+          "label": "Location image"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Titan double\".\nYou receive: Character image (an invented person); Location image, plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: an enormous copy of the model drops from the sky and crawls menacingly behind her, then bursts into smoke while she never looks back.\nStep 3: use this recipe for timing and camera. Beats: 0-1 s she walks toward the camera across a barren desert; 1-3 s giant denim legs fall from above and slam down behind her with a dust ring, a tall long-limbed double of her; 3-6 s it flexes, hunches and crawls after her; 6-7 s it reaches a clawed hand toward her and bursts into a column of smoke; 7-9 s smoke blows away, she keeps walking. Locked eye-level medium-wide.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 9 seconds at 9:16; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "A fashion model in an avant-garde hooded top and oversized dark denim walks steadily toward the camera across a pale desert under a flat overcast sky. At 1 second a pair of giant denim legs crash down behind her in a ring of dust, followed by a towering long-limbed copy of her that flexes its arms and drops to a low crawl behind her. At 6 seconds it reaches a clawed hand out and instantly bursts into a tall plume of smoke that the wind carries away. She never turns her head. Locked eye-level camera, desaturated cold palette.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Full-body photo of an invented woman with slicked-back hair, an avant-garde hooded long-sleeve top and oversized dark denim jeans. Invented subject only, no real person, no logos or brand names."
+        },
+        {
+          "slot": "location",
+          "prompt": "Vast barren pale desert under flat gray overcast sky, empty horizon. No brands or readable text."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 9,
+        "aspect_ratio": "9:16",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "neon-scan-landing",
+      "name": "Neon scan landing",
+      "job": "effects",
+      "inputs": [
+        {
+          "slot": "image",
+          "label": "Single base image"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Neon scan landing\".\nYou receive: Single base image, plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: a fast infrared-style flight through glowing flowers brakes and snaps into a calm real overhead portrait of a person lying in the grass.\nStep 3: use this recipe for timing and camera. Beats: 0-4 s low first-person drone flight forward through glowing cyan-white flowers on a black field, heavy radial blur; 4-5 s sharp bank toward a glowing silhouette; 5-6 s the scan look dissolves into a still, natural-color top-down shot of the person lying on their back among real flowers. Subject appearance from the image only appears at the end.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 6 seconds at 9:16; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "From 0 to 4 seconds a low fast first-person drone camera skims forward through a night field rendered as a neon scan: pure black sky, cyan grass, glowing white lily petals, radial motion streaks. At 4 seconds it banks hard toward a glowing human silhouette lying in the grass. At 5 seconds the neon look drops away and the shot brakes into a calm real top-down portrait of a person lying on their back in green grass among pastel pink and white lilies, mirrored sunglasses, a navy hooded windbreaker zipped to the nose, perfectly still in soft daylight.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Overhead photo of an invented person lying on their back in green grass among pink and white lilies, wearing reflective sunglasses and a navy hooded windbreaker zipped up to the nose. Invented subject only, no real person, no logos or brand names."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 6,
+        "aspect_ratio": "9:16",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "building-becomes-a-wave",
+      "name": "Building becomes a wave",
+      "job": "effects",
+      "inputs": [
+        {
+          "slot": "image",
+          "label": "Single base image"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Building becomes a wave\".\nYou receive: Single base image, plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: the soft sculpted roof of a pink building swells and curls into a giant frozen ocean wave behind the subject.\nStep 3: use this recipe for timing and camera. Beats: 0-2 s subject sways slightly; building looks normal; 2-5 s the roof ridge swells upward, stretches and curls forward into a huge cresting wave shape that hangs over the house; 5-6 s settle. Camera static, medium-wide eye-level. Subject and foreground unaffected.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 6 seconds at 9:16; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "A platinum-blonde woman in a ruffled yellow mini-dress holds a large green leaf, swaying gently in front of a bubblegum-pink organic cave-style villa on a hilltop under a pale sky. At 2 seconds the bulbous roof starts to swell and rise, then stretches upward and curls forward into a massive frozen ocean wave, its crest overhanging the whole building while windows stay in place. She keeps swaying at the center. Static medium-wide eye-level camera, soft afternoon light, pastel surrealism.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Full-body photo of an invented platinum blonde woman in a ruffled yellow mini-dress holding a large green leaf, in front of a pink organic cave-like house on a hill. Invented subject only, no real person, no logos or brand names."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 6,
+        "aspect_ratio": "9:16",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "street-clones",
+      "name": "Street clones",
+      "job": "effects",
+      "inputs": [
+        {
+          "slot": "image",
+          "label": "Single base image"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Street clones\".\nYou receive: Single base image, plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: copies of the model appear one by one down the crosswalk, then one walks up to the lens and covers it with her palm.\nStep 3: use this recipe for timing and camera. Beats: 0-1 s model poses by a street sign pole; 2-3 s identical copies pop in at staggered depths across the crossing, copying her pose; 4-6 s a foreground copy enters the bottom of frame, walks to the camera, smiles and puts her hand over the lens (blackout). Low wide-angle static camera.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 6 seconds at 9:16; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "From a low wide-angle street-level view a woman in a cropped hot-pink faux fur jacket, patchwork skirt and white heels poses with one arm raised beside a yellow road sign on a city crosswalk. At 2 seconds identical copies of her appear down the crossing at different depths, each in the same pose. At 4 seconds a copy at the front steps into the bottom of the frame, walks up to the lens, looks down, smiles and covers the lens with her hand until it goes dark. Overcast flat light, gray and beige city with a vivid pink accent.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Full-body photo of an invented woman with an updo, big gold earrings, cropped hot-pink faux fur jacket, purple patchwork high-slit skirt, white strappy heels, one arm raised. Invented subject only, no real person, no logos or brand names."
+        },
+        {
+          "slot": "location",
+          "prompt": "Wide city crosswalk flanked by limestone and glass buildings, overcast, low angle, with a yellow diamond road sign. No brands or readable text."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 6,
+        "aspect_ratio": "9:16",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "paper-scrap-doodles",
+      "name": "Paper scrap doodles",
+      "job": "edit",
+      "inputs": [
+        {
+          "slot": "character",
+          "label": "Character image (an invented person)"
+        },
+        {
+          "slot": "image",
+          "label": "Single base image"
+        },
+        {
+          "slot": "product",
+          "label": "Product image"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Paper scrap doodles\".\nYou receive: Character image (an invented person); Single base image; Product image, plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: the cutout figure jumps rope inside a torn-paper collage while hand-drawn blue doodles animate the rope, ripples and sparks.\nStep 3: use this recipe for timing and camera. Layout: tall cutout of the character on top half over a crinkled colored paper backdrop with a white sticker outline; two torn-paper framed inset photos below (side profile left, close detail of footwear or product right). Beats: looping jump-rope action in the top, line doodles drawing the rope and impact ripples each jump, stars and motion lines pulsing around insets which stay still. Camera static.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 5 seconds at 9:16; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "A early-2000s zine-style collage on crinkled turquoise paper. In the upper half a cutout girl in a pink baby tee, white feather wings, white micro skirt and knee-high lace-up boots, outlined with a white sticker border, jumps rope in a seamless loop, a hand-drawn blue line rope arcing over her head and ripples drawing under her boots on every landing. Below, two torn-paper framed photos stay still: a side profile on the left and the boots on the right, with blue doodle stars and motion waves pulsing around the frames. Static camera, flat soft light.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Full-body photo of an invented young woman in a pink baby tee, white feather shoulder wings, white micro skirt and knee-high lace-up boots, mid-jump. Invented subject only, no real person, no logos or brand names."
+        },
+        {
+          "slot": "location",
+          "prompt": "Crinkled turquoise paper texture, flat background. No brands or readable text."
+        },
+        {
+          "slot": "extra",
+          "prompt": "Close portrait side profile of the same invented woman, and a close shot of the lace-up boots. Invented subject only, no real person, no logos or brand names."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 5,
+        "aspect_ratio": "9:16",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "time-split-walk",
+      "name": "Time-split walk",
+      "job": "effects",
+      "inputs": [
+        {
+          "slot": "character",
+          "label": "Character image (an invented person)"
+        },
+        {
+          "slot": "location",
+          "label": "Location image"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Time-split walk\".\nYou receive: Character image (an invented person); Location image, plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: the crowd behind him streaks by blurred and fast while he walks crisp in real time and snaps his fingers.\nStep 3: use this recipe for timing and camera. Beats: he walks toward camera along a sidewalk; background pedestrians move at fast-forward with motion blur; at ~2 s he snaps his fingers in time; later a smirk to camera. Camera tracks backward at his pace. Sharp subject, smeared crowd.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 7 seconds at 9:16; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "A man with spiked neon-pink hair, red wraparound sunglasses and a patterned sweater vest walks straight toward the camera down a sunny sidewalk in front of a white graffiti wall. The camera glides backward at his pace. Around him blurred pedestrians sweep past at a hyper-fast speed while he moves at normal speed, perfectly sharp. At 2 seconds he lifts his left hand and snaps his fingers, the crowd blur briefly freezing then resuming. At 6 seconds he gives a smirk to the lens. Hard midday sun, bright blue sky, streetwear music-video look.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Full-body photo of an invented man with spiked neon-pink hair, red wraparound sunglasses, abstract patterned sweater vest, pink shirt and loose tan trousers, walking toward the camera. Invented subject only, no real person, no logos or brand names."
+        },
+        {
+          "slot": "location",
+          "prompt": "Sunny city sidewalk with a white graffiti wall, telephone poles and hillside buildings, empty, wide shot. No brands or readable text."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 7,
+        "aspect_ratio": "9:16",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "screen-rip",
+      "name": "Screen rip",
+      "job": "cinematic",
+      "inputs": [
+        {
+          "slot": "character",
+          "label": "Character image (an invented person)"
+        },
+        {
+          "slot": "location",
+          "label": "Location image"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Screen rip\".\nYou receive: Character image (an invented person); Location image, plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: an armored warrior tears through the cinema screen into the auditorium while the audience flees.\nStep 3: use this recipe for timing and camera. Beats: 0-2 s selfie-style handheld vlog shot in a cinema, whip-pan to the screen showing a battle; 2-6 s a vertical rip opens in the screen with orange backlight; 6-10 s performers and smoke pour out, audience runs; 10-15 s the warrior walks out through the rip, draws a sword and strikes a stylized dance pose, camera punches in. The character is the vlogger.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 15 seconds at 16:9; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "Handheld selfie view of a young man vlogging in a packed cinema; he whips the camera round to a huge screen showing a burning fortress battle. At 2 seconds a vertical tear splits the screen open with blinding orange light behind it, the fabric peeling. Smoke rolls into the room, dark-clad performers leap onto the stage and the audience scrambles up the aisle. At 10 seconds a warrior in black plate armor, crested helmet and cape strides through the breach, draws a sword and strikes a dance pose, camera snapping into a full-body hero frame. Dim auditorium, orange backlight, haze.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Selfie-style photo of an invented young man with short dark hair in a hoodie sitting in a cinema seat, surprised grin. Invented subject only, no real person, no logos or brand names."
+        },
+        {
+          "slot": "location",
+          "prompt": "Large dark modern cinema auditorium with a curved screen, packed audience seats, wide shot. No brands or readable text."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 15,
+        "aspect_ratio": "16:9",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "orbit-to-street",
+      "name": "Orbit to street",
+      "job": "cinematic",
+      "inputs": [
+        {
+          "slot": "image",
+          "label": "Single base image"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Orbit to street\".\nYou receive: Single base image, plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: a continuous plunge from space through a downtown canyon of towers to a hard stop in front of the seated subject.\nStep 3: use this recipe for timing and camera. Beats: 0-2 s orbit view over a coast city, rapid zoom; 2-5 s steep vertical dive between towers with a roll and radial blur; 5-7 s level out skimming a street low and fast; 7-9 s hard brake to a stop in front of the subject, who is seated on a curb looking at the lens. No cuts. Subject identity from image.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 9 seconds at 9:16; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "A single unbroken move starts in low Earth orbit over a sunlit coastline and city grid, then zooms down. At 2 seconds the camera dives vertically between glass skyscrapers with a half roll and strong radial motion blur. At 5 seconds it levels out and skims fast along an asphalt street at curb height. At 7 seconds it brakes hard to a steady low wide shot of a young woman in baggy streetwear sitting on the curb, looking straight at the lens, relaxed. Bright daylight, drone-like speed, intense blur until the stop.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Full-body photo of an invented young woman in baggy streetwear sitting on a curb, looking at the camera. Invented subject only, no real person, no logos or brand names."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 9,
+        "aspect_ratio": "9:16",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "painting-mirror",
+      "name": "Painting mirror",
+      "job": "effects",
+      "inputs": [
+        {
+          "slot": "character",
+          "label": "Character image (an invented person)"
+        },
+        {
+          "slot": "image",
+          "label": "Single base image"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Painting mirror\".\nYou receive: Character image (an invented person); Single base image, plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: a split screen: a real person recreates a famous sorrowful painting, wiping a single tear, in a live portrait above the still artwork.\nStep 3: use this recipe for timing and camera. Layout: vertical canvas split into two halves; the top half is the live recreation, the bottom half is a static reference image (the user's artwork). Beats: sits still gazing out; raises one hand to wipe a tear; lowers hand, exhales, wind in hair. Static camera; the painting does not move.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 6 seconds at 9:16; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "A vertical split screen. The top half is a live cinematic shot of a dark-haired woman in white feathered wings and a draped ivory tunic sitting on twilight coastal rocks, gazing out to sea. At 1 second she raises her right hand and wipes a tear from her eye, at 3 seconds she lowers it, breathes out and looks ahead with reddened eyes as wind moves her hair. The bottom half is a still crop of a classical oil painting of a weeping figure that never moves. Static camera, cool twilight rim light, blue and amber palette.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Waist-up photo of an invented dark-haired woman in white feathered angel wings and a draped ivory tunic on coastal rocks at twilight, looking at the horizon. Invented subject only, no real person, no logos or brand names."
+        },
+        {
+          "slot": "location",
+          "prompt": "Close crop of an original oil painting in the 19th-century academic style of a weeping male figure with bowed head, dark background (invented). No brands or readable text."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 6,
+        "aspect_ratio": "9:16",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "frozen-diner-orbit",
+      "name": "Frozen diner orbit",
+      "job": "cinematic",
+      "inputs": [
+        {
+          "slot": "character",
+          "label": "Character image (an invented person)"
+        },
+        {
+          "slot": "location",
+          "label": "Location image"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Frozen diner orbit\".\nYou receive: Character image (an invented person); Location image, plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: time freezes as the waitress trips and a full breakfast hangs in the air while the camera orbits 360 degrees around it, then time resumes.\nStep 3: use this recipe for timing and camera. Beats: 0-1 s normal speed; 1-9 s freeze, tray flips, objects suspended, orbital camera circling around the booth; 9-10 s time snaps back and the mess resets; cut to an extreme close-up of the character sipping a straw and smiling. Character is unfazed through all.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 15 seconds at 16:9; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "In a retro diner a girl with lime green hair drinks a milkshake through a straw while a waitress carries a breakfast tray. At 1 second time stops as the waitress trips: eggs, bacon, coffee and plates hang in mid-air. The camera begins a clockwise 360-degree orbit around the booth and the suspended food, the girl sipping calmly. At 9 seconds time snaps back, the spill resets and the waitress walks on. At 11 seconds hard cut to an extreme close-up of the girl's eyes and straw as she smirks. Red vinyl booths, checkered floor, neon, saturated cinematic light.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Waist-up photo of an invented young woman with neon lime-green hair and a dark gothic top, holding a milkshake, mischievous look. Invented subject only, no real person, no logos or brand names."
+        },
+        {
+          "slot": "location",
+          "prompt": "1950s American diner interior with red vinyl booths, checkered floor and neon signs, wide shot, no people. No brands or readable text."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 15,
+        "aspect_ratio": "16:9",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "comic-freefall",
+      "name": "Comic freefall",
+      "job": "effects",
+      "inputs": [
+        {
+          "slot": "image",
+          "label": "Single base image"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Comic freefall\".\nYou receive: Single base image, plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: a Matrix-like camera swing around a person floating in zero gravity with cash and leaves, rendered as an inked comic.\nStep 3: use this recipe for timing and camera. Style: cel-shaded graphic novel with bold black outlines, halftone dots, cross-hatch shadows. Beats: subject reclines in the air in a tall atrium; money and leaves hover; camera swoops overhead into a top-down foreshortened view and finishes its 360 orbit in a wide three-quarter shot. Preserve the subject's outfit.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 5 seconds at 9:16; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "Rendered as an inked comic book with heavy black outlines, halftone dots and cross-hatching, a young man in a beanie, hoodie, scarf and shorts floats on his back in zero gravity inside a deep symmetrical atrium with geometric balconies, a fan of banknotes in hand, bills and golden leaves drifting around him. The camera swoops up and over in a fast bullet-time orbit to a dizzying top-down view along his spine, then continues round to a wide three-quarter shot as he bobs gently. Teal-cyan architecture, amber highlights, hard rim light.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Full-body illustrated photo of an invented young man in a beanie, hoodie, patterned scarf, shorts and sneakers, reclined pose, holding a fan of paper banknotes. Invented subject only, no real person, no logos or brand names."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 5,
+        "aspect_ratio": "9:16",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "painting-to-cinema",
+      "name": "Painting to cinema",
+      "job": "cinematic",
+      "inputs": [
+        {
+          "slot": "image",
+          "label": "Single base image"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Painting to cinema\".\nYou receive: Single base image, plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: a giant rises over a hill exactly as in a classical painting, but as a real photoreal scene.\nStep 3: use this recipe for timing and camera. Layout: top half live action, bottom half the reference painting if desired. Beats: a wounded warrior crawls on a mossy hill by the sea, a giant hand grips the ridge, a colossal one-eyed head rises over the hill and opens its eye and looks down curiously. Subtle drift only, fog, muted earth tones.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 6 seconds at 9:16; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "Overcast coastline, wet moss and boulders, fog over a gray sea. A wounded warrior in a rough tunic crawls on the grass holding a sword as a seagull flies off a gigantic stone-skinned hand gripping the hill. At 1 second a colossal head rises slowly behind the ridge, a single huge eye opening. At 3 seconds the second hand lands on the ridge and the giant stares down at the cowering man with calm curiosity. Medium-wide, nearly locked camera with faint drift, desaturated damp palette, photoreal creature scale.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Full-body photo of an invented warrior in a medieval tunic and boots lying injured on a grassy hill, holding a sword. Invented subject only, no real person, no logos or brand names."
+        },
+        {
+          "slot": "location",
+          "prompt": "Foggy Scottish coastal grass hill with mossy boulders over a gray sea. No brands or readable text."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 6,
+        "aspect_ratio": "9:16",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "car-clown-swarm",
+      "name": "Car clown swarm",
+      "job": "ads",
+      "inputs": [
+        {
+          "slot": "character",
+          "label": "Character image (an invented person)"
+        },
+        {
+          "slot": "product",
+          "label": "Product image"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Car clown swarm\".\nYou receive: Character image (an invented person); Product image, plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: dozens of identical copies of the character spill from every door, window and trunk of a single car after a drift.\nStep 3: use this recipe for timing and camera. Beats: 0-2 s overhead drifting car on concrete yard; 2-4 s car stops, doors and trunk pop open; 4-7 s an endless flood of identical characters in the same outfit pour out and sprint toward the camera. Slow push-in crane. Use the car image as the vehicle and the character image for the clones.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 7 seconds at 16:9; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "From a high crane angle a metallic blue electric sedan drifts across the concrete floor of a shipping port, tire smoke streaking, then slides to a stop in front of stacked containers. At 2 seconds all doors and the trunk open. At 4 seconds identical men with bright green hair and tan streetwear start pouring out of every door, window and the trunk, dozens of them, sprinting toward the camera as it pushes in and lowers to a high three-quarter view. Overcast desaturated light, tire marks, crisp automotive commercial look.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Full-body photo of an invented man with bright green hair, tan jacket and trousers, running pose. Invented subject only, no real person, no logos or brand names."
+        },
+        {
+          "slot": "location",
+          "prompt": "Large concrete shipping port yard with stacked containers and gantry cranes, overcast, aerial view. No brands or readable text."
+        },
+        {
+          "slot": "extra",
+          "prompt": "Metallic blue electric sports sedan, plain, no badges, three-quarter view on neutral background. Invented subject only, no real person, no logos or brand names."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 7,
+        "aspect_ratio": "16:9",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "frozen-mid-leap",
+      "name": "Frozen mid-leap",
+      "job": "effects",
+      "inputs": [
+        {
+          "slot": "character",
+          "label": "Character image (an invented person)"
+        },
+        {
+          "slot": "location",
+          "label": "Location image"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Frozen mid-leap\".\nYou receive: Character image (an invented person); Location image, plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: the subject hangs frozen in mid-air in a running leap while the whole street moves normally behind her, a dog walking right under her feet.\nStep 3: use this recipe for timing and camera. Beats: subject suspended in a flash-lit leap pose, still; background plate moves in real time: bus, pedestrian walking a golden retriever, yellow taxi. Static low-angle camera, direct flash on subject versus dusk ambient on background, a small ground shadow. Only the subject is frozen.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 6 seconds at 9:16; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "A young woman in an oversized grey letterman jacket, cropped tee, baggy black jeans, beanie and chunky boots hangs motionless in mid-air in a running leap on a city sidewalk, lit by hard on-camera flash. Behind her the street lives: a bus rolls in from the right, a pedestrian walks a golden retriever directly under her suspended legs, a yellow taxi drives by, others pass on the sidewalk. Locked low-angle camera, warm dusk on buildings, 90s flash photography look.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Full-body photo of an invented woman mid-leap in an oversized grey letterman jacket, cropped tee, baggy black jeans, beanie and chunky boots. Invented subject only, no real person, no logos or brand names."
+        },
+        {
+          "slot": "location",
+          "prompt": "Busy city sidewalk before limestone buildings at dusk with a road behind, low angle, empty. No brands or readable text."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 6,
+        "aspect_ratio": "9:16",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "poof-only-clothes",
+      "name": "Poof, only clothes",
+      "job": "ads",
+      "inputs": [
+        {
+          "slot": "character",
+          "label": "Character image (an invented person)"
+        },
+        {
+          "slot": "location",
+          "label": "Location image"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Poof, only clothes\".\nYou receive: Character image (an invented person); Location image, plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: in a single snap cut the person disappears from the lounger and only the neatly arranged outfit stays behind.\nStep 3: use this recipe for timing and camera. Beats: 0-1 s person relaxes on a lounger wearing the outfit, looking up; at ~1 s a whip/flash cut, the person vanishes; the same clothes remain laid out on the lounger in the same shape for the rest. Static high-angle camera, strong summer sun.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 4 seconds at 9:16; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "From a fixed high angle a young man in sunglasses, a white graphic tee and light-blue patterned swim trunks relaxes on a wooden lounger beside a turquoise pool, hands on the armrests, looking up. At 1 second a quick whip flash and he is gone: the tee, the swim trunks and the sunglasses lie perfectly arranged on the lounger exactly where his body was, as if he had evaporated. The clothes sit in the sun for the last seconds while the pool sparkles. Bright midday light, clean summer fashion look.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Full-body photo of an invented man in sunglasses, a white graphic tee and light-blue patterned swim trunks, sitting relaxed. Invented subject only, no real person, no logos or brand names."
+        },
+        {
+          "slot": "location",
+          "prompt": "Sunny poolside with turquoise pool and a wooden lounge chair with a light blue towel, high angle, empty. No brands or readable text."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 4,
+        "aspect_ratio": "9:16",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "sticker-doodle-sprint",
+      "name": "Sticker doodle sprint",
+      "job": "edit",
+      "inputs": [
+        {
+          "slot": "image",
+          "label": "Single base image"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Sticker doodle sprint\".\nYou receive: Single base image, plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: the boy gets a glowing sticker outline and wild crayon doodles while he spins and sprints off down a busy street.\nStep 3: use this recipe for timing and camera. Style: real footage look plus neon crayon doodles (stick figures, hearts, stars, swirls) and a white glowing cutout outline around the subject. Beats: points the spray can at the camera, spins, sprints down the street with a following camera. Doodles drawn on frame borders animate.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 4 seconds at 9:16; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "A shirtless boy in a colorful hillside neighborhood alley points a spray paint can at the camera with a cheeky grin, then spins on his heel and sprints down the middle of a busy street past a parked police car, parked motorbikes and bystanders. The camera chases a few steps behind. A glowing white sticker outline hugs his silhouette and neon crayon doodles of stars, hearts and swirls are drawn in the air and along the frame edges as he runs. Bright midday sun, saturated colors.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Full-body photo of an invented boy with short black hair, shirtless, holding a spray paint can toward the camera and smiling. Invented subject only, no real person, no logos or brand names."
+        },
+        {
+          "slot": "location",
+          "prompt": "Colorful hillside neighborhood alley with pastel houses, parked motorbikes and a parked white-and-blue patrol car, midday sun, empty. No brands or readable text."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 4,
+        "aspect_ratio": "9:16",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "detection-overlay",
+      "name": "Detection overlay",
+      "job": "effects",
+      "inputs": [
+        {
+          "slot": "image",
+          "label": "Single base image"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Detection overlay\".\nYou receive: Single base image, plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: a high-speed side tracking shot of a galloping horse and rider overlaid with detection boxes, readouts and glitch lines.\nStep 3: use this recipe for timing and camera. Overlay style: computer vision interface, white thin lines, rectangular target boxes locked onto subject, golden spiral, coordinate and speed numbers updating, small glitch lines. Footage beats: continuous lateral tracking of a rider galloping down a city street, parked cars crossing foreground.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 5 seconds at 16:9; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "A smooth side-on tracking shot follows a young man in a white tank top crouched like a jockey on a galloping brown horse along a street of brick townhouses. Thin white computer-vision graphics lock onto him: bounding boxes around rider and horse, a golden ratio spiral, tiny coordinate and speed readouts that keep updating, brief glitch lines. A parked car crosses the foreground and a utility pole flashes by. Overcast, desaturated brick reds and pavement gray, crisp white overlay.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Full-body photo of an invented young man in a white tank top sitting crouched on a brown horse. Invented subject only, no real person, no logos or brand names."
+        },
+        {
+          "slot": "location",
+          "prompt": "Residential street lined with brick townhouses and parked cars, overcast, side view. No brands or readable text."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 5,
+        "aspect_ratio": "16:9",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "photocopy-glitch-aisle",
+      "name": "Photocopy glitch aisle",
+      "job": "effects",
+      "inputs": [
+        {
+          "slot": "character",
+          "label": "Character image (an invented person)"
+        },
+        {
+          "slot": "location",
+          "label": "Location image"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Photocopy glitch aisle\".\nYou receive: Character image (an invented person); Location image, plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: the subject becomes a black-and-white photocopy cutout with one red object, the room warps in rainbow liquid, then snaps to a TV test-pattern card.\nStep 3: use this recipe for timing and camera. Look: harsh contrast threshold, halftone grain, only one small prop remains red; background ripples with rainbow liquid warps, tape tracking noise, scratches, scanlines. Beats: subject lowers the prop from mouth, raises it toward the lens with an intense grin, background glitches into color bars at the end. Static, low angle, jittering.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 5 seconds at 9:16; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "In a convenience store snack aisle a young woman in extreme high-contrast black and white, like a photocopied cutout, pulls a red lollipop from her mouth and looks down while the aisle ripples in liquid rainbow warps behind her. At 2 seconds she raises the lollipop toward the lens with an intense grin; chromatic aberration, tape tracking noise, dust scratches and tube-TV scanlines intensify. At 4 seconds the entire background glitches into a degraded color-bar test pattern while she stays locked in the center. Low-angle static camera with digital shake, grungy early-2000s look.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Waist-up photo of an invented young woman holding a red lollipop, in a plain white tee, harsh flash. Invented subject only, no real person, no logos or brand names."
+        },
+        {
+          "slot": "location",
+          "prompt": "Brightly lit convenience store snack aisle with colorful packaging (no readable brands), a woman in a crop top and cap leaning on shelves in midground. No brands or readable text."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 5,
+        "aspect_ratio": "9:16",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "error-storm-slurp",
+      "name": "Error storm slurp",
+      "job": "effects",
+      "inputs": [
+        {
+          "slot": "image",
+          "label": "Single base image"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Error storm slurp\".\nYou receive: Single base image, plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: she keeps slurping noodles, unbothered, while retro operating-system error windows and blue screens multiply over her face.\nStep 3: use this recipe for timing and camera. Overlay style: late-90s desktop error boxes, cursor arrows swarming, blue screens, horizontal tube-TV tears, cyan tint, chromatic aberration. Subject never reacts. Beats: continuous slurp; glitch starts at 0 s, escalates by 2 s to the full frame covered.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 4 seconds at 16:9; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "A woman in wrap-around yellow-tinted sunglasses sits at a tiled-wall diner and slurps a long noodle from a bowl, completely calm. From the start, retro desktop error boxes pop onto the frame and a swarm of mouse cursors drifts across it. By 2 seconds dozens of cascading error windows, a blue crash screen and tube-TV horizontal tears cover her face and the bowl, with a cyan tint and color-fringed edges, while she keeps slurping without reacting. Static medium shot, hard flash mixed with dim fluorescent light.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Waist-up photo of an invented woman in wrap-around yellow-tinted sunglasses eating noodles from a bowl with chopsticks. Invented subject only, no real person, no logos or brand names."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 4,
+        "aspect_ratio": "16:9",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "point-cloud-performance",
+      "name": "Point-cloud performance",
+      "job": "effects",
+      "inputs": [
+        {
+          "slot": "image",
+          "label": "Single base image"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Point-cloud performance\".\nYou receive: Single base image, plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: the performer and room become a glowing teal point cloud, then scanning boxes lock onto their face.\nStep 3: use this recipe for timing and camera. Look: black void, everything made of glowing teal and white points, wireframe grids, anamorphic flares, scanlines. Beats: low Dutch-tilt camera orbits clockwise and dollies in; performer sings with arm gestures; overlay boxes with text snap onto the head and torso at ~3 s. Subject stays recognizable.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 5 seconds at 16:9; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "In a black void a singer in a cap and jacket performs at a microphone, his body and the room built from millions of glowing teal and white points, wireframe grids and cables floating around, a drummer a faint cloud behind. The camera starts at a low Dutch tilt, orbits clockwise and pushes in, ending in a steady medium close-up. At 3 seconds holographic tracking boxes snap onto his head and torso with small data readouts, horizontal anamorphic flares sweep across and scanlines flicker.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Waist-up photo of an invented male singer in a cap and jacket singing into a microphone, drummer behind, stage lighting. Invented subject only, no real person, no logos or brand names."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 5,
+        "aspect_ratio": "16:9",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "oil-paint-barrel-roll",
+      "name": "Oil paint barrel roll",
+      "job": "effects",
+      "inputs": [
+        {
+          "slot": "character",
+          "label": "Character image (an invented person)"
+        },
+        {
+          "slot": "location",
+          "label": "Location image"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Oil paint barrel roll\".\nYou receive: Character image (an invented person); Location image, plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: a fisheye camera spins through full barrel rolls around the subject while everything looks like thick animated oil paint.\nStep 3: use this recipe for timing and camera. Style: impasto oil painting with visible brush smears, moving texture. Camera: strong fisheye, 360-degree barrel roll at the start, settle into a painterly close-up, snap to full-body wide, then a second fast roll pulling up and away.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 4 seconds at 9:16; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "A hip-hop artist in a camo jacket, beanie and retro sunglasses balances a boombox on his shoulder in a narrow brick alley at night. The camera in a heavy fisheye lens barrel-rolls a full 360 degrees around the subject at 0 seconds, settling at 1 second into a low-angle painterly close-up. At 2 seconds it snaps back to a symmetrical full-body wide, then at 3 seconds begins a second fast roll that lifts away along the alley walls. Everything looks like thick, moving impasto oil paint, with visible brush smears, warm window glows against cool asphalt.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Full-body photo of an invented man in a camo jacket, beanie and retro sunglasses with a vintage boombox on his shoulder. Invented subject only, no real person, no logos or brand names."
+        },
+        {
+          "slot": "location",
+          "prompt": "Narrow gritty brick alley at night, warm window lights, urban skyline in the distance, empty. No brands or readable text."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 4,
+        "aspect_ratio": "9:16",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "living-portrait",
+      "name": "Living portrait",
+      "job": "effects",
+      "inputs": [
+        {
+          "slot": "character",
+          "label": "Character image (an invented person)"
+        },
+        {
+          "slot": "image",
+          "label": "Single base image"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Living portrait\".\nYou receive: Character image (an invented person); Single base image, plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: a real person lives inside a famous baroque portrait pose, shown above the artwork in a split screen.\nStep 3: use this recipe for timing and camera. Layout: vertical split, top live portrait, bottom the unmoving artwork supplied by the user. Beats: over-the-shoulder pose, direct eye contact, tiny breaths, a slow blink, minimal head movement. Chiaroscuro from upper left, black background.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 6 seconds at 9:16; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "A vertical split screen. In the upper half a woman in a blue turban with a yellow drape, a large pearl earring and a brown garment looks back over her shoulder straight into the lens against pure black, lit from the upper left, deep shadow on the right of her face. Over six seconds she breathes slowly, blinks once, her eyes shift slightly and her lips part a fraction. The bottom half is a still crop of a baroque oil portrait in the same pose that does not move. Static locked camera, ultramarine, ochre and black.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Bust photo of an invented woman in a blue turban with a yellow drape and a pearl earring, over-the-shoulder pose, pure black background. Invented subject only, no real person, no logos or brand names."
+        },
+        {
+          "slot": "location",
+          "prompt": "Original oil painting in a Dutch Golden Age style of an invented woman in a blue turban looking over her shoulder, black background. No brands or readable text."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 6,
+        "aspect_ratio": "9:16",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "pigeon-skates",
+      "name": "Pigeon skates",
+      "job": "ads",
+      "inputs": [
+        {
+          "slot": "character",
+          "label": "Character image (an invented person)"
+        },
+        {
+          "slot": "location",
+          "label": "Location image"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Pigeon skates\".\nYou receive: Character image (an invented person); Location image, plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: the character glides down a street balanced on two flapping pigeons as if they were roller skates.\nStep 3: use this recipe for timing and camera. Look: heavy circular fisheye vignette, low angle, skate-video style, backward tracking at her speed, golden-hour backlight. Beats: glide upright with arms out and a drink in hand, crouch to absorb a bump, rise half up. Pigeons under each foot beat their wings. Bystanders watch.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 8 seconds at 9:16; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "Framed in a round fisheye lens, a young woman in a pink cap, white cropped tank, oversized yellow satin shorts and white sneakers glides down a crowded cobblestone boulevard with a live pigeon flapping under each shoe like a skate, an iced drink in one hand. The camera tracks backward at her speed from a low angle. At 3 seconds she crouches to absorb a bump, at 5 seconds she rises to a half stand. Pedestrians turn their heads. Golden-hour backlight, saturated colors, 90s skate video look.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Full-body photo of an invented young woman in a pink cap, white cropped tank, yellow satin shorts, white sneakers, holding an iced drink. Invented subject only, no real person, no logos or brand names."
+        },
+        {
+          "slot": "location",
+          "prompt": "Wide European cobblestone pedestrian boulevard with historic buildings and pedestrians, golden hour. No brands or readable text."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 8,
+        "aspect_ratio": "9:16",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "dachshund-surf",
+      "name": "Dachshund surf",
+      "job": "ads",
+      "inputs": [
+        {
+          "slot": "character",
+          "label": "Character image (an invented person)"
+        },
+        {
+          "slot": "location",
+          "label": "Location image"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Dachshund surf\".\nYou receive: Character image (an invented person); Location image, plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: she surfs barefoot on a galloping dachshund, as if riding a board, through wet streets.\nStep 3: use this recipe for timing and camera. Look: circular fisheye vignette, ground-level tracking shot at the dog's speed, wet reflective pavement, twilight with warm streetlights, 90s skate-tape. Beats: dog gallops, she holds a low surf stance with arms adjusting, puddle reflections ripple.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 7 seconds at 9:16; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "In a round fisheye view, a woman with an afro, sunglasses, printed shirt and flared jeans rides barefoot on the back of a galloping black-and-tan dachshund, holding a low surf stance and shifting her arms for balance. The camera races at ground level alongside them down a wet street by brick buildings and canal railings, puddles rippling, streetlamps glowing yellow as they pass. Cool twilight blue with warm lights, deadpan skate-video energy.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Full-body photo of an invented woman with an afro, sunglasses, printed shirt, flared jeans, barefoot, in a crouched surf stance, and separately a black-and-tan dachshund. Invented subject only, no real person, no logos or brand names."
+        },
+        {
+          "slot": "location",
+          "prompt": "Wet brick street at dusk beside a canal railing with glowing streetlights. No brands or readable text."
+        },
+        {
+          "slot": "extra",
+          "prompt": "Full body side photo of a black and tan dachshund running, plain background. Invented subject only, no real person, no logos or brand names."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 7,
+        "aspect_ratio": "9:16",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "stadium-phone-cam",
+      "name": "Stadium phone-cam",
+      "job": "cinematic",
+      "inputs": [
+        {
+          "slot": "character",
+          "label": "Character image (an invented person)"
+        },
+        {
+          "slot": "location",
+          "label": "Location image"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Stadium phone-cam\".\nYou receive: Character image (an invented person); Location image, plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: a handheld view from the crowd of an idol hitting a vocal high point with one arm raised, followed by a sweep of thousands of lightsticks.\nStep 3: use this recipe for timing and camera. Beats: 0-1 s deep audience point-of-view with glowing lightsticks and phones; 2-9 s phone zoom onto the performer pacing a runway, singing, one arm up on the climax, warm smile; 10-15 s wide pan over the stadium bowl full of synced white lights. Handheld vertical phone feel, night, spotlights.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 15 seconds at 9:16; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "A handheld vertical phone view from the audience at an open-roof stadium at night: glowing white lightsticks bob in the foreground, a distant runway stage. At 2 seconds the phone zooms in on a pop-star-style idol with long blonde hair in a pink plaid vest and pleated skirt, pacing forward, singing into a handheld mic. At 5 seconds she raises her right arm on the vocal high point, smiling, the crowd roaring. At 10 seconds the view pans across the stadium bowl, thousands of lightsticks pulsing in sync under cyan stage lights. Slight handheld drift, high contrast night.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Full-body photo of an invented woman with long blonde hair in a pink plaid vest and pleated mini skirt holding a microphone on a stage. Invented subject only, no real person, no logos or brand names."
+        },
+        {
+          "slot": "location",
+          "prompt": "Open-roof mega-stadium at night, audience with glowing white lightsticks, runway stage, wide shot. No brands or readable text."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 15,
+        "aspect_ratio": "9:16",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "aquarium-turn",
+      "name": "Aquarium turn",
+      "job": "cinematic",
+      "inputs": [
+        {
+          "slot": "image",
+          "label": "Single base image"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Aquarium turn\".\nYou receive: Single base image, plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: she turns her head slowly from profile to the lens as silver fish cross her face and chest.\nStep 3: use this recipe for timing and camera. Beats: motionless profile; slow turn to the camera over 4 s; locked eye contact; fish glide across foreground and background; cool top light as if through water, shallow depth of field; no cuts.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 8 seconds at 9:16; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "A young woman with straight waist-length white hair and blunt bangs, wearing a blue and white striped knit tank, stands in profile in front of a huge deep-blue aquarium, silver fish gliding across the frame. At 3 seconds she slowly turns her head toward the camera with a quiet, melancholic look, and by 7 seconds her eyes lock on the lens as fish pass across her chest and face. Locked waist-up vertical shot, shallow depth of field, cold directional top light, monochrome ocean blues.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Waist-up photo of an invented young woman with waist-length white hair, blunt bangs and a blue and white striped knit tank, profile view. Invented subject only, no real person, no logos or brand names."
+        },
+        {
+          "slot": "location",
+          "prompt": "Deep blue aquarium tank with schooling silver fish, blue light, no people. No brands or readable text."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 8,
+        "aspect_ratio": "9:16",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "field-to-castle",
+      "name": "Field to castle",
+      "job": "cinematic",
+      "inputs": [
+        {
+          "slot": "character",
+          "label": "Character image (an invented person)"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Field to castle\".\nYou receive: Character image (an invented person), plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: she runs through a dusk field that opens into a glowing castle with fireworks bursting over its towers.\nStep 3: use this recipe for timing and camera. Beats: 0-5 s she stands in a windy twilight pasture, sheep trot by, she looks back and turns to jog; 5-8 s low follow tracking behind her running; 8-15 s terrain opens to reveal a lit stone castle and a stream, a rocket climbs and bursts in big colorful fireworks, camera pans left and locks wide.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 15 seconds at 9:16; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "At dusk a young woman in a cap, olive jacket and wide trousers stands in a windswept grass field while sheep scamper past. She looks back at the lens, turns and starts to jog; at 5 seconds the camera follows low behind her as she runs. At 8 seconds the horizon opens to a glowing stone castle beside a winding brook with sheep grazing. A rocket streaks up and bursts into big colorful fireworks over the turrets as the camera pans left and settles wide on the castle and runner. Blue-hour ambience, warm window glow, dreamy magical realism.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Full-body photo of an invented young woman in a cap, olive jacket and wide trousers, standing and looking over her shoulder. Invented subject only, no real person, no logos or brand names."
+        },
+        {
+          "slot": "location",
+          "prompt": "Windswept grassy field at dusk with sheep, deep blue hour sky, wide shot. No brands or readable text."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 15,
+        "aspect_ratio": "9:16",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "knight-collapse",
+      "name": "Knight collapse",
+      "job": "cinematic",
+      "inputs": [
+        {
+          "slot": "character",
+          "label": "Character image (an invented person)"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Knight collapse\".\nYou receive: Character image (an invented person), plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: a weary knight drops her helmet, breathes, and falls backward into a bed of red poppies.\nStep 3: use this recipe for timing and camera. Three shots with hard cuts: 0-2 s low rear tracking on the hand releasing the helmet into poppies; 2-6 s eye-level front medium, handheld drift, deep tired breaths; 6-9 s high-angle static wide as she collapses backward, cape spreading. Misty cool light, vivid red poppies.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 9 seconds at 9:16; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "A knight in polished steel gothic plate armor and an ivory cape stands in a misty field of red poppies at dawn. First a low rear shot on her hand as it lets go of the helmet and it thuds into the flowers. At 2 seconds a front medium shot, handheld, her long black hair stuck to her face, chest rising in tired breaths. At 6 seconds a high-angle wide shot as she falls backward into the poppies and her cape spreads around her. Soft cool diffuse light, shallow depth of field, somber fantasy mood.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Waist-up photo of an invented young woman with long black hair in polished steel plate armor and ivory cape, tired expression. Invented subject only, no real person, no logos or brand names."
+        },
+        {
+          "slot": "location",
+          "prompt": "Misty rolling green hills covered in red poppies at dawn. No brands or readable text."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 9,
+        "aspect_ratio": "9:16",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    },
+    {
+      "id": "paper-stage-walk",
+      "name": "Paper stage walk",
+      "job": "cinematic",
+      "inputs": [
+        {
+          "slot": "character",
+          "label": "Character image (an invented person)"
+        }
+      ],
+      "writer_instructions": "You write the text prompt for an AI video model (Seedance-class). The effect is called \"Paper stage walk\".\nYou receive: Character image (an invented person), plus an optional short note from the user.\nWrite a single paragraph of 70 to 160 words, present tense, no preamble, no lists, no quotation marks, no headings, nothing after the paragraph.\nStep 1: look at each image and note only what is visible and must stay consistent: face and hair, outfit and colors, product shape and finish, place and time of day. Carry these details into the prompt in concrete words; never invent a brand name, logo or readable text.\nStep 2: build the video around this signature moment, which must be in the prompt and must be unmistakable: a man walks in place on rotating paper planets under hand-made moons, stars and a flashing storm cloud.\nStep 3: use this recipe for timing and camera. Style: handcrafted paper theater; locked vertical camera; actor steps in place on a rotating papier-mache sphere. Three hard cuts between sets: grey moon with a paper star; gold sphere with a crescent and planets; Earth globe with a lit paper storm cloud flashing lightning bolts. Theatrical blue wash, warm inner glow in props.\nStep 4: state the camera move in plain words, the lighting, and the overall look in one closing sentence. The whole clip runs 14 seconds at 9:16; give each beat approximate second marks.\nRules: describe only what a camera would see; one subject action at a time; no negatives like \"no text\"; no more than one cut unless the recipe lists more; if the user note changes the setting, outfit or mood, follow it, but never drop the signature moment. Sentence case, no all-caps words.",
+      "example_prompt": "A handcrafted paper stage with translucent blue drapes. A young man in a silver paper crown, oversized gray blazer, plaid shirt and tie stands on a cratered gray moon, wooden sword in hand, looking up at a hanging paper star. At 4 seconds cut to him walking in place on a golden sphere below a paper crescent moon and small planets. At 10 seconds cut to him stepping on an Earth globe below a backlit paper storm cloud with lightning bolts that flash warm light on him. Locked vertical camera, theatrical blue wash, stop-motion storybook feel.",
+      "still_prompts": [
+        {
+          "slot": "character",
+          "prompt": "Full-body photo of an invented young man in a silver paper crown, oversized gray blazer, plaid shirt and tie, holding a wooden sword. Invented subject only, no real person, no logos or brand names."
+        },
+        {
+          "slot": "location",
+          "prompt": "Handcrafted paper theater stage with blue translucent drapes and papercraft moon and stars. No brands or readable text."
+        }
+      ],
+      "video_settings": {
+        "duration_seconds": 14,
+        "aspect_ratio": "9:16",
+        "resolution": "720p",
+        "model_family": "Seedance 2.x (preferred)",
+        "alternative": "LTX",
+        "notes": "Image-to-video: attach the stills as first-frame or reference images."
+      }
+    }
+  ]
+}
