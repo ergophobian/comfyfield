@@ -42,4 +42,3 @@ Provider-specific mask, crop, trim, and identity mappings belong to the format r
 - `node scripts/theme-check.mjs` and `npx vite build`.
 
 The browser check uses the test-only ws WebSocket client and an installed Chrome. On Windows it defaults to `C:/Program Files/Google/Chrome/Application/chrome.exe`; set `WIDGET_CHROME` for another installation. It uses free local ports and a separate headless profile under ignored outputs. No provider keys are loaded or used. Test media and screenshots are synthetic, with no generated provider output. Physical mobile devices, assistive technology and mov codec playback have not been tested.
-
