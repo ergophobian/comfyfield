@@ -1,3 +1,4 @@
+import WebSocket from 'ws'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -37,7 +38,8 @@ await vite.listen()
 const base = `http://127.0.0.1:${vite.httpServer.address().port}`
 const profile = path.join(dir, `chrome-profile-${Date.now()}`)
 const chromePath = process.env.WIDGET_CHROME || chromeExecutable()
-const chrome = spawn(chromePath, ['--headless=new', '--use-mock-keychain', '--password-store=basic', '--no-sandbox', '--disable-gpu', '--disable-extensions', '--no-first-run', '--no-default-browser-check', '--autoplay-policy=no-user-gesture-required', '--remote-debugging-port=0', `--user-data-dir=${profile}`, 'about:blank'], { windowsHide: true, stdio: 'ignore' })
+const chrome = spawn(chromePath, ['--headless=new', '--use-mock-keychain', '--password-store=basic', '--no-sandbox', '--disable-gpu', '--disable-extensions', '--no-first-run', '--no-default-browser-check', '--autoplay-policy=no-user-gesture-required', '--remote-debugging-port=0', `--user-data-dir=${profile}`, 'about:blank'], { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] })
+chrome.stderr.on('data', (data) => process.stderr.write(data))
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 let ws
 const pending = new Map()

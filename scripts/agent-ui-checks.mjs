@@ -1,3 +1,4 @@
+import WebSocket from 'ws'
 // Run against scripts/agent-ui-fixture.mjs. Uses a separate headless Chrome profile.
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
@@ -13,7 +14,8 @@ const profile = path.resolve('.comfyfield', 'agent-chrome', String(Date.now()))
 const output = path.resolve('research_notes', 'agent-harness')
 fs.mkdirSync(profile, { recursive: true })
 fs.mkdirSync(output, { recursive: true })
-const chrome = spawn(executable, ['--headless=new', '--use-mock-keychain', '--password-store=basic', '--no-sandbox', '--disable-gpu', '--disable-extensions', '--disable-background-networking', '--no-first-run', '--no-default-browser-check', '--remote-debugging-port=0', `--user-data-dir=${profile}`, 'about:blank'], { windowsHide: true, stdio: 'ignore' })
+const chrome = spawn(executable, ['--headless=new', '--use-mock-keychain', '--password-store=basic', '--no-sandbox', '--disable-gpu', '--disable-extensions', '--disable-background-networking', '--no-first-run', '--no-default-browser-check', '--remote-debugging-port=0', `--user-data-dir=${profile}`, 'about:blank'], { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] })
+chrome.stderr.on('data', (data) => process.stderr.write(data))
 let socket
 const pending = new Map()
 let counter = 0

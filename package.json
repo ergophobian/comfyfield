@@ -20,7 +20,8 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
-    "vite": "^5.4.11"
+    "vite": "^5.4.11",
+    "ws": "^8.22.0"
   },
   "bin": {
     "comfyfield": "bin/comfyfield.js"

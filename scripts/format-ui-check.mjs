@@ -1,9 +1,9 @@
+import WebSocket from 'ws'
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { createServer } from 'vite'
-import react from '@vitejs/plugin-react'
+import { preview } from 'vite'
 import { schemas } from '../src/lib/formats/schemas.js'
 import { allFormats } from '../src/lib/formats/index.js'
 
@@ -18,8 +18,8 @@ assert(executable, 'Set CHROME_PATH to a local Chrome executable')
 
 const requests = []
 const svg = (label) => `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="750" viewBox="0 0 600 750"><rect width="600" height="750" fill="#e4e9ff"/><circle cx="300" cy="280" r="120" fill="#9b8cf5"/><path d="M100 680 Q100 380 300 390 Q500 380 500 680Z" fill="#6f7fd8"/><text x="300" y="720" text-anchor="middle" font-family="sans-serif" font-size="28" fill="#30384d">${label}</text></svg>`
-const server = await createServer({ configFile: false, envFile: false, cacheDir: 'node_modules/.cache/format-vite', plugins: [react(), {
-  name: 'format-mock-api', configureServer(server) {
+const server = await preview({ configFile: false, envFile: false, plugins: [{
+  name: 'format-mock-api', configurePreviewServer(server) {
     server.middlewares.use(async (req, res, next) => {
       const url = new URL(req.url, 'http://localhost')
       if (url.pathname.startsWith('/mock-')) {
@@ -43,12 +43,12 @@ const server = await createServer({ configFile: false, envFile: false, cacheDir:
       res.end('{}')
     })
   },
-}], optimizeDeps: { noDiscovery: true, include: ['react', 'react-dom/client', 'react-router-dom', '@xyflow/react'] }, server: { host: '127.0.0.1', port: 0 } })
-await server.listen()
+}], preview: { host: '127.0.0.1', port: 0 } })
 const origin = `http://127.0.0.1:${server.httpServer.address().port}`
 const profile = resolve(`node_modules/.cache/format-chrome-${Date.now()}`)
 mkdirSync(profile, { recursive: true })
-const chrome = spawn(executable, ['--headless=new', '--use-mock-keychain', '--password-store=basic', '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check', '--disable-background-networking', '--disable-gpu', '--no-sandbox', 'about:blank'], { windowsHide: true, stdio: 'ignore' })
+const chrome = spawn(executable, ['--headless=new', '--use-mock-keychain', '--password-store=basic', '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check', '--disable-background-networking', '--disable-gpu', '--no-sandbox', 'about:blank'], { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] })
+chrome.stderr.on('data', (data) => process.stderr.write(data))
 const pause = (ms) => new Promise((r) => setTimeout(r, ms))
 let ws
 try {

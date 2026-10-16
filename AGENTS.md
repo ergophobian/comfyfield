@@ -132,10 +132,11 @@ regressions fail the check. `formats` contains validated gallery entries;
 preset picker intentionally reads prompt text from `allFormats` without executing
 those planned workflows.
 
-`node scripts/format-ui-check.mjs` uses local headless Chrome (`CHROME_PATH` overrides
+`node scripts/format-ui-check.mjs` serves the production build (run `npx vite build`
+first) and uses local headless Chrome (`CHROME_PATH` overrides
 discovery) and a separate mock API, without loading provider routes or keys. It
 checks the app page, shared sheet, Library persistence, Create generation and
-presets, and the 390px layout. It runs in Linux CI and writes labeled mock screenshots
+presets, and the 390px layout. It runs on all three CI operating systems and writes labeled mock screenshots
 under `research_notes/format-runner/`. `node scripts/verify.mjs` discovers and runs
 every `scripts/*-check*.mjs` check, including browser fixtures. All run in the
 Windows/macOS/Linux CI matrix with Chrome installed through setup-chrome.

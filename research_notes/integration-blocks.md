@@ -106,7 +106,10 @@ Passed locally on Windows with Node 24:
 | `integration-checks.mjs` | 45 effects × 3 render choices; widget mappings; persisted Writer edits; downstream Stitch; real CLI MCP tool discovery; agent Writer approval |
 
 All checks run in CI on Windows, macOS and Linux. Browser checks start isolated
-fixtures, use separate Chrome profiles/caches and never use live providers.
+fixtures, use separate Chrome profiles/caches and never use live providers. The
+format and agent UI checks serve the production build to avoid optimizer reloads;
+run the build before these checks. Browser transport uses the test-only ws
+dependency, with bounded protocol waits and mock-keychain Chrome flags.
 Synthetic artifacts are labeled mock media. New integration screenshots:
 
 - [Effect prompt review at desktop width](format-runner/mock-writer-review-desktop.png)

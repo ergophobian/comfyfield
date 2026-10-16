@@ -1,15 +1,17 @@
 // Local UI fixture only. No real agent or provider is started.
 import fs from 'node:fs'
 import path from 'node:path'
-import { createServer } from 'vite'
-import react from '@vitejs/plugin-react'
+import { preview } from 'vite'
 import comfyfieldApi from '../server/plugin.js'
 import { pathToFileURL } from 'node:url'
 import { createHarness } from '../server/agent-harness.js'
 
+for (const key of ['FAL_KEY', 'GEMINI_API_KEY', 'ELEVENLABS_API_KEY', 'COMFY_API_KEY', 'COMFY_URL', 'COMFY_MODE']) delete process.env[key]
+
 export async function startFixture(setupOnly = false) {
   const directory = path.resolve('.comfyfield', 'agent-ui-fixture', `${Date.now()}-${setupOnly}`)
   fs.mkdirSync(directory, { recursive: true })
+  process.env.COMFYFIELD_HOME = directory
   const harness = createHarness({
     directory: () => directory,
     setup: () => setupOnly ? [
@@ -45,8 +47,7 @@ export async function startFixture(setupOnly = false) {
     ], edges: [{ id: 'p-m', source: 'prompt', target: 'model' }, { id: 'm-o', source: 'model', target: 'output' }],
   }] })
   const port = setupOnly ? 5318 : 5317
-  const server = await createServer({ configFile: false, envFile: false, cacheDir: `node_modules/.cache/agent-vite-${setupOnly}`, plugins: [react(), comfyfieldApi({ harness })], server: { host: '127.0.0.1', port, strictPort: true, watch: { ignored: ['**/.comfyfield/**'] } } })
-  await server.listen()
+  const server = await preview({ configFile: false, envFile: false, plugins: [comfyfieldApi({ harness })], preview: { host: '127.0.0.1', port, strictPort: true } })
   console.log(`Agent UI fixture: http://127.0.0.1:${port}/assistant`)
 
   return server
