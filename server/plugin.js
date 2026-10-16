@@ -226,12 +226,46 @@ function mount(app) {
         return send(res, 200, { files: await core.runGoogle(await body(req)) })
       }
       if (url.pathname === '/api/upload' && req.method === 'POST') return send(res, 200, await upload(req))
+      if (url.pathname === '/api/stitch' && req.method === 'POST') return send(res, 200, await core.stitch(await body(req)))
+      if (url.pathname === '/api/stitch/exports' && req.method === 'GET') return send(res, 200, core.stitchedExports())
+      if (url.pathname === '/api/stitch/export' && req.method === 'POST') return send(res, 200, core.exportStitch((await body(req)).url))
+      if (url.pathname === '/api/stitch/export' && req.method === 'DELETE') {
+        core.dismissStitch((await body(req)).url)
+        return send(res, 200, { ok: true })
+      }
+      if (url.pathname === '/api/stitch/upload' && req.method === 'POST') {
+        const mime = (req.headers['content-type'] || '').split(';')[0]
+        const ext = { 'video/mp4': 'mp4', 'video/webm': 'webm', 'video/quicktime': 'mov', 'audio/mpeg': 'mp3', 'audio/wav': 'wav', 'audio/x-wav': 'wav', 'audio/mp4': 'm4a', 'audio/ogg': 'ogg', 'audio/flac': 'flac' }[mime]
+        if (!ext) return send(res, 415, { error: 'Choose an MP4, WebM, MOV, MP3, WAV, M4A, Ogg or FLAC file.' })
+        const buf = await rawBody(req)
+        if (!buf.length) return send(res, 400, { error: 'No file received.' })
+        return send(res, 200, { url: core.saveMedia(buf, ext).url })
+      }
       if (url.pathname === '/api/library/import' && req.method === 'POST') return send(res, 200, await importUrl(await body(req)))
       if (url.pathname.startsWith('/api/library/') && await libraryRoute(req, res, url)) return
       if (url.pathname.startsWith('/media/')) {
         const file = core.mediaPath(url.pathname)
         if (!fs.existsSync(file)) return send(res, 404, { error: 'Not found' })
+        const size = fs.statSync(file).size
         res.setHeader('Content-Type', core.mediaTypes[path.extname(file).slice(1)] || 'application/octet-stream')
+        res.setHeader('Accept-Ranges', 'bytes')
+        if (req.headers.range) {
+          const range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range)
+          const start = range?.[1] ? Number(range[1]) : Math.max(0, size - Number(range?.[2] || 0))
+          const end = range?.[1] && range[2] ? Math.min(size - 1, Number(range[2])) : size - 1
+          if (!range || start > end || start >= size) {
+            res.statusCode = 416
+            res.setHeader('Content-Range', `bytes */${size}`)
+            return res.end()
+          }
+          res.statusCode = 206
+          res.setHeader('Content-Range', `bytes ${start}-${end}/${size}`)
+          res.setHeader('Content-Length', end - start + 1)
+          if (req.method === 'HEAD') return res.end()
+          return fs.createReadStream(file, { start, end }).pipe(res)
+        }
+        res.setHeader('Content-Length', size)
+        if (req.method === 'HEAD') return res.end()
         return fs.createReadStream(file).pipe(res)
       }
       if (url.pathname.startsWith('/comfy/')) return proxyComfy(req, res, url)

@@ -5,6 +5,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { models as pinned, falCategories } from '../src/lib/catalog.js'
 import { comfyVars, falInput, estimate, fill } from '../shared/mapping.js'
+import { renderStitch } from './stitch.js'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -228,7 +229,7 @@ export async function runGoogle({ model, mode, prompt, aspect, count = 1, durati
   return files
 }
 
-export const mediaTypes = { mp3: 'audio/mpeg', wav: 'audio/wav', mp4: 'video/mp4', png: 'image/png', jpeg: 'image/jpeg', jpg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif', svg: 'image/svg+xml', ico: 'image/x-icon' }
+export const mediaTypes = { mp3: 'audio/mpeg', wav: 'audio/wav', mp4: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime', m4a: 'audio/mp4', ogg: 'audio/ogg', flac: 'audio/flac', png: 'image/png', jpeg: 'image/jpeg', jpg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif', svg: 'image/svg+xml', ico: 'image/x-icon' }
 
 // Thumbnails and prices for specific fal endpoints. Prices need a fal key; thumbnails do not.
 export async function falMeta(ids) {
@@ -299,6 +300,37 @@ export async function testConnection(id) {
 }
 
 export const mediaPath = (name) => path.join(mediaDir(), path.basename(name))
+
+const stitchIndex = () => path.join(home(), 'stitch', 'index.json')
+function readStitches() {
+  try { return JSON.parse(fs.readFileSync(stitchIndex(), 'utf8')) } catch { return [] }
+}
+function writeStitches(items) {
+  fs.mkdirSync(path.dirname(stitchIndex()), { recursive: true })
+  fs.writeFileSync(stitchIndex(), JSON.stringify(items, null, 2))
+}
+
+export const stitchedExports = () => readStitches().filter((item) => item.exported)
+
+export function dismissStitch(url) {
+  writeStitches(readStitches().map((item) => item.url === url ? { ...item, exported: false } : item))
+}
+
+export function exportStitch(url) {
+  const items = readStitches()
+  const item = items.find((item) => item.url === url)
+  if (!item || !fs.existsSync(item.path)) throw Object.assign(new Error('Render a Stitch preview first.'), { status: 400 })
+  const saved = { ...item, exported: true }
+  writeStitches(items.map((item) => item.url === url ? saved : item))
+  return saved
+}
+
+export async function stitch({ preview = false, ...options } = {}) {
+  const file = await renderStitch(options, { home, mediaPath })
+  const item = { ...file, id: path.basename(file.path), model: 'Stitch', caption: 'Stitched video', created: Date.now(), exported: !preview }
+  writeStitches([item, ...readStitches()])
+  return item
+}
 
 export function connections() {
   return Object.fromEntries(Object.keys(providers).map((id) => {
