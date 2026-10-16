@@ -12,10 +12,37 @@ import { agentRoutes } from '../server/agent-routes.js'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
+import { falEndpointFor } from '../shared/mapping.js'
+import * as core from '../server/core.js'
 
 // Keep fixtures in the ignored local store, never use provider configuration or keys.
 const directory = path.join(process.cwd(), '.comfyfield', 'agent-checks', `${Date.now()}-${process.pid}`)
 fs.mkdirSync(directory, { recursive: true })
+const falModel = { provider: 'fal', model: 'mock/text-to-video', name: 'Mock video' }
+const schemaRequests = []
+const schema = async (id) => { schemaRequests.push(id); return { properties: id.endsWith('image-to-video') ? { image_url: {} } : {} } }
+assert.equal(await falEndpointFor(falModel, true, schema), 'mock/image-to-video')
+assert.deepEqual(schemaRequests, ['mock/text-to-video', 'mock/image-to-video'])
+assert.equal(await falEndpointFor(falModel, false, () => { throw new Error('Unexpected schema lookup') }), falModel.model)
+const originalFetch = globalThis.fetch
+const originalHome = process.env.COMFYFIELD_HOME
+try {
+  process.env.COMFYFIELD_HOME = path.join(directory, 'provider-parity')
+  core.saveConnection('google', { key: 'mock-google-not-a-key' })
+  let payload
+  globalThis.fetch = async (url, options) => {
+    assert.ok(url.includes(':generateContent'))
+    payload = JSON.parse(options.body)
+    return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ inlineData: { mimeType: 'image/png', data: 'ZmFrZQ==' } }] } }] }) }
+  }
+  await core.generate({ model: 'g-nano-banana-2', prompt: 'Use this reference', image: 'data:image/png;base64,cmVmZXJlbmNl' })
+  assert.equal(payload.contents[0].parts[0].inlineData.data, 'cmVmZXJlbmNl')
+} finally {
+  globalThis.fetch = originalFetch
+  if (originalHome === undefined) delete process.env.COMFYFIELD_HOME
+  else process.env.COMFYFIELD_HOME = originalHome
+}
+console.log('ok    server generation preserves reference routing for fal and Google, with mocked transport')
 let generated = 0
 const generate = async () => { generated++; return [{ kind: 'image', url: '/media/fake.png' }] }
 const estimate = async () => ({ usd: 0.004, approx: true })

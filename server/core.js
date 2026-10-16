@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { models as pinned, falCategories } from '../src/lib/catalog.js'
-import { comfyVars, falInput, estimate, fill } from '../shared/mapping.js'
+import { comfyVars, falInput, estimate, fill, falEndpointFor } from '../shared/mapping.js'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -395,18 +395,20 @@ export async function generate({ model, prompt, aspect = '16:9', count = 1, dura
   const o = { prompt, aspect, count, duration, image: image && !/^(https?:|data:|\/media\/)/.test(image) ? fileDataUri(image) : image }
   if (m.provider === 'comfy') return runComfy(m.workflow, comfyVars(m.kind, { ...o, duration: duration || 5 }))
   if (m.provider === 'fal') {
-    const { properties } = await falSchema(m.model)
-    return runFal({ model: m.model, input: falInput(properties, o) })
+    const endpoint = await falEndpointFor(m, Boolean(image), falSchema)
+    const { properties } = await falSchema(endpoint)
+    return runFal({ model: endpoint, input: falInput(properties, o) })
   }
-  if (m.provider === 'google') return runGoogle({ model: m.model, mode: m.mode, prompt, aspect, count, duration })
+  if (m.provider === 'google') return runGoogle({ model: m.model, mode: m.mode, prompt, aspect, count, duration, images: o.image ? [o.image] : [] })
   if (m.provider === 'elevenlabs') return runElevenLabs({ mode: m.mode, text: prompt })
   throw new Error(`${m.provider} is not wired up yet.`)
 }
 
 // Rough cost before running; null when the price is unknown.
-export async function estimateCost({ model, aspect = '16:9', count = 1, duration }) {
+export async function estimateCost({ model, aspect = '16:9', count = 1, duration, image }) {
   const m = resolveModel(model)
-  const meta = m.provider === 'fal' ? (await falMeta([m.model]).catch(() => ({})))[m.model] : { price: m.price }
+  const endpoint = await falEndpointFor(m, Boolean(image), falSchema)
+  const meta = m.provider === 'fal' ? (await falMeta([endpoint]).catch(() => ({})))[endpoint] : { price: m.price }
   return estimate(m, meta, { aspect, count, duration })
 }
 

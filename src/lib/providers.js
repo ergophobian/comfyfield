@@ -1,5 +1,5 @@
 import { generate as runComfy } from './comfy.js'
-import { comfyVars, falInput, durationsFromProps } from '../../shared/mapping.js'
+import { comfyVars, falInput, durationsFromProps, hasImageInput, falEndpointFor } from '../../shared/mapping.js'
 
 const schemas = new Map()
 export async function falSchema(endpoint) {
@@ -12,10 +12,6 @@ export async function falSchema(endpoint) {
 
 const num = (v) => parseFloat(String(v))
 
-const singleImage = ['image_url', 'start_image_url', 'first_frame_url', 'input_image_url', 'image']
-const manyImages = ['image_urls', 'input_image_urls', 'reference_image_urls']
-const hasImageInput = (props) => [...singleImage, ...manyImages].some((k) => props[k])
-
 export function acceptsImage(model, props) {
   if (model.provider === 'google') return true
   if (model.provider === 'fal') return hasImageInput(props || {})
@@ -23,15 +19,8 @@ export function acceptsImage(model, props) {
 }
 
 // A text model plus an attached image runs on its image sibling: text-to-video becomes image-to-video, an image model becomes its edit endpoint.
-export async function endpointFor(model, hasImage) {
-  const own = model.model
-  if (!hasImage || model.provider !== 'fal') return own
-  if (hasImageInput((await falSchema(own)).properties)) return own
-  const tries = own.endsWith('text-to-video') ? [own.replace(/text-to-video$/, 'image-to-video')]
-    : own.endsWith('text-to-image') ? [own.replace(/text-to-image$/, 'image-to-image'), `${own}/edit`]
-    : [`${own}/edit`]
-  for (const id of tries) if (Object.keys((await falSchema(id)).properties).length) return id
-  throw new Error(`${model.name} does not take an image. Pick an image-to-video or edit model.`)
+export function endpointFor(model, hasImage) {
+  return falEndpointFor(model, hasImage, falSchema)
 }
 
 export async function uploadImage(file) {
