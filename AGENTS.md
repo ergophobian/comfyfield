@@ -123,6 +123,12 @@ regressions fail the check. `formats` contains validated gallery entries;
 preset picker intentionally reads prompt text from `allFormats` without executing
 those planned workflows.
 
+`node scripts/format-ui-check.mjs` uses local headless Chrome (`CHROME_PATH` overrides
+discovery) and a separate mock API, without loading provider routes or keys. It
+checks the app page, shared sheet, Library persistence, Create generation and
+presets, and the 390px layout. It runs in Linux CI and writes labeled mock screenshots
+under `research_notes/format-runner/`.
+
 ## Flows rules (from PatchWork's WORKFLOW-SPEC)
 
 - Approve nodes are gates: nothing passes until the user clicks Send.
