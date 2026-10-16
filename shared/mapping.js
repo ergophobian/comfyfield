@@ -49,6 +49,19 @@ export function durationsFromProps(props) {
 const singleImage = ['image_url', 'start_image_url', 'first_frame_url', 'input_image_url', 'image']
 const manyImages = ['image_urls', 'input_image_urls', 'reference_image_urls']
 
+export const hasImageInput = (props) => [...singleImage, ...manyImages].some((k) => props[k])
+
+export async function falEndpointFor(model, hasImage, schema) {
+  const own = model.model
+  if (!hasImage || model.provider !== 'fal') return own
+  if (hasImageInput((await schema(own)).properties)) return own
+  const tries = own.endsWith('text-to-video') ? [own.replace(/text-to-video$/, 'image-to-video')]
+    : own.endsWith('text-to-image') ? [own.replace(/text-to-image$/, 'image-to-image'), `${own}/edit`]
+    : [`${own}/edit`]
+  for (const id of tries) if (Object.keys((await schema(id)).properties).length) return id
+  throw new Error(`${model.name} does not take an image. Pick an image-to-video or edit model.`)
+}
+
 export function falInput(props, o) {
   const input = {}
   if (o.prompt) input[props.prompt || !props.text ? 'prompt' : 'text'] = o.prompt
