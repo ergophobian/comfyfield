@@ -172,6 +172,42 @@ function pcmToWav(pcm, rate = 24000) {
 
 const GEMINI = 'https://generativelanguage.googleapis.com/v1beta'
 
+// The Router lane can replace this stub without changing the writer contract.
+export async function writePromptWithRouter() {
+  throw Object.assign(new Error('Connect Google AI to write a prompt. Comfy Router prompt writing is not wired yet.'), { status: 501 })
+}
+
+export async function writePrompt({ instructions, note = '', images = [], target = '' }) {
+  if (typeof instructions !== 'string' || !instructions.trim()) {
+    throw Object.assign(new Error('Add writer instructions first.'), { status: 400 })
+  }
+  if (typeof note !== 'string' || typeof target !== 'string' || !Array.isArray(images) || images.some((u) => typeof u !== 'string' || !/^(data:image\/|\/media\/)/.test(u))) {
+    throw Object.assign(new Error('Writer needs a note, a target and local or inline images.'), { status: 400 })
+  }
+  const request = { instructions, note, images, target }
+  const { key } = config('google')
+  if (!key) return writePromptWithRouter(request)
+  const parts = images.map((url) => {
+    const { buf, mime } = readLocal(url)
+    if (!/^image\/(png|jpeg|webp|gif)$/.test(mime)) {
+      throw Object.assign(new Error('Writer accepts PNG, JPG, WebP or GIF images.'), { status: 415 })
+    }
+    return { inlineData: { mimeType: mime, data: buf.toString('base64') } }
+  })
+  parts.push({ text: [target && `Target model or medium: ${target}`, note && `User note: ${note}`, 'Write only the finished generation prompt.'].filter(Boolean).join('\n\n') })
+  const r = await fetch(`${GEMINI}/models/gemini-flash-latest:generateContent`, {
+    method: 'POST', headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ systemInstruction: { parts: [{ text: instructions }] }, contents: [{ role: 'user', parts }] }),
+  })
+  const data = await r.json().catch(() => ({}))
+  if (!r.ok) throw new Error(data.error?.message || `Google prompt writing failed (${r.status})`)
+  const candidate = data.candidates?.[0]
+  if (candidate?.finishReason && candidate.finishReason !== 'STOP') throw new Error('Google did not finish the prompt. Try again or adjust the instructions.')
+  const text = (candidate?.content?.parts || []).filter((p) => !p.thought).map((p) => p.text || '').join('').trim()
+  if (!text) throw new Error('Google returned no prompt. The request may have been filtered.')
+  return text
+}
+
 // Google AI (Gemini API key): image and speech via generateContent, Veo via a long-running operation.
 export async function runGoogle({ model, mode, prompt, aspect, count = 1, duration, images = [] }) {
   const { key } = config('google')

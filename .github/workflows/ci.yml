@@ -21,6 +21,7 @@ jobs:
       - run: npm ci
       - run: npx vite build
       - run: node scripts/flow-checks.mjs
+      - run: node scripts/writer-check.mjs
       - run: node scripts/theme-check.mjs
       - run: node scripts/format-check.mjs
       - run: node scripts/format-runner-checks.mjs
