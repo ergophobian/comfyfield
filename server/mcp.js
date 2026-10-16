@@ -4,21 +4,28 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod'
 import * as core from './core.js'
+import { flows } from './flows.js'
 
 const text = (data) => ({ content: [{ type: 'text', text: typeof data === 'string' ? data : JSON.stringify(data, null, 2) }] })
 const fail = (e) => ({ isError: true, content: [{ type: 'text', text: e.message || String(e) }] })
 const tool = (fn) => async (args) => { try { return text(await fn(args)) } catch (e) { return fail(e) } }
 
-export function createServer() {
+export function createServer({ invoke, handlers = new Map(), flowService = flows } = {}) {
   const server = new McpServer({ name: 'comfyfield', version: '0.1.0' })
+  const register = (name, definition, handler) => {
+    const schema = z.object(definition.inputSchema)
+    const checked = (args) => handler(schema.parse(args))
+    handlers.set(name, checked)
+    server.registerTool(name, definition, invoke ? tool((args) => invoke(name, args)) : checked)
+  }
   const kind = z.enum(['image', 'video', 'audio']).optional().describe('Filter by media kind')
 
-  server.registerTool('list_models', {
+  register('list_models', {
     description: 'List pinned models and search fal.ai catalog. Ids look like g-veo, comfy-flux or fal:<endpoint>; any fal endpoint can be used as fal:<endpoint>.',
     inputSchema: { kind, query: z.string().optional().describe('Search fal catalog, for example "kling"'), limit: z.number().int().min(1).max(50).optional() },
   }, tool(({ kind, query, limit }) => core.listModels({ kind, query, limit })))
 
-  server.registerTool('generate', {
+  register('generate', {
     description: 'Generate images, video or audio with the user\'s own provider keys. Spends their credits. Saves files locally and returns paths, URLs and an estimated cost.',
     inputSchema: {
       model: z.string().describe('Model id from list_models, or fal:<endpoint>'),
@@ -39,7 +46,7 @@ export function createServer() {
     }
   }))
 
-  server.registerTool('get_model_schema', {
+  register('get_model_schema', {
     description: 'Input fields of a fal model (types, enums, defaults, required). Pinned fal ids and fal:<endpoint> both work.',
     inputSchema: { model: z.string() },
   }, tool(async ({ model }) => {
@@ -48,16 +55,27 @@ export function createServer() {
     return { endpoint: m.model, ...(await core.falSchema(m.model)), price: (await core.falMeta([m.model]).catch(() => ({})))[m.model]?.price }
   }))
 
-  server.registerTool('balance', {
+  register('balance', {
     description: 'Remaining balance for connected providers where the provider exposes it.',
     inputSchema: {},
   }, tool(async () => ({ connections: Object.fromEntries(Object.entries(core.connections()).map(([k, v]) => [k, v.connected])), balances: await core.balances() })))
 
-  server.registerTool('write_prompts', {
+  register('write_prompts', {
     description: 'Turn one idea into several distinct generation prompts with Gemini. Needs a Google key.',
     inputSchema: { idea: z.string(), n: z.number().int().min(1).max(20).optional(), kind: z.enum(['image', 'video']).optional() },
   }, tool(async (a) => ({ prompts: await core.writePrompts(a) })))
 
+  const flow = { flow_id: z.string() }
+  const position = z.object({ x: z.number(), y: z.number() })
+  register('list_flows', { description: 'List locally saved flows.', inputSchema: {} }, tool(() => flowService.read().flows.map(({ id, name }) => ({ id, name }))))
+  register('get_flow', { description: 'Read nodes, connections and run state of a flow.', inputSchema: flow }, tool(({ flow_id }) => ({ flow: flowService.get(flow_id), state: flowService.engine(flow_id).state })))
+  register('add_node', {
+    description: 'Add a node to a flow. For model nodes, data.model must be a model object with an id from list_models.',
+    inputSchema: { ...flow, type: z.enum(['prompt', 'image', 'model', 'approve', 'output', 'note']), position: position.optional(), data: z.record(z.string(), z.unknown()).optional() },
+  }, tool(({ flow_id, ...args }) => flowService.add(flow_id, args)))
+  register('connect_nodes', { description: 'Connect two nodes without creating a loop.', inputSchema: { ...flow, source: z.string(), target: z.string() } }, tool(({ flow_id, ...args }) => flowService.connect(flow_id, args)))
+  register('update_node', { description: 'Update a node’s data or position.', inputSchema: { ...flow, node_id: z.string(), data: z.record(z.string(), z.unknown()).optional(), position: position.optional() } }, tool(({ flow_id, node_id, ...args }) => flowService.update(flow_id, node_id, args)))
+  register('run_flow', { description: 'Fill gaps in a flow. Approval gates remain closed until the user sends them in Flows. Requires approval in an assistant session.', inputSchema: flow }, tool(({ flow_id }) => flowService.perform(flow_id, 'runNew')))
   return server
 }
 

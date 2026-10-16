@@ -4,6 +4,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
 import * as core from './core.js'
+import { agentRoutes } from './agent-routes.js'
 
 export { providers } from './core.js'
 
@@ -189,18 +190,20 @@ async function importUrl({ url }) {
   return { ...page, images, logo: logo || '', url: target.href, host: target.hostname.replace(/^www\./, '') }
 }
 
-export default function comfyfieldApi() {
+export default function comfyfieldApi({ harness } = {}) {
   return {
     name: 'comfyfield-api',
-    configureServer: (server) => mount(server.middlewares),
-    configurePreviewServer: (server) => mount(server.middlewares),
+    configureServer: (server) => { const close = mount(server.middlewares, harness); server.httpServer?.once('close', close) },
+    configurePreviewServer: (server) => { const close = mount(server.middlewares, harness); server.httpServer?.once('close', close) },
   }
 }
 
-function mount(app) {
+function mount(app, harness) {
+  const agents = agentRoutes({ body, send, harness })
   app.use(async (req, res, next) => {
     const url = new URL(req.url, 'http://local')
     try {
+      if (await agents(req, res, url)) return
       if (url.pathname === '/api/connections' && req.method === 'GET') return send(res, 200, core.connections())
       if (url.pathname === '/api/connections' && req.method === 'POST') {
         const { id, values } = await body(req)
@@ -240,6 +243,7 @@ function mount(app) {
     }
     next()
   })
+  return () => agents.close().catch(() => {})
 }
 
 async function proxyComfy(req, res, url) {
