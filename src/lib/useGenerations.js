@@ -16,6 +16,11 @@ export function useGenerations() {
   const waiting = useRef([])
   const busy = items.some((i) => i.pending)
 
+  const add = (files) => setItems((xs) => [...files.filter((file) => !xs.some((item) => item.id === file.id)), ...xs])
+  useEffect(() => {
+    fetch('/api/stitch/exports').then((res) => res.ok ? res.json() : []).then(add).catch(() => {})
+  }, [])
+
   useEffect(() => {
     try { localStorage.setItem(KEY, JSON.stringify(items.filter((i) => !i.pending).slice(0, 300))) } catch {}
   }, [items])
@@ -50,7 +55,11 @@ export function useGenerations() {
   }
 
   const toggleApprove = (id) => setItems((xs) => xs.map((x) => (x.id === id ? { ...x, approved: !x.approved } : x)))
-  const dismiss = (id) => setItems((xs) => xs.filter((x) => x.id !== id))
+  const dismiss = (id) => {
+    const item = items.find((item) => item.id === id)
+    if (item?.model === 'Stitch') fetch('/api/stitch/export', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: item.url }) }).catch(() => {})
+    setItems((xs) => xs.filter((x) => x.id !== id))
+  }
 
-  return { items, error, busy, generate, toggleApprove, dismiss, clear: () => setItems([]) }
+  return { items, error, busy, generate, add, toggleApprove, dismiss, clear: () => setItems([]) }
 }

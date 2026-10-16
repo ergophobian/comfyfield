@@ -107,6 +107,11 @@
 
   /* State */
   --disabled: .45;
+
+  /* Stitch editor */
+  --stitch-gap: 10px;
+  --stitch-border: 1px;
+  --stitch-preview-height: 240px;
 }
 
 * { box-sizing: border-box; }
@@ -723,6 +728,17 @@ code { font-size: .92em; }
 .fp-del { align-self: flex-start; color: var(--danger); }
 .fpanel .picker-pop { width: 560px; max-width: 70vw; right: 0; left: auto; transform-origin: top right; }
 .fpanel .menu { z-index: 50; }
+
+.f-stitch .fdot { background: var(--blue-hi); }
+.stitch-fields { border: 0; padding: 0; margin: 0; min-width: 0; display: flex; flex-direction: column; gap: var(--stitch-gap); }
+.stitch-fields label { display: block; font-size: var(--text-xs); color: var(--muted); }
+.stitch-fields input[type=range] { width: 100%; }
+.stitch-clip { border: var(--stitch-border) solid var(--line); border-radius: var(--r-md); padding: var(--stitch-gap); display: flex; flex-direction: column; gap: var(--stitch-gap); background: var(--glass-strong); }
+.stitch-clip .fp-row { flex-wrap: wrap; }
+.stitch-clip strong { font-weight: 500; overflow-wrap: anywhere; }
+.stitch-trim { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--stitch-gap); }
+.stitch-preview { width: 100%; max-height: var(--stitch-preview-height); border-radius: var(--r-md); background: var(--ink); display: block; }
+.stitch-error { color: var(--danger); font-size: var(--text-sm); overflow-wrap: anywhere; }
 
 .fempty { position: absolute; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; pointer-events: none; padding: 0 16px 6vh; }
 .fempty h2 { margin: 0; font-size: var(--text-3xl); font-weight: 600; letter-spacing: -.03em; }

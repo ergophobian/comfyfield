@@ -3,6 +3,7 @@ import { Handle, Position } from '@xyflow/react'
 import { Logo, brandOf } from '../../lib/brands.jsx'
 import { nodeLabels } from '../../lib/flowStore.js'
 import { promptsOf } from '../../lib/flowEngine.js'
+import { stitchInputs } from '../../lib/stitch.js'
 
 export const FlowCtx = createContext(null)
 const useFlow = () => useContext(FlowCtx)
@@ -137,4 +138,20 @@ export function NoteNode({ id, data, selected }) {
   )
 }
 
-export const nodeTypes = { prompt: PromptNode, image: ImageNode, model: ModelNode, approve: ApproveNode, output: OutputNode, note: NoteNode }
+export function StitchNode({ id, data, selected }) {
+  const { flow, engine, state, act } = useFlow()
+  const input = stitchInputs(flow, id, engine.itemsOf, (id) => state[id]?.running > 0)
+  const st = state[id] || {}
+  const result = st.items?.find((item) => item.status === 'done')
+  const failed = st.items?.find((item) => item.status === 'failed')
+  return (
+    <Shell type="stitch" selected={selected} input output tag={data.aspect}>
+      <p>{input.clips.length} {input.clips.length === 1 ? 'clip' : 'clips'} · Captions and music</p>
+      {result && <video className="stitch-preview nodrag" src={result.url} controls playsInline preload="metadata" />}
+      <p className={`fstat${failed ? ' bad' : ''}`}>{st.running ? 'Rendering preview' : failed ? failed.error : input.blocked ? 'Add clips or wait for inputs' : 'Select to edit and export'}</p>
+      <button type="button" className="btn-soft xs nodrag" disabled={st.running > 0 || input.blocked} onClick={() => act.rerun(id)}>{result ? 'Render again' : 'Preview'}</button>
+    </Shell>
+  )
+}
+
+export const nodeTypes = { prompt: PromptNode, image: ImageNode, model: ModelNode, stitch: StitchNode, approve: ApproveNode, output: OutputNode, note: NoteNode }

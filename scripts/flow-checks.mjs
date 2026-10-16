@@ -200,6 +200,69 @@ check('fan-in waits for every input', async () => {
   assert.equal(m.count('Vid'), 2)
 })
 
+check('Stitch waits for Send, preserves clip order and trim options, and fills gaps only', async () => {
+  const m = mock()
+  const calls = []
+  const eng = createEngine({ run: m.run, stitch: async (opts) => {
+    calls.push(opts)
+    return { url: 'mock://stitched', kind: 'video' }
+  } })
+  const f = {
+    nodes: [n('p', 'prompt', { mode: 'rows', text: 'one\ntwo' }), n('v', 'model', { model: vid }), n('a', 'approve'), n('s', 'stitch', { aspect: '9:16' }), n('o', 'output')],
+    edges: [e('p', 'v'), e('v', 'a'), e('a', 's'), e('s', 'o')],
+  }
+  await eng.runNew(f)
+  assert.equal(calls.length, 0)
+  assert.equal(eng.plan(f, 's').blocked, true)
+  await eng.send(f, 'a')
+  assert.equal(calls.length, 1)
+  assert.equal(m.calls.length, 2, 'Send did not regenerate clips')
+  assert.deepEqual(calls[0].clips.map((clip) => clip.url), eng.itemsOf(f, 'a').map((item) => item.url))
+  assert.equal(eng.reviewItems(f, 'o')[0].url, 'mock://stitched')
+  await eng.runNew(f)
+  assert.equal(calls.length, 1)
+  const clips = eng.itemsOf(f, 'a')
+  f.nodes.find((node) => node.id === 's').data.clips = [
+    { id: clips[1].id, upstream: true, start: 0.2, end: 1, caption: 'Second first' },
+    { id: clips[0].id, upstream: true },
+  ]
+  await eng.rerun(f, 's')
+  assert.equal(calls.length, 2)
+  assert.equal(calls[1].clips[0].url, clips[1].url)
+  assert.equal(calls[1].clips[0].caption, 'Second first')
+  assert.equal(calls[1].clips[0].start, 0.2)
+  assert.equal(m.calls.length, 2)
+  await eng.regenerateAll(f)
+  assert.equal(eng.state.s.items.length, 0)
+  assert.equal(calls.length, 2, 'Regenerate resets Stitch and closes its upstream gate')
+})
+
+check('Stitch retries failures, waits for every input, and preserves outputs on Send', async () => {
+  let count = 0
+  const eng = createEngine({ stitch: async () => {
+    count++
+    if (count === 1) throw new Error('retry me')
+    return { url: 'mock://joined', kind: 'video' }
+  } })
+  const f = { nodes: [n('s', 'stitch', { clips: [{ id: 'local', url: '/media/local.mp4' }] }), n('a', 'approve'), n('s2', 'stitch')], edges: [e('s', 'a'), e('a', 's2')] }
+  await eng.runNew(f)
+  assert.equal(eng.state.s.items[0].status, 'failed')
+  await eng.runNew(f)
+  assert.equal(count, 2)
+  assert.equal(eng.plan(f, 's2').blocked, true)
+  await eng.send(f, 'a')
+  assert.equal(count, 3)
+  eng.clearGate(f, 'a')
+  await eng.send(f, 'a')
+  assert.equal(count, 3)
+  f.nodes.push(n('empty', 'approve'))
+  f.edges.push(e('empty', 's2'))
+  assert.equal((await eng.rerun(f, 's2')).ok, false)
+  const partial = { nodes: [n('v', 'model', { model: vid }), n('s', 'stitch')], edges: [e('v', 's')] }
+  eng.load({ v: { running: 1, items: [{ id: 'partial', url: 'mock://partial', kind: 'video', status: 'done' }] } })
+  assert.equal(eng.plan(partial, 's').blocked, true, 'Wait until all clips in the upstream run finish')
+})
+
 let bad = 0
 for (const [name, fn] of checks) {
   try { await fn(); console.log('ok   ', name) } catch (err) { bad++; console.log('FAIL ', name, '\n     ', err.message) }

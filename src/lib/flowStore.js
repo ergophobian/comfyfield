@@ -1,19 +1,21 @@
 import { models } from './catalog.js'
 import { run } from './providers.js'
 import { createEngine } from './flowEngine.js'
+import { stitchRequest } from './stitch.js'
 
 const KEY = 'comfyfield.flows'
 const RUN = 'comfyfield.flowrun.'
 const uid = () => crypto.randomUUID().slice(0, 8)
 const find = (id, kind) => models.find((m) => m.id === id) || models.find((m) => m.kind === kind)
 
-export const nodeLabels = { prompt: 'Prompt', image: 'Image', model: 'Model', approve: 'Approve', output: 'Output', note: 'Note' }
+export const nodeLabels = { prompt: 'Prompt', image: 'Image', model: 'Model', stitch: 'Stitch', approve: 'Approve', output: 'Output', note: 'Note' }
 
 export function defaults(type) {
   if (type === 'prompt') return { mode: 'single', text: '' }
   if (type === 'image') return { url: null, name: '' }
   if (type === 'model') return { kind: 'image', model: find(null, 'image'), aspect: '1:1', duration: 5, takes: 1, prompt: '' }
   if (type === 'note') return { text: '' }
+  if (type === 'stitch') return { clips: [], aspect: '16:9' }
   return {}
 }
 
@@ -153,6 +155,7 @@ export function engineFor(id) {
   let timer
   const eng = createEngine({
     run,
+    stitch: (options) => stitchRequest('', { ...options, preview: true }),
     onChange: (state) => {
       clearTimeout(timer)
       timer = setTimeout(() => {

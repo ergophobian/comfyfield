@@ -1,5 +1,8 @@
 // Flow execution rules, ported from PatchWork's WORKFLOW-SPEC.
 // Pure: no React, no fetch. Generation is injected as run(model, opts) -> files.
+import { stitchInputs } from './stitch.js'
+
+const executable = (n) => n.type === 'model' || n.type === 'stitch'
 
 const byId = (flow, id) => flow.nodes.find((n) => n.id === id)
 const sources = (flow, id) => flow.edges.filter((e) => e.target === id).map((e) => e.source)
@@ -60,7 +63,7 @@ export function promptsOf(node) {
 
 export const emptyGate = () => ({ status: 'empty', picked: [], sent: [] })
 
-export function createEngine({ run, onChange = () => {}, concurrency = 3 } = {}) {
+export function createEngine({ run, stitch, onChange = () => {}, concurrency = 3 } = {}) {
   let S = {}
   const subs = new Set()
   let active = 0
@@ -91,7 +94,7 @@ export function createEngine({ run, onChange = () => {}, concurrency = 3 } = {})
   function itemsOf(flow, id) {
     const n = byId(flow, id)
     if (n.type === 'image') return n.data.url ? [{ id: n.id, kind: 'image', url: n.data.url, row: 0, take: 0, prompt: '' }] : []
-    if (n.type === 'model') return doneItems(id)
+    if (executable(n)) return doneItems(id)
     if (n.type === 'approve') return gate(id).status === 'sent' ? gate(id).sent : null
     return []
   }
@@ -103,6 +106,10 @@ export function createEngine({ run, onChange = () => {}, concurrency = 3 } = {})
   // Work a model node would do right now: one unit per prompt row (or upstream image) per take.
   function plan(flow, id) {
     const n = byId(flow, id)
+    if (n.type === 'stitch') {
+      const input = stitchInputs(flow, id, itemsOf, running)
+      return { blocked: input.blocked, units: input.blocked ? [] : [{ key: 'stitch', row: 0, take: 0, opts: input.options, signature: input.signature }] }
+    }
     const model = n.data.model
     if (!model) return { blocked: true, units: [] }
     let texts = []
@@ -178,16 +185,16 @@ export function createEngine({ run, onChange = () => {}, concurrency = 3 } = {})
     const n = byId(flow, id)
     const units = todo(flow, id)
     if (!units.length) return 0
-    const model = n.data.model
+    const model = n.type === 'stitch' ? { kind: 'video' } : n.data.model
     const pending = units.map((u) => ({
       id: `${id}:${u.key}`, unit: u.key, row: u.row, take: u.take, prompt: u.opts.prompt,
-      kind: model.kind, aspect: u.opts.aspect, status: 'pending',
+      kind: model.kind, aspect: u.opts.aspect, signature: u.signature, status: 'pending',
     }))
     edit(id, (s) => ({ items: [...(s.items || []).filter((i) => i.status === 'done'), ...pending], running: (s.running || 0) + 1 }))
     await Promise.all(units.map(async (u, k) => {
       let next
       try {
-        const files = await limit(() => run(model, u.opts))
+        const files = await limit(() => n.type === 'stitch' ? stitch(u.opts).then((file) => [file]) : run(model, u.opts))
         next = files.map((f, i) => ({ ...pending[k], id: `${pending[k].id}#${i}`, kind: model.kind, ...f, status: 'done', created: Date.now() }))
       } catch (e) {
         next = [{ ...pending[k], status: 'failed', error: e.message || String(e) }]
@@ -206,7 +213,7 @@ export function createEngine({ run, onChange = () => {}, concurrency = 3 } = {})
     for (;;) {
       const ready = topoOrder(flow).filter((id) => {
         const n = byId(flow, id)
-        return n.type === 'model' && !ran.has(id) && (!only || only.has(id)) && !running(id)
+        return executable(n) && !ran.has(id) && (!only || only.has(id)) && !running(id)
           && !(skipWithOutput && doneItems(id).length) && todo(flow, id).length > 0
       })
       if (!ready.length) break
@@ -227,7 +234,7 @@ export function createEngine({ run, onChange = () => {}, concurrency = 3 } = {})
     reviewItems,
     plan,
     pending: (flow, id) => todo(flow, id).length,
-    hasOutput: (flow) => flow.nodes.some((n) => n.type === 'model' && doneItems(n.id).length),
+    hasOutput: (flow) => flow.nodes.some((n) => executable(n) && doneItems(n.id).length),
     isRunning: () => Object.values(S).some((s) => s.running > 0),
 
     // Run: fill gaps only. Kept outputs and sent gates stay; gates still block.
@@ -241,7 +248,7 @@ export function createEngine({ run, onChange = () => {}, concurrency = 3 } = {})
     async regenerateAll(flow) {
       topoOrder(flow)
       for (const n of flow.nodes) {
-        if (n.type === 'model') edit(n.id, () => ({ items: [], running: 0 }))
+        if (executable(n)) edit(n.id, () => ({ items: [], running: 0 }))
         if (n.type === 'approve') edit(n.id, () => emptyGate())
       }
       return pass(flow)
@@ -289,7 +296,7 @@ export function createEngine({ run, onChange = () => {}, concurrency = 3 } = {})
       edit(id, () => emptyGate())
       let ran = 0
       for (const s of sources(flow, id)) {
-        if (byId(flow, s).type !== 'model' || running(s) || plan(flow, s).blocked) continue
+        if (!executable(byId(flow, s)) || running(s) || plan(flow, s).blocked) continue
         edit(s, () => ({ items: [] }))
         ran += await runNode(flow, s)
       }
