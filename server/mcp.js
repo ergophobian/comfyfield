@@ -1,0 +1,66 @@
+// MCP server over stdio. Tools run on the user's own keys from .comfyfield/keys.json.
+import path from 'node:path'
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
+import { z } from 'zod'
+import * as core from './core.js'
+
+const text = (data) => ({ content: [{ type: 'text', text: typeof data === 'string' ? data : JSON.stringify(data, null, 2) }] })
+const fail = (e) => ({ isError: true, content: [{ type: 'text', text: e.message || String(e) }] })
+const tool = (fn) => async (args) => { try { return text(await fn(args)) } catch (e) { return fail(e) } }
+
+export function createServer() {
+  const server = new McpServer({ name: 'comfyfield', version: '0.1.0' })
+  const kind = z.enum(['image', 'video', 'audio']).optional().describe('Filter by media kind')
+
+  server.registerTool('list_models', {
+    description: 'List pinned models and search fal.ai catalog. Ids look like g-veo, comfy-flux or fal:<endpoint>; any fal endpoint can be used as fal:<endpoint>.',
+    inputSchema: { kind, query: z.string().optional().describe('Search fal catalog, for example "kling"'), limit: z.number().int().min(1).max(50).optional() },
+  }, tool(({ kind, query, limit }) => core.listModels({ kind, query, limit })))
+
+  server.registerTool('generate', {
+    description: 'Generate images, video or audio with the user\'s own provider keys. Spends their credits. Saves files locally and returns paths, URLs and an estimated cost.',
+    inputSchema: {
+      model: z.string().describe('Model id from list_models, or fal:<endpoint>'),
+      prompt: z.string(),
+      aspect: z.enum(['1:1', '16:9', '9:16', '4:5']).optional().describe('Default 16:9'),
+      count: z.number().int().min(1).max(4).optional().describe('Images per run'),
+      duration: z.number().optional().describe('Video length in seconds'),
+      image: z.string().optional().describe('Start image: URL or local file path'),
+      out: z.string().optional().describe('Folder to save into. Default .comfyfield/outputs'),
+    },
+  }, tool(async ({ out, ...args }) => {
+    const cost = await core.estimateCost(args).catch(() => null)
+    const files = await core.generate(args)
+    const saved = await core.saveFiles(files, path.resolve(out || path.join(process.env.COMFYFIELD_HOME || '.', '.comfyfield', 'outputs')))
+    return {
+      files: files.map((f, i) => ({ kind: f.kind, path: saved[i], url: f.url })),
+      estimated_cost_usd: cost ? { amount: Number(cost.usd.toFixed(4)), approximate: cost.approx } : null,
+    }
+  }))
+
+  server.registerTool('get_model_schema', {
+    description: 'Input fields of a fal model (types, enums, defaults, required). Pinned fal ids and fal:<endpoint> both work.',
+    inputSchema: { model: z.string() },
+  }, tool(async ({ model }) => {
+    const m = core.resolveModel(model)
+    if (m.provider !== 'fal') return { provider: m.provider, note: 'Only fal models have a schema.', durations: m.durations, mode: m.mode }
+    return { endpoint: m.model, ...(await core.falSchema(m.model)), price: (await core.falMeta([m.model]).catch(() => ({})))[m.model]?.price }
+  }))
+
+  server.registerTool('balance', {
+    description: 'Remaining balance for connected providers where the provider exposes it.',
+    inputSchema: {},
+  }, tool(async () => ({ connections: Object.fromEntries(Object.entries(core.connections()).map(([k, v]) => [k, v.connected])), balances: await core.balances() })))
+
+  server.registerTool('write_prompts', {
+    description: 'Turn one idea into several distinct generation prompts with Gemini. Needs a Google key.',
+    inputSchema: { idea: z.string(), n: z.number().int().min(1).max(20).optional(), kind: z.enum(['image', 'video']).optional() },
+  }, tool(async (a) => ({ prompts: await core.writePrompts(a) })))
+
+  return server
+}
+
+export async function startMcp() {
+  await createServer().connect(new StdioServerTransport())
+}

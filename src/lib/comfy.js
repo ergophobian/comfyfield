@@ -1,18 +1,7 @@
 // Minimal client for the ComfyUI HTTP API, reached through the /comfy dev proxy.
-const BASE = '/comfy'
+import { fill } from '../../shared/mapping.js'
 
-function fill(node, vars) {
-  if (typeof node === 'string') {
-    const whole = node.match(/^\{\{(\w+)\}\}$/)
-    if (whole) return vars[whole[1]]
-    return node.replace(/\{\{(\w+)\}\}/g, (_, k) => vars[k])
-  }
-  if (Array.isArray(node)) return node.map((n) => fill(n, vars))
-  if (node && typeof node === 'object') {
-    return Object.fromEntries(Object.entries(node).map(([k, v]) => [k, fill(v, vars)]))
-  }
-  return node
-}
+const BASE = '/comfy'
 
 export async function loadWorkflow(name, vars) {
   const res = await fetch(`/workflows/${name}.json`)
