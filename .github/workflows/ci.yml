@@ -22,4 +22,5 @@ jobs:
       - run: npx vite build
       - run: node scripts/flow-checks.mjs
       - run: node scripts/theme-check.mjs
+      - run: node scripts/pod-checks.mjs
       - run: node bin/comfyfield.js --help

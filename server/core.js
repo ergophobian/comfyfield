@@ -8,6 +8,8 @@ import { Comfy } from '@comfyorg/sdk'
 import { models as pinned, falCategories } from '../src/lib/catalog.js'
 import { comfyVars, comfyRouterInput, falInput, estimate, fill } from '../shared/mapping.js'
 
+export { podBootScript, podStartCmd } from './podBoot.js'
+
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
 export const providers = {
