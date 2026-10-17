@@ -1,17 +1,29 @@
 name: Build and checks
 
+# Budget: PRs run on Linux only, and a new push cancels the PR's older run.
+# Main runs all three systems. Label a PR full-ci to run all three before merging.
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, labeled]
+    paths-ignore: ['**.md', 'research_notes/**', 'docs/**', '**/screenshots/**']
   push:
     branches: [main]
+    paths-ignore: ['**.md', 'research_notes/**', 'docs/**', '**/screenshots/**']
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
+    if: github.event_name != 'pull_request' || (!github.event.pull_request.draft && (github.event.action != 'labeled' || github.event.label.name == 'full-ci'))
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: ${{ fromJSON(github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'full-ci') && '["ubuntu-latest"]' || '["ubuntu-latest","macos-latest","windows-latest"]') }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

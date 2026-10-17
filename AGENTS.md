@@ -40,12 +40,13 @@ Keys go in Connections (saved to `.comfyfield/keys.json`, gitignored) or `.env` 
 1. Pick an issue labelled `agent-ready` in your area. Assign yourself.
 2. One branch per issue: `issue-<number>-<short-name>`. One PR per issue, linked with `Closes #<number>`.
 3. A PR is ready when:
-   - `npx vite build`, `node scripts/flow-checks.mjs` and `node scripts/theme-check.mjs` pass (CI runs all three)
+   - `npx vite build` and `node scripts/verify.mjs` pass on your machine before you push
    - every acceptance criterion in the issue is met
    - the PR shows a screenshot or short GIF of the change working. No placeholders: if something is not real yet, say so in the PR
 4. Do not push to `main`. One person merges.
-5. Paid generations: only when the issue says `needs-keys` and gives a budget. Use the cheapest model that proves the path (Flux schnell, Veo 3.1 Lite, LTX). Report the estimated spend in the PR. Never read keys from your shell environment for tests unless the issue says so.
-6. Never commit keys, `.comfyfield/` or `.env`.
+5. Save CI minutes. Commit as often as you like, but push when the work is ready for review, not after every commit. Open the PR as a draft while you work: drafts skip CI. Mark it ready for review to run the Linux checks. Add the `full-ci` label only when a change could break on Windows or macOS (paths, shell, ffmpeg, Chrome); main always runs all three.
+6. Paid generations: only when the issue says `needs-keys` and gives a budget. Use the cheapest model that proves the path (Flux schnell, Veo 3.1 Lite, LTX). Report the estimated spend in the PR. Never read keys from your shell environment for tests unless the issue says so.
+7. Never commit keys, `.comfyfield/` or `.env`.
 
 ## Design rules
 
