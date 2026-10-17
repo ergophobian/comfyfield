@@ -1,10 +1,12 @@
+import { defineFormat } from './spec.js'
+
 // Shared building blocks for format definitions.
 //
 // A format is data: inputs the sheet renders, a prompt template and the workflow it will run.
 //   id, name, kind (image | video | audio), category (see index.js), blurb
 //   engine    'comfy' for open weights. The teammate's fal recipes are tagged 'fal' in index.js
 //   runsOn    model label shown on cards and the sheet, checked against Comfy Cloud and Runpod in the backend pass
-//   workflow  planned public/workflows/<id>.json. A format is wired once its workflow is in readyWorkflows
+//   workflow  public/workflows/<id>.json. Missing workflows keep the format out of runnable galleries
 //   inputs    see below. prompt fills {inputId} with the value (a choice uses its option text or label)
 //   settings  aspect ('auto' keeps the source shape), duration
 //   featured  suggested under the composer. layout 'wide' gives the sheet two columns
@@ -15,14 +17,19 @@
 // kind is image, video, audio or 3d. 3d has no composer, so its formats are the only way in.
 //
 // Input types:
-//   image | video | audio            value { url, name, ratio, local? }
+//   image | audio                    value { url, name, ratio, local? }
+//   video                            uploaded { url, name, ratio, duration, trim: { start, end }, posterUrl?, posterTime? }
+//   mask                             uploaded image plus maskUrl (white changes, black stays), strokes aliases maskUrl
+//   face                             image plus faceUrl and box, or characterId and Library images
+//   crop                             image plus normalized box { x, y, width, height } and aspect
 //   text | longtext                  value string, optional placeholder
 //   choice                           options [{ id, label, text?, note?, params? }], default
 //   count                            options [numbers], default, unit ('shots')
 //   character | product | brand | voice   a Library pick, value is a toRef() object
 //   draw                             an image you draw on. mode 'mask' paints the area to change,
 //                                    mode 'motion' draws arrows for where things should move.
-//                                    value { url, name, ratio, strokes } where strokes is a PNG data URL
+//                                    mask mode aliases the mask widget; motion strokes remain a PNG data URL
+// See docs/input-widgets.md for the format-runner and Flow input contract.
 // Any input can set optional, when: ['choiceId', 'optionId'] to show only for that option,
 // and half: true to take one column in the wide layout.
 
@@ -46,4 +53,4 @@ export const clip = { id: 'video', type: 'video', label: 'Video' }
 export const sound = { id: 'audio', type: 'audio', label: 'Audio' }
 export const note = { id: 'note', type: 'text', label: 'Extra direction', optional: true, placeholder: 'Anything else to add' }
 
-export const open = (f) => ({ engine: 'comfy', settings: {}, prompt: '', ...f })
+export const open = (f) => defineFormat({ engine: 'comfy', settings: {}, prompt: '', ...f })

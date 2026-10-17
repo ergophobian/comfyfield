@@ -18,7 +18,7 @@ export default function UseIn({ item, onUse, up }) {
     }
   }, [open])
 
-  const targets = (useIn[item.kind] || []).map(([id, input, label]) => [formatById(id), input, label]).filter(([f]) => f)
+  const targets = (useIn[item.kind] || []).map(([id, input, label]) => [formatById(id), input, label]).filter(([f]) => f && isWired(f))
   if (!targets.length) return null
 
   return (

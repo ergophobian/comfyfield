@@ -19,7 +19,13 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - uses: browser-actions/setup-chrome@v2
+        id: chrome
+        with:
+          # Explicit versions preserve the macOS .app bundle (setup-chrome #658).
+          chrome-version: 155.0.8059.84
       - run: npx vite build
-      - run: node scripts/flow-checks.mjs
-      - run: node scripts/theme-check.mjs
+      - run: node scripts/verify.mjs
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
       - run: node bin/comfyfield.js --help

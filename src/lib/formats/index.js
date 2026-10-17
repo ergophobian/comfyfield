@@ -1,4 +1,4 @@
-// Every format in one list: the open-weight ones first, then the teammate's fal recipes, unchanged.
+// Preserve the full catalog and expose only formats whose targets validate to galleries.
 import { recipes } from '../recipes.js'
 import { motion } from './motion.js'
 import { edits } from './edit.js'
@@ -11,6 +11,8 @@ import { apps2 } from './appsx.js'
 import { presets } from './presetsx.js'
 import { mixedLooks } from './mixedx.js'
 import { jobs } from './jobsx.js'
+import { validateFormat } from './validate.js'
+import { effects } from './effects.js'
 
 export const categories = [
   { id: 'camera', name: 'Camera moves', blurb: 'One photo, one camera move.' },
@@ -69,8 +71,12 @@ const widenMix = (f) => ({
   }),
 })
 
-export const formats = [...motion, ...presets, ...looks, ...edits, ...people, ...ads, ...fun, ...apps2, ...mixedLooks, ...jobs, ...three, ...fromFal]
+export const allFormats = [...motion, ...presets, ...looks, ...edits, ...people, ...ads, ...fun, ...apps2, ...mixedLooks, ...jobs, ...three, ...fromFal, ...effects]
   .map((f) => (f.id === 'cam-mix' ? widenMix(f) : f))
+  .map((f) => f.workflow === 'ltx_i2v' ? { ...f, runsOn: 'LTX Video 2B' } : f)
+
+export const formatProblems = new Map(allFormats.map((f) => [f.id, validateFormat(f)]))
+export const formats = allFormats.filter((f) => !formatProblems.get(f.id).length)
 
 // Higgsfield's app hubs. A format with `hub` set shows on /apps under that hub and opens at /apps/:id.
 export const hubs = [
@@ -85,12 +91,11 @@ export const hubs = [
 ]
 export const appsIn = (hub) => formats.filter((f) => f.hub === hub)
 
-// Workflows the current engine can already run. Everything else shows "Not wired yet".
-export const readyWorkflows = new Set(['image_flux', 'image_sdxl', 'video_ltx'])
-export const isWired = (f) => f.engine === 'fal' || readyWorkflows.has(f.workflow)
+export const isWired = (f) => !(formatProblems.get(f.id) || validateFormat(f)).length
 export const isOpen = (f) => f.engine === 'comfy'
 
-export const formatById = (id) => formats.find((f) => f.id === id)
+// Studio scaffolds still read controls from planned formats; galleries use the validated list.
+export const formatById = (id) => allFormats.find((f) => f.id === id)
 
 export const filterFormats = ({ category = 'all', openOnly = true, query = '' } = {}) => {
   const q = query.trim().toLowerCase()

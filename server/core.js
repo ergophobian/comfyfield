@@ -3,13 +3,16 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { randomUUID } from 'node:crypto'
+import { Comfy } from '@comfyorg/sdk'
 import { models as pinned, falCategories } from '../src/lib/catalog.js'
-import { comfyVars, falInput, estimate, fill } from '../shared/mapping.js'
+import { comfyVars, comfyRouterInput, falInput, estimate, fill, falEndpointFor } from '../shared/mapping.js'
+import { renderStitch } from './stitch.js'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
 export const providers = {
-  comfy: { env: ['COMFY_URL', 'COMFY_API_KEY'], fields: ['url', 'key'] },
+  comfy: { env: ['COMFY_URL', 'COMFY_API_KEY', 'COMFY_MODE'], fields: ['url', 'key', 'mode'] },
   fal: { env: ['FAL_KEY'], fields: ['key'] },
   google: { env: ['GEMINI_API_KEY'], fields: ['key'] },
   elevenlabs: { env: ['ELEVENLABS_API_KEY'], fields: ['key'] },
@@ -172,6 +175,42 @@ function pcmToWav(pcm, rate = 24000) {
 
 const GEMINI = 'https://generativelanguage.googleapis.com/v1beta'
 
+// The Router lane can replace this stub without changing the writer contract.
+export async function writePromptWithRouter() {
+  throw Object.assign(new Error('Connect Google AI to write a prompt. Comfy Router prompt writing is not wired yet.'), { status: 501 })
+}
+
+export async function writePrompt({ instructions, note = '', images = [], target = '' }) {
+  if (typeof instructions !== 'string' || !instructions.trim()) {
+    throw Object.assign(new Error('Add writer instructions first.'), { status: 400 })
+  }
+  if (typeof note !== 'string' || typeof target !== 'string' || !Array.isArray(images) || images.some((u) => typeof u !== 'string' || !/^(data:image\/|\/media\/)/.test(u))) {
+    throw Object.assign(new Error('Writer needs a note, a target and local or inline images.'), { status: 400 })
+  }
+  const request = { instructions, note, images, target }
+  const { key } = config('google')
+  if (!key) return writePromptWithRouter(request)
+  const parts = images.map((url) => {
+    const { buf, mime } = readLocal(url)
+    if (!/^image\/(png|jpeg|webp|gif)$/.test(mime)) {
+      throw Object.assign(new Error('Writer accepts PNG, JPG, WebP or GIF images.'), { status: 415 })
+    }
+    return { inlineData: { mimeType: mime, data: buf.toString('base64') } }
+  })
+  parts.push({ text: [target && `Target model or medium: ${target}`, note && `User note: ${note}`, 'Write only the finished generation prompt.'].filter(Boolean).join('\n\n') })
+  const r = await fetch(`${GEMINI}/models/gemini-flash-latest:generateContent`, {
+    method: 'POST', headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ systemInstruction: { parts: [{ text: instructions }] }, contents: [{ role: 'user', parts }] }),
+  })
+  const data = await r.json().catch(() => ({}))
+  if (!r.ok) throw new Error(data.error?.message || `Google prompt writing failed (${r.status})`)
+  const candidate = data.candidates?.[0]
+  if (candidate?.finishReason && candidate.finishReason !== 'STOP') throw new Error('Google did not finish the prompt. Try again or adjust the instructions.')
+  const text = (candidate?.content?.parts || []).filter((p) => !p.thought).map((p) => p.text || '').join('').trim()
+  if (!text) throw new Error('Google returned no prompt. The request may have been filtered.')
+  return text
+}
+
 // Google AI (Gemini API key): image and speech via generateContent, Veo via a long-running operation.
 export async function runGoogle({ model, mode, prompt, aspect, count = 1, duration, images = [] }) {
   const { key } = config('google')
@@ -228,7 +267,7 @@ export async function runGoogle({ model, mode, prompt, aspect, count = 1, durati
   return files
 }
 
-export const mediaTypes = { mp3: 'audio/mpeg', wav: 'audio/wav', mp4: 'video/mp4', png: 'image/png', jpeg: 'image/jpeg', jpg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif', svg: 'image/svg+xml', ico: 'image/x-icon' }
+export const mediaTypes = { mp3: 'audio/mpeg', wav: 'audio/wav', mp4: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime', m4a: 'audio/mp4', ogg: 'audio/ogg', flac: 'audio/flac', png: 'image/png', jpeg: 'image/jpeg', jpg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif', svg: 'image/svg+xml', ico: 'image/x-icon' }
 
 // Thumbnails and prices for specific fal endpoints. Prices need a fal key; thumbnails do not.
 export async function falMeta(ids) {
@@ -282,6 +321,11 @@ export async function writePrompts({ idea, n = 6, kind = 'video' }) {
 export async function testConnection(id) {
   const c = config(id)
   if (id === 'comfy') {
+    if (c.mode === 'cloud') {
+      if (!c.key) return false
+      const r = await fetch('https://cloud.comfy.org/api/user', { headers: { 'X-API-Key': c.key } })
+      return r.ok
+    }
     const r = await fetch(`${c.url || 'http://127.0.0.1:8188'}/system_stats`, { headers: c.key ? { 'X-API-Key': c.key } : {} })
     return r.ok
   }
@@ -300,33 +344,197 @@ export async function testConnection(id) {
 
 export const mediaPath = (name) => path.join(mediaDir(), path.basename(name))
 
+const stitchIndex = () => path.join(home(), 'stitch', 'index.json')
+function readStitches() {
+  try { return JSON.parse(fs.readFileSync(stitchIndex(), 'utf8')) } catch { return [] }
+}
+function writeStitches(items) {
+  fs.mkdirSync(path.dirname(stitchIndex()), { recursive: true })
+  fs.writeFileSync(stitchIndex(), JSON.stringify(items, null, 2))
+}
+
+export const stitchedExports = () => readStitches().filter((item) => item.exported)
+
+export function dismissStitch(url) {
+  writeStitches(readStitches().map((item) => item.url === url ? { ...item, exported: false } : item))
+}
+
+export function exportStitch(url) {
+  const items = readStitches()
+  const item = items.find((item) => item.url === url)
+  if (!item || !fs.existsSync(item.path)) throw Object.assign(new Error('Render a Stitch preview first.'), { status: 400 })
+  const saved = { ...item, exported: true }
+  writeStitches(items.map((item) => item.url === url ? saved : item))
+  return saved
+}
+
+export async function stitch({ preview = false, ...options } = {}) {
+  const file = await renderStitch(options, { home, mediaPath })
+  const item = { ...file, id: path.basename(file.path), model: 'Stitch', caption: 'Stitched video', created: Date.now(), exported: !preview }
+  writeStitches([item, ...readStitches()])
+  return item
+}
+
 export function connections() {
-  return Object.fromEntries(Object.keys(providers).map((id) => {
+  const out = Object.fromEntries(Object.keys(providers).map((id) => {
     const c = config(id)
-    return [id, { connected: Boolean(id === 'comfy' ? c.url || c.key : c.key), url: c.url, key: mask(c.key) }]
+    return [id, { connected: Boolean(id === 'comfy' ? c.mode === 'cloud' ? c.key : c.url || c.key : c.key), url: c.url, key: mask(c.key), ...(id === 'comfy' ? { mode: c.mode || 'local' } : {}) }]
   }))
+  out.comfyRouter = { connected: Boolean(config('comfy').key) }
+  return out
 }
 
 export function saveConnection(id, values) {
   if (!providers[id]) throw Object.assign(new Error('Unknown provider'), { status: 400 })
+  if (id === 'comfy' && values.mode && !['local', 'cloud'].includes(values.mode)) throw Object.assign(new Error('Choose Local or Comfy Cloud.'), { status: 400 })
   const keys = readKeys()
   keys[id] = { ...keys[id], ...values }
   writeKeys(keys)
 }
 
-const comfyBase = () => config('comfy').url || 'http://127.0.0.1:8188'
+const comfyBase = () => (config('comfy').url || 'http://127.0.0.1:8188').replace(/\/+$/, '')
 const comfyHeaders = () => (config('comfy').key ? { 'X-API-Key': config('comfy').key } : {})
 
+const ROUTER = 'https://api.comfy.org/v2/models'
+const comfyKey = () => {
+  const { key } = config('comfy')
+  if (!key) throw Object.assign(new Error('Add a Comfy API key in Connections first.'), { status: 400 })
+  return key
+}
+
+function comfyError(response, data) {
+  const code = data.error_type || data.error?.code
+  const message = response.status === 402 || code === 'insufficient_credits'
+    ? 'Comfy has insufficient credits. Add credits to your Comfy workspace billing, then try again.'
+    : `Comfy request failed (${code || response.status}): ${data.message || data.error?.message || 'Check the request and your connection.'}`
+  return Object.assign(new Error(message), { status: response.status >= 400 ? response.status : 502 })
+}
+
+function retryAfter(response) {
+  const value = response.headers.get('Retry-After')
+  if (value == null) return 2000
+  const seconds = Number(value)
+  return Number.isFinite(seconds) ? Math.max(0, seconds * 1000) : Math.max(0, Date.parse(value) - Date.now()) || 2000
+}
+
+export async function listComfyRouterModels({ limit = 50, cursor } = {}) {
+  const params = new URLSearchParams({ limit: String(limit) })
+  if (cursor) params.set('cursor', cursor)
+  const response = await fetch(`${ROUTER}?${params}`, { headers: { 'X-API-Key': comfyKey() } })
+  const data = await response.json()
+  if (!response.ok) throw comfyError(response, data)
+  return data
+}
+
+// Router returns each partner's native JSON; normalize media for the shared generation callers.
+function routerFiles(data) {
+  const files = []
+  const visit = (value, kind) => {
+    if (typeof value === 'string' && /^(https?:|data:)/.test(value) && kind) files.push({ url: value, kind })
+    else if (Array.isArray(value)) value.forEach((v) => visit(v, kind))
+    else if (value && typeof value === 'object') {
+      for (const [key, v] of Object.entries(value)) {
+        visit(v, /^(images?|image_url|sample)$/.test(key) ? 'image' : /^(videos?|video_url)$/.test(key) ? 'video' : /^(audios?|audio_url)$/.test(key) ? 'audio' : kind)
+      }
+    }
+  }
+  visit(data)
+  if (!files.length) throw new Error('Comfy Router finished but returned no supported media.')
+  return files
+}
+
+async function withRouterFiles(value) {
+  if (Array.isArray(value)) return Promise.all(value.map(withRouterFiles))
+  if (value && typeof value === 'object') return Object.fromEntries(await Promise.all(Object.entries(value).map(async ([k, v]) => [k, await withRouterFiles(v)])))
+  if (typeof value === 'string' && value.startsWith('/media/')) {
+    const { buf, mime } = readLocal(value)
+    return dataUri(buf, mime)
+  }
+  return value
+}
+
+export async function runComfyRouter({ model, input, idempotencyKey = randomUUID() }, { pause = sleep } = {}) {
+  if (!/^[\w.-]+\/[\w./-]+$/.test(model) || model.split('/').includes('..')) throw new Error('Use a Comfy Router provider/model id.')
+  const headers = { 'X-API-Key': comfyKey(), 'Content-Type': 'application/json' }
+  const base = `${ROUTER}/${model}/requests`
+  const response = await fetch(base, { method: 'POST', headers: { ...headers, 'Idempotency-Key': idempotencyKey }, body: JSON.stringify(await withRouterFiles(input)) })
+  const job = await response.json()
+  if (!response.ok || job.error_type) throw comfyError(response, job)
+  if (!job.request_id) throw new Error('Comfy Router did not return a request id.')
+  // Derive URLs from the documented route so credentials never follow an arbitrary response URL.
+  const resultUrl = `${base}/${encodeURIComponent(job.request_id)}`
+  let previous = response
+  for (let i = 0; i < 1200; i++) {
+    await pause(retryAfter(previous))
+    const status = await fetch(`${resultUrl}/status`, { headers })
+    const update = await status.json()
+    previous = status
+    if (status.status === 429 || status.status === 503) continue
+    if (!status.ok || update.error_type) throw comfyError(status, update)
+    if (update.status !== 'COMPLETED') continue
+    const result = await fetch(resultUrl, { headers })
+    const data = await result.json()
+    previous = result
+    if (result.status === 202 || result.status === 429 || result.status === 503) continue
+    if (!result.ok || data.error_type) throw comfyError(result, data)
+    return routerFiles(data)
+  }
+  throw new Error(`Comfy Router took too long. Request ${job.request_id} may still be running; do not submit again without checking it.`)
+}
+
+async function comfyImage(source) {
+  if (/^https?:/.test(source)) {
+    const r = await fetch(source)
+    if (!r.ok) throw new Error(`Could not download the input image (${r.status}).`)
+    return { buf: Buffer.from(await r.arrayBuffer()), mime: r.headers.get('content-type') || 'image/png' }
+  }
+  return readLocal(source)
+}
+
 // Runs a bundled workflow on the user's ComfyUI and returns absolute file URLs.
-export async function runComfy(workflow, vars) {
+export async function runComfy(workflow, vars = {}, { createClient = (key) => new Comfy({ apiKey: key }) } = {}) {
+  if (!/^[a-z0-9_]+$/.test(workflow)) throw new Error('Invalid workflow name.')
   const file = path.join(ROOT, 'public', 'workflows', `${workflow}.json`)
   if (!fs.existsSync(file)) throw new Error(`Workflow ${workflow} not found`)
-  const graph = fill(JSON.parse(fs.readFileSync(file, 'utf8')), vars)
+  const template = JSON.parse(fs.readFileSync(file, 'utf8'))
+  const inputs = [...JSON.stringify(template).matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1])
+  for (const input of inputs) if (vars[input] == null || vars[input] === '') throw new Error(`Workflow ${workflow} requires ${input}.`)
+  const graph = fill(template, vars)
+  const loaders = Object.entries(template).filter(([, node]) => node.class_type === 'LoadImage' && node.inputs.image === '{{image}}')
+  const image = loaders.length ? await comfyImage(vars.image) : null
+  if (config('comfy').mode === 'cloud') {
+    const key = comfyKey()
+    const client = createClient(key)
+    const wf = await client.workflows.fromFile(file)
+    wf.json = graph
+    for (const [id] of loaders) wf.setInput(id, 'image', client.assets.fromBytes(image.buf, { filename: `input.${mimeExt(image.mime)}`, contentType: image.mime }))
+    try {
+      const job = await client.run(wf, { apiKey: key, timeoutMs: 30 * 60 * 1000 })
+      const files = []
+      for (const output of job.outputs) {
+        if (!['image', 'video', 'audio'].includes(output.type)) continue
+        files.push({ ...saveMedia(Buffer.from(await output.toBytes()), mimeExt(output.contentType)), kind: output.type, name: output.name })
+      }
+      if (!files.length) throw new Error('Comfy Cloud finished but returned no media.')
+      return files
+    } catch (e) {
+      if (e.httpStatus === 402 || e.code === 'insufficient_credits') throw comfyError({ status: 402 }, {})
+      throw e
+    }
+  }
   const base = comfyBase()
+  if (image) {
+    const form = new FormData()
+    form.append('image', new Blob([image.buf], { type: image.mime }), `comfyfield-${randomUUID()}.${mimeExt(image.mime)}`)
+    const upload = await fetch(`${base}/upload/image`, { method: 'POST', headers: comfyHeaders(), body: form })
+    if (!upload.ok) throw new Error(`ComfyUI image upload failed (${upload.status}).`)
+    const uploaded = await upload.json()
+    for (const [id] of loaders) graph[id].inputs.image = [uploaded.subfolder, uploaded.name].filter(Boolean).join('/')
+  }
   const headers = { 'Content-Type': 'application/json', ...comfyHeaders() }
   let res
   try {
-    res = await fetch(`${base}/prompt`, { method: 'POST', headers, body: JSON.stringify({ prompt: graph, client_id: 'comfyfield' }) })
+    res = await fetch(`${base}/prompt`, { method: 'POST', headers, body: JSON.stringify({ prompt: graph, client_id: 'comfyfield', ...(config('comfy').key ? { extra_data: { api_key_comfy_org: config('comfy').key } } : {}) }) })
   } catch {
     throw new Error('Could not reach ComfyUI. Check the URL in Connections.')
   }
@@ -370,7 +578,7 @@ export function resolveModel(id) {
 }
 
 export async function listModels({ kind, query, includeFal = true, limit = 25 } = {}) {
-  const out = pinned.filter((m) => !kind || m.kind === kind).map((m) => ({
+  const out = pinned.filter((m) => (!kind || m.kind === kind) && (m.provider !== 'comfyRouter' || config('comfy').key)).map((m) => ({
     id: m.id, kind: m.kind, provider: m.provider, name: m.name, note: m.note, pinned: true, durations: m.durations,
   }))
   if (includeFal && (query || kind)) {
@@ -389,24 +597,31 @@ export async function listModels({ kind, query, includeFal = true, limit = 25 } 
 }
 
 // One generation on any model. `image` is a URL or a local file path (sent to fal as a data URI).
-export async function generate({ model, prompt, aspect = '16:9', count = 1, duration, image }) {
+export async function generate({ model, prompt, aspect = '16:9', count = 1, duration, image, images, ...options }) {
   if (!prompt) throw new Error('A prompt is required.')
   const m = resolveModel(model)
-  const o = { prompt, aspect, count, duration, image: image && !/^(https?:|data:|\/media\/)/.test(image) ? fileDataUri(image) : image }
+  const o = { ...options, images, prompt, aspect, count, duration, image: image && !/^(https?:|data:|\/media\/)/.test(image) ? fileDataUri(image) : image }
+  if (m.provider === 'comfyRouter') {
+    const files = []
+    for (let i = 0; i < (m.kind === 'image' ? count : 1); i++) files.push(...await runComfyRouter({ model: m.model, input: comfyRouterInput(m.model, o) }))
+    return files
+  }
   if (m.provider === 'comfy') return runComfy(m.workflow, comfyVars(m.kind, { ...o, duration: duration || 5 }))
   if (m.provider === 'fal') {
-    const { properties } = await falSchema(m.model)
-    return runFal({ model: m.model, input: falInput(properties, o) })
+    const endpoint = await falEndpointFor(m, Boolean(o.images?.length || o.image), falSchema)
+    const { properties } = await falSchema(endpoint)
+    return runFal({ model: endpoint, input: falInput(properties, o) })
   }
-  if (m.provider === 'google') return runGoogle({ model: m.model, mode: m.mode, prompt, aspect, count, duration })
+  if (m.provider === 'google') return runGoogle({ model: m.model, mode: m.mode, prompt, aspect, count, duration, images: o.images || (o.image ? [o.image] : []) })
   if (m.provider === 'elevenlabs') return runElevenLabs({ mode: m.mode, text: prompt })
   throw new Error(`${m.provider} is not wired up yet.`)
 }
 
 // Rough cost before running; null when the price is unknown.
-export async function estimateCost({ model, aspect = '16:9', count = 1, duration }) {
+export async function estimateCost({ model, aspect = '16:9', count = 1, duration, image }) {
   const m = resolveModel(model)
-  const meta = m.provider === 'fal' ? (await falMeta([m.model]).catch(() => ({})))[m.model] : { price: m.price }
+  const endpoint = await falEndpointFor(m, Boolean(image), falSchema)
+  const meta = m.provider === 'fal' ? (await falMeta([endpoint]).catch(() => ({})))[endpoint] : { price: m.price }
   return estimate(m, meta, { aspect, count, duration })
 }
 

@@ -34,7 +34,7 @@ import Connections from './pages/Connections.jsx'
 import Flows from './pages/Flows.jsx'
 import Models from './pages/Models.jsx'
 import { AppCtx } from './lib/appContext.js'
-import { formatById } from './lib/formats/index.js'
+import { formatById, isWired } from './lib/formats/index.js'
 import { getConnections } from './lib/providers.js'
 import { useGenerations } from './lib/useGenerations.js'
 import { usePicker } from './lib/usePicker.js'
@@ -42,18 +42,19 @@ import { usePicker } from './lib/usePicker.js'
 export default function App() {
   // Lifted here so a render keeps going when you switch pages.
   const gens = useGenerations()
-  const picker = usePicker()
   const { pathname, search } = useLocation()
   const [connections, setConnections] = useState({})
+  const picker = usePicker(connections)
   const [sheet, setSheet] = useState(null)
   useEffect(() => { getConnections().then(setConnections) }, [])
 
   // One format sheet for the whole app, so any page, card or "Use in" menu can open a format.
   const ctx = useMemo(() => ({
     gens, picker, connections,
+    refreshConnections: () => getConnections().then(setConnections),
     openFormat: (f, initial) => {
       const format = typeof f === 'string' ? formatById(f) : f
-      if (format) setSheet({ format, initial })
+      if (format && isWired(format)) setSheet({ format, initial })
     },
   }), [gens, picker, connections])
 
