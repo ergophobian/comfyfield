@@ -598,11 +598,33 @@ export const schemas = {
     }
   },
   "comfy": {
+    "flux3_klein_t2i": [
+      "count",
+      "height",
+      "prompt",
+      "seed",
+      "width"
+    ],
     "h3_i2v": [
       "duration",
       "image",
       "prompt",
       "seed"
+    ],
+    "h3_open_i2v": [
+      "frames",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "h3_open_t2v": [
+      "frames",
+      "height",
+      "prompt",
+      "seed",
+      "width"
     ],
     "image_flux": [
       "count",
@@ -618,10 +640,32 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "ltx25_i2v": [
+      "frames",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "ltx25_t2v": [
+      "frames",
+      "height",
+      "prompt",
+      "seed",
+      "width"
+    ],
     "ltx_i2v": [
       "frames",
       "height",
       "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "qwen_image21_t2i": [
+      "count",
+      "height",
       "prompt",
       "seed",
       "width"

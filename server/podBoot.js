@@ -11,6 +11,10 @@ export const POD_IMAGE = 'ghcr.io/bchenner/patchwork-comfy:latest'
 export const PROXY_PORT = 8189
 export const STATUS_PORT = 8190
 export const PROXY_VERSION = '0.1.6'
+// The image ships ComfyUI v0.33.1; FLUX 3 Klein needs v0.41.0 and Qwen-Image 2.1 v0.37.0, and later
+// versions fix MiniMax H3 offloading. The Pod moves to the version Comfy Cloud runs, pinned by commit.
+export const COMFY_VERSION = 'v0.41.1'
+export const COMFY_COMMIT = '45bf90d1c91eecd782643346dcfb73cb0017667f'
 // RunPod refuses a longer dockerStartCmd; PatchWork found the limit by trial.
 export const START_CMD_MAX = 65536
 
@@ -99,11 +103,20 @@ done
 echo "STAGE proxy-install $(date +%s)"
 "$V" -m pip install --quiet --no-deps comfy-api-proxy==${PROXY_VERSION} || die "could not install comfy-api-proxy"
 
+echo "STAGE comfy-update $(date +%s)"
+C=$H3/ComfyUI
+[ -d "$C/.git" ] || die "the image has no ComfyUI at $C"
+if [ "$(git -C "$C" rev-parse HEAD 2>/dev/null)" != "${COMFY_COMMIT}" ]; then
+  git -C "$C" fetch --quiet --depth 1 origin ${COMFY_COMMIT} && git -C "$C" checkout --quiet ${COMFY_COMMIT} || die "could not move ComfyUI to ${COMFY_VERSION}"
+  "$V" -m pip install --quiet -r "$C/requirements.txt" || die "could not install the requirements of ComfyUI ${COMFY_VERSION}"
+fi
+
 echo "STAGE comfy $(date +%s)"
 (
-  cd "$H3/ComfyUI" || die "the image has no ComfyUI at $H3/ComfyUI"
+  cd "$C" || die "the image has no ComfyUI at $C"
+  # No workflow needs the custom nodes in the image, and some were built for an older ComfyUI.
   while true; do
-    "$V" main.py --listen 127.0.0.1 --port 8188 --disable-auto-launch --extra-model-paths-config "$CF/extra_model_paths.yaml" >> "$CF/comfy.log" 2>&1
+    "$V" main.py --listen 127.0.0.1 --port 8188 --disable-auto-launch --disable-all-custom-nodes --extra-model-paths-config "$CF/extra_model_paths.yaml" >> "$CF/comfy.log" 2>&1
     echo "ComfyUI exited ($?), restarting in 10 s"
     sleep 10
   done

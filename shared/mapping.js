@@ -21,8 +21,9 @@ export function fill(node, vars) {
   return node
 }
 
-export function comfyVars(kind, o) {
-  const [width, height] = kind === 'video' ? videoSize(o.aspect) : aspectSize[o.aspect]
+// `sizes` lets a model use its own canvas per aspect ratio, for example multiples of 64 for LTX-2.5.
+export function comfyVars(kind, o, sizes) {
+  const [width, height] = sizes?.[o.aspect] || (kind === 'video' ? videoSize(o.aspect) : aspectSize[o.aspect])
   return { prompt: o.prompt, width, height, count: o.count || 1, frames: (o.duration || 5) * 24 + 1, duration: o.duration || 5, image: o.images?.[0] || o.image, seed: Math.floor(Math.random() * 2 ** 31), ...o.params, ...o.fields }
 }
 
