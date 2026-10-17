@@ -11,6 +11,7 @@ import { label, paramsFor, useModelInputs } from '../components/generate/useMode
 import { IconAt, IconGrid } from '../components/generate/icons.jsx'
 import { IconAspect, IconClose, IconImage, IconPlus, IconSpark } from '../components/Icons.jsx'
 import { useApp } from '../lib/appContext.js'
+import { usePod } from '../lib/usePod.js'
 import { uploadImage } from '../lib/providers.js'
 import { estimate, useBalance, useModelMeta } from '../lib/cost.js'
 import { flowFromBatch, openFlow } from '../lib/flowStore.js'
@@ -22,6 +23,7 @@ const fan = [covers.peach, covers.dusk, covers.sky, covers.rose]
 // Higgsfield's Create image: the feed fills the page and the prompt bar is pinned to the bottom.
 export default function ImageStudio() {
   const { gens, connections } = useApp()
+  const { status: pod } = usePod()
   const pick = useGenModel('image')
   const { model } = pick
   const [batchMode, setBatchMode] = useState(false)
@@ -190,7 +192,7 @@ export default function ImageStudio() {
             {connected && (total > 0 ? (
               <span>
                 <strong>{batchMode ? `${prompts.length} ${prompts.length === 1 ? 'prompt' : 'prompts'} × ${count} = ` : ''}{total} {noun.image[total === 1 ? 0 : 1]}</strong>
-                {cost ? ` · ${costText(cost)}` : model.provider === 'comfy' ? connections.comfy?.mode === 'cloud' ? ' · uses Comfy credits' : connections.comfy?.mode === 'pod' ? ' · runs on your Pod' : ' · runs on your GPU' : model.provider === 'comfyRouter' ? ' · uses Comfy credits' : ''}
+                {cost ? ` · ${costText(cost)}` : model.provider === 'comfy' ? connections.comfy?.mode === 'cloud' ? pod?.phase === 'ready' ? ' · runs on your Pod' : ' · uses Comfy credits' : ' · runs on your GPU' : model.provider === 'comfyRouter' ? ' · uses Comfy credits' : ''}
               </span>
             ) : <span>{batchMode ? 'Add prompts to see the total' : 'The cost shows on Generate before you run'}</span>)}
             {bal && <span>{bal}</span>}

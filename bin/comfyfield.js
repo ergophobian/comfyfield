@@ -18,7 +18,7 @@ Usage
 
 Keys are read from .comfyfield/keys.json in the current directory (or COMFYFIELD_HOME), then from
 FAL_KEY, GEMINI_API_KEY, ELEVENLABS_API_KEY, COMFY_URL, COMFY_API_KEY and RUNPOD_API_KEY.
-With ComfyUI set to Pod, runs use the Pod you started in the app; the CLI never starts one.`
+With ComfyUI on Comfy Cloud + Pod, runs use a ready Pod, else Comfy Cloud; the CLI never starts a Pod.`
 
 const options = {
   kind: { type: 'string' }, search: { type: 'string' }, model: { type: 'string', short: 'm' },

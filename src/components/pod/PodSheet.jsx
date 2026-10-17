@@ -59,7 +59,8 @@ export default function PodSheet() {
     <div className="scrim" onClick={cancel}>
       <div className="form-sheet glass pop pod-sheet" role="dialog" aria-modal="true" aria-labelledby="pod-sheet-title" onClick={(e) => e.stopPropagation()}>
         <h3 id="pod-sheet-title">{copy.title}</h3>
-        {kind === 'start' && <p>This run needs a Pod: a GPU on RunPod that runs ComfyUI with your key. It charges by the minute until it terminates.</p>}
+        {kind === 'start' && <p>{ask.reason ? `${ask.reason}, so this run needs a Pod: ` : 'This run needs a Pod: '}a GPU on RunPod that runs ComfyUI with your key. It charges by the minute until it terminates.</p>}
+        {kind !== 'start' && ask.reason && <p>{ask.reason}, so this run needs your Pod.</p>}
         {kind === 'resume' && <p>Your Pod is paused. Its models are still on its disk, so it is ready sooner than a new Pod.</p>}
         {kind === 'keep' && <p>Your Pod is ending after its queue. Keep it to run this too.</p>}
         {!quote && !err && <p className="pod-note">Checking prices</p>}

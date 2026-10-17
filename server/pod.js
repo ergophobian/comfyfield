@@ -500,10 +500,17 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
     m.timer.unref?.()
   }
 
+  // The phase right now, read fresh, for routing a run in any process.
+  async function phaseNow() {
+    await adopt().catch(() => null)
+    await refresh().catch(() => null)
+    return phase()
+  }
+
   async function test() {
     if (!key()) return false
     return gql('query { myself { id } }').then((d) => Boolean(d?.myself?.id)).catch(() => false)
   }
 
-  return { status, quote, start, pause, resume, terminate, keep, lease, tick, refresh, startMonitor, stopMonitor, test, guard, spentToday }
+  return { status, quote, start, pause, resume, terminate, keep, lease, tick, refresh, phaseNow, startMonitor, stopMonitor, test, guard, spentToday }
 }

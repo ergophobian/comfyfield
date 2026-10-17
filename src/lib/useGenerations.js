@@ -39,7 +39,7 @@ export function useGenerations() {
     waiting.current.push(async () => {
       setItems((xs) => xs.map((x) => (x.id === id ? { ...x, started: true } : x)))
       try {
-        const files = await run(model, opts)
+        const files = await run(model, opts, { onPod: () => setItems((xs) => xs.map((x) => (x.id === id ? { ...x, pod: true } : x))) })
         setItems((xs) => xs.flatMap((x) => (x.id === id
           ? files.map((f, i) => ({ id: `${id}-${i}`, ...base, ...f, created: Date.now() }))
           : [x])))

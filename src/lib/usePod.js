@@ -49,22 +49,25 @@ export function podLabel(s, now = Date.now()) {
 
 export const spendText = (s) => (s ? `${money(s.spend.today)} of ${money(s.spend.cap)} today` : '')
 
-// What a waiting take says while its run is held by the Pod.
+// What a waiting take says while its run is held by the Pod. Only runs sent to a starting Pod carry `pod`;
+// a ready Pod takes every ComfyUI run.
 export function takeLabel(it, s) {
-  if (it.provider !== 'comfy' || s?.mode !== 'pod') return null
-  if (s.phase !== 'ready') return 'Waiting for the Pod'
-  if (downloading(s).length) return 'Downloading models on the Pod'
+  if (it.provider !== 'comfy' || !s || s.mode !== 'cloud') return null
+  if (it.pod && s.phase !== 'ready') return 'Waiting for the Pod'
+  if (s.phase === 'ready' && downloading(s).length) return 'Downloading models on the Pod'
   return null
 }
 
-// Called by run() for a ComfyUI model. A ready or starting Pod needs no question.
-export async function ensurePod(workflow) {
-  const s = await refreshPod()
-  if (!s || s.mode !== 'pod' || s.phase === 'ready' || s.phase === 'starting' || s.phase === 'resuming') return
+// The chip shows where a Pod is an option, and always while one exists, because a Pod charges.
+export const showPod = (s) => Boolean(s && (s.phase !== 'none' || (s.mode === 'cloud' && s.connected)))
+
+// A run Comfy Cloud cannot take asks once for a Pod. `reason` says why Cloud cannot take it.
+export function askPod(workflow, reason) {
   if (!state.ask) {
     let resolve, reject
     const promise = new Promise((a, b) => { resolve = a; reject = b })
-    set({ ask: { workflow, promise, resolve, reject } })
+    set({ ask: { workflow, reason, promise, resolve, reject } })
+    refreshPod()
   }
   return state.ask.promise
 }

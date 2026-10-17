@@ -236,7 +236,11 @@ function mount(server) {
     // Anything that spends money or changes saved data must come from ComfyField's own pages.
     if (url.pathname.startsWith('/api/') && req.method !== 'GET' && crossSite(req.headers)) return send(res, 403, { error: 'Requests from other sites are refused.' })
     try {
-      if (url.pathname === '/api/pod' && req.method === 'GET') return send(res, 200, { ...core.pod().status(), mode: core.config('comfy').mode || 'local' })
+      if (url.pathname === '/api/pod' && req.method === 'GET') {
+        const { mode, key } = core.config('comfy')
+        // instant: Comfy Cloud can take runs at once. 'pod' was its own mode before; it now means Comfy Cloud + Pod.
+        return send(res, 200, { ...core.pod().status(), mode: mode === 'pod' ? 'cloud' : mode || 'local', instant: Boolean(key) })
+      }
       if (url.pathname === '/api/pod/quote') return send(res, 200, await podQuote(url.searchParams.get('workflow')))
       if (url.pathname.startsWith('/api/pod/') && req.method === 'POST') return send(res, 200, await podAction(url.pathname.slice('/api/pod/'.length), await body(req)))
       if (url.pathname === '/api/connections' && req.method === 'GET') return send(res, 200, core.connections())
@@ -282,7 +286,7 @@ function mount(server) {
       }
       if (url.pathname.startsWith('/comfy/')) return proxyComfy(req, res, url)
     } catch (e) {
-      return send(res, e.status || 500, { error: e.message, ...(e.code ? { code: e.code } : {}) })
+      return send(res, e.status || 500, { error: e.message, ...(e.code ? { code: e.code } : {}), ...(e.reason ? { reason: e.reason } : {}) })
     }
     next()
   })

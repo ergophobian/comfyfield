@@ -452,11 +452,13 @@ await test('runs: model files come from the loader nodes and the file list', () 
 
 const core = await import('../server/core.js')
 const jsonReply = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } })
-function podMode() {
+function podMode(values = { key: 'comfy-key' }) {
   process.env.COMFYFIELD_HOME = fs.mkdtempSync(path.join(tmp, 'run-'))
-  for (const k of ['COMFY_API_KEY', 'COMFY_URL', 'COMFY_MODE', 'COMFY_BASE_URL']) process.env[k] = ''
-  core.saveConnection('comfy', { mode: 'pod', key: 'comfy-key' })
+  for (const k of ['COMFY_API_KEY', 'COMFY_URL', 'COMFY_MODE', 'COMFY_BASE_URL', 'RUNPOD_API_KEY']) process.env[k] = ''
+  core.saveConnection('comfy', { mode: 'cloud', ...values })
 }
+// The Pod-path checks below run as if a Pod were ready.
+const ready = async () => 'ready'
 const sdxl = { prompt: 'A fox', width: 1024, height: 1024, count: 1, seed: 7 }
 
 await test('runs: the Pod runs a workflow through the real SDK with the Pod token, and the Comfy key only pays partner nodes', async () => {
@@ -484,7 +486,7 @@ await test('runs: the Pod runs a workflow through the real SDK with the Pod toke
     throw new Error(`Unexpected SDK request ${options.method} ${u.pathname}`)
   }
   globalThis.fetch = async () => { throw new Error('Unexpected network call') }
-  const files = await core.runComfy('image_sdxl', sdxl, { lease, createClient: (key, baseUrl) => core.comfyClient(baseUrl, key, { fetch: mockFetch }) })
+  const files = await core.runComfy('image_sdxl', sdxl, { lease, podPhase: ready, createClient: (key, baseUrl) => core.comfyClient(baseUrl, key, { fetch: mockFetch }) })
   assert.equal(files[0].kind, 'image')
   assert.equal(fs.readFileSync(files[0].path, 'utf8'), 'png')
   assert.equal(released, 1)
@@ -495,7 +497,7 @@ await test('runs: the Pod runs a workflow through the real SDK with the Pod toke
 await test('runs: no Pod, an ended Pod and the sandbox each fail the run with a reason', async () => {
   podMode()
   const createClient = () => { throw new Error('no client without a Pod') }
-  await assert.rejects(core.runComfy('image_sdxl', sdxl, { createClient, lease: async () => { throw Object.assign(new Error(NO_POD), { code: 'no_pod' }) } }), (e) => e.message === NO_POD)
+  await assert.rejects(core.runComfy('image_sdxl', sdxl, { createClient, podPhase: ready, lease: async () => { throw Object.assign(new Error(NO_POD), { code: 'no_pod' }) } }), (e) => e.message === NO_POD)
 
   let released = 0
   const ctl = new AbortController()
@@ -505,7 +507,7 @@ await test('runs: no Pod, an ended Pod and the sandbox each fail the run with a 
     workflows: { fromFile: async () => ({ json: null, setInput() {} }) },
     run: (wf, o) => new Promise((_, reject) => o.signal.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')))),
   }
-  const running = core.runComfy('image_sdxl', sdxl, { lease, createClient: () => client })
+  const running = core.runComfy('image_sdxl', sdxl, { lease, podPhase: ready, createClient: () => client })
   await new Promise((r) => setTimeout(r, 10))
   why = 'You terminated the Pod.'
   ctl.abort()
@@ -513,14 +515,18 @@ await test('runs: no Pod, an ended Pod and the sandbox each fail the run with a 
   assert.equal(released, 1)
 
   const sandbox = async () => ({ sandbox: true, release: () => released++ })
-  await assert.rejects(core.runComfy('image_sdxl', sdxl, { lease: sandbox, createClient }), /sandbox Pod, so nothing renders/)
+  await assert.rejects(core.runComfy('image_sdxl', sdxl, { lease: sandbox, podPhase: ready, createClient }), /sandbox Pod, so nothing renders/)
   assert.equal(released, 2)
 })
 
-await test('runs: Pod mode is a saved choice, and the needs of a workflow size the Pod', () => {
-  podMode()
-  assert.equal(core.config('comfy').mode, 'pod')
-  assert.throws(() => core.saveConnection('comfy', { mode: 'gpu' }), /Choose Local, Comfy Cloud or Pod/)
+await test('runs: Comfy Cloud + Pod is a saved choice, and the needs of a workflow size the Pod', () => {
+  podMode({})
+  assert.equal(core.config('comfy').mode, 'cloud')
+  assert.equal(core.connections().comfy.connected, false, 'no Comfy key and no RunPod key')
+  core.saveConnection('runpod', { key: 'rp-key' })
+  assert.equal(core.connections().comfy.connected, true, 'a RunPod key alone can run workflows on a Pod')
+  assert.throws(() => core.saveConnection('comfy', { mode: 'gpu' }), /Choose Local or Comfy Cloud \+ Pod/)
+  assert.throws(() => core.saveConnection('comfy', { mode: 'pod' }), /Choose Local or Comfy Cloud \+ Pod/)
   assert.throws(() => core.saveConnection('runpod', { cap: '-3' }), /daily cap/)
   core.saveConnection('runpod', { cap: '12.345' })
   assert.equal(core.config('runpod').cap, '12.35')
@@ -634,4 +640,45 @@ await test('fixes: requests from other sites are refused', async () => {
   assert.equal(crossSite({ host, 'sec-fetch-site': 'cross-site' }), true)
   assert.equal(crossSite({ host, 'sec-fetch-site': 'same-site', origin: 'http://localhost:3000' }), true)
   assert.equal(crossSite({ host, origin: 'https://evil.example' }), true)
+})
+
+await test('routing: Comfy Cloud takes runs at once, a ready Pod takes every run, and a run Cloud cannot take needs a Pod', async () => {
+  const fakeClient = (where) => ({
+    where,
+    workflows: { fromFile: async () => ({ json: null, setInput() {} }) },
+    run: async () => ({ outputs: [{ type: 'image', contentType: 'image/png', name: 'x.png', toBytes: async () => Buffer.from(where) }] }),
+  })
+  const route = async (phase, { key = 'comfy-key', offCloud = false } = {}) => {
+    podMode(key ? { key } : {})
+    let leased = false
+    const lease = async () => { leased = true; return { baseUrl: 'https://pod1-8189.proxy.runpod.net', token: 't', sandbox: false, signal: new AbortController().signal, reason: () => null, release() {} } }
+    const createClient = (k, baseUrl) => fakeClient(baseUrl ? 'pod' : 'cloud')
+    const file = MODEL_FILES['sd_xl_base_1.0.safetensors']
+    if (offCloud) file.cloud = false
+    try {
+      const files = await core.runComfy('image_sdxl', sdxl, { lease, createClient, podPhase: async () => phase })
+      return { to: fs.readFileSync(files[0].path, 'utf8'), leased }
+    } catch (e) {
+      return { code: e.code, reason: e.reason, message: e.message, leased }
+    } finally {
+      file.cloud = true
+    }
+  }
+  assert.deepEqual(await route('ready'), { to: 'pod', leased: true }, 'a ready Pod takes the run')
+  assert.deepEqual(await route('ready', { key: '' }), { to: 'pod', leased: true })
+  assert.deepEqual(await route('starting'), { to: 'cloud', leased: false }, 'runs use Cloud until the Pod is ready')
+  assert.deepEqual(await route('starting', { key: '' }), { to: 'pod', leased: true }, 'a run Cloud cannot take waits for the starting Pod')
+  assert.deepEqual(await route('resuming', { offCloud: true }), { to: 'pod', leased: true })
+  assert.deepEqual(await route('none'), { to: 'cloud', leased: false }, 'no Pod: Cloud at once')
+  assert.deepEqual(await route('paused'), { to: 'cloud', leased: false })
+  assert.deepEqual(await route('ending'), { to: 'cloud', leased: false })
+  const noKey = await route('none', { key: '' })
+  assert.equal(noKey.code, 'needs_pod')
+  assert.equal(noKey.reason, 'Comfy Cloud needs a Comfy API key on a paid plan')
+  assert.match(noKey.message, /so this run needs a Pod\. Start one in ComfyField from the Pod chip in the top bar\./)
+  assert.equal(noKey.leased, false, 'routing never starts or leases a Pod it does not have')
+  const offCloud = await route('paused', { offCloud: true })
+  assert.equal(offCloud.code, 'needs_pod')
+  assert.equal(offCloud.reason, 'sd_xl_base_1.0.safetensors is not on Comfy Cloud')
+  assert.equal((await route('ending', { key: '' })).code, 'needs_pod')
 })

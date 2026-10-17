@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { downloading, money, podAction, podLabel, spendText, usePod } from '../../lib/usePod.js'
+import { downloading, money, podAction, podLabel, showPod, spendText, usePod } from '../../lib/usePod.js'
 
 const CLOUD = { SECURE: 'Secure', COMMUNITY: 'Community' }
 const tone = (phase) => (phase === 'ready' ? ' ok' : phase === 'none' || phase === 'paused' ? '' : ' busy')
@@ -44,7 +44,7 @@ export default function PodChip() {
     }
   }, [open])
 
-  if (!s || (s.mode !== 'pod' && s.phase === 'none')) return null
+  if (!showPod(s)) return null
 
   const act = async (action, body) => {
     setBusy(true)
@@ -94,7 +94,9 @@ export default function PodChip() {
             </dl>
           ) : (
             <>
-              <p className="pod-note">No Pod is running. A ComfyUI run asks before it starts one.</p>
+              <p className="pod-note">{s.instant
+                ? 'ComfyUI runs use Comfy Cloud at once. Start a Pod for a long session: it costs less when you run a lot, and it runs any model.'
+                : 'Add a Comfy API key in Connections for instant runs on Comfy Cloud, or start a Pod.'}</p>
               <dl className="pod-facts"><div><dt>Spent</dt><dd>{spendText(s)}</dd></div></dl>
             </>
           )}
@@ -104,6 +106,8 @@ export default function PodChip() {
               <i style={{ '--p': `${pct(d)}%` }} />
             </div>
           ))}
+          {p === 'ready' && <p className="pod-note">ComfyUI runs use this Pod.</p>}
+          {p === 'starting' && s.instant && <p className="pod-note">Runs use Comfy Cloud until the Pod is ready.</p>}
           {s.event && <p className="pod-note">{s.event.text}</p>}
           {s.sandbox && <p className="pod-note">Sandbox mode: no real Pod and no charges.</p>}
           {!s.connected && <p className="pod-note">Add your RunPod key in <Link to="/connections">Connections</Link> to start a Pod.</p>}
