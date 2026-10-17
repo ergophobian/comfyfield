@@ -129,7 +129,7 @@ def snapshot():
     except OSError:
       free = None
     return {
-      'stage': S['stage'], 'ready': S['stage'] == 'ready', 'fatal': S['fatal'],
+      'stage': S['stage'], 'ready': S['stage'] == 'ready', 'everReady': S['ready_at'] is not None, 'fatal': S['fatal'],
       'idleSec': int(S['idle']), 'uptimeSec': int(now - BOOTED), 'queue': S['queue'],
       'heartbeatAgeSec': None if hb is None else int(now - hb), 'gpu': S['gpu'],
       'diskFreeGb': None if free is None else round(free, 1), 'ending': S['ending'],
@@ -145,12 +145,13 @@ def terminate(reason):
     with open(os.path.join(BASE, 'terminated'), 'w') as f:
       f.write(reason)
     return
-  if subprocess.run(['bash', os.path.join(BASE, 'kill-pod.sh'), reason]).returncode != 0:
-    # Still billing. Try again in a minute; the app's monitor also terminates from outside.
-    log('could not self-terminate, trying again in 60 s')
-    time.sleep(60)
-    with LOCK:
-      S['ending'] = None
+  ok = subprocess.run(['bash', os.path.join(BASE, 'kill-pod.sh'), reason]).returncode == 0
+  # A terminate that worked stops this process. Still here later means it failed, whatever the
+  # script said, so the watchdog decides again. The app's monitor also terminates from outside.
+  time.sleep(90 if ok else 60)
+  log('still running after a terminate (%s), trying again' % reason)
+  with LOCK:
+    S['ending'] = None
 
 
 def read_fatal():

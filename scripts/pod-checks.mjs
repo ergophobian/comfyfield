@@ -161,7 +161,7 @@ await test('status server: auth, status, heartbeat, downloads and a boot-deadlin
 // ---- lifecycle -------------------------------------------------------------------------------------
 
 const reply = (data, status = 200) => new Response(data == null ? null : JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } })
-const readyStatus = (extra = {}) => ({ stage: 'ready', ready: true, fatal: null, idleSec: 0, queue: 0, models: [], downloads: {}, ...extra })
+const readyStatus = (extra = {}) => ({ stage: 'ready', ready: true, everReady: true, fatal: null, idleSec: 0, queue: 0, models: [], downloads: {}, ...extra })
 
 // A programmable RunPod and Pod. `statusd` is what the Pod's /status answers, or null for no answer.
 function fakeRunpod(clock) {
@@ -187,7 +187,10 @@ function fakeRunpod(clock) {
       if (method === 'DELETE') { pod.desiredStatus = 'TERMINATED'; return reply(null, 204) }
       if (verb === 'stop') { pod.desiredStatus = 'EXITED'; return reply(pod) }
       if (verb === 'start') { if (f.startReply) return reply(...f.startReply); pod.desiredStatus = 'RUNNING'; return reply(pod) }
-      return reply(pod)
+      // A held reply carries the state from when it was asked, like a slow answer from RunPod.
+      const snap = { ...pod }
+      if (f.hold) await f.hold
+      return reply(snap)
     }
     if (u.host === 'api.runpod.io') return reply({ data: { myself: { id: 'me' } } })
     if (u.pathname === '/heartbeat') return reply(null, 204)
@@ -198,11 +201,11 @@ function fakeRunpod(clock) {
   return f
 }
 
-function setup({ key = 'acct-key', cap } = {}) {
+function setup({ key = 'acct-key', cap, at = '2026-10-17T10:00:00' } = {}) {
   const dir = fs.mkdtempSync(path.join(tmp, 'pod-'))
-  const clock = { t: Date.parse('2026-10-17T10:00:00') }
+  const clock = { t: Date.parse(at) }
   const rp = fakeRunpod(clock)
-  const opts = { fetch: rp.fetch, now: () => clock.t, keys: () => ({ key, cap }), dir: () => dir, wait: async () => { clock.t += 3000; await opts.onWait?.() } }
+  const opts = { fetch: rp.fetch, now: () => clock.t, keys: () => ({ key, cap }), dir: () => dir, owner: true, wait: async () => { clock.t += 3000; await opts.onWait?.() } }
   const make = () => podManager(opts)
   return { dir, clock, rp, opts, make, pod: make() }
 }
@@ -351,7 +354,7 @@ await test('lifecycle: Pause and Terminate end after the queue, or now; Keep can
 })
 
 await test('lifecycle: a paused Pod charges disk only, and a resume without a GPU says what to do', async () => {
-  const { pod, rp, clock } = setup()
+  const { pod, rp, clock, dir } = setup()
   await pod.start({ volumeGb: 100 })
   rp.statusd = readyStatus()
   await pod.tick()
@@ -359,8 +362,10 @@ await test('lifecycle: a paused Pod charges disk only, and a resume without a GP
   assert(pod.status().spend.today < 0.01)
   clock.t += 24 * 3_600_000
   await pod.tick()
-  const day = pod.spentToday()
-  assert(day > 0.6 && day < 0.7, `100 GB stopped for a day is about $0.66, got ${day}`)
+  const days = JSON.parse(fs.readFileSync(path.join(dir, 'pod-ledger.json'), 'utf8')).days
+  const total = Object.values(days).reduce((n, v) => n + v, 0)
+  assert(total > 0.6 && total < 0.7, `100 GB stopped for a day is about $0.66, got ${total}`)
+  assert(Math.abs(pod.spentToday() - total * (10 / 24)) < 0.01, 'the 10 hours after midnight land on the new day')
   rp.startReply = [{ error: 'There are not enough free GPUs on the host machine to start this pod.' }, 500]
   await assert.rejects(pod.resume(), (e) => e.code === 'resume_no_gpu' && /Terminate it and start a new Pod/.test(e.message))
   assert.equal(pod.status().phase, 'paused')
@@ -414,7 +419,7 @@ await test('lifecycle: the sandbox runs a whole Pod life without RunPod', async 
   const dir = fs.mkdtempSync(path.join(tmp, 'sandbox-'))
   const clock = { t: Date.now() }
   const net = sandboxFetch({ file: () => path.join(dir, 'pod-sandbox.json'), now: () => clock.t, mode: '1' })
-  const pod = podManager({ fetch: net, now: () => clock.t, keys: () => ({ key: 'sandbox' }), dir: () => dir, sandbox: true, wait: async () => { clock.t += 3000 } })
+  const pod = podManager({ fetch: net, now: () => clock.t, keys: () => ({ key: 'sandbox' }), dir: () => dir, sandbox: true, owner: true, wait: async () => { clock.t += 3000 } })
   assert.equal((await pod.quote({ minVramGb: 24 })).rungs[0].usdPerHr, 0.7)
   assert.equal((await pod.start()).stage, 'waiting')
   clock.t += 5000
@@ -523,4 +528,110 @@ await test('runs: Pod mode is a saved choice, and the needs of a workflow size t
   assert.equal(needs.minVramGb, 24)
   assert.equal(needs.volumeGb, 48)
   assert.throws(() => core.workflowNeeds('../x'), /Invalid workflow/)
+})
+
+// ---- review fixes ----------------------------------------------------------------------------------
+
+const hasBash = spawnSync('bash', ['-c', 'exit 0']).status === 0
+await test('fixes: self-terminate succeeds only when RunPod clearly accepts it', { skip: !hasBash && 'no bash' }, () => {
+  const script = podBootScript()
+  const kill = script.slice(script.indexOf("<<'KILL'\n") + 9, script.indexOf('\nKILL\n'))
+  const file = path.join(tmp, 'kill-pod.sh')
+  fs.writeFileSync(file, kill)
+  // Stubs stand in for curl and runpodctl; DELETE answers STUB_DELETE, GraphQL answers STUB_BODY and STUB_CODE.
+  const stubs = `curl() { for a in "$@"; do [ "$a" = DELETE ] && { printf '%s' "$STUB_DELETE"; return 0; }; done; printf '%s\\n%s' "$STUB_BODY" "$STUB_CODE"; }
+runpodctl() { echo "Error: pod not found"; return 1; }
+export -f curl runpodctl`
+  const run = (env) => spawnSync('bash', ['-c', `${stubs}\nbash "$1" test`, 'kill', file.replace(/\\/g, '/')], { encoding: 'utf8', env: { ...process.env, RUNPOD_POD_ID: 'p1', RUNPOD_API_KEY: 'k', STUB_DELETE: '403', ...env } }).status
+  assert.equal(run({ STUB_BODY: '<html>502 Bad Gateway</html>', STUB_CODE: '502' }), 1, 'a gateway page is not a terminate')
+  assert.equal(run({ STUB_BODY: 'Too Many Requests', STUB_CODE: '429' }), 1)
+  assert.equal(run({ STUB_BODY: '{"data":{"podTerminate":null}}', STUB_CODE: '200' }), 0)
+  assert.equal(run({ STUB_BODY: '{"errors":[{"message":"denied"}]}', STUB_CODE: '200', STUB_DELETE: '204' }), 0, 'falls through to REST')
+  assert.equal(run({ STUB_BODY: '{"data":{"podTerminate":null}}', STUB_CODE: '200', RUNPOD_API_KEY: '' }), 2, 'no key, no claim of success')
+})
+
+await test('fixes: a ComfyUI restart after ready does not terminate a busy Pod', async () => {
+  const { pod, rp, clock } = setup()
+  await pod.start()
+  rp.statusd = readyStatus()
+  await pod.tick()
+  const run = await pod.lease()
+  clock.t += 30 * 60_000
+  rp.statusd = readyStatus({ ready: false, stage: 'comfy', queue: 1 })
+  await pod.tick()
+  assert.equal(run.signal.aborted, false)
+  assert.equal(rp.count((c) => c.method === 'DELETE'), 0)
+  run.release()
+})
+
+await test('fixes: a Pod found gone after a long gap costs only its watchdog minutes, split by day', async () => {
+  const a = setup()
+  await a.pod.start()
+  a.rp.statusd = readyStatus()
+  await a.pod.tick()
+  a.clock.t += 14 * 3_600_000 // the app was closed for 14 hours; the Pod terminated itself
+  a.rp.pods.get('pod1').desiredStatus = 'TERMINATED'
+  assert.equal((await a.make().tick()).phase, 'none')
+  const led = JSON.parse(fs.readFileSync(path.join(a.dir, 'pod-ledger.json'), 'utf8'))
+  const total = Object.values(led.days).reduce((n, v) => n + v, 0)
+  assert(Math.abs(total - (13 / 60) * 0.5) < 0.01, `13 minutes at $0.50, got ${total}`)
+  await a.make().start() // the cap is not blocked by spend that never happened
+
+  const b = setup({ at: '2026-10-17T23:30:00' })
+  await b.pod.start()
+  b.rp.statusd = readyStatus({ queue: 1 })
+  await b.pod.tick()
+  b.clock.t += 60 * 60_000
+  await b.pod.tick()
+  const days = JSON.parse(fs.readFileSync(path.join(b.dir, 'pod-ledger.json'), 'utf8')).days
+  assert(Math.abs(days['2026-10-17'] - 0.25) < 0.01 && Math.abs(days['2026-10-18'] - 0.25) < 0.01, JSON.stringify(days))
+})
+
+await test('fixes: a slow refresh during a resume does not bring back the old start time', async () => {
+  const { pod, rp, clock } = setup()
+  await pod.start()
+  rp.statusd = readyStatus()
+  await pod.tick()
+  await pod.pause({ now: true })
+  clock.t += 26 * 3_600_000
+  let release
+  rp.hold = new Promise((r) => { release = r })
+  const ticking = pod.tick() // its GET of the Pod is slow and still says EXITED
+  await new Promise((r) => setTimeout(r, 20))
+  rp.hold = null
+  await pod.resume()
+  release()
+  await ticking
+  const s = pod.status()
+  assert.equal(s.phase, 'starting')
+  assert.equal(s.pod.startedAt, clock.t)
+  assert.equal(rp.count((c) => c.method === 'DELETE'), 0)
+})
+
+await test('fixes: the CLI and MCP see a new Pod at once, and never remove a newer Pod record', async () => {
+  const a = setup()
+  const mcp = podManager({ ...a.opts, owner: false })
+  await assert.rejects(mcp.lease(), (e) => e.code === 'no_pod')
+  await a.pod.start()
+  a.rp.statusd = readyStatus()
+  await a.pod.tick()
+  await new Promise((r) => setTimeout(r, 1100))
+  const l = await mcp.lease()
+  assert.equal(l.baseUrl, 'https://pod1-8189.proxy.runpod.net')
+  l.release()
+  await a.pod.terminate({ now: true })
+  await a.pod.start() // pod2, while the MCP process still remembers pod1
+  await mcp.refresh()
+  assert.equal(JSON.parse(fs.readFileSync(path.join(a.dir, 'pod.json'), 'utf8')).id, 'pod2')
+  assert.equal(JSON.parse(fs.readFileSync(path.join(a.dir, 'pod-ledger.json'), 'utf8')).pod, 'pod2', 'only the app writes the ledger')
+})
+
+await test('fixes: requests from other sites are refused', async () => {
+  const { crossSite } = await import('../server/plugin.js')
+  const host = 'localhost:5173'
+  assert.equal(crossSite({ host }), false, 'curl and the CLI send neither header')
+  assert.equal(crossSite({ host, origin: 'http://localhost:5173', 'sec-fetch-site': 'same-origin' }), false)
+  assert.equal(crossSite({ host, 'sec-fetch-site': 'cross-site' }), true)
+  assert.equal(crossSite({ host, 'sec-fetch-site': 'same-site', origin: 'http://localhost:3000' }), true)
+  assert.equal(crossSite({ host, origin: 'https://evil.example' }), true)
 })

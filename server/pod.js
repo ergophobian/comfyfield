@@ -28,6 +28,9 @@ const LIFETIME = 120 * MIN
 const DRAIN = 30 * MIN
 const DARK = 20 * MIN
 const BOOT = 25 * MIN
+// A Pod found gone was alive at most this long after the last sample: its watchdog
+// terminates it 10 minutes after the last heartbeat.
+const GONE_GRACE = 13 * MIN
 const STOPPED_DISK_USD_GB_MONTH = 0.2
 const HOURS_PER_MONTH = 730
 const PREFIX = 'comfyfield-'
@@ -66,10 +69,12 @@ function envToken(pod) {
 }
 
 // One manager per process. The app, CLI and MCP each make the default one; checks and the sandbox inject fakes.
-export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now = Date.now, keys, dir, ladder = GPU_LADDER, sandbox = false, wait = sleep } = {}) {
+// `owner` marks the process that writes the spend ledger; the app's server becomes it when its monitor starts.
+export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now = Date.now, keys, dir, ladder = GPU_LADDER, sandbox = false, wait = sleep, owner = false } = {}) {
   const file = (name) => path.join(dir(), name)
   // `since` is when this process began watching, so a restart never counts the Pod as silent for its whole life.
-  const m = { record: undefined, remote: null, status: null, seenAt: null, since: now(), action: null, placing: false, ending: null, event: null, leases: new Set(), timer: null, quote: null, listedAt: 0 }
+  const m = { record: undefined, readAt: 0, remote: null, status: null, seenAt: null, since: now(), action: null, placing: false, ending: null, event: null,
+    leases: new Set(), timer: null, loop: null, ticking: false, quote: null, listedAt: 0, owner }
 
   const key = () => keys().key || ''
   const cap = () => { const c = parseFloat(keys().cap); return Number.isFinite(c) && c > 0 ? c : DEFAULT_CAP }
@@ -106,42 +111,60 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
 
   // ---- record and ledger -------------------------------------------------------------------------
 
+  // pod.json is shared by the app, the CLI and MCP, so it is read again after a second.
   function record() {
-    if (m.record === undefined) m.record = readJson(file('pod.json'), null)
+    if (m.record === undefined || Date.now() - m.readAt > 1000) {
+      m.record = readJson(file('pod.json'), null)
+      m.readAt = Date.now()
+    }
     return m.record
   }
   function save(rec) {
     m.record = rec
+    m.readAt = Date.now()
     writeJson(file('pod.json'), rec)
   }
 
-  // Spend since the last sample at the Pod's current rate. Gaps while no process watched still count.
-  function charge(t = now()) {
+  // Adds spend between two times, split at local midnight so each day gets its own share.
+  function addSpend(led, from, to, rate) {
+    for (let t = from; t < to;) {
+      const d = new Date(t)
+      const end = Math.min(to, new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime())
+      led.days[day(t)] = (led.days[day(t)] || 0) + ((end - t) / 3_600_000) * rate
+      t = end
+    }
+  }
+
+  // Spend since the last sample at the Pod's current rate. A gap while nothing watched still counts,
+  // but a Pod found gone is charged only for the minutes its watchdog could have kept it alive.
+  // `last` closes the ledger for a Pod that has ended. Only the owner writes it.
+  function charge(t = now(), { gone = false, last = false } = {}) {
+    if (!m.owner) return
     const rec = record()
     const led = readJson(file('pod-ledger.json'), { days: {} })
     if (rec && led.pod === rec.id && led.at) {
-      const hours = Math.max(0, t - led.at) / 3_600_000
       const rate = rec.pausedAt ? (rec.volumeGb * STOPPED_DISK_USD_GB_MONTH) / HOURS_PER_MONTH : rec.costPerHr || 0
-      const today = day(t)
-      led.days[today] = (led.days[today] || 0) + hours * rate
+      addSpend(led, led.at, Math.max(led.at, gone ? Math.min(t, led.at + GONE_GRACE) : t), rate)
     }
-    led.pod = rec?.id || null
-    led.at = rec ? t : null
+    led.pod = rec && !last ? rec.id : null
+    led.at = rec && !last ? t : null
     writeJson(file('pod-ledger.json'), led)
-    return led
   }
   const spentToday = () => readJson(file('pod-ledger.json'), { days: {} }).days[day(now())] || 0
 
-  function clear(event) {
-    charge()
+  function clear(event, { gone = false } = {}) {
+    const ended = record()?.id
+    charge(now(), { gone, last: true })
     for (const l of m.leases) l.end(event || 'The Pod is gone.')
     m.status = null
     m.seenAt = null
     m.remote = null
     m.ending = null
     if (event) m.event = { text: event, at: now() }
-    save(null)
-    writeJson(file('pod-ledger.json'), { ...readJson(file('pod-ledger.json'), { days: {} }), pod: null, at: null })
+    // Another process may have saved a newer Pod meanwhile; remove only the record that ended.
+    const onDisk = readJson(file('pod.json'), null)
+    if (!onDisk || onDisk.id === ended) save(null)
+    else { m.record = onDisk; m.readAt = Date.now() }
   }
 
   // ---- reading the Pod ---------------------------------------------------------------------------
@@ -169,19 +192,23 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
     const rec = record()
     if (!rec) return null
     const r = await rest(`/pods/${rec.id}`)
+    // An action or another process may have changed the record during the call. Saving over it
+    // would undo a resume, so leave it for the next tick to read fresh.
+    const cur = record()
+    if (m.action || !cur || cur.id !== rec.id || cur.startedAt !== rec.startedAt || Boolean(cur.pausedAt) !== Boolean(rec.pausedAt)) return cur
     if (r.status === 404 || r.data?.desiredStatus === 'TERMINATED') {
-      clear(m.event?.text && now() - m.event.at < MIN ? m.event.text : 'The Pod is gone. It may have terminated itself.')
-      return null
+      clear(m.event?.text && now() - m.event.at < MIN ? m.event.text : 'The Pod is gone. It may have terminated itself.', { gone: true })
+      return record()
     }
-    if (!r.ok) return rec // RunPod blipped; keep what we know
+    if (!r.ok) return cur // RunPod blipped; keep what we know
     m.remote = r.data
     const paused = r.data.desiredStatus === 'EXITED'
-    if (paused !== Boolean(rec.pausedAt) || (r.data.costPerHr && r.data.costPerHr !== rec.costPerHr)) {
+    if (paused !== Boolean(cur.pausedAt) || (r.data.costPerHr && r.data.costPerHr !== cur.costPerHr)) {
       charge()
-      save({ ...rec, pausedAt: paused ? rec.pausedAt || now() : null, costPerHr: r.data.costPerHr || rec.costPerHr })
+      save({ ...cur, pausedAt: paused ? cur.pausedAt || now() : null, costPerHr: r.data.costPerHr || cur.costPerHr })
     }
     if (paused) { m.status = null; return record() }
-    const s = await call(`${statusUrl(rec.id)}/status`, { token: rec.token, timeoutMs: 8000 })
+    const s = await call(`${statusUrl(cur.id)}/status`, { token: cur.token, timeoutMs: 8000 })
     if (s.ok && s.data && typeof s.data === 'object') {
       m.status = s.data
       m.seenAt = now()
@@ -239,7 +266,8 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
     const busy = m.leases.size > 0 || (s?.queue ?? 0) > 0 || downloads().some((d) => d.state === 'queued' || d.state === 'downloading')
     if (s?.fatal) return `The Pod failed to start: ${s.fatal}`
     if (t - (m.seenAt || Math.max(rec.startedAt, m.since)) >= DARK) return 'Terminated: the Pod did not answer for 20 minutes.'
-    if (s && !s.ready && age >= BOOT) return 'Terminated: the Pod was not ready after 25 minutes.'
+    // Only a Pod that never became ready: a ComfyUI restart later is not a failed boot.
+    if (s && !s.ready && !s.everReady && age >= BOOT) return 'Terminated: the Pod was not ready after 25 minutes.'
     if (age >= LIFETIME + DRAIN || (age >= LIFETIME && !busy)) return 'Terminated at the 2-hour limit.'
     if (s?.ready && !busy && (s.idleSec || 0) >= IDLE_MIN * 60) return `Terminated after ${IDLE_MIN} idle minutes.`
     return null
@@ -448,6 +476,7 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
   // Only the app's server runs the monitor. It ticks fast while a Pod starts or downloads.
   function startMonitor() {
     if (m.timer) return
+    m.owner = true
     const loop = async () => {
       m.ticking = true
       await tick().catch(() => null)

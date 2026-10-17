@@ -23,12 +23,14 @@ export default function PodSheet() {
     setErr(null)
     podQuote(ask.workflow).then(setQuote, (e) => setErr({ message: e.message, blocking: true }))
   }, [ask])
+  // While a start is in flight the server may still create the Pod, so the sheet cannot be cancelled.
+  const cancel = () => { if (!busy) answerPod(false) }
   useEffect(() => {
     if (!ask) return
-    const key = (e) => e.key === 'Escape' && answerPod(false)
+    const key = (e) => e.key === 'Escape' && cancel()
     window.addEventListener('keydown', key)
     return () => window.removeEventListener('keydown', key)
-  }, [ask])
+  }, [ask, busy])
   useEffect(() => { if (quote) go.current?.focus() }, [quote])
 
   if (!ask) return null
@@ -54,7 +56,7 @@ export default function PodSheet() {
   const replace = () => run(async () => { await podAction('terminate', { now: true }); await podAction('start', { workflow: ask.workflow }) })
 
   return (
-    <div className="scrim" onClick={() => answerPod(false)}>
+    <div className="scrim" onClick={cancel}>
       <div className="form-sheet glass pop pod-sheet" role="dialog" aria-modal="true" aria-labelledby="pod-sheet-title" onClick={(e) => e.stopPropagation()}>
         <h3 id="pod-sheet-title">{copy.title}</h3>
         {kind === 'start' && <p>This run needs a Pod: a GPU on RunPod that runs ComfyUI with your key. It charges by the minute until it terminates.</p>}
@@ -77,7 +79,7 @@ export default function PodSheet() {
         {err && <p className="sheet-error">{err.message}</p>}
         <div className="form-sheet-foot">
           <span className="grow" />
-          <button type="button" className="btn-soft" onClick={() => answerPod(false)}>Cancel</button>
+          <button type="button" className="btn-soft" disabled={busy} onClick={cancel}>Cancel</button>
           {err?.code === 'resume_no_gpu'
             ? <button type="button" className="btn-blue sm" disabled={busy} onClick={replace}>Terminate it and start a new Pod</button>
             : <button ref={go} type="button" className="btn-blue sm" disabled={busy || !quote || capped || (noKey && kind === 'start') || err?.blocking} onClick={start}>{busy ? copy.busy : copy.go}</button>}

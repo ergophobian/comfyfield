@@ -216,6 +216,16 @@ async function podAction(action, { workflow, now } = {}) {
   throw Object.assign(new Error('Unknown Pod action'), { status: 404 })
 }
 
+// A page on another site can send a request to localhost even when it cannot read the answer.
+// Browsers mark those; tools like curl and the CLI send neither header.
+export function crossSite(headers) {
+  const site = headers['sec-fetch-site']
+  if (site && site !== 'same-origin' && site !== 'none') return true
+  const origin = headers.origin
+  if (!origin) return false
+  try { return new URL(origin).host !== headers.host } catch { return true }
+}
+
 function mount(server) {
   // The app's server is the one process that watches the Pod: heartbeats, spend and the guards.
   // Vite restarts its server when a config file changes, so the monitor stops with it.
@@ -223,6 +233,8 @@ function mount(server) {
   server.httpServer?.once('close', () => core.pod().stopMonitor())
   server.middlewares.use(async (req, res, next) => {
     const url = new URL(req.url, 'http://local')
+    // Anything that spends money or changes saved data must come from ComfyField's own pages.
+    if (url.pathname.startsWith('/api/') && req.method !== 'GET' && crossSite(req.headers)) return send(res, 403, { error: 'Requests from other sites are refused.' })
     try {
       if (url.pathname === '/api/pod' && req.method === 'GET') return send(res, 200, { ...core.pod().status(), mode: core.config('comfy').mode || 'local' })
       if (url.pathname === '/api/pod/quote') return send(res, 200, await podQuote(url.searchParams.get('workflow')))

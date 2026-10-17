@@ -51,19 +51,24 @@ exec >> "$CF/boot.log" 2>&1
 echo "STAGE boot $(date +%s)"
 
 # Self-terminate. GraphQL first: RunPod refuses pod REST calls made from inside a Pod.
+# Exit 0 only when RunPod clearly accepted; a gateway page or a 429 is not a success.
 cat > "$CF/kill-pod.sh" <<'KILL'
 #!/bin/bash
 echo "terminating: $1"
 [ -n "$RUNPOD_POD_ID" ] && [ -n "$RUNPOD_API_KEY" ] || { echo "no pod id or key, this Pod is still billing"; exit 2; }
-out=$(curl -s -m 20 -X POST https://api.runpod.io/graphql -H "Authorization: Bearer $RUNPOD_API_KEY" \\
+resp=$(curl -s -m 20 -w '\\n%{http_code}' -X POST https://api.runpod.io/graphql -H "Authorization: Bearer $RUNPOD_API_KEY" \\
   -H "Content-Type: application/json" -d "{\\"query\\":\\"mutation { podTerminate(input: {podId: \\\\\\"$RUNPOD_POD_ID\\\\\\"}) }\\"}")
-echo "$out" | grep -q '"errors"' || [ -z "$out" ] || exit 0
+code=$(printf '%s' "$resp" | tail -n 1)
+body=$(printf '%s' "$resp" | sed '$d')
+if [ "$code" = 200 ] && printf '%s' "$body" | grep -q '"data"' && ! printf '%s' "$body" | grep -q '"errors"'; then exit 0; fi
+echo "graphql answered HTTP $code"
 if command -v runpodctl >/dev/null 2>&1; then
-  runpodctl remove pod "$RUNPOD_POD_ID" 2>&1 | grep -qi "error\\|fail" || exit 0
+  out=$(runpodctl remove pod "$RUNPOD_POD_ID" 2>&1) && ! printf '%s' "$out" | grep -qi "error\\|fail" && exit 0
+  echo "runpodctl: $out"
 fi
 code=$(curl -s -o /dev/null -w "%{http_code}" -m 20 -X DELETE -H "Authorization: Bearer $RUNPOD_API_KEY" "https://rest.runpod.io/v1/pods/$RUNPOD_POD_ID")
 case "$code" in 2*) exit 0 ;; esac
-echo "could not self-terminate, this Pod is still billing"
+echo "could not self-terminate (HTTP $code), this Pod is still billing"
 exit 1
 KILL
 

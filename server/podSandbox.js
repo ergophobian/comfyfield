@@ -36,7 +36,7 @@ export function sandboxFetch({ file, now = Date.now, mode = process.env.COMFYFIE
     }
     const ready = up >= READY
     return {
-      stage: ready ? 'ready' : up >= READY / 2 ? 'comfy' : 'boot', ready, fatal: null,
+      stage: ready ? 'ready' : up >= READY / 2 ? 'comfy' : 'boot', ready, everReady: ready, fatal: null,
       idleSec: ready ? Math.max(0, Math.round((t - lastWork) / 1000)) : 0, uptimeSec: Math.round(up / 1000), queue: ready ? 0 : null,
       heartbeatAgeSec: pod.hb ? Math.round((t - pod.hb) / 1000) : null, gpu: ready ? { util: 0, memUsedMb: 900, memTotalMb: pod.vram * 1024 } : null,
       diskFreeGb: pod.volumeInGb - models.reduce((n, f) => n + f.bytes / 1e9, 0), ending: null, models, downloads,
