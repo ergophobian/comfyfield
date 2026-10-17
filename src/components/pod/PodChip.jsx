@@ -86,7 +86,7 @@ export default function PodChip() {
         aria-controls={open ? 'pod-pop' : undefined} onClick={() => setOpen((o) => !o)}>
         <i className={`pod-dot${tone(p)}`} aria-hidden="true" />
         <span>Pod · {label}</span>
-        {p !== 'none' && <span className="pod-spend">· {money(s.spend.today)} today</span>}
+        {p !== 'none' && <span className="pod-spend">· {money(s.spend?.today)} today</span>}
         {suggest && <em className="nav-badge">Suggested</em>}
       </button>
       {open && (

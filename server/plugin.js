@@ -4,6 +4,9 @@ import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
 import * as core from './core.js'
+import { upload } from './upload.js'
+import { serveMedia } from './serveMedia.js'
+import { agentRoutes } from './agent-routes.js'
 
 export { providers } from './core.js'
 
@@ -11,36 +14,6 @@ async function body(req) {
   let raw = ''
   for await (const chunk of req) raw += chunk
   return raw ? JSON.parse(raw) : {}
-}
-
-async function rawBody(req, limit = 40 * 1024 * 1024) {
-  const chunks = []
-  let size = 0
-  for await (const chunk of req) {
-    size += chunk.length
-    if (size > limit) throw Object.assign(new Error('That file is too large (40 MB max).'), { status: 413 })
-    chunks.push(chunk)
-  }
-  return Buffer.concat(chunks)
-}
-
-// Accepts a raw image body, or JSON { dataUrl } / { data, type } where data is base64 or a data URI.
-async function upload(req) {
-  const type = (req.headers['content-type'] || '').split(';')[0]
-  let buf
-  let mime = type
-  if (type === 'application/json') {
-    const json = JSON.parse((await rawBody(req)).toString('utf8') || '{}')
-    const data = json.dataUrl || json.data || ''
-    const m = /^data:([^;,]+);base64,/.exec(data)
-    mime = m ? m[1] : json.type || 'image/png'
-    buf = Buffer.from(m ? data.slice(m[0].length) : data, 'base64')
-  } else {
-    buf = await rawBody(req)
-  }
-  if (!buf.length) throw Object.assign(new Error('No file received.'), { status: 400 })
-  if (!/^image\/(png|jpe?g|webp|gif|svg\+xml)$/.test(mime)) throw Object.assign(new Error('Attach a PNG, JPG, WebP, GIF or SVG image.'), { status: 415 })
-  return { url: core.saveMedia(buf, core.mimeExt(mime)).url, type: mime }
 }
 
 function send(res, status, data) {
@@ -189,11 +162,11 @@ async function importUrl({ url }) {
   return { ...page, images, logo: logo || '', url: target.href, host: target.hostname.replace(/^www\./, '') }
 }
 
-export default function comfyfieldApi() {
+export default function comfyfieldApi({ harness } = {}) {
   return {
     name: 'comfyfield-api',
-    configureServer: (server) => mount(server),
-    configurePreviewServer: (server) => mount(server),
+    configureServer: (server) => mount(server, harness),
+    configurePreviewServer: (server) => mount(server, harness),
   }
 }
 
@@ -226,11 +199,12 @@ export function crossSite(headers) {
   try { return new URL(origin).host !== headers.host } catch { return true }
 }
 
-function mount(server) {
+function mount(server, harness) {
   // The app's server is the one process that watches the Pod: heartbeats, spend and the guards.
   // Vite restarts its server when a config file changes, so the monitor stops with it.
   core.pod().startMonitor()
-  server.httpServer?.once('close', () => core.pod().stopMonitor())
+  const agents = agentRoutes({ body, send, harness })
+  server.httpServer?.once('close', () => { core.pod().stopMonitor(); agents.close().catch(() => {}) })
   server.middlewares.use(async (req, res, next) => {
     const url = new URL(req.url, 'http://local')
     // Anything that spends money or changes saved data must come from ComfyField's own pages.
@@ -246,6 +220,7 @@ function mount(server) {
       }
       if (url.pathname === '/api/pod/quote') return send(res, 200, await podQuote(url.searchParams.get('workflow')))
       if (url.pathname.startsWith('/api/pod/') && req.method === 'POST') return send(res, 200, await podAction(url.pathname.slice('/api/pod/'.length), await body(req)))
+      if (await agents(req, res, url)) return
       if (url.pathname === '/api/connections' && req.method === 'GET') return send(res, 200, core.connections())
       if (url.pathname === '/api/connections' && req.method === 'POST') {
         const { id, values } = await body(req)
@@ -275,17 +250,27 @@ function mount(server) {
       if (url.pathname === '/api/fal/meta') return send(res, 200, await core.falMeta(url.searchParams.getAll('id')))
       if (url.pathname === '/api/balance') return send(res, 200, await core.balances())
       if (url.pathname === '/api/prompts' && req.method === 'POST') return send(res, 200, { prompts: await core.writePrompts(await body(req)) })
+      if (url.pathname === '/api/prompt' && req.method === 'POST') return send(res, 200, { text: await core.writePrompt(await body(req)) })
       if (url.pathname === '/api/google' && req.method === 'POST') {
         return send(res, 200, { files: await core.runGoogle(await body(req)) })
       }
-      if (url.pathname === '/api/upload' && req.method === 'POST') return send(res, 200, await upload(req))
+      if (url.pathname === '/api/upload' && req.method === 'POST') return send(res, 200, await upload(req, core.saveMedia))
+      if (url.pathname === '/api/stitch' && req.method === 'POST') return send(res, 200, await core.stitch(await body(req)))
+      if (url.pathname === '/api/stitch/exports' && req.method === 'GET') return send(res, 200, core.stitchedExports())
+      if (url.pathname === '/api/stitch/export' && req.method === 'POST') return send(res, 200, core.exportStitch((await body(req)).url))
+      if (url.pathname === '/api/stitch/export' && req.method === 'DELETE') {
+        core.dismissStitch((await body(req)).url)
+        return send(res, 200, { ok: true })
+      }
+      if (url.pathname === '/api/stitch/upload' && req.method === 'POST') {
+        return send(res, 200, await upload(req, core.saveMedia))
+      }
       if (url.pathname === '/api/library/import' && req.method === 'POST') return send(res, 200, await importUrl(await body(req)))
       if (url.pathname.startsWith('/api/library/') && await libraryRoute(req, res, url)) return
       if (url.pathname.startsWith('/media/')) {
         const file = core.mediaPath(url.pathname)
         if (!fs.existsSync(file)) return send(res, 404, { error: 'Not found' })
-        res.setHeader('Content-Type', core.mediaTypes[path.extname(file).slice(1)] || 'application/octet-stream')
-        return fs.createReadStream(file).pipe(res)
+        return serveMedia(req, res, file, core.mediaTypes[path.extname(file).slice(1)] || 'application/octet-stream')
       }
       if (url.pathname.startsWith('/comfy/')) return proxyComfy(req, res, url)
     } catch (e) {

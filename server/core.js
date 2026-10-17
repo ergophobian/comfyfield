@@ -6,7 +6,8 @@ import { fileURLToPath } from 'node:url'
 import { randomUUID } from 'node:crypto'
 import { Comfy } from '@comfyorg/sdk'
 import { models as pinned, falCategories } from '../src/lib/catalog.js'
-import { comfyVars, comfyRouterInput, falInput, estimate, fill } from '../shared/mapping.js'
+import { comfyVars, comfyRouterInput, falInput, estimate, fill, falEndpointFor } from '../shared/mapping.js'
+import { renderStitch } from './stitch.js'
 import { modelFilesOf, minVramOf, notOnCloud, volumeFor } from '../shared/modelFiles.js'
 
 import { podManager } from './pod.js'
@@ -230,6 +231,42 @@ function pcmToWav(pcm, rate = 24000) {
 
 const GEMINI = 'https://generativelanguage.googleapis.com/v1beta'
 
+// The Router lane can replace this stub without changing the writer contract.
+export async function writePromptWithRouter() {
+  throw Object.assign(new Error('Connect Google AI to write a prompt. Comfy Router prompt writing is not wired yet.'), { status: 501 })
+}
+
+export async function writePrompt({ instructions, note = '', images = [], target = '' }) {
+  if (typeof instructions !== 'string' || !instructions.trim()) {
+    throw Object.assign(new Error('Add writer instructions first.'), { status: 400 })
+  }
+  if (typeof note !== 'string' || typeof target !== 'string' || !Array.isArray(images) || images.some((u) => typeof u !== 'string' || !/^(data:image\/|\/media\/)/.test(u))) {
+    throw Object.assign(new Error('Writer needs a note, a target and local or inline images.'), { status: 400 })
+  }
+  const request = { instructions, note, images, target }
+  const { key } = config('google')
+  if (!key) return writePromptWithRouter(request)
+  const parts = images.map((url) => {
+    const { buf, mime } = readLocal(url)
+    if (!/^image\/(png|jpeg|webp|gif)$/.test(mime)) {
+      throw Object.assign(new Error('Writer accepts PNG, JPG, WebP or GIF images.'), { status: 415 })
+    }
+    return { inlineData: { mimeType: mime, data: buf.toString('base64') } }
+  })
+  parts.push({ text: [target && `Target model or medium: ${target}`, note && `User note: ${note}`, 'Write only the finished generation prompt.'].filter(Boolean).join('\n\n') })
+  const r = await fetch(`${GEMINI}/models/gemini-flash-latest:generateContent`, {
+    method: 'POST', headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ systemInstruction: { parts: [{ text: instructions }] }, contents: [{ role: 'user', parts }] }),
+  })
+  const data = await r.json().catch(() => ({}))
+  if (!r.ok) throw new Error(data.error?.message || `Google prompt writing failed (${r.status})`)
+  const candidate = data.candidates?.[0]
+  if (candidate?.finishReason && candidate.finishReason !== 'STOP') throw new Error('Google did not finish the prompt. Try again or adjust the instructions.')
+  const text = (candidate?.content?.parts || []).filter((p) => !p.thought).map((p) => p.text || '').join('').trim()
+  if (!text) throw new Error('Google returned no prompt. The request may have been filtered.')
+  return text
+}
+
 // Google AI (Gemini API key): image and speech via generateContent, Veo via a long-running operation.
 export async function runGoogle({ model, mode, prompt, aspect, count = 1, duration, images = [] }) {
   const { key } = config('google')
@@ -286,7 +323,7 @@ export async function runGoogle({ model, mode, prompt, aspect, count = 1, durati
   return files
 }
 
-export const mediaTypes = { mp3: 'audio/mpeg', wav: 'audio/wav', mp4: 'video/mp4', png: 'image/png', jpeg: 'image/jpeg', jpg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif', svg: 'image/svg+xml', ico: 'image/x-icon' }
+export const mediaTypes = { mp3: 'audio/mpeg', wav: 'audio/wav', mp4: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime', m4a: 'audio/mp4', ogg: 'audio/ogg', flac: 'audio/flac', png: 'image/png', jpeg: 'image/jpeg', jpg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif', svg: 'image/svg+xml', ico: 'image/x-icon' }
 
 // Thumbnails and prices for specific fal endpoints. Prices need a fal key; thumbnails do not.
 export async function falMeta(ids) {
@@ -363,6 +400,37 @@ export async function testConnection(id) {
 }
 
 export const mediaPath = (name) => path.join(mediaDir(), path.basename(name))
+
+const stitchIndex = () => path.join(home(), 'stitch', 'index.json')
+function readStitches() {
+  try { return JSON.parse(fs.readFileSync(stitchIndex(), 'utf8')) } catch { return [] }
+}
+function writeStitches(items) {
+  fs.mkdirSync(path.dirname(stitchIndex()), { recursive: true })
+  fs.writeFileSync(stitchIndex(), JSON.stringify(items, null, 2))
+}
+
+export const stitchedExports = () => readStitches().filter((item) => item.exported)
+
+export function dismissStitch(url) {
+  writeStitches(readStitches().map((item) => item.url === url ? { ...item, exported: false } : item))
+}
+
+export function exportStitch(url) {
+  const items = readStitches()
+  const item = items.find((item) => item.url === url)
+  if (!item || !fs.existsSync(item.path)) throw Object.assign(new Error('Render a Stitch preview first.'), { status: 400 })
+  const saved = { ...item, exported: true }
+  writeStitches(items.map((item) => item.url === url ? saved : item))
+  return saved
+}
+
+export async function stitch({ preview = false, ...options } = {}) {
+  const file = await renderStitch(options, { home, mediaPath })
+  const item = { ...file, id: path.basename(file.path), model: 'Stitch', caption: 'Stitched video', created: Date.now(), exported: !preview }
+  writeStitches([item, ...readStitches()])
+  return item
+}
 
 export function connections() {
   const out = Object.fromEntries(Object.keys(providers).map((id) => {
@@ -666,10 +734,10 @@ export async function listModels({ kind, query, includeFal = true, limit = 25 } 
 }
 
 // One generation on any model. `image` is a URL or a local file path (sent to fal as a data URI).
-export async function generate({ model, prompt, aspect = '16:9', count = 1, duration, image }) {
+export async function generate({ model, prompt, aspect = '16:9', count = 1, duration, image, images, ...options }) {
   if (!prompt) throw new Error('A prompt is required.')
   const m = resolveModel(model)
-  const o = { prompt, aspect, count, duration, image: image && !/^(https?:|data:|\/media\/)/.test(image) ? fileDataUri(image) : image }
+  const o = { ...options, images, prompt, aspect, count, duration, image: image && !/^(https?:|data:|\/media\/)/.test(image) ? fileDataUri(image) : image }
   if (m.provider === 'comfyRouter') {
     const files = []
     for (let i = 0; i < (m.kind === 'image' ? count : 1); i++) files.push(...await runComfyRouter({ model: m.model, input: comfyRouterInput(m.model, o) }))
@@ -680,18 +748,20 @@ export async function generate({ model, prompt, aspect = '16:9', count = 1, dura
     return runComfy(vars.image && m.imageWorkflow ? m.imageWorkflow : m.workflow, vars)
   }
   if (m.provider === 'fal') {
-    const { properties } = await falSchema(m.model)
-    return runFal({ model: m.model, input: falInput(properties, o) })
+    const endpoint = await falEndpointFor(m, Boolean(o.images?.length || o.image), falSchema)
+    const { properties } = await falSchema(endpoint)
+    return runFal({ model: endpoint, input: falInput(properties, o) })
   }
-  if (m.provider === 'google') return runGoogle({ model: m.model, mode: m.mode, prompt, aspect, count, duration })
+  if (m.provider === 'google') return runGoogle({ model: m.model, mode: m.mode, prompt, aspect, count, duration, images: o.images || (o.image ? [o.image] : []) })
   if (m.provider === 'elevenlabs') return runElevenLabs({ mode: m.mode, text: prompt })
   throw new Error(`${m.provider} is not wired up yet.`)
 }
 
 // Rough cost before running; null when the price is unknown.
-export async function estimateCost({ model, aspect = '16:9', count = 1, duration }) {
+export async function estimateCost({ model, aspect = '16:9', count = 1, duration, image }) {
   const m = resolveModel(model)
-  const meta = m.provider === 'fal' ? (await falMeta([m.model]).catch(() => ({})))[m.model] : { price: m.price }
+  const endpoint = await falEndpointFor(m, Boolean(image), falSchema)
+  const meta = m.provider === 'fal' ? (await falMeta([endpoint]).catch(() => ({})))[endpoint] : { price: m.price }
   return estimate(m, meta, { aspect, count, duration })
 }
 

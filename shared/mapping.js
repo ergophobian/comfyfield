@@ -24,7 +24,7 @@ export function fill(node, vars) {
 // `sizes` lets a model use its own canvas per aspect ratio, for example multiples of 64 for LTX-2.5.
 export function comfyVars(kind, o, sizes) {
   const [width, height] = sizes?.[o.aspect] || (kind === 'video' ? videoSize(o.aspect) : aspectSize[o.aspect])
-  return { prompt: o.prompt, width, height, count: o.count || 1, frames: (o.duration || 5) * 24 + 1, duration: o.duration || 5, image: o.images?.[0] || o.image, seed: Math.floor(Math.random() * 2 ** 31) }
+  return { prompt: o.prompt, width, height, count: o.count || 1, frames: (o.duration || 5) * 24 + 1, duration: o.duration || 5, image: o.images?.[0] || o.image, seed: Math.floor(Math.random() * 2 ** 31), ...o.params, ...o.fields }
 }
 
 export function comfyRouterInput(model, o) {
@@ -50,15 +50,33 @@ export function durationsFromProps(props) {
 const singleImage = ['image_url', 'start_image_url', 'first_frame_url', 'input_image_url', 'image']
 const manyImages = ['image_urls', 'input_image_urls', 'reference_image_urls']
 
+export const hasImageInput = (props) => [...singleImage, ...manyImages].some((k) => props[k])
+
+export async function falEndpointFor(model, hasImage, schema) {
+  const own = model.model
+  if (!hasImage || model.provider !== 'fal') return own
+  if (hasImageInput((await schema(own)).properties)) return own
+  const tries = own.endsWith('text-to-video') ? [own.replace(/text-to-video$/, 'image-to-video')]
+    : own.endsWith('text-to-image') ? [own.replace(/text-to-image$/, 'image-to-image'), `${own}/edit`]
+    : [`${own}/edit`]
+  for (const id of tries) if (Object.keys((await schema(id)).properties).length) return id
+  throw new Error(`${model.name} does not take an image. Pick an image-to-video or edit model.`)
+}
+
 export function falInput(props, o) {
   const input = {}
   if (o.prompt) input[props.prompt || !props.text ? 'prompt' : 'text'] = o.prompt
   const images = o.images || (o.image ? [o.image] : [])
-  if (images.length) {
+  const face = o.face?.faceUrl || o.face?.url
+  const references = face && !images.includes(face) ? [...images, face] : images
+  if (references.length) {
     const many = manyImages.find((k) => props[k])
     const one = singleImage.find((k) => props[k])
-    if (many && (!one || images.length > 1 || many === 'image_urls')) input[many] = images
-    else if (one) input[one] = images[0]
+    if (many && (!one || references.length > 1 || many === 'image_urls')) input[many] = references
+    else if (one) input[one] = references[0]
+  }
+  for (const [field, value] of Object.entries({ mask_url: o.mask, video_url: o.video, start_time: o.trim?.start, end_time: o.trim?.end, crop: o.crop })) {
+    if (props[field] && value != null) input[field] = value
   }
   Object.assign(input, o.fields)
   if (props.aspect_ratio) {

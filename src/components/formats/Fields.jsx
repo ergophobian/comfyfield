@@ -1,4 +1,6 @@
 import { useId, useRef, useState } from 'react'
+import InputWidget from '../widgets/index.jsx'
+import { widgetTypes } from '../../../shared/widgetInputs.js'
 import { Link } from 'react-router-dom'
 import { IconUpload } from '../Icons.jsx'
 import { uploadImage } from '../../lib/providers.js'
@@ -21,7 +23,7 @@ const picks = {
 const textual = ['text', 'longtext']
 const calm = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
-// Video and audio stay in the browser until the backend can take uploads of them.
+// Audio stays local until the backend supports audio uploads.
 const readLocal = (file, type) => new Promise((resolve) => {
   const url = URL.createObjectURL(file)
   const done = (ratio) => resolve({ url, name: file.name, local: true, ratio })
@@ -247,7 +249,8 @@ export function Field({ input, value, onChange, setError = () => {} }) {
   const { type } = input
   const props = { input, value, onChange, labelId }
   let body
-  if (media[type]) body = <MediaField {...props} setError={setError} />
+  if (widgetTypes.includes(type) || (type === 'draw' && input.mode !== 'motion')) body = <InputWidget type={type === 'draw' ? 'mask' : type} {...props} setError={setError} />
+  else if (media[type]) body = <MediaField {...props} setError={setError} />
   else if (type === 'draw') body = <DrawField {...props} setError={setError} />
   else if (type === 'text') body = <input id={id} value={value ?? ''} onChange={(e) => onChange(e.target.value)} placeholder={input.placeholder} />
   else if (type === 'longtext') body = <textarea id={id} rows={input.rows || 3} value={value ?? ''} onChange={(e) => onChange(e.target.value)} placeholder={input.placeholder} />

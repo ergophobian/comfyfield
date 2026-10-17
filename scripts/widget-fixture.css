@@ -1,0 +1,2 @@
+.widget-fixture { padding: var(--widget-space); border-radius: var(--r-xl); min-width: 0; }
+.widget-fixture > .field > label { display: block; margin-bottom: var(--widget-gap); font-size: var(--text-lg); }
