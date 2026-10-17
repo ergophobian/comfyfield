@@ -10,6 +10,7 @@ import { test } from 'node:test'
 import { podBootScript, podStartCmd, podEnv, START_CMD_MAX } from '../server/podBoot.js'
 import { podManager, GPU_LADDER, NO_POD } from '../server/pod.js'
 import { sandboxFetch } from '../server/podSandbox.js'
+import { modelFilesOf, minVramOf, volumeFor, MODEL_FILES } from '../shared/modelFiles.js'
 
 fs.mkdirSync('outputs', { recursive: true })
 const tmp = fs.mkdtempSync(path.resolve('outputs/pod-check-'))
@@ -425,4 +426,101 @@ await test('lifecycle: the sandbox runs a whole Pod life without RunPod', async 
   assert.equal((await pod.pause({ now: true })).phase, 'paused')
   assert.equal((await pod.resume()).phase, 'starting')
   assert.equal((await pod.terminate({ now: true })).phase, 'none')
+})
+
+// ---- runs on the Pod -------------------------------------------------------------------------------
+
+await test('runs: model files come from the loader nodes and the file list', () => {
+  const read = (n) => JSON.parse(fs.readFileSync(`public/workflows/${n}.json`, 'utf8'))
+  assert.deepEqual(modelFilesOf(read('image_sdxl')).map((f) => `${f.dir}/${f.name}`), ['checkpoints/sd_xl_base_1.0.safetensors'])
+  const ltx = modelFilesOf(read('ltx_i2v'))
+  assert.deepEqual(ltx.map((f) => `${f.dir}/${f.name}`), ['checkpoints/ltx-video-2b-v0.9.5.safetensors', 'text_encoders/t5xxl_fp16.safetensors'])
+  assert.equal(minVramOf(ltx), 16)
+  assert.equal(volumeFor(ltx), 47)
+  assert.deepEqual(modelFilesOf(read('h3_i2v')), [], 'a partner node needs no files')
+  assert.throws(() => modelFilesOf({ 1: { class_type: 'UNETLoader', inputs: { unet_name: 'mystery.safetensors' } } }), /mystery\.safetensors is not in ComfyField's model list, so a Pod cannot download it/)
+  assert.throws(() => modelFilesOf({ 1: { class_type: 'VAELoader', inputs: { vae_name: 'sd_xl_base_1.0.safetensors' } } }), /loads sd_xl_base_1\.0\.safetensors from vae/)
+  assert.deepEqual(modelFilesOf({ 1: { class_type: 'CheckpointLoaderSimple', inputs: { ckpt_name: '{{ckpt}}' } } }), [], 'placeholders wait for the filled graph')
+  for (const w of fs.readdirSync('public/workflows')) modelFilesOf(read(w.replace(/\.json$/, ''))) // every bundled workflow can run on a Pod
+  for (const [name, f] of Object.entries(MODEL_FILES)) assert(/^[\w.-]+\/[\w.-]+$/.test(f.repo) && /^[\w.+-]+$/.test(name), name)
+})
+
+const core = await import('../server/core.js')
+const jsonReply = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } })
+function podMode() {
+  process.env.COMFYFIELD_HOME = fs.mkdtempSync(path.join(tmp, 'run-'))
+  for (const k of ['COMFY_API_KEY', 'COMFY_URL', 'COMFY_MODE', 'COMFY_BASE_URL']) process.env[k] = ''
+  core.saveConnection('comfy', { mode: 'pod', key: 'comfy-key' })
+}
+const sdxl = { prompt: 'A fox', width: 1024, height: 1024, count: 1, seed: 7 }
+
+await test('runs: the Pod runs a workflow through the real SDK with the Pod token, and the Comfy key only pays partner nodes', async () => {
+  podMode()
+  let released = 0
+  const lease = async ({ files }) => {
+    assert.deepEqual(files.map((f) => f.name), ['sd_xl_base_1.0.safetensors'])
+    return { baseUrl: 'https://pod1-8189.proxy.runpod.net', token: 'pod-token', sandbox: false, signal: new AbortController().signal, reason: () => null, release: () => released++ }
+  }
+  const job = { id: 'pod-job', status: 'queued', created_at: '2026-10-17T00:00:00Z', started_at: null, completed_at: null, expires_at: null, queue_position: 0, progress: null, outputs: [], error: null, urls: {} }
+  const calls = []
+  const mockFetch = async (url, options) => {
+    const u = new URL(url)
+    calls.push(`${options.method} ${u.host}${u.pathname}`)
+    assert.equal(u.host, 'pod1-8189.proxy.runpod.net')
+    assert.equal(options.headers.get('Authorization'), 'Bearer pod-token')
+    if (u.pathname === '/api/v2/jobs') {
+      const payload = JSON.parse(options.body)
+      assert.equal(payload.workflow['1'].inputs.ckpt_name, 'sd_xl_base_1.0.safetensors')
+      assert.equal(payload.extra_data.api_key_comfy_org, 'comfy-key')
+      return jsonReply(job, 201)
+    }
+    if (u.pathname === '/api/v2/jobs/pod-job') return jsonReply({ ...job, status: 'succeeded', outputs: [{ node_id: '7', name: 'fox.png', type: 'image', content_type: 'image/png', size_bytes: 3, id: 'out-1', hash: null, url: null, url_expires_at: null }] })
+    if (u.pathname === '/api/v2/assets/out-1/content') return new Response('png', { headers: { 'Content-Type': 'image/png' } })
+    throw new Error(`Unexpected SDK request ${options.method} ${u.pathname}`)
+  }
+  globalThis.fetch = async () => { throw new Error('Unexpected network call') }
+  const files = await core.runComfy('image_sdxl', sdxl, { lease, createClient: (key, baseUrl) => core.comfyClient(baseUrl, key, { fetch: mockFetch }) })
+  assert.equal(files[0].kind, 'image')
+  assert.equal(fs.readFileSync(files[0].path, 'utf8'), 'png')
+  assert.equal(released, 1)
+  assert(calls.includes('POST pod1-8189.proxy.runpod.net/api/v2/jobs'))
+  assert.equal(process.env.COMFY_BASE_URL, '', 'the base URL is scoped to one client')
+})
+
+await test('runs: no Pod, an ended Pod and the sandbox each fail the run with a reason', async () => {
+  podMode()
+  const createClient = () => { throw new Error('no client without a Pod') }
+  await assert.rejects(core.runComfy('image_sdxl', sdxl, { createClient, lease: async () => { throw Object.assign(new Error(NO_POD), { code: 'no_pod' }) } }), (e) => e.message === NO_POD)
+
+  let released = 0
+  const ctl = new AbortController()
+  let why = null
+  const lease = async () => ({ baseUrl: 'https://pod1-8189.proxy.runpod.net', token: 't', sandbox: false, signal: ctl.signal, reason: () => why, release: () => released++ })
+  const client = {
+    workflows: { fromFile: async () => ({ json: null, setInput() {} }) },
+    run: (wf, o) => new Promise((_, reject) => o.signal.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')))),
+  }
+  const running = core.runComfy('image_sdxl', sdxl, { lease, createClient: () => client })
+  await new Promise((r) => setTimeout(r, 10))
+  why = 'You terminated the Pod.'
+  ctl.abort()
+  await assert.rejects(running, (e) => e.message === 'You terminated the Pod.' && e.status === 409)
+  assert.equal(released, 1)
+
+  const sandbox = async () => ({ sandbox: true, release: () => released++ })
+  await assert.rejects(core.runComfy('image_sdxl', sdxl, { lease: sandbox, createClient }), /sandbox Pod, so nothing renders/)
+  assert.equal(released, 2)
+})
+
+await test('runs: Pod mode is a saved choice, and the needs of a workflow size the Pod', () => {
+  podMode()
+  assert.equal(core.config('comfy').mode, 'pod')
+  assert.throws(() => core.saveConnection('comfy', { mode: 'gpu' }), /Choose Local, Comfy Cloud or Pod/)
+  assert.throws(() => core.saveConnection('runpod', { cap: '-3' }), /daily cap/)
+  core.saveConnection('runpod', { cap: '12.345' })
+  assert.equal(core.config('runpod').cap, '12.35')
+  const needs = core.workflowNeeds('image_flux')
+  assert.equal(needs.minVramGb, 24)
+  assert.equal(needs.volumeGb, 48)
+  assert.throws(() => core.workflowNeeds('../x'), /Invalid workflow/)
 })

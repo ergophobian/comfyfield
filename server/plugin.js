@@ -198,9 +198,17 @@ export default function comfyfieldApi() {
 }
 
 // Pod actions from the chip and the start sheet. Only these start, pause, resume or terminate a Pod.
-async function podAction(action, { minVramGb, volumeGb, now } = {}) {
+// A workflow name decides the GPU memory and disk; a workflow with a file no Pod can get fails here.
+const podNeeds = (workflow) => (workflow ? core.workflowNeeds(workflow) : { files: [], minVramGb: 0, volumeGb: 60 })
+
+async function podQuote(workflow) {
+  const needs = podNeeds(workflow)
+  return { ...(await core.pod().quote({ minVramGb: needs.minVramGb })), files: needs.files.map((f) => ({ name: f.name, gb: f.gb })), volumeGb: needs.volumeGb }
+}
+
+async function podAction(action, { workflow, now } = {}) {
   const p = core.pod()
-  if (action === 'start') return p.start({ minVramGb: Number(minVramGb) || 0, volumeGb: Number(volumeGb) || 60 })
+  if (action === 'start') return p.start(podNeeds(workflow))
   if (action === 'pause') return p.pause({ now: Boolean(now) })
   if (action === 'resume') return p.resume()
   if (action === 'terminate') return p.terminate({ now: Boolean(now) })
@@ -217,7 +225,7 @@ function mount(server) {
     const url = new URL(req.url, 'http://local')
     try {
       if (url.pathname === '/api/pod' && req.method === 'GET') return send(res, 200, core.pod().status())
-      if (url.pathname === '/api/pod/quote') return send(res, 200, await core.pod().quote({ minVramGb: Number(url.searchParams.get('minVramGb')) || 0 }))
+      if (url.pathname === '/api/pod/quote') return send(res, 200, await podQuote(url.searchParams.get('workflow')))
       if (url.pathname.startsWith('/api/pod/') && req.method === 'POST') return send(res, 200, await podAction(url.pathname.slice('/api/pod/'.length), await body(req)))
       if (url.pathname === '/api/connections' && req.method === 'GET') return send(res, 200, core.connections())
       if (url.pathname === '/api/connections' && req.method === 'POST') {

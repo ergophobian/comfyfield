@@ -11,13 +11,14 @@ const help = `ComfyField: generate with your own keys from the terminal or any a
 Usage
   comfyfield models [--kind image|video|audio] [--search <text>]
   comfyfield generate "<prompt>" --model <id> [--ratio 16:9] [--duration 5] [--count 1] [--image <url|file>] [--out ./dir]
-  comfyfield connect <comfy|fal|google|elevenlabs> --key <key> [--url <comfy url>]
+  comfyfield connect <comfy|fal|google|elevenlabs|runpod> --key <key> [--url <comfy url>]
   comfyfield balance
   comfyfield mcp      Start the MCP server on stdio
   comfyfield dev      Start the app
 
 Keys are read from .comfyfield/keys.json in the current directory (or COMFYFIELD_HOME), then from
-FAL_KEY, GEMINI_API_KEY, ELEVENLABS_API_KEY, COMFY_URL and COMFY_API_KEY.`
+FAL_KEY, GEMINI_API_KEY, ELEVENLABS_API_KEY, COMFY_URL, COMFY_API_KEY and RUNPOD_API_KEY.
+With ComfyUI set to Pod, runs use the Pod you started in the app; the CLI never starts one.`
 
 const options = {
   kind: { type: 'string' }, search: { type: 'string' }, model: { type: 'string', short: 'm' },
