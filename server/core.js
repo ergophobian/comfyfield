@@ -51,6 +51,39 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 // The one Pod manager for this process. COMFYFIELD_POD_SANDBOX swaps RunPod and the Pod for fakes.
 let podOne
 const sandboxed = () => Boolean(process.env.COMFYFIELD_POD_SANDBOX)
+// Comfy Cloud runs of the last day, so the app can say when a session would cost less on a Pod.
+// About $4.54 per GPU hour: Comfy's published RTX PRO 6000 rate, which matches the Cloud workflow rate.
+export const CLOUD_USD_PER_GPU_SEC = 4.54 / 3600
+const HOUR = 3_600_000
+const cloudRunsFile = () => path.join(home(), 'cloud-runs.json')
+function readCloudRuns() {
+  try { return JSON.parse(fs.readFileSync(cloudRunsFile(), 'utf8')) } catch { return [] }
+}
+export function logCloudRun({ seconds, minVramGb = 0, at = Date.now() }) {
+  const runs = [...readCloudRuns().filter((r) => at - r.at < 24 * HOUR), { at, seconds: Math.max(0, seconds), minVramGb }]
+  fs.mkdirSync(home(), { recursive: true })
+  fs.writeFileSync(cloudRunsFile(), JSON.stringify(runs))
+}
+
+// Suggests a Pod when, in the last hour, Cloud runs cost at least 80% of an hour on the cheapest
+// free GPU that fits them. It only informs; nothing starts.
+export async function podSuggestion({ now = Date.now(), quote = (o) => pod().quote(o) } = {}) {
+  const runs = readCloudRuns().filter((r) => now - r.at < HOUR)
+  if (runs.length < 3) return null
+  const cloudUsd = runs.reduce((n, r) => n + r.seconds, 0) * CLOUD_USD_PER_GPU_SEC
+  const q = await quote({ minVramGb: Math.max(0, ...runs.map((r) => r.minVramGb || 0)) }).catch(() => null)
+  const rung = q?.rungs.find((r) => r.inStock && r.usdPerHr) || q?.rungs.find((r) => r.usdPerHr)
+  if (!rung || cloudUsd < 0.8 * rung.usdPerHr) return null
+  return { runs: runs.length, cloudUsd, podUsdPerHr: rung.usdPerHr, gpu: rung.name }
+}
+
+// GPU time of a finished job, from its start and end when the backend reports them.
+function gpuSeconds(job, t0) {
+  const start = new Date(job.startedAt ?? NaN).getTime()
+  const end = new Date(job.completedAt ?? NaN).getTime()
+  return Number.isFinite(start) && Number.isFinite(end) && end > start ? (end - start) / 1000 : (Date.now() - t0) / 1000
+}
+
 export function pod() {
   if (!podOne) {
     const sandbox = sandboxed()
@@ -537,7 +570,11 @@ export async function runComfy(workflow, vars = {}, { createClient = (key, baseU
       const wf = await client.workflows.fromFile(file)
       wf.json = graph
       for (const [id] of loaders) wf.setInput(id, 'image', client.assets.fromBytes(image.buf, { filename: `input.${mimeExt(image.mime)}`, contentType: image.mime }))
+      const t0 = Date.now()
       const job = await client.run(wf, { apiKey: partner, timeoutMs: 30 * 60 * 1000, ...(held ? { signal: held.signal } : {}) })
+      if (target === 'cloud') {
+        try { logCloudRun({ seconds: gpuSeconds(job, t0), minVramGb: minVramOf(needs) }) } catch {}
+      }
       const files = []
       for (const output of job.outputs) {
         if (!['image', 'video', 'audio'].includes(output.type)) continue

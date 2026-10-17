@@ -2405,6 +2405,10 @@ button.gen-step:active { transform: scale(.97); }
   display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .take-acts { display: flex; gap: 12px; }
 .gen-notice .link-btn { margin-left: 6px; }
+.pod-chip .nav-badge { margin-left: 2px; }
+.pod-suggest { display: grid; justify-items: start; gap: 4px; padding: 10px 12px; border-radius: var(--r-md); background: var(--ink-fill); }
+.pod-suggest p { margin: 0; font-size: var(--text-sm); color: var(--ink); }
+.pod-suggest .link-btn { margin-left: -10px; font-size: var(--text-sm); }
 @media (max-width: 720px) {
   /* The Pod charges by the minute, so its chip stays in the bar on phones. */
   .nav-right > .nav-menu.pod { display: block; }

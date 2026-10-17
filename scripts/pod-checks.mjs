@@ -775,3 +775,48 @@ await test('models: every bundled workflow is a linked API graph that saves medi
     if (/i2v/.test(w)) assert(Object.values(graph).some((n) => n.class_type === 'LoadImage' && n.inputs.image === 'start.png'), `${w} takes no start image`)
   }
 })
+
+// ---- Pod suggestion ---------------------------------------------------------------------------------
+
+await test('suggestion: Cloud runs are logged with their GPU time, and a busy hour suggests a Pod', async () => {
+  podMode()
+  const client = {
+    workflows: { fromFile: async () => ({ json: null, setInput() {} }) },
+    run: async () => ({ startedAt: '2026-10-17T10:00:00Z', completedAt: '2026-10-17T10:00:42Z', outputs: [{ type: 'image', contentType: 'image/png', name: 'x.png', toBytes: async () => Buffer.from('x') }] }),
+  }
+  await core.runComfy('image_sdxl', sdxl, { createClient: () => client, podPhase: async () => 'none', lease: async () => { throw new Error('no lease on Cloud') } })
+  const log = JSON.parse(fs.readFileSync(path.join(process.env.COMFYFIELD_HOME, '.comfyfield', 'cloud-runs.json'), 'utf8'))
+  assert.equal(log.length, 1)
+  assert.equal(log[0].seconds, 42)
+  assert.equal(log[0].minVramGb, 12, 'SDXL needs 12 GB')
+
+  const now = Date.now()
+  const rungs = [{ name: 'RTX PRO 4000', vramGb: 24, usdPerHr: 0.7, inStock: false }, { name: 'RTX PRO 4500', vramGb: 32, usdPerHr: 0.9, inStock: true }]
+  let asked
+  const quote = async ({ minVramGb }) => { asked = minVramGb; return { rungs: rungs.filter((r) => r.vramGb >= minVramGb) } }
+  const fresh = () => { podMode(); return now }
+  fresh()
+  core.logCloudRun({ seconds: 300, minVramGb: 12, at: now - 10 * 60_000 })
+  core.logCloudRun({ seconds: 300, minVramGb: 24, at: now - 5 * 60_000 })
+  assert.equal(await core.podSuggestion({ now, quote }), null, 'two runs are not a session')
+  core.logCloudRun({ seconds: 300, minVramGb: 12, at: now - 60_000 })
+  const s = await core.podSuggestion({ now, quote })
+  assert.equal(asked, 24, 'sized for the largest recent run')
+  assert.equal(s.runs, 3)
+  assert(Math.abs(s.cloudUsd - 900 * core.CLOUD_USD_PER_GPU_SEC) < 1e-9)
+  assert.equal(s.gpu, 'RTX PRO 4500', 'the cheapest GPU that is free')
+  assert.equal(s.podUsdPerHr, 0.9)
+
+  fresh()
+  for (let i = 0; i < 5; i++) core.logCloudRun({ seconds: 60, at: now - i * 60_000 })
+  assert.equal(await core.podSuggestion({ now, quote }), null, '$0.38 of Cloud time is under 80% of an hour on a Pod')
+  fresh()
+  for (let i = 0; i < 3; i++) core.logCloudRun({ seconds: 600, at: now - 2 * 3_600_000 })
+  assert.equal(await core.podSuggestion({ now, quote }), null, 'only the last hour counts')
+  fresh()
+  for (let i = 0; i < 3; i++) core.logCloudRun({ seconds: 600, at: now })
+  assert.equal(await core.podSuggestion({ now, quote: async () => ({ rungs: [{ name: 'X', vramGb: 24, usdPerHr: null }] }) }), null, 'no price, no suggestion')
+  core.logCloudRun({ seconds: 1, at: now - 25 * 3_600_000 })
+  core.logCloudRun({ seconds: 1, at: now })
+  assert.equal(JSON.parse(fs.readFileSync(path.join(process.env.COMFYFIELD_HOME, '.comfyfield', 'cloud-runs.json'), 'utf8')).length, 4, 'the log keeps one day')
+})
