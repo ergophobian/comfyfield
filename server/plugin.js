@@ -224,7 +224,7 @@ function mount(server) {
   server.middlewares.use(async (req, res, next) => {
     const url = new URL(req.url, 'http://local')
     try {
-      if (url.pathname === '/api/pod' && req.method === 'GET') return send(res, 200, core.pod().status())
+      if (url.pathname === '/api/pod' && req.method === 'GET') return send(res, 200, { ...core.pod().status(), mode: core.config('comfy').mode || 'local' })
       if (url.pathname === '/api/pod/quote') return send(res, 200, await podQuote(url.searchParams.get('workflow')))
       if (url.pathname.startsWith('/api/pod/') && req.method === 'POST') return send(res, 200, await podAction(url.pathname.slice('/api/pod/'.length), await body(req)))
       if (url.pathname === '/api/connections' && req.method === 'GET') return send(res, 200, core.connections())

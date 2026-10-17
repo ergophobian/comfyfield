@@ -40,11 +40,15 @@ export const falCategories = [
 ]
 
 export const providerInfo = {
-  comfy: { name: 'ComfyUI', blurb: 'Run workflows on your own ComfyUI or Comfy Cloud. Your Comfy key also unlocks hosted models through Comfy Router.', fields: [
-    { id: 'mode', label: 'Run workflows on', options: [{ value: 'local', label: 'Local' }, { value: 'cloud', label: 'Comfy Cloud' }] },
+  comfy: { name: 'ComfyUI', blurb: 'Run workflows on your own ComfyUI, Comfy Cloud or a Pod on RunPod. Your Comfy key also unlocks hosted models through Comfy Router.', fields: [
+    { id: 'mode', label: 'Run workflows on', options: [{ value: 'local', label: 'Local' }, { value: 'cloud', label: 'Comfy Cloud' }, { value: 'pod', label: 'Pod' }] },
     { id: 'url', label: 'Server URL', placeholder: 'http://127.0.0.1:8188' },
     { id: 'key', label: 'Comfy API key', placeholder: 'Required for Cloud, Router and partner nodes', secret: true },
   ], link: 'https://docs.comfy.org' },
+  runpod: { name: 'RunPod', blurb: 'Your RunPod key starts a Pod: a GPU that runs ComfyUI for you, billed by the minute. Once the spend today reaches the daily cap, no new Pod starts.', fields: [
+    { id: 'key', label: 'API key', placeholder: 'RunPod API key', secret: true },
+    { id: 'cap', label: 'Daily cap in dollars', placeholder: '20' },
+  ], link: 'https://www.runpod.io/console/user/settings' },
   fal: { name: 'fal', blurb: 'One key for hosted FLUX, Kling, Seedance, Veo and more. Pay per run.', fields: [
     { id: 'key', label: 'API key', placeholder: 'fal key', secret: true },
   ], link: 'https://fal.ai/dashboard/keys' },

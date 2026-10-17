@@ -12,6 +12,7 @@ function load() {
 export function useGenerations() {
   const [items, setItems] = useState(load)
   const [error, setError] = useState(null)
+  const [retryLast, setRetryLast] = useState(null)
   const active = useRef(0)
   const waiting = useRef([])
   const busy = items.some((i) => i.pending)
@@ -31,8 +32,9 @@ export function useGenerations() {
   // meta can carry batch, row and prompt so the board can group results.
   function generate(model, opts, meta = {}) {
     const id = crypto.randomUUID()
-    const base = { aspect: opts.shape || opts.aspect, caption: opts.caption, model: model.name, kind: model.kind, ...meta }
+    const base = { aspect: opts.shape || opts.aspect, caption: opts.caption, model: model.name, kind: model.kind, provider: model.provider, ...meta }
     setError(null)
+    setRetryLast(null)
     setItems((xs) => [{ id, pending: true, ...base }, ...xs])
     waiting.current.push(async () => {
       setItems((xs) => xs.map((x) => (x.id === id ? { ...x, started: true } : x)))
@@ -42,8 +44,11 @@ export function useGenerations() {
           ? files.map((f, i) => ({ id: `${id}-${i}`, ...base, ...f, created: Date.now() }))
           : [x])))
       } catch (e) {
+        // Retry queues the same run again in place of the failed take.
+        const retry = () => { setItems((xs) => xs.filter((x) => x.id !== id)); generate(model, opts, meta) }
         setError(e.message)
-        setItems((xs) => xs.map((x) => (x.id === id ? { ...base, id, failed: e.message } : x)))
+        setRetryLast(() => retry)
+        setItems((xs) => xs.map((x) => (x.id === id ? { ...base, id, failed: e.message, retry } : x)))
       }
     })
     pump()
@@ -52,5 +57,5 @@ export function useGenerations() {
   const toggleApprove = (id) => setItems((xs) => xs.map((x) => (x.id === id ? { ...x, approved: !x.approved } : x)))
   const dismiss = (id) => setItems((xs) => xs.filter((x) => x.id !== id))
 
-  return { items, error, busy, generate, toggleApprove, dismiss, clear: () => setItems([]) }
+  return { items, error, retry: retryLast, busy, generate, toggleApprove, dismiss, clear: () => setItems([]) }
 }

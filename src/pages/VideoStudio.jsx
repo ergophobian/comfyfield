@@ -182,7 +182,7 @@ function CreateVideo({ preset, onPresets, setError, onRan, addBatch }) {
           {total > 0 ? (
             <>
               <strong>{batching ? `${prompts.length} ${prompts.length === 1 ? 'prompt' : 'prompts'} × ${perPrompt} = ` : ''}{total} {noun.video[total === 1 ? 0 : 1]}</strong>
-              {cost ? ` · ${costText(cost)}` : model.provider === 'comfy' ? connections.comfy?.mode === 'cloud' || model.workflow === 'h3_i2v' ? ' · uses Comfy credits' : ' · runs on your GPU' : model.provider === 'comfyRouter' ? ' · uses Comfy credits' : ''}
+              {cost ? ` · ${costText(cost)}` : model.provider === 'comfy' ? connections.comfy?.mode === 'cloud' || model.workflow === 'h3_i2v' ? ' · uses Comfy credits' : connections.comfy?.mode === 'pod' ? ' · runs on your Pod' : ' · runs on your GPU' : model.provider === 'comfyRouter' ? ' · uses Comfy credits' : ''}
             </>
           ) : 'The cost shows on Generate before you run'}
           {bal && <span>{bal}</span>}
@@ -309,7 +309,7 @@ export default function VideoStudio() {
           <Segmented value={main} onChange={setMain} options={mainTabs} />
         </div>
         <Banner />
-        {gens.error && <div className="notice glass error gen-notice">{gens.error}</div>}
+        {gens.error && <div className="notice glass error gen-notice">{gens.error}{gens.retry && <button type="button" className="link-btn" onClick={gens.retry}>Retry</button>}</div>}
         {main === 'how' ? explainer : <Feed kind="video" gens={gens} batches={batches} empty={explainer} />}
       </section>
 

@@ -10,6 +10,8 @@ const PRICES = {
   'NVIDIA RTX PRO 6000 Blackwell Server Edition': 1.69,
   'NVIDIA RTX PRO 6000 Blackwell Workstation Edition': 1.69,
 }
+// Secure cloud costs a little more, as on RunPod. The quote and the Pod use the same price.
+const price = (gpu, secure) => Math.round(((PRICES[gpu] || 1) + (secure ? 0.2 : 0)) * 100) / 100
 const ANSWERS = 4000
 const READY = 15000
 const DOWNLOAD = 8000
@@ -53,9 +55,9 @@ export function sandboxFetch({ file, now = Date.now, mode = process.env.COMFYFIE
       if (u.pathname === '/v1/pods' && method === 'POST') {
         if (mode === 'nogpu') return json({ error: 'create pod: There are no instances currently available' }, 500)
         const pod = {
-          id: `sandbox${now().toString(36)}`, name: body.name, desiredStatus: 'RUNNING', costPerHr: PRICES[body.gpuTypeIds[0]] || 1,
+          id: `sandbox${now().toString(36)}`, name: body.name, desiredStatus: 'RUNNING', costPerHr: price(body.gpuTypeIds[0], body.cloudType === 'SECURE'),
           createdAt: new Date(now()).toISOString(), env: body.env, volumeInGb: body.volumeInGb, machine: { gpuTypeId: body.gpuTypeIds[0] },
-          vram: body.gpuTypeIds[0].includes('6000') ? 96 : body.gpuTypeIds[0].includes('4500') ? 32 : 24, bootAt: now(), downloads: {},
+          vram: body.gpuTypeIds[0].includes('6000') ? 96 : body.gpuTypeIds[0].includes('4500') ? 32 : 24, bootAt: now(), downloads: {}, secure: body.cloudType === 'SECURE',
         }
         save({ ...pods, [pod.id]: pod })
         return json(pod, 201)
@@ -65,7 +67,7 @@ export function sandboxFetch({ file, now = Date.now, mode = process.env.COMFYFIE
       if (method === 'GET') return json(pod)
       if (method === 'DELETE') { pod.desiredStatus = 'TERMINATED'; save(pods); return json(null, 204) }
       if (verb === 'stop') { pod.desiredStatus = 'EXITED'; pod.costPerHr = 0; save(pods); return json(pod) }
-      if (verb === 'start') { pod.desiredStatus = 'RUNNING'; pod.costPerHr = PRICES[pod.machine.gpuTypeId] || 1; pod.bootAt = now() - READY / 2; pod.hb = null; save(pods); return json(pod) }
+      if (verb === 'start') { pod.desiredStatus = 'RUNNING'; pod.costPerHr = price(pod.machine.gpuTypeId, pod.secure); pod.bootAt = now() - READY / 2; pod.hb = null; save(pods); return json(pod) }
       return json({ error: 'not found' }, 404)
     }
 
@@ -74,7 +76,7 @@ export function sandboxFetch({ file, now = Date.now, mode = process.env.COMFYFIE
       if (q.includes('myself')) return json({ data: { myself: { id: 'sandbox-user' } } })
       const data = {}
       for (const [, alias, id, secure] of q.matchAll(/(\w+): gpuTypes\(input: \{id: "([^"]+)"\}\) \{ lowestPrice\(input: \{gpuCount: 1, secureCloud: (true|false)\}\)/g)) {
-        data[alias] = [{ lowestPrice: { uninterruptablePrice: (PRICES[id] || 1) + (secure === 'true' ? 0.2 : 0), availableGpuCounts: mode === 'nogpu' ? [] : [1, 2], stockStatus: 'High' } }]
+        data[alias] = [{ lowestPrice: { uninterruptablePrice: price(id, secure === 'true'), availableGpuCounts: mode === 'nogpu' ? [] : [1, 2], stockStatus: 'High' } }]
       }
       return json({ data })
     }

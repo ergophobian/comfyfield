@@ -37,6 +37,8 @@ import { AppCtx } from './lib/appContext.js'
 import { formatById } from './lib/formats/index.js'
 import { getConnections } from './lib/providers.js'
 import { useGenerations } from './lib/useGenerations.js'
+import { usePodPolling } from './lib/usePod.js'
+import PodSheet from './components/pod/PodSheet.jsx'
 import { usePicker } from './lib/usePicker.js'
 
 export default function App() {
@@ -47,6 +49,7 @@ export default function App() {
   const picker = usePicker(connections)
   const [sheet, setSheet] = useState(null)
   useEffect(() => { getConnections().then(setConnections) }, [])
+  usePodPolling()
 
   // One format sheet for the whole app, so any page, card or "Use in" menu can open a format.
   const ctx = useMemo(() => ({
@@ -100,6 +103,7 @@ export default function App() {
           <Route path="/connections" element={<Connections />} />
         </Routes>
       </div>
+      <PodSheet />
       {sheet && <RecipeSheet key={sheet.format.id} recipe={sheet.format} initial={sheet.initial} gens={gens} connections={connections} onClose={() => setSheet(null)} />}
     </AppCtx.Provider>
   )

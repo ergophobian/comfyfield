@@ -124,7 +124,7 @@ export default function ImageStudio() {
         <Feed kind="image" gens={gens} batches={batches} size={view} empty={hero} />
       </section>
 
-      {(error || gens.error) && <div className="notice glass error gen-notice">{error || gens.error}</div>}
+      {(error || gens.error) && <div className="notice glass error gen-notice">{error || gens.error}{!error && gens.retry && <button type="button" className="link-btn" onClick={gens.retry}>Retry</button>}</div>}
 
       <form className={`composer glass gen-bar${dragging ? ' dragging' : ''}`} onSubmit={(e) => { e.preventDefault(); go() }}
         onDragOver={(e) => { if (dropOk(e)) { e.preventDefault(); setDragging(true) } }}
@@ -190,7 +190,7 @@ export default function ImageStudio() {
             {connected && (total > 0 ? (
               <span>
                 <strong>{batchMode ? `${prompts.length} ${prompts.length === 1 ? 'prompt' : 'prompts'} × ${count} = ` : ''}{total} {noun.image[total === 1 ? 0 : 1]}</strong>
-                {cost ? ` · ${costText(cost)}` : model.provider === 'comfy' ? connections.comfy?.mode === 'cloud' ? ' · uses Comfy credits' : ' · runs on your GPU' : model.provider === 'comfyRouter' ? ' · uses Comfy credits' : ''}
+                {cost ? ` · ${costText(cost)}` : model.provider === 'comfy' ? connections.comfy?.mode === 'cloud' ? ' · uses Comfy credits' : connections.comfy?.mode === 'pod' ? ' · runs on your Pod' : ' · runs on your GPU' : model.provider === 'comfyRouter' ? ' · uses Comfy credits' : ''}
               </span>
             ) : <span>{batchMode ? 'Add prompts to see the total' : 'The cost shows on Generate before you run'}</span>)}
             {bal && <span>{bal}</span>}

@@ -1,4 +1,5 @@
 import { generate as runComfy } from './comfy.js'
+import { ensurePod } from './usePod.js'
 import { comfyVars, comfyRouterInput, falInput, durationsFromProps } from '../../shared/mapping.js'
 
 const schemas = new Map()
@@ -72,6 +73,8 @@ export async function run(model, opts) {
     return files
   }
   if (model.provider === 'comfy') {
+    // In Pod mode, a run with no ready Pod waits for the start sheet; it never starts one itself.
+    await ensurePod(model.workflow)
     return runComfy(model.workflow, comfyVars(model.kind, opts))
   }
   if (model.provider === 'fal') {
