@@ -37,7 +37,8 @@ const DIRS = 'checkpoints diffusion_models text_encoders vae loras upscale_model
 // The token and the pod-scoped RUNPOD_API_KEY arrive in the Pod env. Nothing here prints them,
 // and there is no `set -x`, because the status server serves the boot log.
 export function podBootScript() {
-  const statusd = fs.readFileSync(path.join(HERE, 'pod-statusd.py'), 'utf8')
+  // A Windows checkout may hold CRLF; the Pod's bash wants LF.
+  const statusd = fs.readFileSync(path.join(HERE, 'pod-statusd.py'), 'utf8').replace(/\r\n/g, '\n')
   const paths = DIRS.split(' ').map((d) => `  ${d}: ${d}`).join('\n')
   return `#!/bin/bash
 CF=/root/cf
