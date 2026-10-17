@@ -8,7 +8,11 @@ import { Comfy } from '@comfyorg/sdk'
 import { models as pinned, falCategories } from '../src/lib/catalog.js'
 import { comfyVars, comfyRouterInput, falInput, estimate, fill } from '../shared/mapping.js'
 
+import { podManager } from './pod.js'
+import { sandboxFetch } from './podSandbox.js'
+
 export { podBootScript, podStartCmd } from './podBoot.js'
+export { GPU_LADDER, NO_POD } from './pod.js'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -17,6 +21,7 @@ export const providers = {
   fal: { env: ['FAL_KEY'], fields: ['key'] },
   google: { env: ['GEMINI_API_KEY'], fields: ['key'] },
   elevenlabs: { env: ['ELEVENLABS_API_KEY'], fields: ['key'] },
+  runpod: { env: ['RUNPOD_API_KEY', 'RUNPOD_DAILY_CAP'], fields: ['key', 'cap'] },
 }
 
 export const home = () => path.resolve(process.env.COMFYFIELD_HOME || '.', '.comfyfield')
@@ -41,6 +46,21 @@ export function config(id) {
 export const mask = (v) => (v ? `${v.slice(0, 4)}…${v.slice(-4)}` : '')
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+
+// The one Pod manager for this process. COMFYFIELD_POD_SANDBOX swaps RunPod and the Pod for fakes.
+let podOne
+const sandboxed = () => Boolean(process.env.COMFYFIELD_POD_SANDBOX)
+export function pod() {
+  if (!podOne) {
+    const sandbox = sandboxed()
+    podOne = podManager({
+      dir: home, sandbox,
+      keys: () => (sandbox ? { ...config('runpod'), key: 'sandbox' } : config('runpod')),
+      ...(sandbox ? { fetch: sandboxFetch({ file: () => path.join(home(), 'pod-sandbox.json') }) } : {}),
+    })
+  }
+  return podOne
+}
 
 export function mimeExt(mime) {
   const t = (mime || '').split('/')[1]?.split(';')[0] || 'png'
@@ -304,6 +324,7 @@ export async function testConnection(id) {
     return r.ok
   }
   if (id === 'fal') return Boolean(c.key) // fal has no free auth-check endpoint
+  if (id === 'runpod') return pod().test()
   return false
 }
 
@@ -315,12 +336,16 @@ export function connections() {
     return [id, { connected: Boolean(id === 'comfy' ? c.mode === 'cloud' ? c.key : c.url || c.key : c.key), url: c.url, key: mask(c.key), ...(id === 'comfy' ? { mode: c.mode || 'local' } : {}) }]
   }))
   out.comfyRouter = { connected: Boolean(config('comfy').key) }
+  const rp = config('runpod')
+  out.runpod = { connected: Boolean(rp.key) || sandboxed(), key: mask(rp.key), cap: pod().status().spend.cap, sandbox: sandboxed() }
   return out
 }
 
 export function saveConnection(id, values) {
   if (!providers[id]) throw Object.assign(new Error('Unknown provider'), { status: 400 })
   if (id === 'comfy' && values.mode && !['local', 'cloud'].includes(values.mode)) throw Object.assign(new Error('Choose Local or Comfy Cloud.'), { status: 400 })
+  if (id === 'runpod' && values.cap != null && !(parseFloat(values.cap) > 0)) throw Object.assign(new Error('The daily cap is a dollar amount above 0.'), { status: 400 })
+  if (id === 'runpod' && values.cap != null) values = { ...values, cap: String(Math.round(parseFloat(values.cap) * 100) / 100) }
   const keys = readKeys()
   keys[id] = { ...keys[id], ...values }
   writeKeys(keys)

@@ -192,15 +192,33 @@ async function importUrl({ url }) {
 export default function comfyfieldApi() {
   return {
     name: 'comfyfield-api',
-    configureServer: (server) => mount(server.middlewares),
-    configurePreviewServer: (server) => mount(server.middlewares),
+    configureServer: (server) => mount(server),
+    configurePreviewServer: (server) => mount(server),
   }
 }
 
-function mount(app) {
-  app.use(async (req, res, next) => {
+// Pod actions from the chip and the start sheet. Only these start, pause, resume or terminate a Pod.
+async function podAction(action, { minVramGb, volumeGb, now } = {}) {
+  const p = core.pod()
+  if (action === 'start') return p.start({ minVramGb: Number(minVramGb) || 0, volumeGb: Number(volumeGb) || 60 })
+  if (action === 'pause') return p.pause({ now: Boolean(now) })
+  if (action === 'resume') return p.resume()
+  if (action === 'terminate') return p.terminate({ now: Boolean(now) })
+  if (action === 'keep') return p.keep()
+  throw Object.assign(new Error('Unknown Pod action'), { status: 404 })
+}
+
+function mount(server) {
+  // The app's server is the one process that watches the Pod: heartbeats, spend and the guards.
+  // Vite restarts its server when a config file changes, so the monitor stops with it.
+  core.pod().startMonitor()
+  server.httpServer?.once('close', () => core.pod().stopMonitor())
+  server.middlewares.use(async (req, res, next) => {
     const url = new URL(req.url, 'http://local')
     try {
+      if (url.pathname === '/api/pod' && req.method === 'GET') return send(res, 200, core.pod().status())
+      if (url.pathname === '/api/pod/quote') return send(res, 200, await core.pod().quote({ minVramGb: Number(url.searchParams.get('minVramGb')) || 0 }))
+      if (url.pathname.startsWith('/api/pod/') && req.method === 'POST') return send(res, 200, await podAction(url.pathname.slice('/api/pod/'.length), await body(req)))
       if (url.pathname === '/api/connections' && req.method === 'GET') return send(res, 200, core.connections())
       if (url.pathname === '/api/connections' && req.method === 'POST') {
         const { id, values } = await body(req)
@@ -244,7 +262,7 @@ function mount(app) {
       }
       if (url.pathname.startsWith('/comfy/')) return proxyComfy(req, res, url)
     } catch (e) {
-      return send(res, e.status || 500, { error: e.message })
+      return send(res, e.status || 500, { error: e.message, ...(e.code ? { code: e.code } : {}) })
     }
     next()
   })
