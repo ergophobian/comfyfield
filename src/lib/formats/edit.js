@@ -23,9 +23,10 @@ const imageEdits = [
   open({
     id: 'inpaint', name: 'Paint to change', kind: 'image', category: 'image-edit',
     blurb: 'Paint over part of a picture and say what it should become.',
-    runsOn: 'Qwen-Image 2.1', workflow: 'qwen_edit_inpaint',
+    engine: 'fal', model: 'fal-ai/flux-pro/v1/fill', runsOn: 'Flux Fill via fal',
+    steps: [{ id: 'generate', provider: 'fal', endpoint: 'fal-ai/flux-pro/v1/fill', bindings: { image_url: 'image.url', mask_url: 'image.maskUrl' } }],
     inputs: [
-      { id: 'image', type: 'draw', mode: 'mask', label: 'Photo, then paint over what should change' },
+      { id: 'image', type: 'mask', label: 'Photo, then paint over what should change' },
       { id: 'change', type: 'text', label: 'What it should become', placeholder: 'A bowl of ripe lemons' },
     ],
     prompt: 'Change only the painted area into {change}. Match the lighting, perspective, scale, color and texture of the rest of the picture so the edit blends in, and keep everything outside the painted area exactly the same.',
@@ -217,7 +218,7 @@ const videoEdits = [
         { id: 'photo', label: 'Your own photo' },
         { id: 'character', label: 'Saved character' },
       ] },
-      { id: 'face', type: 'image', label: 'Photo of your own face', when: ['source', 'photo'] },
+      { id: 'face', type: 'face', label: 'Choose your face', when: ['source', 'photo'] },
       { id: 'character', type: 'character', label: 'Saved character', when: ['source', 'character'] },
     ],
     prompt: 'Replace the face of the main person in the video with the face from the reference. Keep their expressions, lip movement, head motion, hair, outfit, lighting and everything else in every frame, with skin tone and light that blend naturally.',

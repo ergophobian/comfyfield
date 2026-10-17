@@ -97,9 +97,11 @@ function CreateVideo({ preset, onPresets, setError, onRan, addBatch }) {
     onRan()
   }
 
-  const openAsFlow = () => {
-    openFlow(flowFromBatch({ prompts: prompts.map(withMove), model, aspect: ratio, duration: dur, takes, count: 1 }))
-    navigate('/flows')
+  const openAsFlow = async () => {
+    try {
+      await openFlow(flowFromBatch({ prompts: prompts.map(withMove), model, aspect: ratio, duration: dur, takes, count: 1 }))
+      navigate('/flows')
+    } catch (e) { setError(e.message) }
   }
 
   return (

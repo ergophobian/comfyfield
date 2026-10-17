@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { IconClose } from './Icons.jsx'
 import { Field } from './formats/Fields.jsx'
-import { initialValues, missingInputs, recipeModel, recipeOptions, visibleInputs } from '../lib/recipes.js'
+import { initialValues, missingInputs, visibleInputs } from '../lib/recipes.js'
+import { stepModel } from '../lib/formats/options.js'
+import FormatReview from './formats/Review.jsx'
 import { isWired } from '../lib/formats/index.js'
-import { models as catalog, providerInfo } from '../lib/catalog.js'
+import { providerInfo } from '../lib/catalog.js'
 import { estimate, money, useModelMeta } from '../lib/cost.js'
 
 const calm = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
@@ -62,19 +64,28 @@ export function RecipeSheet({ recipe, gens, connections, onClose, initial }) {
   const [leaving, close] = useDismiss(onClose)
   const [values, setValues] = useState(() => ({ ...initialValues(recipe), ...initial }))
   const [error, setError] = useState(null)
-  const model = recipeModel(recipe, catalog)
+  const [session, setSession] = useState(null)
+  const [running, setRunning] = useState(false)
+  const model = stepModel(recipe, recipe.steps.find((step) => !step.type), values)
+  const provider = providerInfo[model.provider === 'comfyRouter' ? 'comfy' : model.provider]
   const metaOf = useModelMeta([model])
-  const set = (id, v) => setValues((x) => ({ ...x, [id]: v }))
+  const set = (id, v) => { setSession(null); setValues((x) => ({ ...x, [id]: v })) }
   const wired = isWired(recipe)
-  const connected = model.provider === 'comfy' || connections[model.provider]?.connected
+  const connected = model.provider === 'comfy' || connections[model.provider === 'comfyRouter' ? 'comfy' : model.provider]?.connected
   const missing = missingInputs(recipe, values)
   const each = estimate(model, metaOf(model), { aspect: '1:1', count: 1, duration: recipe.settings?.duration })
 
-  const run = (e) => {
+  const run = async (e) => {
     e.preventDefault()
     if (!wired || missing.length || !connected) return
-    gens.generate(model, recipeOptions(recipe, values))
-    close()
+    setRunning(true)
+    setError(null)
+    try {
+      const next = await gens.generateFormat(recipe, values)
+      if (next.flow.nodes.some((node) => ['writer', 'approve'].includes(node.type))) setSession(next)
+      else close()
+    } catch (e) { setError(e.message) }
+    finally { setRunning(false) }
   }
 
   return (
@@ -95,15 +106,16 @@ export function RecipeSheet({ recipe, gens, connections, onClose, initial }) {
             ))}
           </div>
           {error && <p className="sheet-error">{error}</p>}
-          {wired && !connected && <p className="sheet-note">This runs on {providerInfo[model.provider].name}. <Link to="/connections">Add your key</Link> to use it.</p>}
+          {session && <FormatReview session={session} />}
+          {wired && !connected && <p className="sheet-note">This runs on {provider.name}. <Link to="/connections">Add your key</Link> to use it.</p>}
         </div>
         <div className="sheet-foot">
           {wired ? (
-            <span className="muted">{each ? `${each.approx ? '≈' : ''}${money(each.usd)} per run` : `Runs on ${providerInfo[model.provider].name}`}</span>
+            <span className="muted">{each ? `${each.approx ? '≈' : ''}${money(each.usd)} per run` : `Runs on ${provider.name}`}</span>
           ) : (
             <span className="muted">Not wired yet. Runs on {recipe.runsOn || 'open weights'} once the engine is connected.</span>
           )}
-          <button className="btn-blue" disabled={!wired || missing.length > 0 || !connected}>Run</button>
+          <button className="btn-blue" disabled={running || !wired || missing.length > 0 || !connected}>{running ? 'Working' : 'Run'}</button>
         </div>
       </form>
     </div>

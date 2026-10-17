@@ -7,6 +7,10 @@ import { aspects } from '../../lib/catalog.js'
 import { durationsFor } from '../../lib/providers.js'
 import { csvPrompts, promptsOf } from '../../lib/flowEngine.js'
 import { nodeLabels } from '../../lib/flowStore.js'
+import { WriterReview } from './nodes.jsx'
+import { widgetTypes } from '../../../shared/widgetInputs.js'
+import { Field } from '../formats/Fields.jsx'
+import StitchPanel from './StitchPanel.jsx'
 
 const blurbs = {
   approve: 'Nothing passes this gate until you approve takes and press Send. Send only starts nodes after it that have no results yet.',
@@ -104,13 +108,38 @@ function ImagePanel({ node, patch, upload }) {
   )
 }
 
+function WriterPanel({ node, patch }) {
+  const { id, data } = node
+  return (
+    <>
+      <WriterReview id={id} />
+      <p className="muted fp-blurb">Connect images and a prompt node for the user note. Changes to the instructions apply on Rerun.</p>
+      <div className="fp-field"><label htmlFor="writer-instructions">Writer instructions</label>
+        <textarea id="writer-instructions" className="fp-text" rows={7} value={data.instructions || ''} onChange={(e) => patch(id, { instructions: e.target.value })} />
+      </div>
+      <div className="fp-field"><label htmlFor="writer-note">User note</label>
+        <textarea id="writer-note" className="fp-text" rows={3} value={data.note || ''} onChange={(e) => patch(id, { note: e.target.value })} />
+      </div>
+      <div className="fp-field"><label htmlFor="writer-target">Target model or medium</label>
+        <input id="writer-target" className="fp-text" value={data.target || ''} placeholder="Image, video or a model name" onChange={(e) => patch(id, { target: e.target.value })} />
+      </div>
+    </>
+  )
+}
+
 export default function Panel({ node, patch, picker, connections, upload, remove }) {
+  const [error, setError] = useState(null)
+  useEffect(() => setError(null), [node.id])
   return (
     <aside className="fpanel glass pop" key={node.id}>
       <h3>{nodeLabels[node.type]}</h3>
       {node.type === 'prompt' && <PromptPanel node={node} patch={patch} />}
+      {widgetTypes.includes(node.type) && <Field input={{ id: node.id, type: node.type, label: nodeLabels[node.type] }} value={node.data.value} onChange={(value) => patch(node.id, { value })} setError={setError} />}
+      {error && <p className="sheet-error" role="alert">{error}</p>}
       {node.type === 'image' && <ImagePanel node={node} patch={patch} upload={upload} />}
+      {node.type === 'writer' && <WriterPanel node={node} patch={patch} />}
       {node.type === 'model' && <ModelPanel node={node} patch={patch} picker={picker} connections={connections} />}
+      {node.type === 'stitch' && <StitchPanel node={node} patch={patch} />}
       {blurbs[node.type] && <p className="muted fp-blurb">{blurbs[node.type]}</p>}
       <button type="button" className="btn-soft sm fp-del" onClick={() => remove(node.id)}>Delete node</button>
     </aside>
