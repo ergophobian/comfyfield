@@ -20,7 +20,8 @@ async function call(url, data) {
 }
 
 export async function refreshPod() {
-  try { set({ status: await call('/api/pod') }) } catch {}
+  // A server without the Pod routes answers with something else; keep the chip hidden then.
+  try { const status = await call('/api/pod'); if (status?.phase) set({ status }) } catch {}
   return state.status
 }
 
@@ -47,7 +48,7 @@ export function podLabel(s, now = Date.now()) {
   return { none: 'Off', ending: 'Ending after the queue', pausing: 'Pausing', paused: 'Paused', resuming: 'Resuming', terminating: 'Terminating' }[s.phase] || 'Pod'
 }
 
-export const spendText = (s) => (s ? `${money(s.spend.today)} of ${money(s.spend.cap)} today` : '')
+export const spendText = (s) => (s ? `${money(s.spend?.today)} of ${money(s.spend?.cap)} today` : '')
 
 // What a waiting take says while its run is held by the Pod. Only runs sent to a starting Pod carry `pod`;
 // a ready Pod takes every ComfyUI run.
