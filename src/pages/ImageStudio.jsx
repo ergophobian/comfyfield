@@ -192,7 +192,7 @@ export default function ImageStudio() {
             {connected && (total > 0 ? (
               <span>
                 <strong>{batchMode ? `${prompts.length} ${prompts.length === 1 ? 'prompt' : 'prompts'} × ${count} = ` : ''}{total} {noun.image[total === 1 ? 0 : 1]}</strong>
-                {cost ? ` · ${costText(cost)}` : model.provider === 'comfy' ? connections.comfy?.mode === 'cloud' ? pod?.phase === 'ready' ? ' · runs on your Pod' : ' · uses Comfy credits' : ' · runs on your GPU' : model.provider === 'comfyRouter' ? ' · uses Comfy credits' : ''}
+                {cost ? ` · ${costText(cost)}` : model.provider === 'comfy' ? connections.comfy?.mode === 'cloud' ? pod?.phase === 'ready' ? ' · runs on your Pod' : model.pod ? ' · runs on a Pod' : ' · uses Comfy credits' : ' · runs on your GPU' : model.provider === 'comfyRouter' ? ' · uses Comfy credits' : ''}
               </span>
             ) : <span>{batchMode ? 'Add prompts to see the total' : 'The cost shows on Generate before you run'}</span>)}
             {bal && <span>{bal}</span>}

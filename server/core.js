@@ -483,7 +483,7 @@ export function workflowNeeds(workflow) {
 // Comfy Cloud is the instant option and a Pod the long-term one. A ready Pod takes every ComfyUI run;
 // otherwise a run goes to Comfy Cloud at once, unless Cloud cannot take it. Then it waits for a
 // starting Pod, or fails with needs_pod so the app can offer to start one. It never starts a Pod.
-async function comfyTarget(files, podPhase, podVram) {
+async function comfyTarget(files, podPhase, podVram, label) {
   const phase = await podPhase()
   // A Pod too small for the run's models is no Pod for this run. Unknown memory counts as enough.
   const need = minVramOf(files)
@@ -492,7 +492,7 @@ async function comfyTarget(files, podPhase, podVram) {
   if (phase === 'ready' && fits) return 'pod'
   const missing = notOnCloud(files)
   const why = !config('comfy').key ? 'Comfy Cloud needs a Comfy API key on a paid plan'
-    : missing.length ? `${missing[0].name} is not on Comfy Cloud` : null
+    : missing.length ? `${label || missing[0].name} is not on Comfy Cloud yet` : null
   if (!why) return 'cloud'
   if (!fits && phase !== 'none') {
     throw Object.assign(new Error(`${why}, and this run needs a ${need} GB GPU; your Pod has ${vram} GB. Terminate it and start a new Pod.`), { status: 409, code: 'pod_too_small', reason: why })
@@ -513,7 +513,9 @@ export async function runComfy(workflow, vars = {}, { createClient = (key, baseU
   // 'pod' was its own choice before the Pod joined Comfy Cloud; read it as Comfy Cloud + Pod.
   if (mode === 'cloud' || mode === 'pod') {
     const needs = modelFilesOf(graph)
-    const target = await comfyTarget(needs, podPhase, podVram)
+    // Errors name the model as the picker shows it.
+    const label = pinned.find((m) => m.workflow === workflow || m.imageWorkflow === workflow)?.name
+    const target = await comfyTarget(needs, podPhase, podVram, label)
     // On the Pod the proxy token is the server credential; the Comfy key, when set, only pays partner nodes.
     let held = null
     let client

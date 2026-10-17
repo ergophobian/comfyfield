@@ -61,8 +61,8 @@ export const tools = [
 // `workflow` is the planned ComfyUI workflow id. `catalog` names the catalog model once it is wired;
 // until then the model shows as not wired yet.
 export const openModels = [
-  { id: 'flux-3-klein', name: 'FLUX 3 Image Klein', kind: 'image', vendor: 'Black Forest Labs', blurb: 'Next-generation images and edits, up to 10 references', workflow: 'flux_look', badge: 'New' },
-  { id: 'qwen-image-2-1', name: 'Qwen-Image 2.1', kind: 'image', vendor: 'Alibaba Qwen', blurb: 'Top open model for images and edits', workflow: 'qwen_image', badge: 'Top' },
+  { id: 'flux-3-klein', name: 'FLUX 3 Image Klein', kind: 'image', vendor: 'Black Forest Labs', blurb: 'Next-generation images and edits, up to 10 references', workflow: 'flux3_klein_t2i', catalog: 'comfy-flux3-klein', badge: 'New' },
+  { id: 'qwen-image-2-1', name: 'Qwen-Image 2.1', kind: 'image', vendor: 'Alibaba Qwen', blurb: 'Top open model for images and edits', workflow: 'qwen_image21_t2i', catalog: 'comfy-qwen-image21', badge: 'Top' },
   { id: 'qwen-image-edit-2511', name: 'Qwen-Image Edit 2511', kind: 'image', vendor: 'Alibaba Qwen', blurb: 'Instruction edits and multiple references', workflow: 'qwen_edit' },
   { id: 'z-image-turbo', name: 'Z-Image Turbo', kind: 'image', vendor: 'Alibaba Tongyi', blurb: 'Instant lifelike portraits', workflow: 'z_image' },
   { id: 'hidream-o1', name: 'HiDream-O1', kind: 'image', vendor: 'HiDream', blurb: 'Detailed images with readable text', workflow: 'hidream' },

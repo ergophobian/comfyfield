@@ -52,6 +52,9 @@ await test('boot script: start command fits, decodes and holds no secrets', () =
   assert(/--listen 127\.0\.0\.1 --port 8188/.test(script), 'raw ComfyUI stays private')
   assert(/--port 8189 --token "\$POD_TOKEN"/.test(script), 'the proxy needs the token')
   assert(/comfy-api-proxy==0\.1\.6/.test(script))
+  assert(script.includes('checkout --quiet 45bf90d1c91eecd782643346dcfb73cb0017667f'), 'ComfyUI is pinned to v0.41.1 by commit')
+  assert(script.indexOf('STAGE comfy-update') < script.indexOf('main.py'), 'ComfyUI moves before it starts')
+  assert(/main\.py [^\n]*--disable-all-custom-nodes/.test(script))
   assert(/podTerminate/.test(script.split('runpodctl')[0]), 'GraphQL is tried before runpodctl and REST')
   assert.throws(() => podStartCmd(randomBytes(80_000).toString('base64')), /65536-byte limit/)
 })
@@ -686,7 +689,7 @@ await test('routing: Comfy Cloud takes runs at once, a ready Pod takes every run
   assert.equal(noKey.leased, false, 'routing never starts or leases a Pod it does not have')
   const offCloud = await route('paused', { offCloud: true })
   assert.equal(offCloud.code, 'needs_pod')
-  assert.equal(offCloud.reason, 'sd_xl_base_1.0.safetensors is not on Comfy Cloud')
+  assert.equal(offCloud.reason, 'SDXL is not on Comfy Cloud yet', 'the reason names the model as the picker shows it')
   assert.equal((await route('ending', { key: '' })).code, 'needs_pod')
 })
 
@@ -703,6 +706,19 @@ await test('models: every bundled workflow fills all its placeholders, and the n
     assert(!filled.includes('{{'), `${w} leaves a placeholder unfilled`)
   }
   const ltx = models.find((m) => m.id === 'comfy-ltx25')
+  const qwen = models.find((m) => m.id === 'comfy-qwen-image21')
+  for (const a of ['16:9', '9:16', '1:1', '4:5']) {
+    const q = comfyVars('image', { prompt: 'x', aspect: a }, qwen.sizes)
+    assert(q.width % 32 === 0 && q.height % 32 === 0, `Qwen-Image 2.1 ${a}`)
+    const k = comfyVars('image', { prompt: 'x', aspect: a })
+    assert(k.width % 16 === 0 && k.height % 16 === 0, `FLUX 3 Klein ${a}`)
+  }
+  for (const m of models.filter((x) => x.provider === 'comfy')) {
+    const needsPod = [m.workflow, m.imageWorkflow].filter(Boolean).some((w) => core.workflowNeeds(w).files.some((f) => !f.cloud))
+    assert.equal(Boolean(m.pod), needsPod, `${m.id}: the catalog pod flag matches the model list`)
+  }
+  const { openModels } = await import('../src/lib/tools.js')
+  for (const o of openModels.filter((m) => m.catalog)) assert(models.some((m) => m.id === o.catalog && m.workflow === o.workflow), `${o.id} points at a real catalog model`)
   const h3 = models.find((m) => m.id === 'comfy-h3')
   for (const m of [ltx, h3]) {
     assert(m.imageWorkflow && fs.existsSync(`public/workflows/${m.imageWorkflow}.json`) && fs.existsSync(`public/workflows/${m.workflow}.json`))
@@ -714,7 +730,12 @@ await test('models: every bundled workflow fills all its placeholders, and the n
     }
   }
   assert.deepEqual(comfyVars('video', { prompt: 'x', aspect: '16:9', duration: 5 }).width, 768, 'models without sizes keep the old canvas')
-  assert.equal(core.workflowNeeds('h3_open_t2v').minVramGb, 96)
+  assert.equal(core.workflowNeeds('h3_open_t2v').minVramGb, 32)
+  assert.equal(core.workflowNeeds('flux3_klein_t2i').minVramGb, 24)
+  assert.deepEqual(core.workflowNeeds('qwen_image21_t2i').files.filter((f) => !f.cloud).map((f) => f.name), ['qwen_image_2.1_turbo_bf16.safetensors', 'qwen_image_2.1_vae_bf16.safetensors'], 'Qwen-Image 2.1 runs on a Pod')
+  const klein = core.workflowNeeds('flux3_klein_t2i').files.find((f) => f.dir === 'diffusion_models')
+  assert.equal(klein.name, 'flux3-image-klein-bf16.safetensors', 'the Pod saves the copy under the name the graph loads')
+  assert.equal(klein.path, 'model.safetensors')
   assert.equal(core.workflowNeeds('ltx25_i2v').minVramGb, 32)
   assert(core.workflowNeeds('ltx25_t2v').files.every((f) => f.cloud && /^[0-9a-f]{64}$/.test(f.sha256)))
 })
@@ -726,14 +747,14 @@ await test('routing: a ready Pod too small for the run sends it to Cloud, or say
   let leased = false
   const lease = async () => { leased = true; throw new Error('no lease for a small Pod') }
   await core.runComfy('h3_open_t2v', h3, { createClient: () => client, lease, podPhase: async () => 'ready', podVram: () => 24 })
-  assert.equal(leased, false, 'a 24 GB Pod does not take a 96 GB run; Cloud does')
+  assert.equal(leased, false, 'a 24 GB Pod does not take a 32 GB run; Cloud does')
   podMode({})
   await assert.rejects(core.runComfy('h3_open_t2v', h3, { createClient: () => client, lease, podPhase: async () => 'ready', podVram: () => 24 }),
-    (e) => e.code === 'pod_too_small' && /needs a 96 GB GPU; your Pod has 24 GB/.test(e.message))
+    (e) => e.code === 'pod_too_small' && /needs a 32 GB GPU; your Pod has 24 GB/.test(e.message))
   podMode()
   leased = false
-  await core.runComfy('h3_open_t2v', h3, { createClient: () => client, lease: async () => { leased = true; return { baseUrl: 'https://p-8189.proxy.runpod.net', token: 't', sandbox: false, signal: new AbortController().signal, reason: () => null, release() {} } }, podPhase: async () => 'ready', podVram: () => 96 })
-  assert.equal(leased, true, 'a 96 GB Pod takes it')
+  await core.runComfy('h3_open_t2v', h3, { createClient: () => client, lease: async () => { leased = true; return { baseUrl: 'https://p-8189.proxy.runpod.net', token: 't', sandbox: false, signal: new AbortController().signal, reason: () => null, release() {} } }, podPhase: async () => 'ready', podVram: () => 32 })
+  assert.equal(leased, true, 'a 32 GB Pod takes it')
 })
 
 await test('models: every bundled workflow is a linked API graph that saves media', async () => {

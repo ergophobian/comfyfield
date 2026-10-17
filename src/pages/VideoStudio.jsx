@@ -184,7 +184,7 @@ function CreateVideo({ preset, onPresets, setError, onRan, addBatch }) {
           {total > 0 ? (
             <>
               <strong>{batching ? `${prompts.length} ${prompts.length === 1 ? 'prompt' : 'prompts'} × ${perPrompt} = ` : ''}{total} {noun.video[total === 1 ? 0 : 1]}</strong>
-              {cost ? ` · ${costText(cost)}` : model.provider === 'comfy' ? connections.comfy?.mode === 'cloud' ? pod?.phase === 'ready' ? ' · runs on your Pod' : ' · uses Comfy credits' : model.workflow === 'h3_i2v' ? ' · uses Comfy credits' : ' · runs on your GPU' : model.provider === 'comfyRouter' ? ' · uses Comfy credits' : ''}
+              {cost ? ` · ${costText(cost)}` : model.provider === 'comfy' ? connections.comfy?.mode === 'cloud' ? pod?.phase === 'ready' ? ' · runs on your Pod' : model.pod ? ' · runs on a Pod' : ' · uses Comfy credits' : model.workflow === 'h3_i2v' ? ' · uses Comfy credits' : ' · runs on your GPU' : model.provider === 'comfyRouter' ? ' · uses Comfy credits' : ''}
             </>
           ) : 'The cost shows on Generate before you run'}
           {bal && <span>{bal}</span>}

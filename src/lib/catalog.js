@@ -8,6 +8,11 @@ export const models = [
   { id: 'comfy-h3-i2v', kind: 'video', provider: 'comfy', name: 'MiniMax H3 image to video', note: 'Comfy partner node on Local or Comfy Cloud. Attach a start image. Uses Comfy credits.', workflow: 'h3_i2v', durations: [5, 8, 10] },
   { id: 'comfy-flux', kind: 'image', provider: 'comfy', name: 'FLUX', note: 'On your ComfyUI', workflow: 'image_flux' },
   { id: 'comfy-sdxl', kind: 'image', provider: 'comfy', name: 'SDXL', note: 'On your ComfyUI', workflow: 'image_sdxl' },
+  // Newest open image models. Comfy Cloud does not have their files yet, so they run on a Pod.
+  // `pod`: a model file is not on Comfy Cloud (pod-checks keeps this in step with shared/modelFiles.js).
+  { id: 'comfy-flux3-klein', kind: 'image', provider: 'comfy', name: 'FLUX 3 Klein', note: 'Open weights from Black Forest Labs. Runs on a Pod.', workflow: 'flux3_klein_t2i', pod: true },
+  { id: 'comfy-qwen-image21', kind: 'image', provider: 'comfy', name: 'Qwen-Image 2.1', note: 'Open weights from Alibaba Qwen. Runs on a Pod.', workflow: 'qwen_image21_t2i', pod: true,
+    sizes: { '16:9': [1664, 928], '9:16': [928, 1664], '1:1': [1344, 1344], '4:5': [1152, 1440] } },
   { id: 'fal:fal-ai/nano-banana-pro', kind: 'image', provider: 'fal', name: 'Nano Banana Pro', note: 'Google, via fal', model: 'fal-ai/nano-banana-pro' },
   { id: 'fal:openai/gpt-image-2', kind: 'image', provider: 'fal', name: 'GPT Image 2', note: 'OpenAI, via fal', model: 'openai/gpt-image-2' },
   { id: 'fal:fal-ai/flux-2-pro', kind: 'image', provider: 'fal', name: 'Flux 2 Pro', note: 'Black Forest Labs, via fal', model: 'fal-ai/flux-2-pro' },

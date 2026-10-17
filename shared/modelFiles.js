@@ -3,8 +3,7 @@
 // Public Hugging Face repos only; sizes and sha256 from the Hugging Face API on 2026-10-17. The Pod
 // checks each download against its sha256, so a mirror can only deliver the original bytes.
 // `cloud` marks files Comfy Cloud already has (its model listing, 2026-10-16/17), so a run can go there at once.
-// `vramGb` is the GPU the Pod needs for the model; on the Pod's ComfyUI v0.33.1, MiniMax H3 needs 96 GB
-// because the fixes for offloading it to a smaller card came later.
+// `vramGb` is the GPU the Pod needs for the model, with ComfyUI offloading what does not fit.
 export const MODEL_FILES = {
   'flux1-dev-fp8.safetensors': { repo: 'Comfy-Org/flux1-dev', path: 'flux1-dev-fp8.safetensors', dir: 'checkpoints', gb: 17.25, vramGb: 24, cloud: true,
     sha256: '8e91b68084b53a7fc44ed2a3756d821e355ac1a7b6fe29be760c1db532f3d88a' },
@@ -29,7 +28,7 @@ export const MODEL_FILES = {
   'ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors': { repo: 'comfyicu/LTX-2.5', path: 'latent_upscale_models/ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors', dir: 'latent_upscale_models', gb: 1.00, vramGb: 0, cloud: true,
     sha256: 'eb5a71fe4068ee87ccdb1c3aa635e547ca76bd2d30ae20ae889f2c325c0677e8' },
   // MiniMax H3 open weights, repackaged by Comfy-Org (ungated).
-  'minimax_h3_fl2va_pruned_int8_convrot.safetensors': { repo: 'Comfy-Org/MiniMax-H3', path: 'diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors', dir: 'diffusion_models', gb: 20.97, vramGb: 96, cloud: true,
+  'minimax_h3_fl2va_pruned_int8_convrot.safetensors': { repo: 'Comfy-Org/MiniMax-H3', path: 'diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors', dir: 'diffusion_models', gb: 20.97, vramGb: 32, cloud: true,
     sha256: 'e889202c41dafb67b10d67b97f0d8541508036a6090af23425a5c2615d03c47a' },
   'minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors': { repo: 'Comfy-Org/MiniMax-H3', path: 'loras/minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors', dir: 'loras', gb: 1.96, vramGb: 0, cloud: true,
     sha256: '2339acdf19bfe123f46b971ea35d367a84adb85de43627e1eceafa5a5b2b111e' },
@@ -39,6 +38,24 @@ export const MODEL_FILES = {
     sha256: '7c1f131492e7eddacaac9069a61b81bdd39de5cc96561e677c5eab1cdce5e522' },
   'minimax_h3_audio_vae_fp32.safetensors': { repo: 'Comfy-Org/MiniMax-H3', path: 'vae/minimax_h3_audio_vae_fp32.safetensors', dir: 'vae', gb: 0.61, vramGb: 0, cloud: true,
     sha256: '8e505d95dd1561d47abd43d4238fd40d9bb1ae9e147ed0a4cba778d76ae4db48' },
+  // FLUX 3 Image Klein (distilled, with BFL's prompt upsampler). Comfy Cloud has only the text encoder
+  // and the VAE, so it runs on a Pod. The official black-forest-labs repo is gated; these copies have
+  // its exact sha256. The FLUX Kommunity License still applies to the weights.
+  'flux3-image-klein-bf16.safetensors': { repo: 'unsloth/flux-3-image-klein', path: 'model.safetensors', dir: 'diffusion_models', gb: 11.1, vramGb: 24, cloud: false,
+    sha256: 'c3e9813cdd049c831c836b2e9db61150e49a93fc1a4c63b256494642fee0bd7c' },
+  'qwen3.5_9b_flux3_prompt_upsampler_w4a8.safetensors': { repo: 'ml-resources/flux-3-image-klein-comfy', path: 'text_encoders/qwen3.5_9b_flux3_prompt_upsampler_w4a8.safetensors', dir: 'text_encoders', gb: 6.72, vramGb: 0, cloud: false,
+    sha256: 'e5d85a7421d197bf5a12474511936ecabce19a833252f16e9310a983194a4458' },
+  'qwen3vl_4b_bf16.safetensors': { repo: 'Comfy-Org/Qwen3-VL', path: 'text_encoders/qwen3vl_4b_bf16.safetensors', dir: 'text_encoders', gb: 8.88, vramGb: 0, cloud: true,
+    sha256: '36f3ff447ef59201722e8f9ce6020c9819fdcfba6aa2608c4e09b1c0ce114e34' },
+  'flux2-vae.safetensors': { repo: 'Comfy-Org/vae-text-encorder-for-flux-klein-4b', path: 'split_files/vae/flux2-vae.safetensors', dir: 'vae', gb: 0.34, vramGb: 0, cloud: true,
+    sha256: '868fe7b343cc8f3a19dbcfcafbc3d5f888802be3f89bd81b65b3621a066ce8f3' },
+  // Qwen-Image 2.1 Turbo, repackaged by Comfy-Org (ungated). Comfy Cloud lacks the model and its VAE.
+  'qwen_image_2.1_turbo_bf16.safetensors': { repo: 'Comfy-Org/Qwen-Image-2.1', path: 'diffusion_models/qwen_image_2.1_turbo_bf16.safetensors', dir: 'diffusion_models', gb: 14.23, vramGb: 24, cloud: false,
+    sha256: '8b74237a7f505773e2c66726fa696444b4c704585c93a347cff9044937f7914a' },
+  'qwen3vl_8b_bf16.safetensors': { repo: 'Comfy-Org/Qwen-Image-2.1', path: 'text_encoders/qwen3vl_8b_bf16.safetensors', dir: 'text_encoders', gb: 17.53, vramGb: 0, cloud: true,
+    sha256: '68bdc82bc1b66851162ae656225e7e2068166b603db19bd5d5a3b90eb12669a9' },
+  'qwen_image_2.1_vae_bf16.safetensors': { repo: 'Comfy-Org/Qwen-Image-2.1', path: 'vae/qwen_image_2.1_vae_bf16.safetensors', dir: 'vae', gb: 0.68, vramGb: 0, cloud: false,
+    sha256: 'bb21f7473051e1ac368515dd3f2e15cd44d7a11748ee8823e1ddca3e4876b7c9' },
 }
 
 // Which input of which loader names a file, and the ComfyUI folder it loads from.
