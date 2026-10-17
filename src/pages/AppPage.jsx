@@ -163,6 +163,7 @@ function AppView({ format, motion }) {
           {failed.map((g) => (
             <p key={g.id} className="app-failed">
               <span>{g.failed}</span>
+              {g.retry && <button type="button" className="link-btn" onClick={g.retry}>Retry</button>}
               <button type="button" className="link-btn" onClick={() => gens.dismiss(g.id)}>Dismiss</button>
             </p>
           ))}

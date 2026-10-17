@@ -1,10 +1,22 @@
+import { takeLabel, usePod } from '../lib/usePod.js'
+
 const ratio = (a) => (/^\d+:\d+$/.test(a) ? a.replace(':', ' / ') : '1 / 1')
 
 function Take({ it, onApprove, onDismiss }) {
+  const { status } = usePod()
   return (
     <div className={`take${it.pending ? ' pending' : ''}${it.approved ? ' approved' : ''}${it.failed ? ' failed' : ''}`} style={{ '--ar': ratio(it.aspect) }}>
-      {it.failed ? <span className="take-msg">Failed<button type="button" onClick={() => onDismiss(it.id)}>Dismiss</button></span>
-        : it.pending ? <span className="take-msg">{it.started ? 'Rendering' : 'Queued'}</span>
+      {it.failed ? (
+        <span className="take-msg">
+          Failed
+          {typeof it.failed === 'string' && <small title={it.failed}>{it.failed}</small>}
+          <span className="take-acts">
+            {it.retry && <button type="button" onClick={it.retry}>Retry</button>}
+            <button type="button" onClick={() => onDismiss(it.id)}>Dismiss</button>
+          </span>
+        </span>
+      )
+        : it.pending ? <span className="take-msg">{takeLabel(it, status) || (it.started ? 'Rendering' : 'Queued')}</span>
         : it.kind === 'video' ? <video src={it.url} autoPlay loop muted playsInline />
         : it.kind === 'audio' ? <audio src={it.url} controls />
         : <img src={it.url} alt={it.caption} />}

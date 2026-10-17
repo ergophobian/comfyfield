@@ -8,6 +8,13 @@ import { Comfy } from '@comfyorg/sdk'
 import { models as pinned, falCategories } from '../src/lib/catalog.js'
 import { comfyVars, comfyRouterInput, falInput, estimate, fill, falEndpointFor } from '../shared/mapping.js'
 import { renderStitch } from './stitch.js'
+import { modelFilesOf, minVramOf, notOnCloud, volumeFor } from '../shared/modelFiles.js'
+
+import { podManager } from './pod.js'
+import { sandboxFetch } from './podSandbox.js'
+
+export { podBootScript, podStartCmd } from './podBoot.js'
+export { GPU_LADDER, NO_POD } from './pod.js'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -16,6 +23,7 @@ export const providers = {
   fal: { env: ['FAL_KEY'], fields: ['key'] },
   google: { env: ['GEMINI_API_KEY'], fields: ['key'] },
   elevenlabs: { env: ['ELEVENLABS_API_KEY'], fields: ['key'] },
+  runpod: { env: ['RUNPOD_API_KEY', 'RUNPOD_DAILY_CAP'], fields: ['key', 'cap'] },
 }
 
 export const home = () => path.resolve(process.env.COMFYFIELD_HOME || '.', '.comfyfield')
@@ -40,6 +48,21 @@ export function config(id) {
 export const mask = (v) => (v ? `${v.slice(0, 4)}…${v.slice(-4)}` : '')
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+
+// The one Pod manager for this process. COMFYFIELD_POD_SANDBOX swaps RunPod and the Pod for fakes.
+let podOne
+const sandboxed = () => Boolean(process.env.COMFYFIELD_POD_SANDBOX)
+export function pod() {
+  if (!podOne) {
+    const sandbox = sandboxed()
+    podOne = podManager({
+      dir: home, sandbox,
+      keys: () => (sandbox ? { ...config('runpod'), key: 'sandbox' } : config('runpod')),
+      ...(sandbox ? { fetch: sandboxFetch({ file: () => path.join(home(), 'pod-sandbox.json') }) } : {}),
+    })
+  }
+  return podOne
+}
 
 export function mimeExt(mime) {
   const t = (mime || '').split('/')[1]?.split(';')[0] || 'png'
@@ -321,8 +344,8 @@ export async function writePrompts({ idea, n = 6, kind = 'video' }) {
 export async function testConnection(id) {
   const c = config(id)
   if (id === 'comfy') {
-    if (c.mode === 'cloud') {
-      if (!c.key) return false
+    if (c.mode === 'cloud' || c.mode === 'pod') {
+      if (!c.key) return pod().test()
       const r = await fetch('https://cloud.comfy.org/api/user', { headers: { 'X-API-Key': c.key } })
       return r.ok
     }
@@ -339,6 +362,7 @@ export async function testConnection(id) {
     return r.ok
   }
   if (id === 'fal') return Boolean(c.key) // fal has no free auth-check endpoint
+  if (id === 'runpod') return pod().test()
   return false
 }
 
@@ -378,15 +402,21 @@ export async function stitch({ preview = false, ...options } = {}) {
 export function connections() {
   const out = Object.fromEntries(Object.keys(providers).map((id) => {
     const c = config(id)
-    return [id, { connected: Boolean(id === 'comfy' ? c.mode === 'cloud' ? c.key : c.url || c.key : c.key), url: c.url, key: mask(c.key), ...(id === 'comfy' ? { mode: c.mode || 'local' } : {}) }]
+    // Comfy Cloud + Pod can run with a Comfy key, or with a RunPod key through a Pod.
+    const on = id !== 'comfy' ? c.key : c.mode === 'cloud' || c.mode === 'pod' ? c.key || config('runpod').key || sandboxed() : c.url || c.key
+    return [id, { connected: Boolean(on), url: c.url, key: mask(c.key), ...(id === 'comfy' ? { mode: c.mode === 'pod' ? 'cloud' : c.mode || 'local' } : {}) }]
   }))
   out.comfyRouter = { connected: Boolean(config('comfy').key) }
+  const rp = config('runpod')
+  out.runpod = { connected: Boolean(rp.key) || sandboxed(), key: mask(rp.key), cap: pod().status().spend.cap, sandbox: sandboxed() }
   return out
 }
 
 export function saveConnection(id, values) {
   if (!providers[id]) throw Object.assign(new Error('Unknown provider'), { status: 400 })
-  if (id === 'comfy' && values.mode && !['local', 'cloud'].includes(values.mode)) throw Object.assign(new Error('Choose Local or Comfy Cloud.'), { status: 400 })
+  if (id === 'comfy' && values.mode && !['local', 'cloud'].includes(values.mode)) throw Object.assign(new Error('Choose Local or Comfy Cloud + Pod.'), { status: 400 })
+  if (id === 'runpod' && values.cap != null && !(parseFloat(values.cap) > 0)) throw Object.assign(new Error('The daily cap is a dollar amount above 0.'), { status: 400 })
+  if (id === 'runpod' && values.cap != null) values = { ...values, cap: String(Math.round(parseFloat(values.cap) * 100) / 100) }
   const keys = readKeys()
   keys[id] = { ...keys[id], ...values }
   writeKeys(keys)
@@ -491,35 +521,96 @@ async function comfyImage(source) {
   return readLocal(source)
 }
 
-// Runs a bundled workflow on the user's ComfyUI and returns absolute file URLs.
-export async function runComfy(workflow, vars = {}, { createClient = (key) => new Comfy({ apiKey: key }) } = {}) {
-  if (!/^[a-z0-9_]+$/.test(workflow)) throw new Error('Invalid workflow name.')
+// The SDK reads COMFY_BASE_URL only when a client is made, so scope it to one `new Comfy()`.
+// Always pass apiKey: a key left in the environment would otherwise go to whatever URL is set.
+export function comfyClient(baseUrl, apiKey, options = {}) {
+  const saved = process.env.COMFY_BASE_URL
+  if (baseUrl) process.env.COMFY_BASE_URL = baseUrl
+  else delete process.env.COMFY_BASE_URL
+  try {
+    return new Comfy({ apiKey: apiKey || undefined, clientInfo: 'comfyfield', ...options })
+  } finally {
+    if (saved === undefined) delete process.env.COMFY_BASE_URL
+    else process.env.COMFY_BASE_URL = saved
+  }
+}
+
+function readWorkflow(workflow) {
+  if (!/^[a-z0-9_]+$/.test(workflow || '')) throw Object.assign(new Error('Invalid workflow name.'), { status: 400 })
   const file = path.join(ROOT, 'public', 'workflows', `${workflow}.json`)
-  if (!fs.existsSync(file)) throw new Error(`Workflow ${workflow} not found`)
-  const template = JSON.parse(fs.readFileSync(file, 'utf8'))
+  if (!fs.existsSync(file)) throw Object.assign(new Error(`Workflow ${workflow} not found`), { status: 404 })
+  return { file, template: JSON.parse(fs.readFileSync(file, 'utf8')) }
+}
+
+// What a Pod needs for a workflow before its first run: the files, the GPU memory and the disk.
+export function workflowNeeds(workflow) {
+  const files = modelFilesOf(readWorkflow(workflow).template)
+  return { files, minVramGb: minVramOf(files), volumeGb: volumeFor(files) }
+}
+
+// Comfy Cloud is the instant option and a Pod the long-term one. A ready Pod takes every ComfyUI run;
+// otherwise a run goes to Comfy Cloud at once, unless Cloud cannot take it. Then it waits for a
+// starting Pod, or fails with needs_pod so the app can offer to start one. It never starts a Pod.
+async function comfyTarget(files, podPhase) {
+  const phase = await podPhase()
+  if (phase === 'ready') return 'pod'
+  const missing = notOnCloud(files)
+  const why = !config('comfy').key ? 'Comfy Cloud needs a Comfy API key on a paid plan'
+    : missing.length ? `${missing[0].name} is not on Comfy Cloud` : null
+  if (!why) return 'cloud'
+  if (phase === 'starting' || phase === 'resuming') return 'pod'
+  throw Object.assign(new Error(`${why}, so this run needs a Pod. Start one in ComfyField from the Pod chip in the top bar.`), { status: 409, code: 'needs_pod', reason: why })
+}
+
+// Runs a bundled workflow on Local ComfyUI, Comfy Cloud or the Pod, and returns file URLs.
+export async function runComfy(workflow, vars = {}, { createClient = (key, baseUrl) => comfyClient(baseUrl, key), lease = (o) => pod().lease(o), podPhase = () => pod().phaseNow() } = {}) {
+  const { file, template } = readWorkflow(workflow)
   const inputs = [...JSON.stringify(template).matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1])
   for (const input of inputs) if (vars[input] == null || vars[input] === '') throw new Error(`Workflow ${workflow} requires ${input}.`)
   const graph = fill(template, vars)
   const loaders = Object.entries(template).filter(([, node]) => node.class_type === 'LoadImage' && node.inputs.image === '{{image}}')
   const image = loaders.length ? await comfyImage(vars.image) : null
-  if (config('comfy').mode === 'cloud') {
-    const key = comfyKey()
-    const client = createClient(key)
-    const wf = await client.workflows.fromFile(file)
-    wf.json = graph
-    for (const [id] of loaders) wf.setInput(id, 'image', client.assets.fromBytes(image.buf, { filename: `input.${mimeExt(image.mime)}`, contentType: image.mime }))
+  const mode = config('comfy').mode
+  // 'pod' was its own choice before the Pod joined Comfy Cloud; read it as Comfy Cloud + Pod.
+  if (mode === 'cloud' || mode === 'pod') {
+    const needs = modelFilesOf(graph)
+    const target = await comfyTarget(needs, podPhase)
+    // On the Pod the proxy token is the server credential; the Comfy key, when set, only pays partner nodes.
+    let held = null
+    let client
+    let partner
+    if (target === 'pod') {
+      held = await lease({ files: needs })
+      if (held.sandbox) {
+        held.release()
+        throw new Error('This is the sandbox Pod, so nothing renders. Unset COMFYFIELD_POD_SANDBOX to run on a real Pod.')
+      }
+      client = createClient(held.token, held.baseUrl)
+      partner = config('comfy').key || undefined
+    } else {
+      partner = comfyKey()
+      client = createClient(partner)
+    }
+    const where = target === 'pod' ? 'The Pod' : 'Comfy Cloud'
     try {
-      const job = await client.run(wf, { apiKey: key, timeoutMs: 30 * 60 * 1000 })
+      const wf = await client.workflows.fromFile(file)
+      wf.json = graph
+      for (const [id] of loaders) wf.setInput(id, 'image', client.assets.fromBytes(image.buf, { filename: `input.${mimeExt(image.mime)}`, contentType: image.mime }))
+      const job = await client.run(wf, { apiKey: partner, timeoutMs: 30 * 60 * 1000, ...(held ? { signal: held.signal } : {}) })
       const files = []
       for (const output of job.outputs) {
         if (!['image', 'video', 'audio'].includes(output.type)) continue
         files.push({ ...saveMedia(Buffer.from(await output.toBytes()), mimeExt(output.contentType)), kind: output.type, name: output.name })
       }
-      if (!files.length) throw new Error('Comfy Cloud finished but returned no media.')
+      if (!files.length) throw new Error(`${where} finished but returned no media.`)
       return files
     } catch (e) {
+      // A Pod paused or terminated mid-run says why, instead of an abort error.
+      if (held?.reason()) throw Object.assign(new Error(held.reason()), { status: 409 })
       if (e.httpStatus === 402 || e.code === 'insufficient_credits') throw comfyError({ status: 402 }, {})
       throw e
+    } finally {
+      held?.release()
     }
   }
   const base = comfyBase()

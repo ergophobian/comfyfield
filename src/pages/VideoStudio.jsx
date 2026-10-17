@@ -14,6 +14,7 @@ import { label, paramsFor, useModelInputs } from '../components/generate/useMode
 import { IconAt, IconBook, IconFolder, IconMute, IconPlay, IconSound } from '../components/generate/icons.jsx'
 import { IconAspect, IconClock, IconImage, IconSpark, IconStack, IconVideo } from '../components/Icons.jsx'
 import { useApp } from '../lib/appContext.js'
+import { usePod } from '../lib/usePod.js'
 import { openModels } from '../lib/tools.js'
 import { estimate, useBalance, useModelMeta } from '../lib/cost.js'
 import { flowFromBatch, openFlow } from '../lib/flowStore.js'
@@ -32,6 +33,7 @@ const animate = asOpen(openModels.find((m) => m.id === 'wan-animate-2'))
 
 function CreateVideo({ preset, onPresets, setError, onRan, addBatch }) {
   const { gens, connections } = useApp()
+  const { status: pod } = usePod()
   const pick = useGenModel('video')
   const { model } = pick
   const [start, setStart] = useState(null)
@@ -184,7 +186,7 @@ function CreateVideo({ preset, onPresets, setError, onRan, addBatch }) {
           {total > 0 ? (
             <>
               <strong>{batching ? `${prompts.length} ${prompts.length === 1 ? 'prompt' : 'prompts'} × ${perPrompt} = ` : ''}{total} {noun.video[total === 1 ? 0 : 1]}</strong>
-              {cost ? ` · ${costText(cost)}` : model.provider === 'comfy' ? connections.comfy?.mode === 'cloud' || model.workflow === 'h3_i2v' ? ' · uses Comfy credits' : ' · runs on your GPU' : model.provider === 'comfyRouter' ? ' · uses Comfy credits' : ''}
+              {cost ? ` · ${costText(cost)}` : model.provider === 'comfy' ? connections.comfy?.mode === 'cloud' ? pod?.phase === 'ready' ? ' · runs on your Pod' : ' · uses Comfy credits' : model.workflow === 'h3_i2v' ? ' · uses Comfy credits' : ' · runs on your GPU' : model.provider === 'comfyRouter' ? ' · uses Comfy credits' : ''}
             </>
           ) : 'The cost shows on Generate before you run'}
           {bal && <span>{bal}</span>}
@@ -311,7 +313,7 @@ export default function VideoStudio() {
           <Segmented value={main} onChange={setMain} options={mainTabs} />
         </div>
         <Banner />
-        {gens.error && <div className="notice glass error gen-notice">{gens.error}</div>}
+        {gens.error && <div className="notice glass error gen-notice">{gens.error}{gens.retry && <button type="button" className="link-btn" onClick={gens.retry}>Retry</button>}</div>}
         {main === 'how' ? explainer : <Feed kind="video" gens={gens} batches={batches} empty={explainer} />}
       </section>
 

@@ -197,7 +197,7 @@ export default function AudioStudio() {
         <div className="gen-main-head">
           <Segmented value={main} onChange={setMain} options={mainTabs} />
         </div>
-        {gens.error && <div className="notice glass error gen-notice">{gens.error}</div>}
+        {gens.error && <div className="notice glass error gen-notice">{gens.error}{gens.retry && <button type="button" className="link-btn" onClick={gens.retry}>Retry</button>}</div>}
         {main === 'how' ? explainer : <Feed kind="audio" gens={gens} batches={[]} empty={explainer} />}
       </section>
     </main>

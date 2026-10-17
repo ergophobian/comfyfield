@@ -62,6 +62,7 @@ check('local prompt route returns text and validation errors', async () => {
   const call = async (payload) => {
     const req = Readable.from([JSON.stringify(payload)])
     req.url = '/api/prompt'
+    req.headers = {}
     req.method = 'POST'
     let data
     const res = { setHeader() {}, end: (body) => { data = JSON.parse(body) } }

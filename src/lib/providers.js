@@ -1,4 +1,5 @@
 import { generate as runComfy } from './comfy.js'
+import { askPod } from './usePod.js'
 import { comfyVars, comfyRouterInput, falInput, durationsFromProps, hasImageInput, falEndpointFor } from '../../shared/mapping.js'
 
 const schemas = new Map()
@@ -52,7 +53,8 @@ async function post(url, payload) {
   return data
 }
 
-export async function run(model, opts) {
+// hooks.onPod: the run is waiting for a Pod, after the start sheet.
+export async function run(model, opts, hooks = {}) {
   if (model.provider === 'comfyRouter') {
     const files = []
     for (let i = 0; i < (model.kind === 'image' ? opts.count || 1 : 1); i++) {
@@ -61,7 +63,17 @@ export async function run(model, opts) {
     return files
   }
   if (model.provider === 'comfy') {
-    return runComfy(model.workflow, comfyVars(model.kind, opts))
+    // Comfy Cloud takes the run at once. When it cannot, the server says needs_pod: the start sheet
+    // asks once, then the same run goes again and waits for the Pod. It never starts one by itself.
+    const vars = comfyVars(model.kind, opts)
+    try {
+      return await runComfy(model.workflow, vars)
+    } catch (e) {
+      if (e.code !== 'needs_pod') throw e
+      hooks.onPod?.()
+      await askPod(model.workflow, e.reason)
+      return runComfy(model.workflow, vars)
+    }
   }
   if (model.provider === 'fal') {
     const endpoint = await endpointFor(model, Boolean(opts.images?.length))

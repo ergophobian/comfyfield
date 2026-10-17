@@ -165,16 +165,58 @@ async function importUrl({ url }) {
 export default function comfyfieldApi({ harness } = {}) {
   return {
     name: 'comfyfield-api',
-    configureServer: (server) => { const close = mount(server.middlewares, harness); server.httpServer?.once('close', close) },
-    configurePreviewServer: (server) => { const close = mount(server.middlewares, harness); server.httpServer?.once('close', close) },
+    configureServer: (server) => mount(server, harness),
+    configurePreviewServer: (server) => mount(server, harness),
   }
 }
 
-function mount(app, harness) {
+// Pod actions from the chip and the start sheet. Only these start, pause, resume or terminate a Pod.
+// A workflow name decides the GPU memory and disk; a workflow with a file no Pod can get fails here.
+const podNeeds = (workflow) => (workflow ? core.workflowNeeds(workflow) : { files: [], minVramGb: 0, volumeGb: 60 })
+
+async function podQuote(workflow) {
+  const needs = podNeeds(workflow)
+  return { ...(await core.pod().quote({ minVramGb: needs.minVramGb })), files: needs.files.map((f) => ({ name: f.name, gb: f.gb })), volumeGb: needs.volumeGb }
+}
+
+async function podAction(action, { workflow, now } = {}) {
+  const p = core.pod()
+  if (action === 'start') return p.start(podNeeds(workflow))
+  if (action === 'pause') return p.pause({ now: Boolean(now) })
+  if (action === 'resume') return p.resume()
+  if (action === 'terminate') return p.terminate({ now: Boolean(now) })
+  if (action === 'keep') return p.keep()
+  throw Object.assign(new Error('Unknown Pod action'), { status: 404 })
+}
+
+// A page on another site can send a request to localhost even when it cannot read the answer.
+// Browsers mark those; tools like curl and the CLI send neither header.
+export function crossSite(headers) {
+  const site = headers['sec-fetch-site']
+  if (site && site !== 'same-origin' && site !== 'none') return true
+  const origin = headers.origin
+  if (!origin) return false
+  try { return new URL(origin).host !== headers.host } catch { return true }
+}
+
+function mount(server, harness) {
+  // The app's server is the one process that watches the Pod: heartbeats, spend and the guards.
+  // Vite restarts its server when a config file changes, so the monitor stops with it.
+  core.pod().startMonitor()
   const agents = agentRoutes({ body, send, harness })
-  app.use(async (req, res, next) => {
+  server.httpServer?.once('close', () => { core.pod().stopMonitor(); agents.close().catch(() => {}) })
+  server.middlewares.use(async (req, res, next) => {
     const url = new URL(req.url, 'http://local')
+    // Anything that spends money or changes saved data must come from ComfyField's own pages.
+    if (url.pathname.startsWith('/api/') && req.method !== 'GET' && crossSite(req.headers)) return send(res, 403, { error: 'Requests from other sites are refused.' })
     try {
+      if (url.pathname === '/api/pod' && req.method === 'GET') {
+        const { mode, key } = core.config('comfy')
+        // instant: Comfy Cloud can take runs at once. 'pod' was its own mode before; it now means Comfy Cloud + Pod.
+        return send(res, 200, { ...core.pod().status(), mode: mode === 'pod' ? 'cloud' : mode || 'local', instant: Boolean(key) })
+      }
+      if (url.pathname === '/api/pod/quote') return send(res, 200, await podQuote(url.searchParams.get('workflow')))
+      if (url.pathname.startsWith('/api/pod/') && req.method === 'POST') return send(res, 200, await podAction(url.pathname.slice('/api/pod/'.length), await body(req)))
       if (await agents(req, res, url)) return
       if (url.pathname === '/api/connections' && req.method === 'GET') return send(res, 200, core.connections())
       if (url.pathname === '/api/connections' && req.method === 'POST') {
@@ -229,11 +271,10 @@ function mount(app, harness) {
       }
       if (url.pathname.startsWith('/comfy/')) return proxyComfy(req, res, url)
     } catch (e) {
-      return send(res, e.status || 500, { error: e.message })
+      return send(res, e.status || 500, { error: e.message, ...(e.code ? { code: e.code } : {}), ...(e.reason ? { reason: e.reason } : {}) })
     }
     next()
   })
-  return () => agents.close().catch(() => {})
 }
 
 async function proxyComfy(req, res, url) {

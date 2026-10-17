@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { providerInfo, plannedAccounts } from '../lib/catalog.js'
 import { getConnections, saveConnection, testConnection } from '../lib/providers.js'
 import { useApp } from '../lib/appContext.js'
+import { refreshPod } from '../lib/usePod.js'
 
 function Provider({ id, info, state, onSaved }) {
   const [values, setValues] = useState({})
@@ -12,7 +13,13 @@ function Provider({ id, info, state, onSaved }) {
     setSaving(true)
     setMsg(null)
     const clean = Object.fromEntries(Object.entries(values).filter(([, v]) => v.trim()))
-    if (Object.keys(clean).length) await saveConnection(id, clean)
+    try {
+      if (Object.keys(clean).length) await saveConnection(id, clean)
+    } catch (e) {
+      setMsg(e.message)
+      setSaving(false)
+      return
+    }
     const ok = await testConnection(id).catch(() => false)
     setMsg(ok ? 'Connected' : 'Saved, but the test call failed. Check the key.')
     setValues({})
@@ -27,7 +34,7 @@ function Provider({ id, info, state, onSaved }) {
         <span className={`status${state?.connected ? ' ok' : ''}`}>{state?.connected ? 'Connected' : 'Not connected'}</span>
       </div>
       <p>{info.blurb}</p>
-      {info.fields.filter((f) => !(id === 'comfy' && f.id === 'url' && (values.mode || state?.mode) === 'cloud')).map((f) => (
+      {info.fields.filter((f) => !(id === 'comfy' && f.id === 'url' && ['cloud', 'pod'].includes(values.mode || state?.mode))).map((f) => (
         <div className="field" key={f.id}>
           <label htmlFor={`${id}-${f.id}`}>{f.label}</label>
           {f.options ? <select className="sb-select" id={`${id}-${f.id}`} value={values[f.id] || state?.[f.id] || 'local'} onChange={(e) => setValues((v) => ({ ...v, [f.id]: e.target.value }))}>
@@ -54,7 +61,7 @@ function Provider({ id, info, state, onSaved }) {
 export default function Connections() {
   const { refreshConnections } = useApp()
   const [state, setState] = useState({})
-  const refresh = () => getConnections().then((next) => { setState(next); refreshConnections() })
+  const refresh = () => getConnections().then((next) => { setState(next); refreshConnections(); refreshPod() })
   useEffect(() => { refresh() }, [])
 
   return (
