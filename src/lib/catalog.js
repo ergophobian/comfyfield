@@ -16,6 +16,12 @@ export const models = [
   { id: 'g-nano-banana-2', kind: 'image', provider: 'google', name: 'Nano Banana 2', note: 'Gemini 3.1 Flash Image, your Google key', model: 'gemini-3.1-flash-image', mode: 'image', price: { amount: 0.067, unit: 'image', estimate: true } },
 
   { id: 'comfy-ltx', kind: 'video', provider: 'comfy', name: 'LTX Video', note: 'Open weights on your ComfyUI', workflow: 'video_ltx', durations: [3, 5, 8] },
+  // Newest open video models: Comfy Cloud has every file, so they run at once, or on a ready Pod.
+  // Sizes follow each model's canvas: multiples of 64 for LTX-2.5, a 768 px short edge for H3.
+  { id: 'comfy-ltx25', kind: 'video', provider: 'comfy', name: 'LTX-2.5', note: 'Open weights with sound. Attach an image to start from it.', workflow: 'ltx25_t2v', imageWorkflow: 'ltx25_i2v', durations: [5, 8, 10],
+    sizes: { '16:9': [1280, 704], '9:16': [704, 1280], '1:1': [960, 960], '4:5': [768, 960] } },
+  { id: 'comfy-h3', kind: 'video', provider: 'comfy', name: 'MiniMax H3 (open weights)', note: 'Top open video model with sound. Attach an image to start from it.', workflow: 'h3_open_t2v', imageWorkflow: 'h3_open_i2v', durations: [5, 8, 10],
+    sizes: { '16:9': [1344, 768], '9:16': [768, 1344], '1:1': [768, 768], '4:5': [768, 960] } },
   { id: 'fal:bytedance/seedance-2.5/text-to-video', kind: 'video', provider: 'fal', name: 'Seedance 2.5', note: 'ByteDance, via fal', model: 'bytedance/seedance-2.5/text-to-video' },
   { id: 'fal:fal-ai/kling-video/v3/pro/text-to-video', kind: 'video', provider: 'fal', name: 'Kling 3 Pro', note: 'Kling, via fal', model: 'fal-ai/kling-video/v3/pro/text-to-video' },
   { id: 'fal:minimax/h3/text-to-video', kind: 'video', provider: 'fal', name: 'MiniMax H3', note: 'MiniMax, via fal', model: 'minimax/h3/text-to-video' },

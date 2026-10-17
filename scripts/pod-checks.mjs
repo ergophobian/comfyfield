@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import http from 'node:http'
 import path from 'node:path'
 import { spawn, spawnSync } from 'node:child_process'
-import { randomBytes } from 'node:crypto'
+import { createHash, randomBytes } from 'node:crypto'
 import { gunzipSync } from 'node:zlib'
 import { test } from 'node:test'
 import { podBootScript, podStartCmd, podEnv, START_CMD_MAX } from '../server/podBoot.js'
@@ -141,17 +141,24 @@ await test('status server: auth, status, heartbeat, downloads and a boot-deadlin
   const post = (files) => fetch(`${url}/download`, { method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' }, body: JSON.stringify({ files }) })
   assert.equal((await post([{ repo: 'org/model', path: '../etc/passwd', dir: 'checkpoints', name: 'x.safetensors' }])).status, 400)
   assert.equal((await post([{ repo: 'org/model', path: 'a.safetensors', dir: 'nowhere', name: 'x.safetensors' }])).status, 400)
-  assert.equal((await post([{ repo: 'org/model', path: 'sub/weights.safetensors', dir: 'checkpoints', name: 'weights.safetensors' },
-    { repo: 'org/model', path: 'missing.safetensors', dir: 'vae', name: 'missing.safetensors' }])).status, 202)
+  assert.equal((await post([{ repo: 'org/model', path: 'a.safetensors', dir: 'vae', name: 'x.safetensors', sha256: 'not-a-hash' }])).status, 400)
+  const sha256 = createHash('sha256').update(body).digest('hex')
+  assert.equal((await post([{ repo: 'org/model', path: 'sub/weights.safetensors', dir: 'checkpoints', name: 'weights.safetensors', sha256 },
+    { repo: 'org/model', path: 'missing.safetensors', dir: 'vae', name: 'missing.safetensors' },
+    // Same bytes, wrong pinned hash: what a tampered mirror would look like.
+    { repo: 'org/model', path: 'sub/weights.safetensors', dir: 'loras', name: 'tampered.safetensors', sha256: '0'.repeat(64) }])).status, 202)
   const done = await until(async () => {
     const d = (await (await fetch(`${url}/status`, { headers: auth })).json())
     const a = d.downloads['checkpoints/weights.safetensors']
     const b = d.downloads['vae/missing.safetensors']
-    return a?.state === 'done' && b?.state === 'failed' && d
-  })
+    const c = d.downloads['loras/tampered.safetensors']
+    return a?.state === 'done' && b?.state === 'failed' && c?.state === 'failed' && d
+  }, 15000)
   assert.equal(fs.statSync(path.join(base, 'models/checkpoints/weights.safetensors')).size, body.length)
-  assert.deepEqual(done.models.map((m) => `${m.dir}/${m.name}`), ['checkpoints/weights.safetensors'])
+  assert.deepEqual(done.models.map((m) => `${m.dir}/${m.name}`), ['checkpoints/weights.safetensors'], 'the tampered file is not kept')
   assert.match(done.downloads['vae/missing.safetensors'].error, /404/)
+  assert.match(done.downloads['loras/tampered.safetensors'].error, /does not match its pinned sha256/)
+  assert(!fs.existsSync(path.join(base, 'models/loras/tampered.safetensors.part')))
 
   // ComfyUI never answers, so the boot deadline terminates the Pod (recorded, not executed).
   const reason = await until(async () => fs.existsSync(path.join(base, 'terminated')) && fs.readFileSync(path.join(base, 'terminated'), 'utf8'))
@@ -223,7 +230,7 @@ await test('lifecycle: start walks the ladder on capacity refusals only, and sen
   const b = creates[1].body
   assert.equal(b.cloudType, 'SECURE')
   assert.deepEqual(b.ports, ['8189/http', '8190/http'])
-  assert.equal(b.volumeInGb, 60)
+  assert.equal(b.volumeInGb, 120, 'room for two of the newest video models')
   assert.equal(b.volumeMountPath, '/workspace')
   assert(!('allowedCudaVersions' in b))
   assert.equal(b.env.POD_TOKEN.length, 48)
@@ -355,7 +362,7 @@ await test('lifecycle: Pause and Terminate end after the queue, or now; Keep can
 
 await test('lifecycle: a paused Pod charges disk only, and a resume without a GPU says what to do', async () => {
   const { pod, rp, clock, dir } = setup()
-  await pod.start({ volumeGb: 100 })
+  await pod.start({ volumeGb: 100 }) // the 120 GB floor applies
   rp.statusd = readyStatus()
   await pod.tick()
   await pod.pause({ now: true })
@@ -364,7 +371,7 @@ await test('lifecycle: a paused Pod charges disk only, and a resume without a GP
   await pod.tick()
   const days = JSON.parse(fs.readFileSync(path.join(dir, 'pod-ledger.json'), 'utf8')).days
   const total = Object.values(days).reduce((n, v) => n + v, 0)
-  assert(total > 0.6 && total < 0.7, `100 GB stopped for a day is about $0.66, got ${total}`)
+  assert(total > 0.75 && total < 0.83, `120 GB stopped for a day is about $0.79, got ${total}`)
   assert(Math.abs(pod.spentToday() - total * (10 / 24)) < 0.01, 'the 10 hours after midnight land on the new day')
   rp.startReply = [{ error: 'There are not enough free GPUs on the host machine to start this pod.' }, 500]
   await assert.rejects(pod.resume(), (e) => e.code === 'resume_no_gpu' && /Terminate it and start a new Pod/.test(e.message))
@@ -681,4 +688,69 @@ await test('routing: Comfy Cloud takes runs at once, a ready Pod takes every run
   assert.equal(offCloud.code, 'needs_pod')
   assert.equal(offCloud.reason, 'sd_xl_base_1.0.safetensors is not on Comfy Cloud')
   assert.equal((await route('ending', { key: '' })).code, 'needs_pod')
+})
+
+// ---- newest models ----------------------------------------------------------------------------------
+
+await test('models: every bundled workflow fills all its placeholders, and the new models size their canvas', async () => {
+  const { comfyVars } = await import('../shared/mapping.js')
+  const { models } = await import('../src/lib/catalog.js')
+  const { fill } = await import('../shared/mapping.js')
+  for (const w of fs.readdirSync('public/workflows')) {
+    const g = JSON.parse(fs.readFileSync(`public/workflows/${w}`, 'utf8'))
+    const kind = /video|v2v|i2v|t2v|ltx/.test(w) ? 'video' : 'image'
+    const filled = JSON.stringify(fill(g, comfyVars(kind, { prompt: 'A fox', aspect: '16:9', duration: 5, image: 'start.png' })))
+    assert(!filled.includes('{{'), `${w} leaves a placeholder unfilled`)
+  }
+  const ltx = models.find((m) => m.id === 'comfy-ltx25')
+  const h3 = models.find((m) => m.id === 'comfy-h3')
+  for (const m of [ltx, h3]) {
+    assert(m.imageWorkflow && fs.existsSync(`public/workflows/${m.imageWorkflow}.json`) && fs.existsSync(`public/workflows/${m.workflow}.json`))
+    for (const a of ['16:9', '9:16', '1:1', '4:5']) {
+      const v = comfyVars('video', { prompt: 'x', aspect: a, duration: 5 }, m.sizes)
+      assert.equal(v.frames % 8, 1, 'LTX frames are 8k+1; H3 snaps them itself')
+      assert.equal(v.width % (m === ltx ? 64 : 32), 0, `${m.id} ${a} width`)
+      assert.equal(v.height % (m === ltx ? 64 : 32), 0, `${m.id} ${a} height`)
+    }
+  }
+  assert.deepEqual(comfyVars('video', { prompt: 'x', aspect: '16:9', duration: 5 }).width, 768, 'models without sizes keep the old canvas')
+  assert.equal(core.workflowNeeds('h3_open_t2v').minVramGb, 96)
+  assert.equal(core.workflowNeeds('ltx25_i2v').minVramGb, 32)
+  assert(core.workflowNeeds('ltx25_t2v').files.every((f) => f.cloud && /^[0-9a-f]{64}$/.test(f.sha256)))
+})
+
+await test('routing: a ready Pod too small for the run sends it to Cloud, or says to start a bigger Pod', async () => {
+  const client = { workflows: { fromFile: async () => ({ json: null, setInput() {} }) }, run: async () => ({ outputs: [{ type: 'video', contentType: 'video/mp4', name: 'x.mp4', toBytes: async () => Buffer.from('v') }] }) }
+  const h3 = { prompt: 'A fox', width: 1344, height: 768, frames: 121, seed: 1 }
+  podMode()
+  let leased = false
+  const lease = async () => { leased = true; throw new Error('no lease for a small Pod') }
+  await core.runComfy('h3_open_t2v', h3, { createClient: () => client, lease, podPhase: async () => 'ready', podVram: () => 24 })
+  assert.equal(leased, false, 'a 24 GB Pod does not take a 96 GB run; Cloud does')
+  podMode({})
+  await assert.rejects(core.runComfy('h3_open_t2v', h3, { createClient: () => client, lease, podPhase: async () => 'ready', podVram: () => 24 }),
+    (e) => e.code === 'pod_too_small' && /needs a 96 GB GPU; your Pod has 24 GB/.test(e.message))
+  podMode()
+  leased = false
+  await core.runComfy('h3_open_t2v', h3, { createClient: () => client, lease: async () => { leased = true; return { baseUrl: 'https://p-8189.proxy.runpod.net', token: 't', sandbox: false, signal: new AbortController().signal, reason: () => null, release() {} } }, podPhase: async () => 'ready', podVram: () => 96 })
+  assert.equal(leased, true, 'a 96 GB Pod takes it')
+})
+
+await test('models: every bundled workflow is a linked API graph that saves media', async () => {
+  const { comfyVars, fill } = await import('../shared/mapping.js')
+  for (const w of fs.readdirSync('public/workflows')) {
+    const kind = /video|i2v|t2v|ltx/.test(w) ? 'video' : 'image'
+    const graph = fill(JSON.parse(fs.readFileSync(`public/workflows/${w}`, 'utf8')), comfyVars(kind, { prompt: 'A fox', aspect: '16:9', duration: 5, image: 'start.png' }))
+    const visit = (value) => {
+      if (Array.isArray(value) && value.length === 2 && typeof value[0] === 'string' && Number.isInteger(value[1])) assert(graph[value[0]], `${w}: dangling link to ${value[0]}`)
+      else if (value && typeof value === 'object') Object.values(value).forEach(visit)
+    }
+    for (const node of Object.values(graph)) {
+      assert.equal(typeof node.class_type, 'string', w)
+      assert(node.inputs && !Array.isArray(node.inputs), w)
+      visit(node.inputs)
+    }
+    assert(Object.values(graph).some((n) => /^Save(Image|Video|Animated(WEBP|PNG)|Audio\w*)$/.test(n.class_type)), `${w} saves nothing`)
+    if (/i2v/.test(w)) assert(Object.values(graph).some((n) => n.class_type === 'LoadImage' && n.inputs.image === 'start.png'), `${w} takes no start image`)
+  }
 })

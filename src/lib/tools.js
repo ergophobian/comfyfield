@@ -58,15 +58,16 @@ export const tools = [
 ]
 
 // Open-weight models offered in each menu's model column, picked on quality per the feature audit.
-// `workflow` is the planned ComfyUI workflow id; none are wired yet.
+// `workflow` is the planned ComfyUI workflow id. `catalog` names the catalog model once it is wired;
+// until then the model shows as not wired yet.
 export const openModels = [
   { id: 'flux-3-klein', name: 'FLUX 3 Image Klein', kind: 'image', vendor: 'Black Forest Labs', blurb: 'Next-generation images and edits, up to 10 references', workflow: 'flux_look', badge: 'New' },
   { id: 'qwen-image-2-1', name: 'Qwen-Image 2.1', kind: 'image', vendor: 'Alibaba Qwen', blurb: 'Top open model for images and edits', workflow: 'qwen_image', badge: 'Top' },
   { id: 'qwen-image-edit-2511', name: 'Qwen-Image Edit 2511', kind: 'image', vendor: 'Alibaba Qwen', blurb: 'Instruction edits and multiple references', workflow: 'qwen_edit' },
   { id: 'z-image-turbo', name: 'Z-Image Turbo', kind: 'image', vendor: 'Alibaba Tongyi', blurb: 'Instant lifelike portraits', workflow: 'z_image' },
   { id: 'hidream-o1', name: 'HiDream-O1', kind: 'image', vendor: 'HiDream', blurb: 'Detailed images with readable text', workflow: 'hidream' },
-  { id: 'minimax-h3', name: 'MiniMax H3', kind: 'video', vendor: 'MiniMax', blurb: 'Top open video model with native audio', workflow: 'h3_i2v', badge: 'Top' },
-  { id: 'ltx-2-5', name: 'LTX-2.5', kind: 'video', vendor: 'Lightricks', blurb: 'Fast video with multi-shot, keyframes and audio', workflow: 'ltx_i2v' },
+  { id: 'minimax-h3', name: 'MiniMax H3', kind: 'video', vendor: 'MiniMax', blurb: 'Top open video model with native audio', workflow: 'h3_open_t2v', catalog: 'comfy-h3', badge: 'Top' },
+  { id: 'ltx-2-5', name: 'LTX-2.5', kind: 'video', vendor: 'Lightricks', blurb: 'Fast video with multi-shot, keyframes and audio', workflow: 'ltx25_t2v', catalog: 'comfy-ltx25' },
   { id: 'wan-2-2', name: 'Wan 2.2', kind: 'video', vendor: 'Alibaba Wan', blurb: 'Image to video, first and last frame', workflow: 'wan22_i2v' },
   { id: 'wan-animate-2', name: 'Wan Animate 2', kind: 'video', vendor: 'Alibaba Wan', blurb: 'Transfer motion from a video to a character', workflow: 'wan_animate2' },
   { id: 'bernini-r', name: 'Bernini-R', kind: 'video', vendor: 'Open source', blurb: 'Restyle, relight and swap objects in real video', workflow: 'bernini_swap' },

@@ -34,6 +34,7 @@ const GONE_GRACE = 13 * MIN
 const STOPPED_DISK_USD_GB_MONTH = 0.2
 const HOURS_PER_MONTH = 730
 const PREFIX = 'comfyfield-'
+export const MIN_VOLUME_GB = 120
 
 // RunPod's ways of saying "no machine free". Lower-cased before matching. From PatchWork.
 const CAPACITY = ['no instances', 'could not find any pods', 'supply_constraint', 'does not have the resources', 'try a different machine',
@@ -180,7 +181,7 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
     if (!pod) return null
     const rung = ladder.find((x) => x.gpuTypeId === pod.machine?.gpuTypeId) || {}
     save({
-      id: pod.id, name: pod.name, token: envToken(pod), gpuTypeId: rung.gpuTypeId || null, gpu: rung.name || 'GPU', cloudType: rung.cloudType || null,
+      id: pod.id, name: pod.name, token: envToken(pod), gpuTypeId: rung.gpuTypeId || null, gpu: rung.name || 'GPU', vramGb: rung.vramGb || null, cloudType: rung.cloudType || null,
       costPerHr: pod.costPerHr || 0, volumeGb: pod.volumeInGb || 60, createdAt: Date.parse(pod.createdAt) || now(), startedAt: Date.parse(pod.createdAt) || now(),
       pausedAt: pod.desiredStatus === 'EXITED' ? now() : null,
     })
@@ -244,7 +245,7 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
     return {
       phase: phase(), stage: stage(), sandbox,
       pod: rec && {
-        id: rec.id, gpu: rec.gpu, cloudType: rec.cloudType, costPerHr: rec.costPerHr, volumeGb: rec.volumeGb,
+        id: rec.id, gpu: rec.gpu, vramGb: rec.vramGb ?? null, cloudType: rec.cloudType, costPerHr: rec.costPerHr, volumeGb: rec.volumeGb,
         startedAt: rec.startedAt, uptimeSec: Math.round((t - rec.startedAt) / 1000),
         pausedDiskPerDay: (rec.volumeGb * STOPPED_DISK_USD_GB_MONTH * 12) / 365,
       },
@@ -316,7 +317,8 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
     m.event = null
     const token = randomBytes(24).toString('hex')
     const name = `${PREFIX}${now().toString(36)}`
-    const volume = Math.max(60, Math.ceil(volumeGb / 10) * 10)
+    // The newest video models are 40-44 GB each, so the volume holds at least two of them.
+    const volume = Math.max(MIN_VOLUME_GB, Math.ceil(volumeGb / 10) * 10)
     try {
       let refused = 0
       for (const rung of rungs) {
@@ -327,7 +329,7 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
         } })
         if (r.ok && r.data?.id) {
           const t = now()
-          save({ id: r.data.id, name, token, gpuTypeId: rung.gpuTypeId, gpu: rung.name, cloudType: rung.cloudType, costPerHr: r.data.costPerHr || 0, volumeGb: volume, createdAt: t, startedAt: t, pausedAt: null })
+          save({ id: r.data.id, name, token, gpuTypeId: rung.gpuTypeId, gpu: rung.name, vramGb: rung.vramGb, cloudType: rung.cloudType, costPerHr: r.data.costPerHr || 0, volumeGb: volume, createdAt: t, startedAt: t, pausedAt: null })
           charge(t)
           m.placing = false
           kick()
@@ -444,7 +446,7 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
       if (missing.length) {
         onStage('downloading')
         const rec = record()
-        const r = await call(`${statusUrl(rec.id)}/download`, { method: 'POST', token: rec.token, body: { files: missing.map(({ repo, path: p, dir, name }) => ({ repo, path: p, dir, name })) } })
+        const r = await call(`${statusUrl(rec.id)}/download`, { method: 'POST', token: rec.token, body: { files: missing.map(({ repo, path: p, dir, name, sha256 }) => ({ repo, path: p, dir, name, ...(sha256 ? { sha256 } : {}) })) } })
         if (!r.ok) throw fail(`The Pod refused the model download: ${errorText(r.data) || `HTTP ${r.status}`}`, 502)
         for (;;) {
           check()
@@ -500,17 +502,18 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
     m.timer.unref?.()
   }
 
-  // The phase right now, read fresh, for routing a run in any process.
+  // The phase right now, read fresh, and the GPU memory, for routing a run in any process.
   async function phaseNow() {
     await adopt().catch(() => null)
     await refresh().catch(() => null)
     return phase()
   }
+  const vramGb = () => record()?.vramGb ?? null
 
   async function test() {
     if (!key()) return false
     return gql('query { myself { id } }').then((d) => Boolean(d?.myself?.id)).catch(() => false)
   }
 
-  return { status, quote, start, pause, resume, terminate, keep, lease, tick, refresh, phaseNow, startMonitor, stopMonitor, test, guard, spentToday }
+  return { status, quote, start, pause, resume, terminate, keep, lease, tick, refresh, phaseNow, vramGb, startMonitor, stopMonitor, test, guard, spentToday }
 }

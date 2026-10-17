@@ -483,19 +483,26 @@ export function workflowNeeds(workflow) {
 // Comfy Cloud is the instant option and a Pod the long-term one. A ready Pod takes every ComfyUI run;
 // otherwise a run goes to Comfy Cloud at once, unless Cloud cannot take it. Then it waits for a
 // starting Pod, or fails with needs_pod so the app can offer to start one. It never starts a Pod.
-async function comfyTarget(files, podPhase) {
+async function comfyTarget(files, podPhase, podVram) {
   const phase = await podPhase()
-  if (phase === 'ready') return 'pod'
+  // A Pod too small for the run's models is no Pod for this run. Unknown memory counts as enough.
+  const need = minVramOf(files)
+  const vram = podVram()
+  const fits = vram == null || vram >= need
+  if (phase === 'ready' && fits) return 'pod'
   const missing = notOnCloud(files)
   const why = !config('comfy').key ? 'Comfy Cloud needs a Comfy API key on a paid plan'
     : missing.length ? `${missing[0].name} is not on Comfy Cloud` : null
   if (!why) return 'cloud'
+  if (!fits && phase !== 'none') {
+    throw Object.assign(new Error(`${why}, and this run needs a ${need} GB GPU; your Pod has ${vram} GB. Terminate it and start a new Pod.`), { status: 409, code: 'pod_too_small', reason: why })
+  }
   if (phase === 'starting' || phase === 'resuming') return 'pod'
   throw Object.assign(new Error(`${why}, so this run needs a Pod. Start one in ComfyField from the Pod chip in the top bar.`), { status: 409, code: 'needs_pod', reason: why })
 }
 
 // Runs a bundled workflow on Local ComfyUI, Comfy Cloud or the Pod, and returns file URLs.
-export async function runComfy(workflow, vars = {}, { createClient = (key, baseUrl) => comfyClient(baseUrl, key), lease = (o) => pod().lease(o), podPhase = () => pod().phaseNow() } = {}) {
+export async function runComfy(workflow, vars = {}, { createClient = (key, baseUrl) => comfyClient(baseUrl, key), lease = (o) => pod().lease(o), podPhase = () => pod().phaseNow(), podVram = () => pod().vramGb() } = {}) {
   const { file, template } = readWorkflow(workflow)
   const inputs = [...JSON.stringify(template).matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1])
   for (const input of inputs) if (vars[input] == null || vars[input] === '') throw new Error(`Workflow ${workflow} requires ${input}.`)
@@ -506,7 +513,7 @@ export async function runComfy(workflow, vars = {}, { createClient = (key, baseU
   // 'pod' was its own choice before the Pod joined Comfy Cloud; read it as Comfy Cloud + Pod.
   if (mode === 'cloud' || mode === 'pod') {
     const needs = modelFilesOf(graph)
-    const target = await comfyTarget(needs, podPhase)
+    const target = await comfyTarget(needs, podPhase, podVram)
     // On the Pod the proxy token is the server credential; the Comfy key, when set, only pays partner nodes.
     let held = null
     let client
@@ -629,7 +636,10 @@ export async function generate({ model, prompt, aspect = '16:9', count = 1, dura
     for (let i = 0; i < (m.kind === 'image' ? count : 1); i++) files.push(...await runComfyRouter({ model: m.model, input: comfyRouterInput(m.model, o) }))
     return files
   }
-  if (m.provider === 'comfy') return runComfy(m.workflow, comfyVars(m.kind, { ...o, duration: duration || 5 }))
+  if (m.provider === 'comfy') {
+    const vars = comfyVars(m.kind, { ...o, duration: duration || 5 }, m.sizes)
+    return runComfy(vars.image && m.imageWorkflow ? m.imageWorkflow : m.workflow, vars)
+  }
   if (m.provider === 'fal') {
     const { properties } = await falSchema(m.model)
     return runFal({ model: m.model, input: falInput(properties, o) })

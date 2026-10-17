@@ -1,6 +1,7 @@
 # ComfyField Pod status server: status, heartbeats, model downloads and the watchdog.
 # server/podBoot.js embeds this file in the Pod's boot script. It runs with the image's
 # venv Python and uses only the standard library, so it also runs in scripts/pod-checks.mjs.
+import hashlib
 import hmac
 import json
 import os
@@ -188,12 +189,14 @@ def watchdog():
 
 SAFE_NAME = re.compile(r'^[\w.+-]+$')
 SAFE_REPO = re.compile(r'^[\w.-]+/[\w.-]+$')
+SAFE_SHA = re.compile(r'^[0-9a-f]{64}$')
 
 
 def valid(item):
   path = str(item.get('path', ''))
   return (SAFE_REPO.match(str(item.get('repo', ''))) and item.get('dir') in DIRS and SAFE_NAME.match(str(item.get('name', '')))
-          and path and '..' not in path.split('/') and not path.startswith('/'))
+          and path and '..' not in path.split('/') and not path.startswith('/')
+          and (item.get('sha256') is None or SAFE_SHA.match(str(item['sha256']))))
 
 
 def fetch(item, key):
@@ -202,9 +205,15 @@ def fetch(item, key):
   url = '%s/%s/resolve/main/%s' % (HF, item['repo'], item['path'])
   have = os.path.getsize(part) if os.path.exists(part) else 0
   req = urllib.request.Request(url, headers={'Range': 'bytes=%d-' % have} if have else {})
+  digest = hashlib.sha256()
   with urllib.request.urlopen(req, timeout=60) as r:
     if have and r.status != 206:
       have = 0
+    if have:
+      # A resumed download hashes the bytes it already has first.
+      with open(part, 'rb') as old:
+        for block in iter(lambda: old.read(1 << 20), b''):
+          digest.update(block)
     total = int(r.headers.get('Content-Length') or 0) + have
     with LOCK:
       DOWNLOADS[key].update(state='downloading', bytes=have, total=total or None)
@@ -214,10 +223,15 @@ def fetch(item, key):
         if not chunk:
           break
         f.write(chunk)
+        digest.update(chunk)
         with LOCK:
           DOWNLOADS[key]['bytes'] += len(chunk)
   if total and os.path.getsize(part) != total:
     raise IOError('the download stopped at %d of %d bytes' % (os.path.getsize(part), total))
+  # A pinned hash makes a mirror safe to use: only the expected bytes are kept.
+  if item.get('sha256') and digest.hexdigest() != item['sha256']:
+    os.remove(part)
+    raise ValueError('the file does not match its pinned sha256')
   os.replace(part, dest)
 
 
@@ -240,7 +254,7 @@ def downloader():
         break
       except Exception as e:
         err = 'disk full' if isinstance(e, OSError) and getattr(e, 'errno', 0) == 28 else str(e)
-        if attempt == 2 or err == 'disk full' or (isinstance(e, urllib.error.HTTPError) and e.code in (401, 403, 404)):
+        if attempt == 2 or err == 'disk full' or isinstance(e, ValueError) or (isinstance(e, urllib.error.HTTPError) and e.code in (401, 403, 404)):
           with LOCK:
             DOWNLOADS[key].update(state='failed', error=err)
           log('download failed %s: %s' % (key, err))

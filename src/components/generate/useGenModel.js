@@ -17,8 +17,10 @@ export const asOpen = (m) => {
 export function useGenModel(kind) {
   const { picker } = useApp()
   const [params, setParams] = useSearchParams()
-  const open = modelsFor(kind).map(asOpen)
-  const wanted = params.get('model')
+  // A wired open-weight model is a catalog model now; its menu link still carries the open id.
+  const open = modelsFor(kind).filter((m) => !m.catalog).map(asOpen)
+  const raw = params.get('model')
+  const wanted = modelsFor(kind).find((m) => m.id === raw && m.catalog)?.catalog || raw
   const openPick = open.find((m) => m.id === wanted)
 
   useEffect(() => { if (picker.kind !== kind) picker.setKind(kind) }, [kind, picker.kind])

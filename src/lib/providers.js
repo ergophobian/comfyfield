@@ -18,7 +18,7 @@ const manyImages = ['image_urls', 'input_image_urls', 'reference_image_urls']
 const hasImageInput = (props) => [...singleImage, ...manyImages].some((k) => props[k])
 
 export function acceptsImage(model, props) {
-  if (model.provider === 'comfy') return ['ltx_i2v', 'h3_i2v'].includes(model.workflow)
+  if (model.provider === 'comfy') return Boolean(model.imageWorkflow) || ['ltx_i2v', 'h3_i2v'].includes(model.workflow)
   if (model.provider === 'comfyRouter') return model.kind === 'video'
   if (model.provider === 'google') return true
   if (model.provider === 'fal') return hasImageInput(props || {})
@@ -76,14 +76,16 @@ export async function run(model, opts, hooks = {}) {
   if (model.provider === 'comfy') {
     // Comfy Cloud takes the run at once. When it cannot, the server says needs_pod: the start sheet
     // asks once, then the same run goes again and waits for the Pod. It never starts one by itself.
-    const vars = comfyVars(model.kind, opts)
+    const vars = comfyVars(model.kind, opts, model.sizes)
+    // A model with a start-image workflow uses it when an image is attached.
+    const workflow = vars.image && model.imageWorkflow ? model.imageWorkflow : model.workflow
     try {
-      return await runComfy(model.workflow, vars)
+      return await runComfy(workflow, vars)
     } catch (e) {
       if (e.code !== 'needs_pod') throw e
       hooks.onPod?.()
-      await askPod(model.workflow, e.reason)
-      return runComfy(model.workflow, vars)
+      await askPod(workflow, e.reason)
+      return runComfy(workflow, vars)
     }
   }
   if (model.provider === 'fal') {
