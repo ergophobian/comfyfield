@@ -37,7 +37,7 @@ export default function PodSheet() {
   const kind = s?.phase === 'paused' ? 'resume' : s?.phase === 'ending' ? 'keep' : 'start'
   const copy = COPY[kind]
   const rung = quote?.rungs.find((r) => r.inStock) || quote?.rungs[0]
-  const capped = quote && kind !== 'keep' && quote.spend.today >= quote.spend.cap
+  const capped = quote && kind !== 'keep' && quote.spend?.today >= quote.spend?.cap
   const noKey = quote && !quote.connected
 
   const run = async (fn) => {

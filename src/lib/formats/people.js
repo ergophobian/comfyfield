@@ -38,10 +38,11 @@ const characters = [
   open({
     id: 'face-swap', name: 'Face swap', kind: 'image', category: 'characters', hub: 'face',
     blurb: 'Swap the face in a photo for your own face or a saved character.',
-    runsOn: 'Qwen-Image 2.1', workflow: 'qwen_edit_face_swap',
+    engine: 'fal', model: 'fal-ai/nano-banana-2/edit', runsOn: 'Nano Banana 2 via fal',
+    steps: [{ id: 'generate', provider: 'fal', endpoint: 'fal-ai/nano-banana-2/edit', bindings: { image_urls: ['photo.url', 'character.faceUrl'] } }],
     inputs: [
       { id: 'photo', type: 'image', label: 'Photo to change' },
-      { id: 'character', type: 'character', label: 'Your own face or a saved character' },
+      { id: 'character', type: 'face', label: 'Your own face or a saved character' },
     ],
     prompt: 'Replace the face of the main person in this photo with the face of {character}. Keep the hair, pose, head angle, expression, outfit, lighting and background of the photo exactly the same, and blend skin tone and light so it looks natural.',
     settings: { aspect: 'auto' },

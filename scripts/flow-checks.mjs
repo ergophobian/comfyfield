@@ -200,6 +200,195 @@ check('fan-in waits for every input', async () => {
   assert.equal(m.count('Vid'), 2)
 })
 
+const writerFlow = () => ({
+  nodes: [n('p', 'prompt', { text: 'Keep the red coat' }), n('i', 'image', { url: 'mock://reference' }),
+    n('w', 'writer', { instructions: 'Describe the images', note: 'At dusk', target: 'video' }),
+    n('v', 'model', { model: vid, takes: 1 })],
+  edges: [e('p', 'w'), e('i', 'w'), e('w', 'v')],
+})
+
+check('writer gathers images and note, waits for review, sends edited text without rewriting', async () => {
+  const m = mock()
+  const writes = []
+  const eng = createEngine({ run: m.run, writePrompt: async (input) => { writes.push(input); return 'A red coat at dusk' } })
+  const f = writerFlow()
+  assert.equal((await eng.sendWriter(f, 'w')).ok, false)
+  await eng.runNew(f)
+  assert.deepEqual(writes, [{ instructions: 'Describe the images', note: 'At dusk\n\nKeep the red coat', images: ['mock://reference'], target: 'video' }])
+  assert.equal(eng.hasOutput(f), true)
+  assert.equal(eng.state.w.items[0].text, 'A red coat at dusk')
+  assert.equal(eng.itemsOf(f, 'w'), null)
+  assert.equal(m.calls.length, 0)
+  await eng.runNew(f)
+  assert.equal(writes.length, 1)
+  eng.editWriter(f, 'w', '')
+  assert.equal((await eng.sendWriter(f, 'w')).ok, false)
+  eng.editWriter(f, 'w', 'Edited prompt')
+  assert.equal((await eng.sendWriter(f, 'w')).ok, true)
+  assert.equal(m.calls[0].prompt, 'Edited prompt')
+  assert.equal(writes.length, 1)
+  assert.equal((await eng.sendWriter(f, 'w')).ok, false)
+  eng.editWriter(f, 'w', 'Second edit')
+  await eng.sendWriter(f, 'w')
+  assert.equal(m.calls.length, 1, 'Send preserves existing model output')
+  await eng.rerun(f, 'v')
+  assert.equal(m.calls[1].prompt, 'Second edit')
+})
+
+check('writer works with approval gates, persistence, rerun and regenerate all', async () => {
+  const m = mock()
+  let writes = 0
+  const opts = { run: m.run, writePrompt: async () => `Draft ${++writes}` }
+  const eng = createEngine(opts)
+  const f = writerFlow()
+  f.nodes.push(n('a', 'approve'))
+  f.edges = [e('p', 'w'), e('i', 'w'), e('w', 'a'), e('a', 'v')]
+  await eng.runNew(f)
+  await eng.sendWriter(f, 'w')
+  assert.equal(eng.gate('a').status, 'reviewing')
+  assert.equal(eng.reviewItems(f, 'a')[0].kind, 'text')
+  assert.equal(m.calls.length, 0)
+  eng.editWriter(f, 'w', 'Final draft')
+  assert.equal(eng.gate('a').status, 'empty')
+  await eng.sendWriter(f, 'w')
+  const restored = createEngine(opts)
+  restored.load(JSON.parse(JSON.stringify(eng.state)))
+  await restored.send(f, 'a')
+  assert.equal(m.calls[0].prompt, 'Final draft')
+  assert.equal(writes, 1)
+  await restored.rerunGate(f, 'a')
+  assert.equal(writes, 2)
+  assert.equal(restored.itemsOf(f, 'w'), null)
+  assert.equal(restored.gate('a').status, 'empty')
+  await restored.sendWriter(f, 'w')
+  await restored.send(f, 'a')
+  assert.equal(m.calls.length, 1)
+  await restored.regenerateAll(f)
+  assert.equal(writes, 3)
+  assert.equal(restored.state.v.items.length, 0)
+  assert.equal(restored.itemsOf(f, 'w'), null)
+})
+
+check('writer failures retry without rendering and respect upstream gates', async () => {
+  const m = mock()
+  let writes = 0
+  const eng = createEngine({ run: m.run, writePrompt: async () => { if (++writes === 1) throw new Error('LLM unavailable'); return 'Recovered' } })
+  const f = writerFlow()
+  f.nodes.push(n('a', 'approve'))
+  f.edges = [e('i', 'a'), e('a', 'w'), e('p', 'w'), e('w', 'v')]
+  await eng.runNew(f)
+  assert.equal(writes, 0)
+  await eng.send(f, 'a')
+  assert.equal(eng.state.w.items[0].error, 'LLM unavailable')
+  assert.equal(m.calls.length, 0)
+  await eng.runNew(f)
+  assert.equal(writes, 2)
+  assert.equal(m.calls.length, 0)
+  await eng.sendWriter(f, 'w')
+  assert.equal(m.calls[0].prompt, 'Recovered')
+})
+
+check('widget inputs hold until ready and pass structured values through approval gates', async () => {
+  const values = {
+    mask: { url: '/media/photo.png', maskUrl: '/media/mask.png' },
+    face: { url: '/media/group.png', faceUrl: '/media/face.png', box: { x: 0.1, y: 0.1, width: 0.3, height: 0.3 } },
+    video: { url: '/media/clip.mp4', duration: 4, trim: { start: 1, end: 3 }, posterUrl: '/media/poster.png', posterTime: 2 },
+    crop: { url: '/media/photo.png', aspect: '9:16', box: { x: 0.2, y: 0, width: 0.4, height: 1 } },
+  }
+  for (const [type, value] of Object.entries(values)) {
+    const m = mock()
+    const eng = createEngine({ run: m.run })
+    const f = { nodes: [n('w', type, { value: null }), n('a', 'approve'), n('m', 'model', { model: img, prompt: 'edit' })], edges: [e('w', 'a'), e('a', 'm')] }
+    await eng.runNew(f)
+    assert.equal(m.calls.length, 0)
+    f.nodes[0].data.value = value
+    await eng.runNew(f)
+    assert.equal(m.calls.length, 0, 'approval still holds the widget')
+    await eng.send(f, 'a')
+    assert.deepEqual(m.calls[0].inputs.w, value)
+    if (type === 'mask') assert.equal(m.calls[0].mask, value.maskUrl)
+    if (type === 'face') assert.equal(m.calls[0].face.faceUrl, value.faceUrl)
+    if (type === 'video') assert.deepEqual(m.calls[0].trim, value.trim)
+    if (type === 'crop') assert.deepEqual(m.calls[0].crop, value.box)
+    await eng.runNew(f)
+    assert.equal(m.calls.length, 1, 'Run does not repeat the model')
+  }
+})
+
+check('widget references supplement image rows instead of adding unwanted generations', async () => {
+  const m = mock()
+  const eng = createEngine({ run: m.run })
+  const face = { url: '/media/face.png', characterId: 'actor' }
+  const f = { nodes: [n('i', 'image', { url: '/media/source.png' }), n('f', 'face', { value: face }), n('m', 'model', { model: img })], edges: [e('i', 'm'), e('f', 'm')] }
+  await eng.runNew(f)
+  assert.equal(m.calls.length, 1)
+  assert.equal(m.calls[0].image, '/media/source.png')
+  assert.deepEqual(m.calls[0].face, face)
+})
+
+check('Stitch waits for Send, preserves clip order and trim options, and fills gaps only', async () => {
+  const m = mock()
+  const calls = []
+  const eng = createEngine({ run: m.run, stitch: async (opts) => {
+    calls.push(opts)
+    return { url: 'mock://stitched', kind: 'video' }
+  } })
+  const f = {
+    nodes: [n('p', 'prompt', { mode: 'rows', text: 'one\ntwo' }), n('v', 'model', { model: vid }), n('a', 'approve'), n('s', 'stitch', { aspect: '9:16' }), n('o', 'output')],
+    edges: [e('p', 'v'), e('v', 'a'), e('a', 's'), e('s', 'o')],
+  }
+  await eng.runNew(f)
+  assert.equal(calls.length, 0)
+  assert.equal(eng.plan(f, 's').blocked, true)
+  await eng.send(f, 'a')
+  assert.equal(calls.length, 1)
+  assert.equal(m.calls.length, 2, 'Send did not regenerate clips')
+  assert.deepEqual(calls[0].clips.map((clip) => clip.url), eng.itemsOf(f, 'a').map((item) => item.url))
+  assert.equal(eng.reviewItems(f, 'o')[0].url, 'mock://stitched')
+  await eng.runNew(f)
+  assert.equal(calls.length, 1)
+  const clips = eng.itemsOf(f, 'a')
+  f.nodes.find((node) => node.id === 's').data.clips = [
+    { id: clips[1].id, upstream: true, start: 0.2, end: 1, caption: 'Second first' },
+    { id: clips[0].id, upstream: true },
+  ]
+  await eng.rerun(f, 's')
+  assert.equal(calls.length, 2)
+  assert.equal(calls[1].clips[0].url, clips[1].url)
+  assert.equal(calls[1].clips[0].caption, 'Second first')
+  assert.equal(calls[1].clips[0].start, 0.2)
+  assert.equal(m.calls.length, 2)
+  await eng.regenerateAll(f)
+  assert.equal(eng.state.s.items.length, 0)
+  assert.equal(calls.length, 2, 'Regenerate resets Stitch and closes its upstream gate')
+})
+
+check('Stitch retries failures, waits for every input, and preserves outputs on Send', async () => {
+  let count = 0
+  const eng = createEngine({ stitch: async () => {
+    count++
+    if (count === 1) throw new Error('retry me')
+    return { url: 'mock://joined', kind: 'video' }
+  } })
+  const f = { nodes: [n('s', 'stitch', { clips: [{ id: 'local', url: '/media/local.mp4' }] }), n('a', 'approve'), n('s2', 'stitch')], edges: [e('s', 'a'), e('a', 's2')] }
+  await eng.runNew(f)
+  assert.equal(eng.state.s.items[0].status, 'failed')
+  await eng.runNew(f)
+  assert.equal(count, 2)
+  assert.equal(eng.plan(f, 's2').blocked, true)
+  await eng.send(f, 'a')
+  assert.equal(count, 3)
+  eng.clearGate(f, 'a')
+  await eng.send(f, 'a')
+  assert.equal(count, 3)
+  f.nodes.push(n('empty', 'approve'))
+  f.edges.push(e('empty', 's2'))
+  assert.equal((await eng.rerun(f, 's2')).ok, false)
+  const partial = { nodes: [n('v', 'model', { model: vid }), n('s', 'stitch')], edges: [e('v', 's')] }
+  eng.load({ v: { running: 1, items: [{ id: 'partial', url: 'mock://partial', kind: 'video', status: 'done' }] } })
+  assert.equal(eng.plan(partial, 's').blocked, true, 'Wait until all clips in the upstream run finish')
+})
+
 let bad = 0
 for (const [name, fn] of checks) {
   try { await fn(); console.log('ok   ', name) } catch (err) { bad++; console.log('FAIL ', name, '\n     ', err.message) }

@@ -34,7 +34,7 @@ import Connections from './pages/Connections.jsx'
 import Flows from './pages/Flows.jsx'
 import Models from './pages/Models.jsx'
 import { AppCtx } from './lib/appContext.js'
-import { formatById } from './lib/formats/index.js'
+import { formatById, isWired } from './lib/formats/index.js'
 import { getConnections } from './lib/providers.js'
 import { useGenerations } from './lib/useGenerations.js'
 import { usePodPolling } from './lib/usePod.js'
@@ -57,7 +57,7 @@ export default function App() {
     refreshConnections: () => getConnections().then(setConnections),
     openFormat: (f, initial) => {
       const format = typeof f === 'string' ? formatById(f) : f
-      if (format) setSheet({ format, initial })
+      if (format && isWired(format)) setSheet({ format, initial })
     },
   }), [gens, picker, connections])
 

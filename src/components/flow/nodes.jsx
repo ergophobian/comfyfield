@@ -3,6 +3,8 @@ import { Handle, Position } from '@xyflow/react'
 import { Logo, brandOf } from '../../lib/brands.jsx'
 import { nodeLabels } from '../../lib/flowStore.js'
 import { promptsOf } from '../../lib/flowEngine.js'
+import { widgetReady } from '../../../shared/widgetInputs.js'
+import { stitchInputs } from '../../lib/stitch.js'
 
 export const FlowCtx = createContext(null)
 const useFlow = () => useContext(FlowCtx)
@@ -23,6 +25,7 @@ function Shell({ type, selected, title, tag, input, output, wide, children }) {
 }
 
 export function Media({ it }) {
+  if (it.kind === 'text') return <p className="fwriter-copy">{it.text}</p>
   if (it.kind === 'video') return <video src={it.url} muted loop playsInline autoPlay preload="metadata" />
   if (it.kind === 'audio') return <span className="fm-audio" title={it.prompt}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 10v4M9 7v10M13 4v16M17 8v8M21 11v2" /></svg></span>
   return <img src={it.url} alt={it.prompt || ''} />
@@ -84,6 +87,39 @@ export function ModelNode({ id, data, selected }) {
   )
 }
 
+export function WriterReview({ id }) {
+  const { flow, engine, state, act } = useFlow()
+  const st = state[id] || {}
+  const item = st.items?.find((i) => i.status === 'done')
+  const error = st.items?.find((i) => i.status === 'failed')?.error
+  const busy = (st.running || 0) > 0
+  return (
+    <>
+      {item ? <textarea className="fp-text nodrag nowheel" rows={6} aria-label="Written prompt" value={item.text} disabled={busy} onChange={(e) => act.editWriter(id, e.target.value)} />
+        : <p className="fhint">{error || (busy ? 'Writing your prompt' : engine.plan(flow, id).blocked ? 'Waiting for its inputs' : 'Run to write a prompt')}</p>}
+      <p className="fhint">Review and edit the prompt, then send it to the next step.</p>
+      <div className="frow">
+        <span className={`fstat${error ? ' bad' : ''}`}>{error ? 'Writing failed' : st.sent ? 'Prompt sent' : 'Model waits for Send'}</span>
+        <div className="fbtns">
+          {(item || error) && <button type="button" className="btn-soft xs nodrag" disabled={busy} onClick={() => act.rerun(id)}>Rerun</button>}
+          <button type="button" className="btn-blue xs nodrag" disabled={busy || st.sent || !item?.text.trim()} onClick={() => act.sendWriter(id)}>Send</button>
+        </div>
+      </div>
+    </>
+  )
+}
+
+export function WriterNode({ id, selected }) {
+  const { state } = useFlow()
+  const st = state[id] || {}
+  const item = st.items?.find((i) => i.status === 'done')
+  return (
+    <Shell type="writer" selected={selected} input output wide tag={st.running ? 'Writing' : st.sent ? 'Sent' : item ? 'Reviewing' : 'Text'}>
+      <WriterReview id={id} />
+    </Shell>
+  )
+}
+
 export function ApproveNode({ id, selected }) {
   const { flow, engine, state, act } = useFlow()
   const g = engine.gate(id)
@@ -137,4 +173,31 @@ export function NoteNode({ id, data, selected }) {
   )
 }
 
-export const nodeTypes = { prompt: PromptNode, image: ImageNode, model: ModelNode, approve: ApproveNode, output: OutputNode, note: NoteNode }
+export function WidgetNode({ type, data, selected }) {
+  const value = data.value
+  const ready = widgetReady(type, value)
+  const image = type === 'video' ? value?.posterUrl : type === 'face' ? value?.faceUrl || value?.url : value?.url
+  return <Shell type={type} selected={selected} output tag={ready ? 'Ready' : 'Set input'}>
+    {image && <img className="fp-img" src={image} alt="Input preview" />}
+    <p className="fhint">{value?.name || 'Select this node to set its input'}</p>
+    {type === 'video' && value?.trim && <p className="fhint">{value.trim.start.toFixed(2)} to {value.trim.end.toFixed(2)} seconds</p>}
+  </Shell>
+}
+
+export function StitchNode({ id, data, selected }) {
+  const { flow, engine, state, act } = useFlow()
+  const input = stitchInputs(flow, id, engine.itemsOf, (id) => state[id]?.running > 0)
+  const st = state[id] || {}
+  const result = st.items?.find((item) => item.status === 'done')
+  const failed = st.items?.find((item) => item.status === 'failed')
+  return (
+    <Shell type="stitch" selected={selected} input output tag={data.aspect}>
+      <p>{input.clips.length} {input.clips.length === 1 ? 'clip' : 'clips'} · Captions and music</p>
+      {result && <video className="stitch-preview nodrag" src={result.url} controls playsInline preload="metadata" />}
+      <p className={`fstat${failed ? ' bad' : ''}`}>{st.running ? 'Rendering preview' : failed ? failed.error : input.blocked ? 'Add clips or wait for inputs' : 'Select to edit and export'}</p>
+      <button type="button" className="btn-soft xs nodrag" disabled={st.running > 0 || input.blocked} onClick={() => act.rerun(id)}>{result ? 'Render again' : 'Preview'}</button>
+    </Shell>
+  )
+}
+
+export const nodeTypes = { mask: WidgetNode, face: WidgetNode, video: WidgetNode, crop: WidgetNode, writer: WriterNode, prompt: PromptNode, image: ImageNode, model: ModelNode, stitch: StitchNode, approve: ApproveNode, output: OutputNode, note: NoteNode }
