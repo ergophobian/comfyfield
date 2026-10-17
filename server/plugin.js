@@ -213,7 +213,10 @@ function mount(server, harness) {
       if (url.pathname === '/api/pod' && req.method === 'GET') {
         const { mode, key } = core.config('comfy')
         // instant: Comfy Cloud can take runs at once. 'pod' was its own mode before; it now means Comfy Cloud + Pod.
-        return send(res, 200, { ...core.pod().status(), mode: mode === 'pod' ? 'cloud' : mode || 'local', instant: Boolean(key) })
+        const status = core.pod().status()
+        const cloud = mode === 'cloud' || mode === 'pod'
+        const suggest = cloud && status.phase === 'none' && status.connected ? await core.podSuggestion() : null
+        return send(res, 200, { ...status, mode: cloud ? 'cloud' : mode || 'local', instant: Boolean(key), suggest })
       }
       if (url.pathname === '/api/pod/quote') return send(res, 200, await podQuote(url.searchParams.get('workflow')))
       if (url.pathname.startsWith('/api/pod/') && req.method === 'POST') return send(res, 200, await podAction(url.pathname.slice('/api/pod/'.length), await body(req)))

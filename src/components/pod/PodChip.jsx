@@ -6,6 +6,12 @@ const CLOUD = { SECURE: 'Secure', COMMUNITY: 'Community' }
 const tone = (phase) => (phase === 'ready' ? ' ok' : phase === 'none' || phase === 'paused' ? '' : ' busy')
 const pct = (d) => (d.total ? Math.min(100, (d.bytes / d.total) * 100) : 0)
 
+// "Not now" on a Pod suggestion lasts an hour on this browser.
+const NOT_NOW = 'comfyfield.podSuggestNotNow'
+const notNowRecently = () => {
+  try { return Date.now() - Number(localStorage.getItem(NOT_NOW) || 0) < 3_600_000 } catch { return false }
+}
+
 // The Pod in the top bar: what it is doing and what it costs, on every page. It shows in Pod mode,
 // or whenever a Pod exists, because a Pod charges by the minute. Its popover holds the actions.
 export default function PodChip() {
@@ -15,6 +21,7 @@ export default function PodChip() {
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState(null)
   const [, setNow] = useState(0)
+  const [notNow, setNotNow] = useState(notNowRecently)
   const ref = useRef(null)
   const btn = useRef(null)
   const { pathname } = useLocation()
@@ -45,6 +52,11 @@ export default function PodChip() {
   }, [open])
 
   if (!showPod(s)) return null
+  const suggest = s.phase === 'none' && s.suggest && !notNow
+  const skip = () => {
+    try { localStorage.setItem(NOT_NOW, String(Date.now())) } catch {}
+    setNotNow(true)
+  }
 
   const act = async (action, body) => {
     setBusy(true)
@@ -75,6 +87,7 @@ export default function PodChip() {
         <i className={`pod-dot${tone(p)}`} aria-hidden="true" />
         <span>Pod · {label}</span>
         {p !== 'none' && <span className="pod-spend">· {money(s.spend?.today)} today</span>}
+        {suggest && <em className="nav-badge">Suggested</em>}
       </button>
       {open && (
         <div id="pod-pop" className="pod-pop glass pop" role="dialog" aria-label="Pod">
@@ -94,9 +107,16 @@ export default function PodChip() {
             </dl>
           ) : (
             <>
-              <p className="pod-note">{s.instant
+              {suggest && (
+                <div className="pod-suggest">
+                  <p>You ran {s.suggest.runs} workflows on Comfy Cloud in the last hour, about {money(s.suggest.cloudUsd)} of GPU time.
+                    A Pod costs about {money(s.suggest.podUsdPerHr)} an hour on an {s.suggest.gpu}, and it runs any model.</p>
+                  <button type="button" className="link-btn" onClick={skip}>Not now</button>
+                </div>
+              )}
+              {!suggest && <p className="pod-note">{s.instant
                 ? 'ComfyUI runs use Comfy Cloud at once. Start a Pod for a long session: it costs less when you run a lot, and it runs any model.'
-                : 'Add a Comfy API key in Connections for instant runs on Comfy Cloud, or start a Pod.'}</p>
+                : 'Add a Comfy API key in Connections for instant runs on Comfy Cloud, or start a Pod.'}</p>}
               <dl className="pod-facts"><div><dt>Spent</dt><dd>{spendText(s)}</dd></div></dl>
             </>
           )}
