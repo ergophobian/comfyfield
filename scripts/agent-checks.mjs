@@ -83,6 +83,8 @@ selectedStore.flows[0].nodes[0].selected = true
 selectedStore.flows[0].updated = Date.now()
 lockedFlows.save(selectedStore)
 assert.throws(() => lockedFlows.update(flow.id, 'p', { data: { text: 'Changed while running' } }), /finish/)
+// The run reaches generate after file writes, so a busy machine can get here first.
+for (let i = 0; !releaseGeneration && i < 500; i++) await new Promise((resolve) => setTimeout(resolve, 10))
 releaseGeneration([{ kind: 'image', url: '/media/locked-fake.png' }])
 await lockedRun
 console.log('ok    running flows permit selection but refuse definition changes')
