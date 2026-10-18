@@ -102,7 +102,7 @@ export function pod() {
 
 export function mimeExt(mime) {
   const t = (mime || '').split('/')[1]?.split(';')[0] || 'png'
-  return t === 'jpeg' ? 'jpg' : t === 'svg+xml' ? 'svg' : t.replace(/[^a-z0-9]/gi, '') || 'png'
+  return t === 'jpeg' ? 'jpg' : t === 'svg+xml' ? 'svg' : t === 'quicktime' ? 'mov' : t.replace(/[^a-z0-9]/gi, '') || 'png'
 }
 
 // Reads one of our saved files back by its /media/... URL.
@@ -549,10 +549,10 @@ export async function runComfyRouter({ model, input, idempotencyKey = randomUUID
   throw new Error(`Comfy Router took too long. Request ${job.request_id} may still be running; do not submit again without checking it.`)
 }
 
-async function comfyImage(source) {
+async function comfyMedia(source) {
   if (/^https?:/.test(source)) {
     const r = await fetch(source)
-    if (!r.ok) throw new Error(`Could not download the input image (${r.status}).`)
+    if (!r.ok) throw new Error(`Could not download an input file (${r.status}).`)
     return { buf: Buffer.from(await r.arrayBuffer()), mime: r.headers.get('content-type') || 'image/png' }
   }
   return readLocal(source)
@@ -604,7 +604,15 @@ function podHasRoom(needs, vram, room = {}) {
 }
 
 const unsetInput = (template, vars) => [...JSON.stringify(template).matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1]).find((k) => vars[k] == null || vars[k] === '')
-const imageLoaders = (template) => Object.entries(template).filter(([, node]) => node.class_type === 'LoadImage' && node.inputs.image === '{{image}}')
+// The loader inputs a run uploads its own files to: an attached image, and a video edit's clip.
+const UPLOADS = [['LoadImage', 'image', 'image'], ['LoadVideo', 'file', 'video']]
+const uploadsOf = (template) => Object.entries(template).flatMap(([id, node]) => UPLOADS
+  .filter(([type, field, key]) => node.class_type === type && node.inputs[field] === `{{${key}}}`).map(([, field, key]) => ({ id, field, key })))
+async function readUploads(uploads, vars) {
+  const out = {}
+  for (const { key } of uploads) out[key] ??= await comfyMedia(vars[key])
+  return out
+}
 
 // Comfy Cloud is the instant option and a Pod the long-term one. A ready Pod takes every ComfyUI run;
 // otherwise a run goes to Comfy Cloud at once, unless Cloud cannot take it. Then it waits for a
@@ -618,7 +626,7 @@ async function comfyTarget(files, podPhase, podVram, label) {
   if (phase === 'ready' && fits) return 'pod'
   const missing = notOnCloud(files)
   const why = !config('comfy').key ? 'Comfy Cloud needs a Comfy API key on a paid plan'
-    : missing.length ? `${label || missing[0].name} is not on Comfy Cloud yet` : null
+    : missing.length ? `${label || missing[0].label || missing[0].name} is not on Comfy Cloud yet` : null
   if (!why) return 'cloud'
   if (!fits && phase !== 'none') {
     throw Object.assign(new Error(`${why}, and this run needs a ${need} GB GPU; your Pod has ${vram} GB. Terminate it and start a new Pod.`), { status: 409, code: 'pod_too_small', reason: why })
@@ -652,8 +660,8 @@ export async function runComfy(workflow, vars = {}, { createClient = (key, baseU
         needs = n
       }
     }
-    const loaders = imageLoaders(template)
-    const image = loaders.length ? await comfyImage(vars.image) : null
+    const uploads = uploadsOf(template)
+    const media = await readUploads(uploads, vars)
     // On the Pod the proxy token is the server credential; the Comfy key, when set, only pays partner nodes.
     let held = null
     let client
@@ -674,7 +682,7 @@ export async function runComfy(workflow, vars = {}, { createClient = (key, baseU
     try {
       const wf = await client.workflows.fromFile(file)
       wf.json = graph
-      for (const [id] of loaders) wf.setInput(id, 'image', client.assets.fromBytes(image.buf, { filename: `input.${mimeExt(image.mime)}`, contentType: image.mime }))
+      for (const { id, field, key } of uploads) wf.setInput(id, field, client.assets.fromBytes(media[key].buf, { filename: `input.${mimeExt(media[key].mime)}`, contentType: media[key].mime }))
       const t0 = Date.now()
       const job = await client.run(wf, { apiKey: partner, timeoutMs: 30 * 60 * 1000, ...(held ? { signal: held.signal } : {}) })
       if (target === 'cloud') {
@@ -699,16 +707,19 @@ export async function runComfy(workflow, vars = {}, { createClient = (key, baseU
     }
   }
   const base = comfyBase()
-  const loaders = imageLoaders(template)
-  const image = loaders.length ? await comfyImage(vars.image) : null
-  if (image) {
+  const uploads = uploadsOf(template)
+  const media = await readUploads(uploads, vars)
+  // ComfyUI's upload route takes any input file, a video too.
+  const names = {}
+  for (const [key, file] of Object.entries(media)) {
     const form = new FormData()
-    form.append('image', new Blob([image.buf], { type: image.mime }), `comfyfield-${randomUUID()}.${mimeExt(image.mime)}`)
+    form.append('image', new Blob([file.buf], { type: file.mime }), `comfyfield-${randomUUID()}.${mimeExt(file.mime)}`)
     const upload = await fetch(`${base}/upload/image`, { method: 'POST', headers: comfyHeaders(), body: form })
-    if (!upload.ok) throw new Error(`ComfyUI image upload failed (${upload.status}).`)
+    if (!upload.ok) throw new Error(`ComfyUI upload failed (${upload.status}).`)
     const uploaded = await upload.json()
-    for (const [id] of loaders) graph[id].inputs.image = [uploaded.subfolder, uploaded.name].filter(Boolean).join('/')
+    names[key] = [uploaded.subfolder, uploaded.name].filter(Boolean).join('/')
   }
+  for (const { id, field, key } of uploads) graph[id].inputs[field] = names[key]
   const headers = { 'Content-Type': 'application/json', ...comfyHeaders() }
   let res
   try {

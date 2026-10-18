@@ -598,6 +598,43 @@ export const schemas = {
     }
   },
   "comfy": {
+    "bernini_headswap": [
+      "duration",
+      "image",
+      "prompt",
+      "seed",
+      "start",
+      "video"
+    ],
+    "bernini_relight": [
+      "duration",
+      "prompt",
+      "seed",
+      "start",
+      "video"
+    ],
+    "bernini_restyle": [
+      "duration",
+      "prompt",
+      "seed",
+      "start",
+      "video"
+    ],
+    "bernini_swap": [
+      "duration",
+      "image",
+      "prompt",
+      "seed",
+      "start",
+      "video"
+    ],
+    "bernini_swap_noref": [
+      "duration",
+      "prompt",
+      "seed",
+      "start",
+      "video"
+    ],
     "flux3_klein_t2i": [
       "count",
       "height",
@@ -691,6 +728,14 @@ export const schemas = {
       "prompt",
       "seed",
       "width"
+    ],
+    "wan_animate2": [
+      "duration",
+      "image",
+      "prompt",
+      "seed",
+      "start",
+      "video"
     ]
   },
   "router": {

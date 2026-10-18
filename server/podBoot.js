@@ -45,7 +45,7 @@ export function podEnv({ token, idleMin = 10, bootDeadlineSec = 900, runtimes = 
   }
 }
 
-const DIRS = 'checkpoints diffusion_models text_encoders vae loras upscale_models latent_upscale_models'
+const DIRS = 'checkpoints diffusion_models text_encoders vae loras upscale_models latent_upscale_models clip_vision'
 
 // The token and the pod-scoped RUNPOD_API_KEY arrive in the Pod env. Nothing here prints them,
 // and there is no `set -x`, because the status server serves the boot log.

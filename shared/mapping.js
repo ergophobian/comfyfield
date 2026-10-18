@@ -22,9 +22,18 @@ export function fill(node, vars) {
 }
 
 // `sizes` lets a model use its own canvas per aspect ratio, for example multiples of 64 for LTX-2.5.
+// A video edit reads the trimmed part of its clip: `start` and `duration` in seconds. A saved
+// character stands in for a photo with its first image.
 export function comfyVars(kind, o, sizes) {
   const [width, height] = sizes?.[o.aspect] || (kind === 'video' ? videoSize(o.aspect) : aspectSize[o.aspect])
-  return { prompt: o.prompt, width, height, count: o.count || 1, frames: (o.duration || 5) * 24 + 1, duration: o.duration || 5, image: o.images?.[0] || o.image, seed: Math.floor(Math.random() * 2 ** 31), ...o.params, ...o.fields }
+  const trim = o.trim && o.trim.end > o.trim.start ? o.trim : null
+  const seconds = (n) => Math.round(n * 1000) / 1000
+  return {
+    prompt: o.prompt, width, height, count: o.count || 1, frames: (o.duration || 5) * 24 + 1,
+    duration: trim ? seconds(trim.end - trim.start) : o.duration || 5, start: trim ? seconds(trim.start) : 0,
+    image: o.images?.[0] || o.image || o.refs?.find((r) => r.images?.length)?.images[0], video: o.video || o.media?.video,
+    seed: Math.floor(Math.random() * 2 ** 31), ...o.params, ...o.fields,
+  }
 }
 
 export function comfyRouterInput(model, o) {

@@ -138,8 +138,15 @@ export function validateFormat(format, schemas = savedSchemas) {
           }
         }
       } else if (model.provider === 'comfy') {
-        const supplied = new Set(['prompt', 'width', 'height', 'count', 'frames', 'duration', 'seed', ...(stepOptions(format, step, values).images.length || upstream.length ? ['image'] : []), ...Object.keys(step.params || {}), ...Object.keys(step.bindings || {})])
+        // A step with an image graph runs it when an image is attached, so both graphs must fit.
+        const imageSchema = model.imageWorkflow ? schemas.comfy[model.imageWorkflow] : null
+        if (model.imageWorkflow && !imageSchema) bad(`${label} Missing Comfy workflow ${model.imageWorkflow}`)
+        const hasVideo = format.inputs.some((i) => i.type === 'video')
+        const supplied = new Set(['prompt', 'width', 'height', 'count', 'frames', 'duration', 'start', 'seed', ...(hasVideo ? ['video'] : []), ...(stepOptions(format, step, values).images.length || upstream.length ? ['image'] : []), ...Object.keys(step.params || {}), ...Object.keys(step.bindings || {})])
         for (const field of schema) if (!supplied.has(field)) bad(`${label} Unmapped workflow placeholder ${field}`)
+        for (const field of imageSchema || []) if (!supplied.has(field) && field !== 'image') bad(`${label} Unmapped workflow placeholder ${field}`)
+        if (imageSchema && !imageSchema.includes('image')) bad(`${label} Image workflow ${model.imageWorkflow} takes no image`)
+        const all = [...new Set([...schema, ...(imageSchema || [])])]
         if ((step.prompt || format.prompt || format.writer) && !schema.includes('prompt')) bad(`${label} Workflow has no prompt placeholder`)
         for (const variant of variants) {
           const opts = stepOptions(format, step, variant)
@@ -148,7 +155,9 @@ export function validateFormat(format, schemas = savedSchemas) {
         for (const input of format.inputs) {
           if (input.type === 'choice' && input.options.every((o) => Object.keys(o.params || {}).length && Object.keys(o.params).every((field) => schema.includes(field)))) used.add(input.id)
         }
-        if (schema.includes('image')) for (const input of format.inputs) if (['image', 'face', 'mask', 'crop', 'draw'].includes(input.type)) used.add(input.id)
+        // A saved character gives its first image.
+        if (all.includes('image')) for (const input of format.inputs) if (['image', 'face', 'mask', 'crop', 'draw', 'character'].includes(input.type)) used.add(input.id)
+        if (all.includes('video')) for (const input of format.inputs) if (input.type === 'video') used.add(input.id)
       } else if (model.provider === 'comfyRouter' && model.model === 'byteplus/dreamina-seedance-2-5-260628') {
         for (const variant of variants) {
           const mapped = comfyRouterInput(model.model, optionsFor(step, variant))
@@ -162,6 +171,8 @@ export function validateFormat(format, schemas = savedSchemas) {
       } else bad(`${label} Provider ${model.provider} has no format schema validator yet`)
     }
   }
+  // A choice that decides which inputs show is used through them.
+  for (const input of format.inputs) if (input.when) used.add(input.when[0])
   if (!missingTarget) for (const input of format.inputs) if (!used.has(input.id)) bad(`Input ${input.id} does not map to a target model`)
   // Check a missing optional slot cannot leave a required model field unmapped.
   for (const step of format.steps.filter((s) => !s.type)) {

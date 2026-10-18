@@ -56,6 +56,29 @@ export const MODEL_FILES = {
     sha256: '68bdc82bc1b66851162ae656225e7e2068166b603db19bd5d5a3b90eb12669a9' },
   'qwen_image_2.1_vae_bf16.safetensors': { repo: 'Comfy-Org/Qwen-Image-2.1', path: 'vae/qwen_image_2.1_vae_bf16.safetensors', dir: 'vae', gb: 0.68, vramGb: 0, cloud: false,
     sha256: 'bb21f7473051e1ac368515dd3f2e15cd44d7a11748ee8823e1ddca3e4876b7c9' },
+  // Video edits (research_notes/engine/genjutsu.md), checked against the Hugging Face API on 2026-10-18.
+  // Bernini-R (ByteDance) swaps, restyles, relights and, with the BFS LoRAs, swaps heads.
+  'wan2.2_bernini_r_high_noise_fp8_scaled.safetensors': { repo: 'Comfy-Org/Bernini-R', path: 'diffusion_models/wan2.2_bernini_r_high_noise_fp8_scaled.safetensors', dir: 'diffusion_models', gb: 15.57, vramGb: 24, cloud: true,
+    sha256: '9ff3d7369da98f8eaf71045f7d0e99d5e344eea5e7dc934a930608786fe73f52' },
+  'wan2.2_bernini_r_low_noise_fp8_scaled.safetensors': { repo: 'Comfy-Org/Bernini-R', path: 'diffusion_models/wan2.2_bernini_r_low_noise_fp8_scaled.safetensors', dir: 'diffusion_models', gb: 15.57, vramGb: 24, cloud: true,
+    sha256: 'ce35c070f345c91abe43d6bf29b0eccb8687e4026fadc0e0a70a73c9afb7bbb3' },
+  'umt5_xxl_fp8_e4m3fn_scaled.safetensors': { repo: 'Comfy-Org/Wan_2.1_ComfyUI_repackaged', path: 'split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors', dir: 'text_encoders', gb: 6.74, vramGb: 0, cloud: true,
+    sha256: 'c3355d30191f1f066b26d93fba017ae9809dce6c627dda5f6a66eaa651204f68' },
+  'Wan2_1_VAE_bf16.safetensors': { repo: 'Comfy-Org/Wan-Animate-2', path: 'vae/Wan2_1_VAE_bf16.safetensors', dir: 'vae', gb: 0.25, vramGb: 0, cloud: true,
+    sha256: '1ab9a32cc2c740f6e39d80d367ce5dcc28db8c71b79b28670546b8973e9d75f9' },
+  // The turbo LoRA the swap runs at 6 steps with.
+  'lightx2v_T2V_14B_cfg_step_distill_v2_lora_rank64_bf16.safetensors': { repo: 'Kijai/WanVideo_comfy', path: 'Lightx2v/lightx2v_T2V_14B_cfg_step_distill_v2_lora_rank64_bf16.safetensors', dir: 'loras', gb: 0.63, vramGb: 0, cloud: true,
+    sha256: '37d49218544b9e0bfb8e831d1399f451fbc5068aff6474f42a90c928363c3573' },
+  // Head swap LoRAs for Bernini-R's two experts. Comfy Cloud does not have them, so a face swap runs on a Pod.
+  'headswap_bernini_r64_73f640_step3000_high_noise.safetensors': { repo: 'Alissonerdx/BFS-Best-Face-Swap-Video', path: 'wan22/headswap_bernini_r64_73f640_step3000_high_noise.safetensors', dir: 'loras', gb: 0.61, vramGb: 0, cloud: false,
+    label: 'The head swap LoRA', sha256: 'd7e541b7913c31625fb9808ae7d58803b10ec3dd512ba64cfde987c62ad74f50' },
+  'headswap_bernini_r64_73f640_step3000_low_noise.safetensors': { repo: 'Alissonerdx/BFS-Best-Face-Swap-Video', path: 'wan22/headswap_bernini_r64_73f640_step3000_low_noise.safetensors', dir: 'loras', gb: 0.61, vramGb: 0, cloud: false,
+    label: 'The head swap LoRA', sha256: 'b2d142a3bd97331f73bc06a95f0a1ed0b9d83461d0191c95d5c931edd5665b90' },
+  // Wan Animate 2 Distilled moves the character in a photo like the person in a video.
+  'wan_animate_2_distill_int8_convrot.safetensors': { repo: 'Comfy-Org/Wan-Animate-2', path: 'diffusion_models/wan_animate_2_distill_int8_convrot.safetensors', dir: 'diffusion_models', gb: 16.65, vramGb: 24, cloud: true,
+    sha256: 'd2e566ecac3f164cb1a6b63dc7d868d6678c9affa49fbceb3abe4f9458f89c8a' },
+  'clip_vision_h.safetensors': { repo: 'Comfy-Org/Wan-Animate-2', path: 'clip_vision/clip_vision_h.safetensors', dir: 'clip_vision', gb: 1.26, vramGb: 0, cloud: true,
+    sha256: '64a7ef761bfccbadbaa3da77366aac4185a6c58fa5de5f589b42a65bcc21f161' },
 }
 
 // Which input of which loader names a file, and the ComfyUI folder it loads from.
@@ -64,6 +87,7 @@ const LOADERS = {
   UNETLoader: { unet_name: 'diffusion_models' },
   VAELoader: { vae_name: 'vae' },
   CLIPLoader: { clip_name: 'text_encoders' },
+  CLIPVisionLoader: { clip_name: 'clip_vision' },
   DualCLIPLoader: { clip_name1: 'text_encoders', clip_name2: 'text_encoders' },
   TripleCLIPLoader: { clip_name1: 'text_encoders', clip_name2: 'text_encoders', clip_name3: 'text_encoders' },
   LoraLoader: { lora_name: 'loras' },
