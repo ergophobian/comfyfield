@@ -15,7 +15,7 @@ Tags: **[Verified: source]** means I read it in a primary source on this date. *
 | `video-relight` | Bernini-R | `bernini_relight.json` | None | Yes | Same |
 | `color-grade` | Bernini-R + KJNodes Color Match | `bernini_grade.json` | None | Yes (KJNodes `ColorMatch` is listed) | Pod needs KJNodes installed |
 
-All graphs are in the same folder as this file and pass a link and input-name check against the ComfyUI v0.41.1 source (`scripts-genjutsu/check_graphs.py`, 0 problems).
+All graphs passed a link and input-name check against the ComfyUI v0.41.1 source (`scripts-genjutsu/check_graphs.py`, 0 problems). ComfyField ships six of them in `public/workflows/` (#83), changed so that each graph reads the clip's trim from `{{start}}` and `{{duration}}`, sizes itself from the clip with `ComfyMathExpression` instead of `{{width}}`/`{{height}}`, and caps its frames itself instead of `{{frames}}`. `bernini_grade` (needs KJNodes) and `wan22_animate_face_swap` (needs three custom packs) are not shipped.
 
 ## 1. The models
 
