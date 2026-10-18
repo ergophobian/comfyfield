@@ -122,7 +122,7 @@ export default function PodChip() {
           )}
           {files.map((d) => (
             <div className="pod-dl" key={`${d.dir}/${d.file}`}>
-              <span><em>{d.file}</em><b>{Math.round(pct(d))}%</b></span>
+              <span><em title={d.file}>{d.file}</em><b>{Math.round(pct(d))}%</b></span>
               <i style={{ '--p': `${pct(d)}%` }} />
             </div>
           ))}
