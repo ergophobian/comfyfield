@@ -70,6 +70,7 @@ export default function PodSheet() {
             {kind === 'start' && <div><dt>Price</dt><dd>{rung?.usdPerHr != null ? `${money(rung.usdPerHr)} an hour` : 'Set by RunPod at start'}</dd></div>}
             {kind === 'start' && <div><dt>Ready in</dt><dd>Usually 5 to 8 minutes</dd></div>}
             {quote.files.length > 0 && <div><dt>Models</dt><dd>{quote.files.map(fileText).join(', ')}</dd></div>}
+            {quote.runtimes?.map((e) => <div key={e.name}><dt>Installs</dt><dd>{e.name}, about {e.gb} GB, in {e.minutes[0]} to {e.minutes[1]} minutes the first time</dd></div>)}
             <div><dt>Spent</dt><dd>{spendText(quote)}</dd></div>
           </dl>
         )}

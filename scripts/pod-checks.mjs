@@ -10,7 +10,7 @@ import { test } from 'node:test'
 import { podBootScript, podStartCmd, podEnv, START_CMD_MAX } from '../server/podBoot.js'
 import { podManager, GPU_LADDER, NO_POD } from '../server/pod.js'
 import { sandboxFetch } from '../server/podSandbox.js'
-import { modelFilesOf, minVramOf, volumeFor, MODEL_FILES } from '../shared/modelFiles.js'
+import { modelFilesOf, minVramOf, volumeFor, runtimesOf, podNeedsOf, MODEL_FILES } from '../shared/modelFiles.js'
 
 fs.mkdirSync('outputs', { recursive: true })
 const tmp = fs.mkdtempSync(path.resolve('outputs/pod-check-'))
@@ -26,6 +26,8 @@ function findPython() {
   return null
 }
 const python = findPython()
+// Later checks stub globalThis.fetch; checks that talk to a real local server keep this one.
+const netFetch = globalThis.fetch
 
 const listen = (handler) => new Promise((resolve) => {
   const server = http.createServer(handler).listen(0, '127.0.0.1', () => resolve(server))
@@ -205,6 +207,7 @@ function fakeRunpod(clock) {
     if (u.host === 'api.runpod.io') return reply({ data: { myself: { id: 'me' } } })
     if (u.pathname === '/heartbeat') return reply(null, 204)
     if (u.pathname === '/download') return reply({ downloads: {} }, 202)
+    if (u.pathname.startsWith('/runtime/')) return reply({ runtime: { state: 'installing', error: null, sec: 0 } }, 202)
     return f.statusd ? reply(f.statusd) : reply({ error: 'not reachable' }, 502)
   }
   f.count = (pred) => f.calls.filter(pred).length
@@ -771,7 +774,8 @@ await test('models: every bundled workflow is a linked API graph that saves medi
       assert(node.inputs && !Array.isArray(node.inputs), w)
       visit(node.inputs)
     }
-    assert(Object.values(graph).some((n) => /^Save(Image|Video|Animated(WEBP|PNG)|Audio\w*)$/.test(n.class_type)), `${w} saves nothing`)
+    // FreeVideoGenerate saves its own mp4.
+    assert(Object.values(graph).some((n) => /^(Save(Image|Video|Animated(WEBP|PNG)|Audio\w*)|FreeVideoGenerate)$/.test(n.class_type)), `${w} saves nothing`)
     if (/i2v/.test(w)) assert(Object.values(graph).some((n) => n.class_type === 'LoadImage' && n.inputs.image === 'start.png'), `${w} takes no start image`)
   }
 })
@@ -886,4 +890,215 @@ await test('auto-start: the RunPod switch is saved as on or off, and on by defau
   core.saveConnection('runpod', { auto: 'off' })
   assert.equal(core.podAutoStart(), false)
   assert.throws(() => core.saveConnection('runpod', { auto: 'maybe' }), /on or off/)
+})
+
+// ---- FreeVideo -------------------------------------------------------------------------------------
+
+await test('freevideo: the boot script pins FreeVideo, loads only its node, and installs it outside the boot', () => {
+  const script = podBootScript()
+  assert(script.includes('git -C "$FV" checkout --quiet --force fcd24fb730e7094565d13b663e92c264ed4d470c'), 'FreeVideo is pinned to v0.4.14 by commit')
+  assert(script.indexOf('STAGE freevideo-clone') > script.indexOf('STAGE comfy-update') && script.indexOf('STAGE freevideo-clone') < script.indexOf('main.py'),
+    'the node is in place before ComfyUI starts')
+  assert(/main\.py [^\n]*--disable-all-custom-nodes --whitelist-custom-nodes FreeVideo/.test(script), 'only FreeVideo loads of the custom nodes')
+  assert(/export FREEVIDEO_HOME=\/workspace\/freevideo FREEVIDEO_BACKGROUND_COMPILE=off CUDA_VISIBLE_DEVICES="\$\{CUDA_VISIBLE_DEVICES:-0\}"/.test(script))
+  const setup = script.slice(script.indexOf("<<'FVSETUP'"), script.lastIndexOf('FVSETUP'))
+  for (const flag of ['--root /workspace/freevideo', '--yes --accept-model-license', '--no-launch', '--plain', '--network official', '--prepared-format fp8', '--environment unified', '--install-system-deps', '</dev/null'])
+    assert(setup.includes(flag), flag)
+  assert(/-u HF_TOKEN/.test(setup), 'every FreeVideo repo is public, so no token travels')
+  assert(/-u RUNPOD_API_KEY -u POD_TOKEN/.test(setup), 'the installer gets neither the RunPod key nor the Pod token')
+  const comfy = script.slice(script.indexOf('STAGE comfy '), script.indexOf('main.py'))
+  assert(comfy.includes('unset RUNPOD_API_KEY POD_TOKEN'), 'ComfyUI and its custom nodes get neither secret')
+  assert(!/setup\.sh/.test(script.slice(0, script.indexOf("<<'FVSETUP'"))), 'the 15-40 minute install never runs in the boot itself')
+  assert(/\/runtime\/\$e/.test(script), 'the boot asks the status server to install what the Pod was started for')
+  assert(/\[ -f \/workspace\/freevideo\/machine\.json \] && want="\$want freevideo"/.test(script), 'a resumed Pod installs FreeVideo again')
+  assert(Buffer.byteLength(podStartCmd(script)[2]) < START_CMD_MAX)
+  if (hasBash) {
+    const f = path.join(tmp, 'boot.sh')
+    fs.writeFileSync(f, script)
+    const r = spawnSync('bash', ['-n', f], { encoding: 'utf8' })
+    assert.equal(r.status, 0, r.stderr)
+  }
+  assert.equal(podEnv({ token: 't', runtimes: ['freevideo'] }).CF_RUNTIMES, 'freevideo')
+  assert(!('CF_RUNTIMES' in podEnv({ token: 't' })))
+  assert.throws(() => podEnv({ token: 't', runtimes: ['x; rm -rf /'] }), /Unknown runtime/)
+})
+
+await test('freevideo: the status server installs on request, reports it, counts it as busy and retries a failure', { skip: (!python || !hasBash) && 'needs Python 3.9+ and bash' }, async (t) => {
+  const port = 20000 + Math.floor(Math.random() * 20000)
+  const base = path.join(tmp, 'statusd-fv').replace(/\\/g, '/')
+  const home = `${base}/freevideo`
+  fs.mkdirSync(base, { recursive: true })
+  // A fake installer: the first run fails the way FreeVideo's disk preflight does, the second writes machine.json.
+  fs.writeFileSync(`${base}/fail-once`, '')
+  fs.writeFileSync(`${base}/runtime-freevideo.sh`, [
+    '#!/bin/bash', 'echo "Installing the runtime"', 'sleep 1',
+    `if [ -f "${base}/fail-once" ]; then rm "${base}/fail-once"; echo "Insufficient disk space: need 89.1 GiB"; echo "see the log"; exit 1; fi`,
+    `mkdir -p "${home}" && echo '{"ready": true}' > "${home}/machine.json"`, ''].join('\n'))
+  const proc = spawn(python[0], [...python.slice(1), statusd], {
+    env: { ...process.env, POD_TOKEN: 'secret', CF_BASE: base, CF_MODELS: `${base}/models`, CF_STATUS_PORT: String(port), CF_FREEVIDEO_HOME: home,
+      CF_COMFY_URL: 'http://127.0.0.1:9', CF_PROXY_URL: 'http://127.0.0.1:9', CF_TICK: '0.2', CF_DRY_KILL: '1' },
+    stdio: 'ignore',
+  })
+  t.after(() => proc.kill())
+  const url = `http://127.0.0.1:${port}`
+  const auth = { Authorization: 'Bearer secret' }
+  const status = async () => (await netFetch(`${url}/status`, { headers: auth })).json()
+  await until(async () => (await netFetch(`${url}/status`, { headers: auth })).ok)
+  assert.deepEqual((await status()).runtimes, {}, 'nothing installs until a run asks')
+  assert.equal((await netFetch(`${url}/runtime/freevideo`, { method: 'POST' })).status, 401)
+  assert.equal((await netFetch(`${url}/runtime/other`, { method: 'POST', headers: auth })).status, 404)
+  const asked = await netFetch(`${url}/runtime/freevideo`, { method: 'POST', headers: auth })
+  assert.equal(asked.status, 202)
+  assert.equal((await asked.json()).runtime.state, 'installing')
+  assert.equal((await (await netFetch(`${url}/runtime/freevideo`, { method: 'POST', headers: auth })).json()).runtime.state, 'installing', 'a second ask joins the running install')
+  const failed = await until(async () => { const e = (await status()).runtimes.freevideo; return e.state === 'failed' && e })
+  assert.equal(failed.error, 'Insufficient disk space: need 89.1 GiB', 'the reason is the line that says what failed')
+  await netFetch(`${url}/runtime/freevideo`, { method: 'POST', headers: auth })
+  const ready = await until(async () => { const e = (await status()).runtimes.freevideo; return e.state === 'ready' && e })
+  assert(ready.sec >= 1)
+  assert(fs.readFileSync(`${base}/freevideo.log`, 'utf8').includes('Installing the runtime'), 'the installer writes its own log')
+
+  const code = `
+import importlib.util, json, sys
+spec = importlib.util.spec_from_file_location('statusd', sys.argv[1])
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+m.RUNTIMES['freevideo'] = {'state': 'installing', 'error': None, 'startedAt': 0, 'endedAt': None}
+print(json.dumps([m.installing(), m.next_idle(600, 0, 0, m.downloading() or m.installing(), 15)]))`
+  const r = spawnSync(python[0], [...python.slice(1), '-c', code, statusd], { encoding: 'utf8' })
+  assert.equal(r.status, 0, r.stderr)
+  assert.deepEqual(JSON.parse(r.stdout), [true, 0], 'an install keeps the idle clock at zero, though the GPU is idle')
+})
+
+await test('freevideo: a Pod started for H3 installs FreeVideo at boot; a lease waits for it and reports a failure', async () => {
+  const { pod, rp, opts } = setup()
+  await pod.start({ minVramGb: 96, volumeGb: 126, runtimes: ['freevideo'] })
+  const create = rp.calls.find((c) => c.path === '/v1/pods' && c.method === 'POST').body
+  assert.equal(create.env.CF_RUNTIMES, 'freevideo')
+  assert.equal(create.volumeInGb, 130, 'room for the first install')
+  assert.equal(create.gpuTypeIds[0], 'NVIDIA RTX PRO 6000 Blackwell Server Edition')
+
+  rp.statusd = readyStatus({ runtimes: { freevideo: { state: 'installing', error: null, sec: 60 } } })
+  await pod.refresh()
+  assert.deepEqual(pod.status().runtimes.map((e) => [e.name, e.state]), [['FreeVideo', 'installing']])
+  assert.deepEqual(pod.room().runtimes, { freevideo: 'installing' })
+  rp.statusd = readyStatus({ idleSec: 900, runtimes: { freevideo: { state: 'installing', error: null, sec: 900 } } })
+  await pod.refresh()
+  assert.equal(pod.guard(), null, 'an install is work, so the idle guard waits')
+
+  let waits = 0
+  opts.onWait = () => { if (++waits === 3) rp.statusd = readyStatus({ downloads: { 'loras/l.safetensors': { state: 'done' } }, runtimes: { freevideo: { state: 'ready', error: null, sec: 1200 } } }) }
+  const stages = []
+  const lora = { repo: 'org/l', path: 'l.safetensors', dir: 'loras', name: 'l.safetensors' }
+  rp.statusd = readyStatus({ downloads: { 'loras/l.safetensors': { state: 'done' } }, runtimes: { freevideo: { state: 'installing', error: null, sec: 1000 } } })
+  const l = await pod.lease({ files: [lora], runtimes: ['freevideo'], onStage: (s) => stages.push(s) })
+  assert.deepEqual([...new Set(stages)], ['installing', 'running'])
+  assert.equal(rp.count((c) => c.path === '/runtime/freevideo' && c.method === 'POST'), 1)
+  assert.equal(rp.count((c) => c.path === '/download'), 1, 'files download while the runtime installs')
+  l.release()
+
+  const before = rp.count((c) => c.path === '/runtime/freevideo')
+  await pod.lease({ runtimes: ['freevideo'] }).then((x) => x.release())
+  assert.equal(rp.count((c) => c.path === '/runtime/freevideo'), before, 'a ready runtime is not asked again')
+
+  rp.statusd = readyStatus({ runtimes: { freevideo: { state: 'failed', error: 'Insufficient disk space: need 89.1 GiB', sec: 30 } } })
+  opts.onWait = () => {}
+  // The POST reply says installing again, then the next status says it failed.
+  await assert.rejects(pod.lease({ runtimes: ['freevideo'] }), /FreeVideo could not install on the Pod: Insufficient disk space: need 89\.1 GiB/)
+  assert.equal(pod.status().runs, 0)
+})
+
+await test('freevideo: H3 runs stock on Cloud and small Pods, and on FreeVideo on a 96 GB Pod with room', async () => {
+  const { comfyVars } = await import('../shared/mapping.js')
+  const { models } = await import('../src/lib/catalog.js')
+  const comfyVarsFor = (prompt) => comfyVars('video', { prompt, aspect: '16:9', duration: 5 }, models.find((m) => m.id === 'comfy-h3').sizes)
+  const sent = []
+  const client = {
+    assets: { fromBytes: () => ({}) },
+    workflows: { fromFile: async (f) => ({ file: f, json: null, setInput(id) { this.image = id } }) },
+    // The proxy lists FreeVideo's mp4 under `images`, so its kind comes from the content type.
+    run: async (wf) => { sent.push({ file: path.basename(wf.file), graph: wf.json, image: wf.image }); return { outputs: [{ type: 'image', contentType: 'video/mp4', name: 'video.mp4', toBytes: async () => Buffer.from('mp4') }] } },
+  }
+  const vars = comfyVarsFor('A fox at dawn')
+  const leases = []
+  const lease = async (o) => { leases.push(o); return { baseUrl: 'https://p-8189.proxy.runpod.net', token: 't', sandbox: false, signal: new AbortController().signal, reason: () => null, release() {} } }
+  const run = (workflow, { phase = 'ready', vram = 96, room = { diskFreeGb: 130, runtimes: {} }, v = vars } = {}) =>
+    core.runComfy(workflow, v, { createClient: () => client, lease, podPhase: async () => phase, podVram: () => vram, podRoom: () => room })
+
+  podMode()
+  const files = await run('h3_open_t2v', { phase: 'none' })
+  assert.equal(sent.at(-1).file, 'h3_open_t2v.json', 'Comfy Cloud keeps stock H3')
+  assert.equal(files[0].kind, 'video', 'an mp4 is a video, whatever key ComfyUI listed it under')
+  assert.equal(leases.length, 0)
+
+  await run('h3_open_t2v')
+  assert.equal(sent.at(-1).file, 'h3_freevideo_t2v.json', 'a 96 GB Pod runs FreeVideo')
+  const g = sent.at(-1).graph['104']
+  assert.equal(g.class_type, 'FreeVideoGenerate')
+  assert.deepEqual([g.inputs.text, g.inputs.width, g.inputs.height, g.inputs.seconds, typeof g.inputs.seed], ['A fox at dawn', 1344, 768, 5, 'number'])
+  assert.deepEqual(leases.at(-1), { files: [], runtimes: ['freevideo'] }, 'the lease installs FreeVideo instead of downloading stock files')
+
+  await run('h3_open_t2v', { vram: 32 })
+  assert.equal(sent.at(-1).file, 'h3_open_t2v.json', 'a 32 GB Pod runs stock H3')
+  assert.equal(leases.at(-1).runtimes.length, 0)
+  assert(leases.at(-1).files.some((f) => f.name === 'minimax_h3_fl2va_pruned_int8_convrot.safetensors'))
+
+  await run('h3_open_t2v', { room: { diskFreeGb: 40, runtimes: {} } })
+  assert.equal(sent.at(-1).file, 'h3_open_t2v.json', 'a full disk without FreeVideo falls back to stock H3')
+  await run('h3_open_t2v', { room: { diskFreeGb: 40, runtimes: { freevideo: 'ready' } } })
+  assert.equal(sent.at(-1).file, 'h3_freevideo_t2v.json', 'an installed FreeVideo needs no more disk')
+  await run('h3_open_t2v', { phase: 'starting' })
+  assert.equal(sent.at(-1).file, 'h3_open_t2v.json', 'with a Comfy key, runs use Cloud until the Pod is ready')
+  await run('h3_open_t2v', { vram: null })
+  assert.equal(sent.at(-1).file, 'h3_open_t2v.json', 'a Pod of unknown size keeps stock H3')
+
+  podMode({})
+  await run('h3_open_t2v', { phase: 'starting', room: { diskFreeGb: null, runtimes: {} } })
+  assert.equal(sent.at(-1).file, 'h3_freevideo_t2v.json', 'with no Comfy key, the run waits for the starting 96 GB Pod and runs FreeVideo')
+
+  podMode()
+  await run('h3_open_i2v', { v: { ...vars, image: 'data:image/png;base64,iVBORw0KGgo=' } })
+  assert.equal(sent.at(-1).file, 'h3_freevideo_i2v.json', 'an attached image picks the FreeVideo start-frame graph')
+  assert.equal(sent.at(-1).image, '700', 'the image is uploaded to its LoadImage node')
+  assert.deepEqual(sent.at(-1).graph['104'].inputs.first, ['700', 0])
+})
+
+await test('freevideo: the model list makes FreeVideo graphs Pod-only, sizes their Pod and downloads their LoRAs', () => {
+  const read = (n) => JSON.parse(fs.readFileSync(`public/workflows/${n}.json`, 'utf8'))
+  assert.deepEqual(runtimesOf(read('h3_freevideo_t2v')).map((e) => e.runtime), ['freevideo'])
+  assert.deepEqual(runtimesOf(read('h3_open_t2v')), [])
+  assert.deepEqual(modelFilesOf(read('h3_freevideo_t2v')), [], 'FreeVideo fetches its own weights')
+  const needs = core.workflowNeeds('h3_freevideo_i2v')
+  assert.deepEqual([needs.minVramGb, needs.volumeGb, needs.runtimes[0].cloud], [96, 126, false])
+  const pod = core.podNeedsFor('h3_open_t2v')
+  assert.deepEqual([pod.minVramGb, pod.volumeGb, pod.runtimes.map((e) => e.name)], [96, 126, ['FreeVideo']], 'a Pod started for H3 is sized for FreeVideo')
+  assert.equal(core.podNeedsFor('h3_open_i2v').runtimes.length, 1)
+  assert.equal(core.workflowNeeds('h3_open_t2v').minVramGb, 32, 'stock H3 keeps its own needs for Cloud and small Pods')
+  assert.deepEqual(core.podNeedsFor('ltx25_t2v'), core.workflowNeeds('ltx25_t2v'), 'a model without a Pod graph is sized as before')
+  const lora = 'minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors'
+  const graph = { 104: { class_type: 'FreeVideoGenerate', inputs: { loras: ['601', 0] } }, 601: { class_type: 'FreeVideoLoRA', inputs: { lora, strength: 1 } }, 602: { class_type: 'FreeVideoLoRA', inputs: { lora: 'None', strength: 1 } } }
+  assert.deepEqual(podNeedsOf(graph).map((n) => n.runtime || `${n.dir}/${n.name}`), [`loras/${lora}`, 'freevideo'], 'a FreeVideo LoRA downloads like any LoRA; None is no file')
+})
+
+await test('freevideo: the sandbox installs FreeVideo on a Pod started for it, and again after a resume', async () => {
+  const dir = fs.mkdtempSync(path.join(tmp, 'sandbox-fv-'))
+  const clock = { t: Date.now() }
+  const net = sandboxFetch({ file: () => path.join(dir, 'pod-sandbox.json'), now: () => clock.t, mode: '1' })
+  const pod = podManager({ fetch: net, now: () => clock.t, keys: () => ({ key: 'sandbox' }), dir: () => dir, sandbox: true, owner: true, wait: async () => { clock.t += 3000 } })
+  await pod.start({ minVramGb: 96, volumeGb: 126, runtimes: ['freevideo'] })
+  clock.t += 16000
+  const s = await pod.tick()
+  assert.equal(s.phase, 'ready')
+  assert.deepEqual(s.runtimes.map((e) => [e.name, e.state]), [['FreeVideo', 'installing']])
+  const { podLabel, takeLabel } = await import('../src/lib/usePod.js')
+  assert.equal(podLabel(s), 'Installing FreeVideo')
+  assert.equal(takeLabel({ provider: 'comfy' }, { ...s, mode: 'cloud' }), 'Installing FreeVideo on the Pod')
+  const l = await pod.lease({ runtimes: ['freevideo'] })
+  assert.equal(pod.status().runtimes[0].state, 'ready')
+  assert.equal(podLabel(pod.status()), '1 running')
+  l.release()
+  await pod.pause({ now: true })
+  await pod.resume()
+  clock.t += 12000
+  assert.equal((await pod.tick()).runtimes[0].state, 'installing', 'a resumed Pod runs the installer again')
+  await pod.terminate({ now: true })
 })

@@ -1,4 +1,4 @@
-# ComfyField Pod status server: status, heartbeats, model downloads and the watchdog.
+# ComfyField Pod status server: status, heartbeats, model downloads, runtime installs and the watchdog.
 # server/podBoot.js embeds this file in the Pod's boot script. It runs with the image's
 # venv Python and uses only the standard library, so it also runs in scripts/pod-checks.mjs.
 import hashlib
@@ -24,6 +24,8 @@ TOKEN = E.get('POD_TOKEN', '')
 PORT = int(E.get('CF_STATUS_PORT', '8190'))
 TICK = float(E.get('CF_TICK', '15'))
 DIRS = ('checkpoints', 'diffusion_models', 'text_encoders', 'vae', 'loras', 'upscale_models', 'latent_upscale_models')
+# Runtimes the boot script wrote an installer for, and where each one writes machine.json when it is ready.
+RUNTIME_HOMES = {'freevideo': E.get('CF_FREEVIDEO_HOME', '/workspace/freevideo')}
 CFG = {
   'idle_after': int(E.get('IDLE_AFTER', '780')),
   'heartbeat_deadline': int(E.get('HEARTBEAT_DEADLINE', '600')),
@@ -37,6 +39,7 @@ BOOTED = time.time()
 LOCK = threading.Lock()
 S = {'stage': 'boot', 'ready_at': None, 'hb': None, 'idle': 0, 'queue': None, 'gpu': None, 'fatal': None, 'fatal_at': None, 'ending': None}
 DOWNLOADS = {}
+RUNTIMES = {}
 WORK = []
 WAKE = threading.Event()
 
@@ -121,6 +124,63 @@ def downloading():
   return any(v['state'] in ('queued', 'downloading') for v in DOWNLOADS.values())
 
 
+def installing():
+  return any(v['state'] == 'installing' for v in RUNTIMES.values())
+
+
+def runtime_ready(name):
+  try:
+    with open(os.path.join(RUNTIME_HOMES[name], 'machine.json')) as f:
+      return json.load(f).get('ready') is True
+  except Exception:
+    return False
+
+
+def last_error(logfile):
+  # The installer's own last word is the most useful reason; prefer a line that says what failed.
+  try:
+    with open(logfile, errors='replace') as f:
+      lines = [l.strip() for l in f.readlines()[-80:] if l.strip()]
+  except OSError:
+    return None
+  hits = [l for l in lines if re.search(r'error|fail|insufficient|refus|cannot|could not|not on the pod', l, re.I)]
+  pick = hits or lines
+  return pick[-1][:300] if pick else None
+
+
+def install(name):
+  # Runs the runtime's installer on every request after a failure, and once per boot otherwise.
+  # "Ready" needs this boot's run to end well: an old machine.json is there while a re-run holds its locks.
+  logfile = os.path.join(BASE, '%s.log' % name)
+  log('installing %s' % name)
+  try:
+    with open(logfile, 'a') as out:
+      code = subprocess.run(['bash', os.path.join(BASE, 'runtime-%s.sh' % name)], stdout=out, stderr=subprocess.STDOUT,
+                            stdin=subprocess.DEVNULL).returncode
+    err = None if code == 0 and runtime_ready(name) else (last_error(logfile) or 'the installer stopped (exit %s)' % code)
+  except Exception as e:
+    err = str(e)
+  with LOCK:
+    RUNTIMES[name].update(state='failed' if err else 'ready', error=err, endedAt=time.time())
+  log('%s %s' % (name, 'failed: %s' % err if err else 'ready'))
+
+
+def want_runtime(name):
+  with LOCK:
+    e = RUNTIMES.get(name)
+    if e and e['state'] in ('installing', 'ready'):
+      return dict(e)
+    RUNTIMES[name] = {'state': 'installing', 'error': None, 'startedAt': time.time(), 'endedAt': None}
+    out = dict(RUNTIMES[name])
+  threading.Thread(target=install, args=(name,), daemon=True).start()
+  return out
+
+
+def runtimes():
+  now = time.time()
+  return {k: {'state': v['state'], 'error': v['error'], 'sec': int((v['endedAt'] or now) - v['startedAt'])} for k, v in RUNTIMES.items()}
+
+
 def snapshot():
   now = time.time()
   with LOCK:
@@ -134,7 +194,7 @@ def snapshot():
       'idleSec': int(S['idle']), 'uptimeSec': int(now - BOOTED), 'queue': S['queue'],
       'heartbeatAgeSec': None if hb is None else int(now - hb), 'gpu': S['gpu'],
       'diskFreeGb': None if free is None else round(free, 1), 'ending': S['ending'],
-      'models': models(), 'downloads': {k: dict(v) for k, v in DOWNLOADS.items()},
+      'models': models(), 'downloads': {k: dict(v) for k, v in DOWNLOADS.items()}, 'runtimes': runtimes(),
     }
 
 
@@ -178,8 +238,10 @@ def watchdog():
       if S['stage'] == 'ready' and not S['ready_at']:
         S['ready_at'] = time.time()
       S['queue'], S['gpu'] = queue, gpu
-      S['idle'] = next_idle(S['idle'], gpu and gpu['util'], queue, downloading(), TICK)
-      busy = (queue or 0) > 0 or queue is None or downloading()
+      # An install downloads and compiles with the GPU idle, so it counts as work.
+      work = downloading() or installing()
+      S['idle'] = next_idle(S['idle'], gpu and gpu['util'], queue, work, TICK)
+      busy = (queue or 0) > 0 or queue is None or work
       state = dict(S, now=time.time(), booted=BOOTED, busy=busy)
       done = S['ending']
     reason = None if done else decide(state, CFG)
@@ -323,6 +385,11 @@ class Handler(BaseHTTPRequestHandler):
         if WORK:
           WAKE.set()
       return self.reply(202, {'downloads': {k: dict(v) for k, v in DOWNLOADS.items()}})
+    if self.path.startswith('/runtime/'):
+      name = self.path[len('/runtime/'):]
+      if name not in RUNTIME_HOMES:
+        return self.reply(404, {'error': 'unknown runtime'})
+      return self.reply(202, {'runtime': want_runtime(name)})
     self.reply(404, {'error': 'not found'})
 
 

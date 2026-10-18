@@ -171,17 +171,21 @@ export default function comfyfieldApi({ harness } = {}) {
 }
 
 // Pod actions from the chip and the start sheet. Only these start, pause, resume or terminate a Pod.
-// A workflow name decides the GPU memory and disk; a workflow with a file no Pod can get fails here.
-const podNeeds = (workflow) => (workflow ? core.workflowNeeds(workflow) : { files: [], minVramGb: 0, volumeGb: 60 })
+// A workflow name decides the GPU memory, the disk and the runtimes; a workflow with a file no Pod can get fails here.
+const podNeeds = (workflow) => (workflow ? core.podNeedsFor(workflow) : { files: [], runtimes: [], minVramGb: 0, volumeGb: 60 })
 
 async function podQuote(workflow) {
   const needs = podNeeds(workflow)
-  return { ...(await core.pod().quote({ minVramGb: needs.minVramGb })), files: needs.files.map((f) => ({ name: f.name, gb: f.gb })), volumeGb: needs.volumeGb }
+  return { ...(await core.pod().quote({ minVramGb: needs.minVramGb })), files: needs.files.map((f) => ({ name: f.name, gb: f.gb })),
+    runtimes: needs.runtimes.map((e) => ({ name: e.name, gb: e.gb, minutes: e.minutes })), volumeGb: needs.volumeGb }
 }
 
 async function podAction(action, { workflow, now } = {}) {
   const p = core.pod()
-  if (action === 'start') return p.start(podNeeds(workflow))
+  if (action === 'start') {
+    const { minVramGb, volumeGb, runtimes } = podNeeds(workflow)
+    return p.start({ minVramGb, volumeGb, runtimes: runtimes.map((e) => e.runtime) })
+  }
   if (action === 'pause') return p.pause({ now: Boolean(now) })
   if (action === 'resume') return p.resume()
   if (action === 'terminate') return p.terminate({ now: Boolean(now) })

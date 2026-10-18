@@ -5,6 +5,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { randomBytes } from 'node:crypto'
 import { POD_IMAGE, PROXY_PORT, STATUS_PORT, podEnv, podStartCmd, proxyUrl, statusUrl } from './podBoot.js'
+import { RUNTIMES } from '../shared/modelFiles.js'
 
 const REST = 'https://rest.runpod.io/v1'
 const GQL = 'https://api.runpod.io/graphql'
@@ -238,6 +239,11 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
   function downloads() {
     return Object.entries(m.status?.downloads || {}).map(([k, v]) => ({ file: k.split('/').pop(), dir: k.split('/')[0], ...v }))
   }
+  const runtimeName = (id) => RUNTIMES[id]?.name || id
+  function runtimes() {
+    return Object.entries(m.status?.runtimes || {}).map(([id, v]) => ({ runtime: id, name: runtimeName(id), minutes: RUNTIMES[id]?.minutes || null, ...v }))
+  }
+  const installing = () => runtimes().some((e) => e.state === 'installing')
 
   function status() {
     const rec = record()
@@ -250,7 +256,7 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
         pausedDiskPerDay: (rec.volumeGb * STOPPED_DISK_USD_GB_MONTH * 12) / 365,
       },
       spend: { today: spentToday(), cap: cap() },
-      runs: m.leases.size, queue: m.status?.queue ?? null, downloads: downloads(),
+      runs: m.leases.size, queue: m.status?.queue ?? null, downloads: downloads(), runtimes: runtimes(),
       ending: m.ending?.then || null, event: m.event, connected: Boolean(key()),
     }
   }
@@ -264,7 +270,7 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
     const s = m.status
     const t = now()
     const age = t - rec.startedAt
-    const busy = m.leases.size > 0 || (s?.queue ?? 0) > 0 || downloads().some((d) => d.state === 'queued' || d.state === 'downloading')
+    const busy = m.leases.size > 0 || (s?.queue ?? 0) > 0 || downloads().some((d) => d.state === 'queued' || d.state === 'downloading') || installing()
     if (s?.fatal) return `The Pod failed to start: ${s.fatal}`
     if (t - (m.seenAt || Math.max(rec.startedAt, m.since)) >= DARK) return 'Terminated: the Pod did not answer for 20 minutes.'
     // Only a Pod that never became ready: a ComfyUI restart later is not a failed boot.
@@ -305,7 +311,8 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
     return out
   }
 
-  async function start({ minVramGb = 0, volumeGb = 60 } = {}) {
+  // `runtimes` start installing as soon as the Pod boots, for a run that waits on them.
+  async function start({ minVramGb = 0, volumeGb = 60, runtimes: want = [] } = {}) {
     if (!key()) throw fail('Add your RunPod key in Connections first.', 400)
     await adopt({ force: true }).catch(() => null)
     if (record() || m.placing) throw fail('A Pod already exists. ComfyField runs one Pod at a time.', 409)
@@ -325,7 +332,7 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
         const r = await rest('/pods', { method: 'POST', timeoutMs: 60_000, body: {
           name, imageName: POD_IMAGE, gpuTypeIds: [rung.gpuTypeId], gpuCount: 1, cloudType: rung.cloudType,
           containerDiskInGb: 50, volumeInGb: volume, volumeMountPath: '/workspace',
-          ports: [`${PROXY_PORT}/http`, `${STATUS_PORT}/http`], env: podEnv({ token, idleMin: IDLE_MIN }), dockerStartCmd: podStartCmd(),
+          ports: [`${PROXY_PORT}/http`, `${STATUS_PORT}/http`], env: podEnv({ token, idleMin: IDLE_MIN, runtimes: want }), dockerStartCmd: podStartCmd(),
         } })
         if (r.ok && r.data?.id) {
           const t = now()
@@ -418,8 +425,8 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
   // ---- leases ------------------------------------------------------------------------------------
 
   // A run holds a lease while it uses the Pod: it waits for a starting Pod, gets its missing model
-  // files, and keeps the Pod beaten. It never starts or resumes one.
-  async function lease({ files = [], signal, onStage = () => {}, pollMs = 3000 } = {}) {
+  // files and runtimes, and keeps the Pod beaten. It never starts or resumes one.
+  async function lease({ files = [], runtimes: need = [], signal, onStage = () => {}, pollMs = 3000 } = {}) {
     const ctl = new AbortController()
     const l = { signal: ctl.signal, reason: null, end: (why) => { l.reason = why; ctl.abort(new Error(why)) } }
     const stop = () => l.end('Cancelled.')
@@ -443,11 +450,20 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
       }
       const have = new Set((m.status.models || []).map((f) => `${f.dir}/${f.name}`))
       const missing = files.filter((f) => !have.has(`${f.dir}/${f.name}`))
-      if (missing.length) {
-        onStage('downloading')
+      const pending = need.filter((e) => m.status.runtimes?.[e]?.state !== 'ready')
+      if (missing.length || pending.length) {
+        onStage(pending.length ? 'installing' : 'downloading')
         const rec = record()
-        const r = await call(`${statusUrl(rec.id)}/download`, { method: 'POST', token: rec.token, body: { files: missing.map(({ repo, path: p, dir, name, sha256 }) => ({ repo, path: p, dir, name, ...(sha256 ? { sha256 } : {}) })) } })
-        if (!r.ok) throw fail(`The Pod refused the model download: ${errorText(r.data) || `HTTP ${r.status}`}`, 502)
+        if (missing.length) {
+          const r = await call(`${statusUrl(rec.id)}/download`, { method: 'POST', token: rec.token, body: { files: missing.map(({ repo, path: p, dir, name, sha256 }) => ({ repo, path: p, dir, name, ...(sha256 ? { sha256 } : {}) })) } })
+          if (!r.ok) throw fail(`The Pod refused the model download: ${errorText(r.data) || `HTTP ${r.status}`}`, 502)
+        }
+        for (const e of pending) {
+          // A failed install starts again on this request; the reply says so before the next refresh.
+          const r = await call(`${statusUrl(rec.id)}/runtime/${e}`, { method: 'POST', token: rec.token })
+          if (!r.ok) throw fail(`The Pod could not start installing ${runtimeName(e)}: ${errorText(r.data) || `HTTP ${r.status}`}`, 502)
+          if (r.data?.runtime && m.status) m.status = { ...m.status, runtimes: { ...m.status.runtimes, [e]: r.data.runtime } }
+        }
         for (;;) {
           check()
           await wait(pollMs)
@@ -460,7 +476,10 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
             const err = d[`${failed.dir}/${failed.name}`].error || 'unknown error'
             throw fail(err === 'disk full' ? 'The Pod\'s disk is full. Terminate it and start a new one.' : `Could not download ${failed.name} to the Pod: ${err}`, 502)
           }
-          if (missing.every((f) => d[`${f.dir}/${f.name}`]?.state === 'done')) break
+          const en = m.status?.runtimes || {}
+          const broke = pending.find((e) => en[e]?.state === 'failed')
+          if (broke) throw fail(`${runtimeName(broke)} could not install on the Pod: ${en[broke].error || 'unknown error'}`, 502)
+          if (missing.every((f) => d[`${f.dir}/${f.name}`]?.state === 'done') && pending.every((e) => en[e]?.state === 'ready')) break
         }
       }
       check()
@@ -485,7 +504,7 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
       m.ticking = false
       if (!m.timer) return
       const p = phase()
-      const quick = p === 'starting' || p === 'ending' || downloads().some((d) => d.state !== 'done' && d.state !== 'failed')
+      const quick = p === 'starting' || p === 'ending' || downloads().some((d) => d.state !== 'done' && d.state !== 'failed') || installing()
       m.timer = setTimeout(loop, quick ? 5000 : 20_000)
       m.timer.unref?.()
     }
@@ -509,11 +528,13 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
     return phase()
   }
   const vramGb = () => record()?.vramGb ?? null
+  // What the Pod has room for: its free disk and its runtimes, for picking a run's graph.
+  const room = () => ({ diskFreeGb: m.status?.diskFreeGb ?? null, runtimes: Object.fromEntries(runtimes().map((e) => [e.runtime, e.state])) })
 
   async function test() {
     if (!key()) return false
     return gql('query { myself { id } }').then((d) => Boolean(d?.myself?.id)).catch(() => false)
   }
 
-  return { status, quote, start, pause, resume, terminate, keep, lease, tick, refresh, phaseNow, vramGb, startMonitor, stopMonitor, test, guard, spentToday }
+  return { status, quote, start, pause, resume, terminate, keep, lease, tick, refresh, phaseNow, vramGb, room, startMonitor, stopMonitor, test, guard, spentToday }
 }

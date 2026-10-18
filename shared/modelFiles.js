@@ -70,6 +70,16 @@ const LOADERS = {
   LoraLoaderModelOnly: { lora_name: 'loras' },
   UpscaleModelLoader: { model_name: 'upscale_models' },
   LatentUpscaleModelLoader: { model_name: 'latent_upscale_models' },
+  FreeVideoLoRA: { lora: 'loras' },
+}
+
+// Runtimes a Pod installs for nodes that need more than model files. Comfy Cloud has none of them.
+// FreeVideo runs MiniMax H3 as OpenVDN's 8-step VDN-H3 in its own Python env, with its own weights
+// (research_notes/engine/freevideo.md). It runs on 8 GB, but ComfyField uses it only on the 96 GB card
+// FreeVideo tests on, where it is faster and cheaper per video than stock H3. `gb` is the free disk
+// its installer asks for on a first install; `minutes` is the first install, a re-run is shorter.
+export const RUNTIMES = {
+  freevideo: { name: 'FreeVideo', nodes: /^FreeVideo/, vramGb: 96, gb: 96, minutes: [15, 40] },
 }
 
 // Room on the volume for files later runs ask for, on top of the first run's.
@@ -83,7 +93,7 @@ export function modelFilesOf(graph) {
     if (!inputs) continue
     for (const [input, dir] of Object.entries(inputs)) {
       const name = node.inputs?.[input]
-      if (typeof name !== 'string' || name.includes('{{')) continue
+      if (typeof name !== 'string' || name.includes('{{') || name === 'None') continue
       const f = MODEL_FILES[name]
       if (!f) throw Object.assign(new Error(`${name} is not in ComfyField's model list, so a Pod cannot download it.`), { status: 400 })
       if (f.dir !== dir) throw Object.assign(new Error(`${node.class_type} loads ${name} from ${dir}, but the model list keeps it in ${f.dir}.`), { status: 400 })
@@ -92,6 +102,18 @@ export function modelFilesOf(graph) {
   }
   return [...out.values()]
 }
+
+// The runtimes a graph's nodes need, shaped like files so the Cloud, GPU and disk rules count them too.
+export function runtimesOf(graph) {
+  const out = new Set()
+  for (const node of Object.values(graph || {})) {
+    for (const [id, e] of Object.entries(RUNTIMES)) if (e.nodes.test(node?.class_type || '')) out.add(id)
+  }
+  return [...out].map((id) => ({ runtime: id, name: RUNTIMES[id].name, gb: RUNTIMES[id].gb, vramGb: RUNTIMES[id].vramGb, minutes: RUNTIMES[id].minutes, cloud: false }))
+}
+
+// Everything a Pod needs for a graph: model files to download and runtimes to install.
+export const podNeedsOf = (graph) => [...modelFilesOf(graph), ...runtimesOf(graph)]
 
 // Files a run needs that Comfy Cloud does not have.
 export const notOnCloud = (files) => files.filter((f) => !f.cloud)

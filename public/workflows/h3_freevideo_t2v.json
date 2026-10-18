@@ -1,0 +1,19 @@
+{
+  "104": {
+    "class_type": "FreeVideoGenerate",
+    "inputs": {
+      "text": "{{prompt}}",
+      "width": "{{width}}",
+      "height": "{{height}}",
+      "seconds": "{{duration}}",
+      "seed": "{{seed}}",
+      "two_pass": true,
+      "base_steps": 8,
+      "refine_steps": 3,
+      "step_cache": "none",
+      "upscale_factor": "2",
+      "force_regenerate": false,
+      "preview": false
+    }
+  }
+}

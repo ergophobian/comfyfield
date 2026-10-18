@@ -8,7 +8,7 @@ import { Comfy } from '@comfyorg/sdk'
 import { models as pinned, falCategories } from '../src/lib/catalog.js'
 import { comfyVars, comfyRouterInput, falInput, estimate, fill, falEndpointFor } from '../shared/mapping.js'
 import { renderStitch } from './stitch.js'
-import { modelFilesOf, minVramOf, notOnCloud, volumeFor } from '../shared/modelFiles.js'
+import { minVramOf, notOnCloud, podNeedsOf, volumeFor } from '../shared/modelFiles.js'
 
 import { podManager } from './pod.js'
 import { sandboxFetch } from './podSandbox.js'
@@ -579,11 +579,32 @@ function readWorkflow(workflow) {
   return { file, template: JSON.parse(fs.readFileSync(file, 'utf8')) }
 }
 
-// What a Pod needs for a workflow before its first run: the files, the GPU memory and the disk.
+// What a Pod needs for a workflow before its first run: the files, the runtimes, the GPU memory and the disk.
 export function workflowNeeds(workflow) {
-  const files = modelFilesOf(readWorkflow(workflow).template)
-  return { files, minVramGb: minVramOf(files), volumeGb: volumeFor(files) }
+  const needs = podNeedsOf(readWorkflow(workflow).template)
+  return { files: needs.filter((n) => !n.runtime), runtimes: needs.filter((n) => n.runtime), minVramGb: minVramOf(needs), volumeGb: volumeFor(needs) }
 }
+
+// The catalog model a workflow belongs to, and the graph a big enough Pod runs for it instead.
+const modelOf = (workflow) => pinned.find((m) => m.workflow === workflow || m.imageWorkflow === workflow)
+function podWorkflowOf(workflow) {
+  const m = modelOf(workflow)
+  return (m && (workflow === m.imageWorkflow ? m.podImageWorkflow : m.podWorkflow)) || null
+}
+
+// A Pod started for a workflow is sized for its Pod graph, so H3 gets the GPU FreeVideo runs on.
+export const podNeedsFor = (workflow) => workflowNeeds(podWorkflowOf(workflow) || workflow)
+
+// A Pod can take a graph when its GPU is big enough and its disk has room for the runtimes it has not
+// installed. Unknown disk counts as room: a Pod started for the graph was sized for it.
+function podHasRoom(needs, vram, room = {}) {
+  if (vram == null || vram < minVramOf(needs)) return false
+  return needs.filter((n) => n.runtime && !['ready', 'installing'].includes(room.runtimes?.[n.runtime]))
+    .every((n) => room.diskFreeGb == null || room.diskFreeGb >= n.gb)
+}
+
+const unsetInput = (template, vars) => [...JSON.stringify(template).matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1]).find((k) => vars[k] == null || vars[k] === '')
+const imageLoaders = (template) => Object.entries(template).filter(([, node]) => node.class_type === 'LoadImage' && node.inputs.image === '{{image}}')
 
 // Comfy Cloud is the instant option and a Pod the long-term one. A ready Pod takes every ComfyUI run;
 // otherwise a run goes to Comfy Cloud at once, unless Cloud cannot take it. Then it waits for a
@@ -607,26 +628,38 @@ async function comfyTarget(files, podPhase, podVram, label) {
 }
 
 // Runs a bundled workflow on Local ComfyUI, Comfy Cloud or the Pod, and returns file URLs.
-export async function runComfy(workflow, vars = {}, { createClient = (key, baseUrl) => comfyClient(baseUrl, key), lease = (o) => pod().lease(o), podPhase = () => pod().phaseNow(), podVram = () => pod().vramGb() } = {}) {
-  const { file, template } = readWorkflow(workflow)
-  const inputs = [...JSON.stringify(template).matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1])
-  for (const input of inputs) if (vars[input] == null || vars[input] === '') throw new Error(`Workflow ${workflow} requires ${input}.`)
-  const graph = fill(template, vars)
-  const loaders = Object.entries(template).filter(([, node]) => node.class_type === 'LoadImage' && node.inputs.image === '{{image}}')
-  const image = loaders.length ? await comfyImage(vars.image) : null
+export async function runComfy(workflow, vars = {}, { createClient = (key, baseUrl) => comfyClient(baseUrl, key), lease = (o) => pod().lease(o), podPhase = () => pod().phaseNow(), podVram = () => pod().vramGb(), podRoom = () => pod().room() } = {}) {
+  let { file, template } = readWorkflow(workflow)
+  const unset = unsetInput(template, vars)
+  if (unset) throw new Error(`Workflow ${workflow} requires ${unset}.`)
+  let graph = fill(template, vars)
   const mode = config('comfy').mode
   // 'pod' was its own choice before the Pod joined Comfy Cloud; read it as Comfy Cloud + Pod.
   if (mode === 'cloud' || mode === 'pod') {
-    const needs = modelFilesOf(graph)
+    let needs = podNeedsOf(graph)
     // Errors name the model as the picker shows it.
-    const label = pinned.find((m) => m.workflow === workflow || m.imageWorkflow === workflow)?.name
+    const label = modelOf(workflow)?.name
     const target = await comfyTarget(needs, podPhase, podVram, label)
+    // A run that goes to a Pod big enough for the model's Pod graph runs that graph: H3 on FreeVideo.
+    const alt = target === 'pod' && podWorkflowOf(workflow)
+    if (alt) {
+      const w = readWorkflow(alt)
+      const g = unsetInput(w.template, vars) ? null : fill(w.template, vars)
+      const n = g && podNeedsOf(g)
+      if (n && podHasRoom(n, podVram(), podRoom())) {
+        ({ file, template } = w)
+        graph = g
+        needs = n
+      }
+    }
+    const loaders = imageLoaders(template)
+    const image = loaders.length ? await comfyImage(vars.image) : null
     // On the Pod the proxy token is the server credential; the Comfy key, when set, only pays partner nodes.
     let held = null
     let client
     let partner
     if (target === 'pod') {
-      held = await lease({ files: needs })
+      held = await lease({ files: needs.filter((n) => !n.runtime), runtimes: needs.filter((n) => n.runtime).map((n) => n.runtime) })
       if (held.sandbox) {
         held.release()
         throw new Error('This is the sandbox Pod, so nothing renders. Unset COMFYFIELD_POD_SANDBOX to run on a real Pod.')
@@ -649,8 +682,10 @@ export async function runComfy(workflow, vars = {}, { createClient = (key, baseU
       }
       const files = []
       for (const output of job.outputs) {
-        if (!['image', 'video', 'audio'].includes(output.type)) continue
-        files.push({ ...saveMedia(Buffer.from(await output.toBytes()), mimeExt(output.contentType)), kind: output.type, name: output.name })
+        // ComfyUI lists a saved video under `images`, so the content type decides the kind.
+        const kind = /^(image|video|audio)\//.exec(output.contentType || '')?.[1] || output.type
+        if (!['image', 'video', 'audio'].includes(kind)) continue
+        files.push({ ...saveMedia(Buffer.from(await output.toBytes()), mimeExt(output.contentType)), kind, name: output.name })
       }
       if (!files.length) throw new Error(`${where} finished but returned no media.`)
       return files
@@ -664,6 +699,8 @@ export async function runComfy(workflow, vars = {}, { createClient = (key, baseU
     }
   }
   const base = comfyBase()
+  const loaders = imageLoaders(template)
+  const image = loaders.length ? await comfyImage(vars.image) : null
   if (image) {
     const form = new FormData()
     form.append('image', new Blob([image.buf], { type: image.mime }), `comfyfield-${randomUUID()}.${mimeExt(image.mime)}`)

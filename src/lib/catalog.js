@@ -23,9 +23,10 @@ export const models = [
   { id: 'comfy-ltx', kind: 'video', provider: 'comfy', name: 'LTX Video', note: 'Open weights on your ComfyUI', workflow: 'video_ltx', durations: [3, 5, 8] },
   // Newest open video models: Comfy Cloud has every file, so they run at once, or on a ready Pod.
   // Sizes follow each model's canvas: multiples of 64 for LTX-2.5, a 768 px short edge for H3.
+  // podWorkflow: the graph a big enough Pod runs instead. H3 runs on FreeVideo on a 96 GB Pod.
   { id: 'comfy-ltx25', kind: 'video', provider: 'comfy', name: 'LTX-2.5', note: 'Open weights with sound. Attach an image to start from it.', workflow: 'ltx25_t2v', imageWorkflow: 'ltx25_i2v', durations: [5, 8, 10],
     sizes: { '16:9': [1280, 704], '9:16': [704, 1280], '1:1': [960, 960], '4:5': [768, 960] } },
-  { id: 'comfy-h3', kind: 'video', provider: 'comfy', name: 'MiniMax H3 (open weights)', note: 'Top open video model with sound. Attach an image to start from it.', workflow: 'h3_open_t2v', imageWorkflow: 'h3_open_i2v', durations: [5, 8, 10],
+  { id: 'comfy-h3', kind: 'video', provider: 'comfy', name: 'MiniMax H3 (open weights)', note: 'Top open video model with sound. Attach an image to start from it. A 96 GB Pod runs it on FreeVideo.', workflow: 'h3_open_t2v', imageWorkflow: 'h3_open_i2v', podWorkflow: 'h3_freevideo_t2v', podImageWorkflow: 'h3_freevideo_i2v', durations: [5, 8, 10],
     sizes: { '16:9': [1344, 768], '9:16': [768, 1344], '1:1': [768, 768], '4:5': [768, 960] } },
   { id: 'fal:bytedance/seedance-2.5/text-to-video', kind: 'video', provider: 'fal', name: 'Seedance 2.5', note: 'ByteDance, via fal', model: 'bytedance/seedance-2.5/text-to-video' },
   { id: 'fal:fal-ai/kling-video/v3/pro/text-to-video', kind: 'video', provider: 'fal', name: 'Kling 3 Pro', note: 'Kling, via fal', model: 'fal-ai/kling-video/v3/pro/text-to-video' },
