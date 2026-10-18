@@ -15,6 +15,7 @@ import { IconAt, IconBook, IconFolder, IconMute, IconPlay, IconSound } from '../
 import { IconAspect, IconClock, IconImage, IconSpark, IconStack, IconVideo } from '../components/Icons.jsx'
 import { useApp } from '../lib/appContext.js'
 import { usePod } from '../lib/usePod.js'
+import { acceptsImage } from '../lib/providers.js'
 import { openModels } from '../lib/tools.js'
 import { estimate, useBalance, useModelMeta } from '../lib/cost.js'
 import { flowFromBatch, openFlow } from '../lib/flowStore.js'
@@ -55,7 +56,7 @@ function CreateVideo({ preset, onPresets, setError, onRan, addBatch }) {
   const durations = useDurations(model)
   const inputs = useModelInputs(model, Boolean(start))
 
-  const canAttach = model.open || model.provider !== 'comfy' || ['ltx_i2v', 'h3_i2v'].includes(model.workflow)
+  const canAttach = model.open || model.provider !== 'comfy' || acceptsImage(model)
   const needsFrame = ['ltx_i2v', 'h3_i2v'].includes(model.workflow)
   const endOk = model.open || (Boolean(inputs.endFrame) && Boolean(start))
   const endNote = !canAttach ? `${model.name} starts from text only` : !model.open && !inputs.endFrame ? `${model.name} takes a start frame only` : 'Add a start frame first'
