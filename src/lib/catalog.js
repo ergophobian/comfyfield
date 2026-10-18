@@ -59,6 +59,7 @@ export const providerInfo = {
   runpod: { name: 'RunPod', blurb: 'Your RunPod key starts a Pod: a GPU that runs ComfyUI for you, billed by the minute. It suits long sessions; Comfy Cloud covers a couple of runs. Once the spend today reaches the daily cap, no new Pod starts.', fields: [
     { id: 'key', label: 'API key', placeholder: 'RunPod API key', secret: true },
     { id: 'cap', label: 'Daily cap in dollars', placeholder: '20' },
+    { id: 'auto', label: 'Start Pods automatically', toggle: true, note: 'Generate starts a Pod sized for the service when one is needed.' },
   ], link: 'https://www.runpod.io/console/user/settings' },
   fal: { name: 'fal', blurb: 'One key for hosted FLUX, Kling, Seedance, Veo and more. Pay per run.', fields: [
     { id: 'key', label: 'API key', placeholder: 'fal key', secret: true },

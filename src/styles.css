@@ -346,6 +346,7 @@ input, textarea { font: inherit; color: inherit; }
 .field input { height: 42px; }
 .field textarea { padding: 10px 14px; resize: vertical; }
 .field input:focus, .field textarea:focus { border-color: var(--blue-focus); box-shadow: var(--ring); }
+.conn .switch { text-align: left; }
 .conn-actions { display: flex; gap: 10px; align-items: center; margin-top: auto; flex-wrap: wrap; font-size: var(--text-sm); }
 .conn-actions .btn-blue { height: 38px; font-size: var(--text-md); padding: 0 18px; }
 .conn-actions a { margin-left: auto; font-size: var(--text-sm); color: var(--blue); font-weight: 600; }

@@ -115,7 +115,7 @@ export default function PodChip() {
                 </div>
               )}
               {!suggest && <p className="pod-note">{s.instant
-                ? 'ComfyUI runs use Comfy Cloud at once. Start a Pod for a long session: it costs less when you run a lot, and it runs any model.'
+                ? `ComfyUI runs use Comfy Cloud at once. Start a Pod for a long session: it costs less when you run a lot, and it runs any model.${s.auto ? ' A run that needs a Pod starts one by itself.' : ''}`
                 : 'Add a Comfy API key in Connections for instant runs on Comfy Cloud, or start a Pod.'}</p>}
               <dl className="pod-facts"><div><dt>Spent</dt><dd>{spendText(s)}</dd></div></dl>
             </>

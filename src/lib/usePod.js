@@ -73,6 +73,20 @@ export function askPod(workflow, reason) {
   return state.ask.promise
 }
 
+// With auto-start on, a run Comfy Cloud cannot take starts, resumes or keeps the Pod itself, sized for
+// its workflow. The Generate click is the consent. Several runs at once share one start.
+let starting = null
+export function autoPod(workflow) {
+  if (!starting) {
+    starting = (async () => {
+      const s = await refreshPod()
+      const action = s?.phase === 'paused' ? 'resume' : s?.phase === 'ending' ? 'keep' : s?.phase === 'none' ? 'start' : null
+      if (action) await podAction(action, action === 'start' ? { workflow } : {})
+    })().finally(() => { starting = null })
+  }
+  return starting
+}
+
 // The start sheet's answer. Every run waiting on the question gets it.
 export function answerPod(ok) {
   const a = state.ask
