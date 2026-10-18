@@ -2,7 +2,7 @@
 
 An open-source creative studio you run on your own machine. Make images, video and audio with any model, using your own keys.
 
-- **ComfyUI**: local or hosted. Runs the open workflows in `public/workflows/`.
+- **ComfyUI**: the open workflows in `public/workflows/` run on Comfy Cloud with your Comfy key, or on your own RunPod Pod for long sessions. No GPU of your own is needed.
 - **fal**: browse fal's catalog in the app and use any text-to-image, video, speech or music model with one key.
 - **ElevenLabs**: voices and sound effects with your own key.
 
@@ -19,8 +19,7 @@ Open the local URL, go to **Connections**, and paste your keys. Keys are saved t
 
 ### ComfyUI models for the bundled workflows
 
-- `flux1-dev-fp8.safetensors` and `sd_xl_base_1.0.safetensors` in `models/checkpoints`
-- `ltx-video-2b-v0.9.5.safetensors` in `models/checkpoints` and `t5xxl_fp16.safetensors` in `models/text_encoders`
+Comfy Cloud already has the files most workflows load. A Pod downloads what a run needs on its first run, from `shared/modelFiles.js`, and checks each file against its sha256.
 
 ## Use from your agent
 
@@ -39,7 +38,7 @@ args = ["comfyfield", "mcp"]
 env = { COMFYFIELD_HOME = "/path/to/your/comfyfield" }
 ```
 
-Cursor and ChatGPT desktop take the same command: `npx comfyfield mcp`. Keys are read from `.comfyfield/keys.json` in `COMFYFIELD_HOME` (default: the working directory), then from `FAL_KEY`, `GEMINI_API_KEY`, `ELEVENLABS_API_KEY`, `COMFY_URL` and `COMFY_API_KEY`.
+Cursor and ChatGPT desktop take the same command: `npx comfyfield mcp`. Keys are read from `.comfyfield/keys.json` in `COMFYFIELD_HOME` (default: the working directory), then from `FAL_KEY`, `GEMINI_API_KEY`, `ELEVENLABS_API_KEY`, `COMFY_API_KEY` and `RUNPOD_API_KEY`.
 
 Tools: `list_models`, `generate`, `get_model_schema`, `balance`, `write_prompts`, `stitch`, `export_stitch`. Any fal endpoint works as `fal:<endpoint>`.
 

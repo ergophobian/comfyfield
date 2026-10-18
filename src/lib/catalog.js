@@ -4,10 +4,10 @@
 export const models = [
   { id: 'comfy-router-flux', kind: 'image', provider: 'comfyRouter', name: 'Flux 2 Pro', note: 'Hosted through Comfy Router', model: 'bfl/flux-2-pro' },
   { id: 'comfy-router-seedance', kind: 'video', provider: 'comfyRouter', name: 'Seedance 2.5', note: 'Hosted through Comfy Router', model: 'byteplus/dreamina-seedance-2-5-260628', durations: [5, 8, 10] },
-  { id: 'comfy-ltx-i2v', kind: 'video', provider: 'comfy', name: 'LTX image to video', note: 'LTX Video 2B on Local or Comfy Cloud. Attach a start image.', workflow: 'ltx_i2v', durations: [3, 5, 8] },
-  { id: 'comfy-h3-i2v', kind: 'video', provider: 'comfy', name: 'MiniMax H3 image to video', note: 'Comfy partner node on Local or Comfy Cloud. Attach a start image. Uses Comfy credits.', workflow: 'h3_i2v', durations: [5, 8, 10] },
-  { id: 'comfy-flux', kind: 'image', provider: 'comfy', name: 'FLUX', note: 'On your ComfyUI', workflow: 'image_flux' },
-  { id: 'comfy-sdxl', kind: 'image', provider: 'comfy', name: 'SDXL', note: 'On your ComfyUI', workflow: 'image_sdxl' },
+  { id: 'comfy-ltx-i2v', kind: 'video', provider: 'comfy', name: 'LTX image to video', note: 'LTX Video 2B on Comfy Cloud or a Pod. Attach a start image.', workflow: 'ltx_i2v', durations: [3, 5, 8] },
+  { id: 'comfy-h3-i2v', kind: 'video', provider: 'comfy', name: 'MiniMax H3 image to video', note: 'Comfy partner node. Attach a start image. Uses Comfy credits.', workflow: 'h3_i2v', durations: [5, 8, 10] },
+  { id: 'comfy-flux', kind: 'image', provider: 'comfy', name: 'FLUX', note: 'On Comfy Cloud or a Pod', workflow: 'image_flux' },
+  { id: 'comfy-sdxl', kind: 'image', provider: 'comfy', name: 'SDXL', note: 'On Comfy Cloud or a Pod', workflow: 'image_sdxl' },
   // Newest open image models. Comfy Cloud does not have their files yet, so they run on a Pod.
   // `pod`: a model file is not on Comfy Cloud (pod-checks keeps this in step with shared/modelFiles.js).
   { id: 'comfy-flux3-klein', kind: 'image', provider: 'comfy', name: 'FLUX 3 Klein', note: 'Open weights from Black Forest Labs. Runs on a Pod.', workflow: 'flux3_klein_t2i', pod: true },
@@ -20,7 +20,7 @@ export const models = [
   { id: 'g-nano-banana-pro', kind: 'image', provider: 'google', name: 'Nano Banana Pro', note: 'Gemini 3 Pro Image, your Google key', model: 'gemini-3-pro-image', mode: 'image', price: { amount: 0.134, unit: 'image', estimate: true } },
   { id: 'g-nano-banana-2', kind: 'image', provider: 'google', name: 'Nano Banana 2', note: 'Gemini 3.1 Flash Image, your Google key', model: 'gemini-3.1-flash-image', mode: 'image', price: { amount: 0.067, unit: 'image', estimate: true } },
 
-  { id: 'comfy-ltx', kind: 'video', provider: 'comfy', name: 'LTX Video', note: 'Open weights on your ComfyUI', workflow: 'video_ltx', durations: [3, 5, 8] },
+  { id: 'comfy-ltx', kind: 'video', provider: 'comfy', name: 'LTX Video', note: 'Open weights on Comfy Cloud or a Pod', workflow: 'video_ltx', durations: [3, 5, 8] },
   // Newest open video models: Comfy Cloud has every file, so they run at once, or on a ready Pod.
   // Sizes follow each model's canvas: multiples of 64 for LTX-2.5, a 768 px short edge for H3.
   // podWorkflow: the graph a big enough Pod runs instead. H3 runs on FreeVideo on a 96 GB Pod.
@@ -52,11 +52,9 @@ export const falCategories = [
 ]
 
 export const providerInfo = {
-  comfy: { name: 'ComfyUI', blurb: 'Run workflows on your own ComfyUI, or on Comfy Cloud in seconds. For a long session, start a Pod from the top bar: while it runs, ComfyUI runs use it. Your Comfy key also unlocks hosted models through Comfy Router.', fields: [
-    { id: 'mode', label: 'Run workflows on', options: [{ value: 'local', label: 'Local' }, { value: 'cloud', label: 'Comfy Cloud + Pod' }] },
-    { id: 'url', label: 'Server URL', placeholder: 'http://127.0.0.1:8188' },
-    { id: 'key', label: 'Comfy API key', placeholder: 'Required for Cloud, Router and partner nodes', secret: true },
-  ], link: 'https://docs.comfy.org' },
+  comfy: { name: 'ComfyUI', blurb: 'Your Comfy API key runs open models on Comfy Cloud in seconds, on a paid Comfy plan. For a long session, add your RunPod key on the RunPod card and start a Pod from the top bar: while it runs, ComfyUI runs use it. The key also unlocks hosted models through Comfy Router.', fields: [
+    { id: 'key', label: 'Comfy API key', placeholder: 'From platform.comfy.org', secret: true },
+  ], link: 'https://platform.comfy.org/profile/api-keys' },
   runpod: { name: 'RunPod', blurb: 'Your RunPod key starts a Pod: a GPU that runs ComfyUI for you, billed by the minute. It suits long sessions; Comfy Cloud covers a couple of runs. Once the spend today reaches the daily cap, no new Pod starts.', fields: [
     { id: 'key', label: 'API key', placeholder: 'RunPod API key', secret: true },
     { id: 'cap', label: 'Daily cap in dollars', placeholder: '20' },

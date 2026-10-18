@@ -97,7 +97,7 @@ export default function AudioStudio() {
   const each = estimate(model, metaOf(model), { aspect: '1:1', count: 1, duration: 5, takes, chars: text.length })
   const cost = mode === 'speech' && each && text ? each : null
   const bal = !model.open && balanceText(balance, model.provider)
-  const wiredNote = mode === 'change' ? 'Voice change is not wired yet. It runs on Chatterbox on your ComfyUI once its workflow is ready.'
+  const wiredNote = mode === 'change' ? 'Voice change is not wired yet. It runs on Chatterbox on Comfy Cloud or a Pod once its workflow is ready.'
     : mode === 'translate' ? 'Translate is not wired yet. It runs on Qwen3, Chatterbox and InfiniteTalk once the dub workflow is ready.'
     : null
   const ready = mode === 'speech' ? Boolean(text) && connected : false

@@ -79,7 +79,7 @@ export default function ModelPicker({ model, options, open = [], favorites, togg
     return () => { document.removeEventListener('pointerdown', away); document.removeEventListener('keydown', keys) }
   }, [isOpen, ordered])
 
-  const via = (m) => (m.provider === 'fal' ? 'via fal' : m.provider === 'comfyRouter' ? 'via Comfy Router' : m.provider === 'comfy' ? connections.comfy?.mode === 'cloud' ? 'via Comfy Cloud' : 'your ComfyUI' : 'your key')
+  const via = (m) => (m.provider === 'fal' ? 'via fal' : m.provider === 'comfyRouter' ? 'via Comfy Router' : m.provider === 'comfy' ? m.pod ? 'on a Pod' : 'via Comfy Cloud' : 'your key')
   const pm = preview && !preview.open ? metaOf(preview) : {}
   const pick = (id) => { choose(id); setOpen(false) }
   const nothing = !ordered.length && !openList.length
@@ -168,7 +168,7 @@ export default function ModelPicker({ model, options, open = [], favorites, togg
               <strong>{preview.name}</strong>
               <span className="pv-brand"><Logo brand={preview.brand} size={12} />{preview.open ? preview.vendor : brands[preview.brand]?.name}</span>
               <p>{(pm.description || preview.note || preview.blurb || '').split('\n')[0].slice(0, 140)}</p>
-              {preview.open ? <span className="pv-todo">Not wired yet. Runs on your ComfyUI once its workflow is ready.</span>
+              {preview.open ? <span className="pv-todo">Not wired yet. Runs on Comfy Cloud or a Pod once its workflow is ready.</span>
                 : pm.price && <span className="pv-price">{priceText(pm.price)}</span>}
             </aside>
           )}

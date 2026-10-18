@@ -45,7 +45,7 @@ export function Feed({ kind, gens, batches, size, empty }) {
 
 // Why Generate is off, or what the run needs, in one line.
 export function StatusNote({ model, connected, wiredNote }) {
-  if (model.open) return <p className="gen-status todo">{wiredNote || `${model.name} is not wired yet. It runs on your ComfyUI once its workflow is ready.`}</p>
+  if (model.open) return <p className="gen-status todo">{wiredNote || `${model.name} is not wired yet. It runs on Comfy Cloud or a Pod once its workflow is ready.`}</p>
   if (wiredNote) return <p className="gen-status todo">{wiredNote}</p>
   if (!connected) {
     return <p className="gen-status">{model.name} runs on {providerInfo[model.provider].name}. <Link to="/connections">Add your key</Link> to use it.</p>

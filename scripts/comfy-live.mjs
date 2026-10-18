@@ -11,7 +11,7 @@ if (mode === 'models') {
   const models = { router: 'comfy-router-flux', cloud: 'comfy-h3-i2v', ltx: 'comfy-ltx-i2v' }
   if (!models[mode]) throw new Error('Choose models, router, cloud or ltx.')
   if (mode !== 'router' && (!image || !fs.existsSync(image))) throw new Error('Pass a path to a start image.')
-  if (mode === 'cloud' && config('comfy').mode !== 'cloud') throw new Error('Choose Comfy Cloud in Connections or set COMFY_MODE=cloud when no saved mode exists.')
+  if (mode === 'cloud' && config('comfy').mode !== 'cloud') throw new Error('This runs on Comfy Cloud: remove COMFY_MODE=local from .env.')
   const files = await generate({ model: models[mode], prompt: 'A slow camera push in, natural light', aspect: '16:9', duration: 5, image: mode === 'router' ? undefined : image })
   console.log(await saveFiles(files, 'outputs/comfy-live'))
 }
