@@ -401,8 +401,10 @@ def main():
     os.makedirs(os.path.join(MODELS, d), exist_ok=True)
   for target in (watchdog, downloader):
     threading.Thread(target=target, daemon=True).start()
+  # Bind first, so the log line means the port answers.
+  server = ThreadingHTTPServer(('0.0.0.0', PORT), Handler)
   log('status server on port %d' % PORT)
-  ThreadingHTTPServer(('0.0.0.0', PORT), Handler).serve_forever()
+  server.serve_forever()
 
 
 if __name__ == '__main__':
