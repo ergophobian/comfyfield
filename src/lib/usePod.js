@@ -26,6 +26,8 @@ export async function refreshPod() {
 }
 
 export const podQuote = (workflow) => call(`/api/pod/quote${workflow ? `?workflow=${encodeURIComponent(workflow)}` : ''}`)
+// Sizes, every GPU with its price and stock, disk sizes and settings choices, for the Pods page.
+export const podOptions = () => call('/api/pod/options')
 
 export async function podAction(action, body = {}) {
   const status = await call(`/api/pod/${action}`, body)

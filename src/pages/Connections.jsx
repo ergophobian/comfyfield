@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { providerInfo, plannedAccounts } from '../lib/catalog.js'
 import { getConnections, saveConnection, testConnection } from '../lib/providers.js'
 import { useApp } from '../lib/appContext.js'
@@ -34,24 +35,18 @@ function Provider({ id, info, state, onSaved }) {
         <span className={`status${state?.connected ? ' ok' : ''}`}>{state?.connected ? 'Connected' : 'Not connected'}</span>
       </div>
       <p>{info.blurb}</p>
+      {info.page && <Link className="link-btn" to={info.page.to}>{info.page.label}</Link>}
       {info.fields.map((f) => (
         <div className="field" key={f.id}>
           <label htmlFor={`${id}-${f.id}`}>{f.label}</label>
-          {f.toggle ? (
-            // On unless the saved value is off; a change is saved with the card.
-            <button type="button" id={`${id}-${f.id}`} className={`switch${(values[f.id] ?? (state?.[f.id] === false ? 'off' : 'on')) === 'on' ? ' on' : ''}`}
-              aria-pressed={(values[f.id] ?? (state?.[f.id] === false ? 'off' : 'on')) === 'on'}
-              onClick={() => setValues((v) => ({ ...v, [f.id]: (v[f.id] ?? (state?.[f.id] === false ? 'off' : 'on')) === 'on' ? 'off' : 'on' }))}>
-              <i />{f.note}
-            </button>
-          ) : <input
+          <input
             id={`${id}-${f.id}`}
             type={f.secret ? 'password' : 'text'}
             value={values[f.id] || ''}
             onChange={(e) => setValues((v) => ({ ...v, [f.id]: e.target.value }))}
             placeholder={(f.secret ? state?.key : state?.[f.id]) || f.placeholder}
             autoComplete="off"
-          />}
+          />
         </div>
       ))}
       <div className="conn-actions">

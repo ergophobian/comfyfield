@@ -5,7 +5,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { randomBytes } from 'node:crypto'
 import { POD_IMAGE, PROXY_PORT, STATUS_PORT, podEnv, podStartCmd, proxyUrl, statusUrl } from './podBoot.js'
-import { RUNTIMES } from '../shared/modelFiles.js'
+import { RUNTIMES, volumeFor } from '../shared/modelFiles.js'
 
 const REST = 'https://rest.runpod.io/v1'
 const GQL = 'https://api.runpod.io/graphql'
@@ -16,12 +16,16 @@ export const GPU_LADDER = [
   { gpuTypeId: 'NVIDIA RTX PRO 4000 Blackwell', name: 'RTX PRO 4000', cloudType: 'SECURE', vramGb: 24 },
   { gpuTypeId: 'NVIDIA RTX PRO 4500 Blackwell', name: 'RTX PRO 4500', cloudType: 'SECURE', vramGb: 32 },
   { gpuTypeId: 'NVIDIA RTX PRO 6000 Blackwell Server Edition', name: 'RTX PRO 6000', cloudType: 'COMMUNITY', vramGb: 96 },
-  { gpuTypeId: 'NVIDIA RTX PRO 6000 Blackwell Workstation Edition', name: 'RTX PRO 6000 WK', cloudType: 'COMMUNITY', vramGb: 96 },
+  { gpuTypeId: 'NVIDIA RTX PRO 6000 Blackwell Workstation Edition', name: 'RTX PRO 6000 Workstation', cloudType: 'COMMUNITY', vramGb: 96 },
   { gpuTypeId: 'NVIDIA RTX PRO 6000 Blackwell Server Edition', name: 'RTX PRO 6000', cloudType: 'SECURE', vramGb: 96 },
-  { gpuTypeId: 'NVIDIA RTX PRO 6000 Blackwell Workstation Edition', name: 'RTX PRO 6000 WK', cloudType: 'SECURE', vramGb: 96 },
+  { gpuTypeId: 'NVIDIA RTX PRO 6000 Blackwell Workstation Edition', name: 'RTX PRO 6000 Workstation', cloudType: 'SECURE', vramGb: 96 },
 ]
 
 export const IDLE_MIN = 10
+// Idle shutdown the user can pick on the Pods page, in minutes, and the disk sizes it offers in GB.
+export const IDLE_CHOICES = [5, 10, 15, 30, 60]
+export const POD_VOLUMES = [120, 200, 300]
+export const idleMinutes = (value) => (IDLE_CHOICES.includes(Number(value)) ? Number(value) : IDLE_MIN)
 export const DEFAULT_CAP = 20
 export const NO_POD = 'No Pod is ready. Start one in ComfyField from the Pod chip in the top bar.'
 const MIN = 60_000
@@ -32,7 +36,7 @@ const BOOT = 25 * MIN
 // A Pod found gone was alive at most this long after the last sample: its watchdog
 // terminates it 10 minutes after the last heartbeat.
 const GONE_GRACE = 13 * MIN
-const STOPPED_DISK_USD_GB_MONTH = 0.2
+export const STOPPED_DISK_USD_GB_MONTH = 0.2
 const HOURS_PER_MONTH = 730
 const PREFIX = 'comfyfield-'
 export const MIN_VOLUME_GB = 120
@@ -253,7 +257,7 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
       pod: rec && {
         id: rec.id, gpu: rec.gpu, vramGb: rec.vramGb ?? null, cloudType: rec.cloudType, costPerHr: rec.costPerHr, volumeGb: rec.volumeGb,
         startedAt: rec.startedAt, uptimeSec: Math.round((t - rec.startedAt) / 1000),
-        pausedDiskPerDay: (rec.volumeGb * STOPPED_DISK_USD_GB_MONTH * 12) / 365,
+        pausedDiskPerDay: (rec.volumeGb * STOPPED_DISK_USD_GB_MONTH * 12) / 365, idleMin: rec.idleMin || IDLE_MIN,
       },
       spend: { today: spentToday(), cap: cap() },
       runs: m.leases.size, queue: m.status?.queue ?? null, downloads: downloads(), runtimes: runtimes(),
@@ -276,7 +280,9 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
     // Only a Pod that never became ready: a ComfyUI restart later is not a failed boot.
     if (s && !s.ready && !s.everReady && age >= BOOT) return 'Terminated: the Pod was not ready after 25 minutes.'
     if (age >= LIFETIME + DRAIN || (age >= LIFETIME && !busy)) return 'Terminated at the 2-hour limit.'
-    if (s?.ready && !busy && (s.idleSec || 0) >= IDLE_MIN * 60) return `Terminated after ${IDLE_MIN} idle minutes.`
+    // Each Pod keeps the idle time it started with, which is also what its own watchdog uses.
+    const idle = rec.idleMin || IDLE_MIN
+    if (s?.ready && !busy && (s.idleSec || 0) >= idle * 60) return `Terminated after ${idle} idle minutes.`
     return null
   }
 
@@ -311,32 +317,47 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
     return out
   }
 
-  // `runtimes` start installing as soon as the Pod boots, for a run that waits on them.
-  async function start({ minVramGb = 0, volumeGb = 60, runtimes: want = [] } = {}) {
+  // `runtimes` start installing as soon as the Pod boots, for a run that waits on them. A `gpu` picked
+  // by hand ({ gpuTypeId, cloudType } from the ladder) is the only one tried.
+  async function start({ minVramGb = 0, volumeGb = 60, runtimes: want = [], gpu = null } = {}) {
     if (!key()) throw fail('Add your RunPod key in Connections first.', 400)
     await adopt({ force: true }).catch(() => null)
     if (record() || m.placing) throw fail('A Pod already exists. ComfyField runs one Pod at a time.', 409)
     const spent = spentToday()
-    if (spent >= cap()) throw fail(`Daily cap reached: ${money(spent)} of ${money(cap())} today. Raise it in Connections.`, 402)
-    const rungs = ladder.filter((r) => r.vramGb >= minVramGb)
+    if (spent >= cap()) throw fail(`Daily cap reached: ${money(spent)} of ${money(cap())} today. Raise it on the Pods page.`, 402)
+    let rungs = ladder.filter((r) => r.vramGb >= minVramGb)
+    if (gpu) {
+      const picked = ladder.find((r) => r.gpuTypeId === gpu.gpuTypeId && r.cloudType === gpu.cloudType)
+      if (!picked) throw fail('ComfyField does not start that GPU. Pick one from the Pods page.', 400)
+      if (picked.vramGb < minVramGb) throw fail(`${picked.name} has ${picked.vramGb} GB; this needs ${minVramGb} GB.`, 400)
+      rungs = [picked]
+    }
     if (!rungs.length) throw fail(`No GPU ComfyField starts has ${minVramGb} GB of memory.`, 400)
+    for (const id of want) {
+      const runtime = RUNTIMES[id]
+      if (!runtime) throw fail('Unknown runtime.', 400)
+      rungs = rungs.filter((r) => r.vramGb >= runtime.vramGb)
+      if (!rungs.length) throw fail(`${runtime.name} needs a ${runtime.vramGb} GB GPU.`, 400)
+    }
+    const idleMin = idleMinutes(keys().idle)
     m.placing = true
     m.event = null
     const token = randomBytes(24).toString('hex')
     const name = `${PREFIX}${now().toString(36)}`
-    // The newest video models are 40-44 GB each, so the volume holds at least two of them.
-    const volume = Math.max(MIN_VOLUME_GB, Math.ceil(volumeGb / 10) * 10)
+    // The newest video models are 40-44 GB each, so the volume holds at least two of them, and it
+    // always has room for the runtimes the Pod installs.
+    const volume = Math.max(MIN_VOLUME_GB, Math.ceil(Math.max(volumeGb, want.length ? volumeFor(want.map((id) => RUNTIMES[id])) : 0) / 10) * 10)
     try {
       let refused = 0
       for (const rung of rungs) {
         const r = await rest('/pods', { method: 'POST', timeoutMs: 60_000, body: {
           name, imageName: POD_IMAGE, gpuTypeIds: [rung.gpuTypeId], gpuCount: 1, cloudType: rung.cloudType,
           containerDiskInGb: 50, volumeInGb: volume, volumeMountPath: '/workspace',
-          ports: [`${PROXY_PORT}/http`, `${STATUS_PORT}/http`], env: podEnv({ token, idleMin: IDLE_MIN, runtimes: want }), dockerStartCmd: podStartCmd(),
+          ports: [`${PROXY_PORT}/http`, `${STATUS_PORT}/http`], env: podEnv({ token, idleMin, runtimes: want }), dockerStartCmd: podStartCmd(),
         } })
         if (r.ok && r.data?.id) {
           const t = now()
-          save({ id: r.data.id, name, token, gpuTypeId: rung.gpuTypeId, gpu: rung.name, vramGb: rung.vramGb, cloudType: rung.cloudType, costPerHr: r.data.costPerHr || 0, volumeGb: volume, createdAt: t, startedAt: t, pausedAt: null })
+          save({ id: r.data.id, name, token, gpuTypeId: rung.gpuTypeId, gpu: rung.name, vramGb: rung.vramGb, cloudType: rung.cloudType, costPerHr: r.data.costPerHr || 0, volumeGb: volume, idleMin, createdAt: t, startedAt: t, pausedAt: null })
           charge(t)
           m.placing = false
           kick()
@@ -350,6 +371,7 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
         }
         throw restError(r, `start a ${rung.name}`)
       }
+      if (gpu) throw fail(`RunPod has no free ${rungs[0].name} on ${rungs[0].cloudType === 'SECURE' ? 'Secure' : 'Community'} cloud right now. Pick another GPU or try again in a few minutes.`, 503, { code: 'no_capacity' })
       throw fail(`RunPod has no free GPU right now. ComfyField tried ${refused} GPU${refused === 1 ? '' : 's'}. Try again in a few minutes.`, 503, { code: 'no_capacity' })
     } finally {
       m.placing = false
@@ -401,7 +423,7 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
     const rec = record()
     if (!rec?.pausedAt) throw fail('There is no paused Pod to resume.', 409)
     const spent = spentToday()
-    if (spent >= cap()) throw fail(`Daily cap reached: ${money(spent)} of ${money(cap())} today. Raise it in Connections.`, 402)
+    if (spent >= cap()) throw fail(`Daily cap reached: ${money(spent)} of ${money(cap())} today. Raise it on the Pods page.`, 402)
     m.action = 'resuming'
     try {
       const r = await rest(`/pods/${rec.id}/start`, { method: 'POST', timeoutMs: 60_000 })

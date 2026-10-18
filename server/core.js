@@ -8,9 +8,9 @@ import { Comfy } from '@comfyorg/sdk'
 import { models as pinned, falCategories } from '../src/lib/catalog.js'
 import { comfyVars, comfyRouterInput, falInput, estimate, fill, falEndpointFor } from '../shared/mapping.js'
 import { renderStitch } from './stitch.js'
-import { minVramOf, notOnCloud, podNeedsOf, volumeFor } from '../shared/modelFiles.js'
+import { minVramOf, notOnCloud, podNeedsOf, volumeFor, RUNTIMES } from '../shared/modelFiles.js'
 
-import { podManager } from './pod.js'
+import { podManager, GPU_LADDER, IDLE_CHOICES, POD_VOLUMES, STOPPED_DISK_USD_GB_MONTH, idleMinutes } from './pod.js'
 import { sandboxFetch } from './podSandbox.js'
 
 export { podBootScript, podStartCmd } from './podBoot.js'
@@ -23,7 +23,7 @@ export const providers = {
   fal: { env: ['FAL_KEY'], fields: ['key'] },
   google: { env: ['GEMINI_API_KEY'], fields: ['key'] },
   elevenlabs: { env: ['ELEVENLABS_API_KEY'], fields: ['key'] },
-  runpod: { env: ['RUNPOD_API_KEY', 'RUNPOD_DAILY_CAP', 'RUNPOD_AUTO_START'], fields: ['key', 'cap', 'auto'] },
+  runpod: { env: ['RUNPOD_API_KEY', 'RUNPOD_DAILY_CAP', 'RUNPOD_AUTO_START', 'RUNPOD_IDLE_MIN'], fields: ['key', 'cap', 'auto', 'idle'] },
 }
 
 export const home = () => path.resolve(process.env.COMFYFIELD_HOME || '.', '.comfyfield')
@@ -450,7 +450,7 @@ export function connections() {
   }))
   out.comfyRouter = { connected: Boolean(config('comfy').key) }
   const rp = config('runpod')
-  out.runpod = { connected: Boolean(rp.key) || sandboxed(), key: mask(rp.key), cap: pod().status().spend.cap, auto: podAutoStart(), sandbox: sandboxed() }
+  out.runpod = { connected: Boolean(rp.key) || sandboxed(), key: mask(rp.key), cap: pod().status().spend.cap, auto: podAutoStart(), idle: idleMinutes(rp.idle), sandbox: sandboxed() }
   return out
 }
 
@@ -459,6 +459,7 @@ export function saveConnection(id, values) {
   if (id === 'comfy' && (values.mode || values.url)) throw Object.assign(new Error('ComfyUI runs on Comfy Cloud and Pods. A local ComfyUI is for development only: set COMFY_MODE=local and COMFY_URL in .env.'), { status: 400 })
   if (id === 'runpod' && values.auto != null && !['on', 'off'].includes(values.auto)) throw Object.assign(new Error('Start Pods automatically is on or off.'), { status: 400 })
   if (id === 'runpod' && values.cap != null && !(parseFloat(values.cap) > 0)) throw Object.assign(new Error('The daily cap is a dollar amount above 0.'), { status: 400 })
+  if (id === 'runpod' && values.idle != null && !IDLE_CHOICES.includes(Number(values.idle))) throw Object.assign(new Error(`Idle shutdown is ${IDLE_CHOICES.join(', ')} minutes.`), { status: 400 })
   if (id === 'runpod' && values.cap != null) values = { ...values, cap: String(Math.round(parseFloat(values.cap) * 100) / 100) }
   const keys = readKeys()
   keys[id] = { ...keys[id], ...values }
@@ -600,6 +601,35 @@ function podWorkflowOf(workflow) {
 
 // A Pod started for a workflow is sized for its Pod graph, so H3 gets the GPU FreeVideo runs on.
 export const podNeedsFor = (workflow) => workflowNeeds(podWorkflowOf(workflow) || workflow)
+
+// What the Pods page offers: one size per GPU memory class on the ladder, with its cheapest free GPU
+// and the models that need that size, then every GPU for a pick by hand, the disk sizes and the settings.
+export async function podOptions() {
+  const q = await pod().quote({ minVramGb: 0 })
+  const needs = []
+  for (const [i, m] of pinned.entries()) {
+    if (m.provider !== 'comfy' || !m.workflow) continue
+    const stock = workflowNeeds(m.workflow)
+    // A model with no files to load (a partner node) needs no Pod GPU.
+    if (stock.files.length) needs.push({ name: m.name, gb: stock.minVramGb, i })
+    const alt = podWorkflowOf(m.workflow)
+    if (alt) needs.push({ name: `${m.name.split(' (')[0]} on ${workflowNeeds(alt).runtimes.map((r) => r.name).join(', ')}`, gb: workflowNeeds(alt).minVramGb, i })
+  }
+  // The biggest, then the newest (later in the catalog), name each size first.
+  needs.sort((a, b) => b.gb - a.gb || b.i - a.i)
+  const sizes = [...new Set(GPU_LADDER.map((r) => r.vramGb))].sort((a, b) => a - b)
+  const LABELS = ['Small', 'Medium', 'Large']
+  const priced = (rs) => [...rs].sort((a, b) => (b.inStock !== false) - (a.inStock !== false) || (a.usdPerHr ?? Infinity) - (b.usdPerHr ?? Infinity))[0]
+  const tiers = sizes.map((gb, i) => ({
+    vramGb: gb, label: LABELS[i] || `${gb} GB`, rung: priced(q.rungs.filter((r) => r.vramGb === gb)),
+    models: needs.filter((n) => n.gb <= gb && n.gb > (sizes[i - 1] ?? -1)).map((n) => n.name),
+  }))
+  return {
+    ...q, tiers, volumes: POD_VOLUMES, idleChoices: IDLE_CHOICES, diskUsdPerGbMonth: STOPPED_DISK_USD_GB_MONTH,
+    // diskGb: the smallest disk a Pod that installs the runtime gets.
+    runtimes: Object.entries(RUNTIMES).map(([id, r]) => ({ id, name: r.name, gb: r.gb, vramGb: r.vramGb, minutes: r.minutes, diskGb: Math.ceil(volumeFor([r]) / 10) * 10 })),
+  }
+}
 
 // A Pod can take a graph when its GPU is big enough and its disk has room for the runtimes it has not
 // installed. Unknown disk counts as room: a Pod started for the graph was sized for it.

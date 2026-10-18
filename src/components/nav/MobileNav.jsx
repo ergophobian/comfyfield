@@ -8,6 +8,7 @@ import { barItems, menuOf, moreTools, sectionOf, currentIn } from './navModel.js
 const settings = [
   { id: 'models', to: '/models', name: 'Models', line: 'Browse and add more models', icon: <Glyph name="bars" /> },
   { id: 'connections', to: '/connections', name: 'Connections', line: 'Keys, ComfyUI and other services', icon: <Glyph name="link" /> },
+  { id: 'pods', to: '/pods', name: 'Pods', line: 'Your GPU on RunPod, sizes and settings', icon: <Glyph name="gpu" /> },
 ]
 
 // Under 720px the bar folds into this full-width sheet with every menu section.

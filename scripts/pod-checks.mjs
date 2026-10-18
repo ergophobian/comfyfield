@@ -225,11 +225,11 @@ function fakeRunpod(clock) {
   return f
 }
 
-function setup({ key = 'acct-key', cap, at = '2026-10-17T10:00:00' } = {}) {
+function setup({ key = 'acct-key', cap, idle, at = '2026-10-17T10:00:00' } = {}) {
   const dir = fs.mkdtempSync(path.join(tmp, 'pod-'))
   const clock = { t: Date.parse(at) }
   const rp = fakeRunpod(clock)
-  const opts = { fetch: rp.fetch, now: () => clock.t, keys: () => ({ key, cap }), dir: () => dir, owner: true, wait: async () => { clock.t += 3000; await opts.onWait?.() } }
+  const opts = { fetch: rp.fetch, now: () => clock.t, keys: () => ({ key, cap, idle }), dir: () => dir, owner: true, wait: async () => { clock.t += 3000; await opts.onWait?.() } }
   const make = () => podManager(opts)
   return { dir, clock, rp, opts, make, pod: make() }
 }
@@ -1254,4 +1254,76 @@ await test('video edits: the Genjutsu formats run on these graphs and show in th
   assert.deepEqual([swap.workflow, swap.imageWorkflow], ['bernini_swap_noref', 'bernini_swap'], 'the reference graph waits for a reference')
   const { openModels } = await import('../src/lib/tools.js')
   assert.equal(openModels.find((m) => m.id === 'bernini-r').vendor, 'ByteDance')
+})
+
+// ---- Pods page -------------------------------------------------------------------------------------
+
+const creates = (rp) => rp.calls.filter((c) => c.path === '/v1/pods' && c.method === 'POST').map((c) => c.body)
+
+await test('pods page: a GPU picked by hand is the only one tried, and it must fit', async () => {
+  const pick = { gpuTypeId: 'NVIDIA RTX PRO 4500 Blackwell', cloudType: 'SECURE' }
+  const a = setup()
+  await a.pod.start({ gpu: pick, volumeGb: 200 })
+  assert.deepEqual(creates(a.rp).map((b) => [b.gpuTypeIds[0], b.cloudType, b.volumeInGb]), [[pick.gpuTypeId, 'SECURE', 200]])
+  assert.equal(a.pod.status().pod.gpu, 'RTX PRO 4500')
+
+  const b = setup()
+  b.rp.create.push({ status: 500, data: { error: 'There are no instances currently available' } })
+  await assert.rejects(b.pod.start({ gpu: pick }), (e) => e.code === 'no_capacity' && /no free RTX PRO 4500 on Secure cloud right now\. Pick another GPU/.test(e.message))
+  assert.equal(creates(b.rp).length, 1, 'no other GPU is tried')
+
+  const c = setup()
+  await assert.rejects(c.pod.start({ gpu: { gpuTypeId: 'NVIDIA H100 80GB HBM3', cloudType: 'SECURE' } }), /does not start that GPU/)
+  await assert.rejects(c.pod.start({ gpu: pick, minVramGb: 96 }), /RTX PRO 4500 has 32 GB; this needs 96 GB/)
+  assert.equal(creates(c.rp).length, 0)
+})
+
+await test('pods page: FreeVideo installs only on a 96 GB GPU, with a disk big enough for it', async () => {
+  const a = setup()
+  await a.pod.start({ runtimes: ['freevideo'], volumeGb: 120 })
+  const body = creates(a.rp)[0]
+  assert.equal(body.gpuTypeIds[0], 'NVIDIA RTX PRO 6000 Blackwell Server Edition', 'smaller GPUs are skipped')
+  assert.equal(body.env.CF_RUNTIMES, 'freevideo')
+  assert.equal(body.volumeInGb, 130, 'the disk grows to fit FreeVideo')
+  const b = setup()
+  await assert.rejects(b.pod.start({ gpu: { gpuTypeId: 'NVIDIA RTX PRO 4000 Blackwell', cloudType: 'SECURE' }, runtimes: ['freevideo'] }), /FreeVideo needs a 96 GB GPU/)
+  await assert.rejects(b.pod.start({ runtimes: ['nope'] }), /Unknown runtime/)
+})
+
+await test('pods page: the idle shutdown is a setting each Pod keeps, for the app and its own watchdog', async () => {
+  podMode()
+  assert.throws(() => core.saveConnection('runpod', { idle: '7' }), /Idle shutdown is 5, 10, 15, 30, 60 minutes/)
+  assert.equal(core.connections().runpod.idle, 10, 'ten minutes by default')
+  core.saveConnection('runpod', { idle: '30' })
+  assert.equal(core.connections().runpod.idle, 30)
+
+  const { pod, rp, clock } = setup({ idle: '30' })
+  await pod.start()
+  assert.equal(creates(rp)[0].env.IDLE_AFTER, String(30 * 60 + 180), 'the watchdog gets the same time, 3 minutes later')
+  assert.equal(pod.status().pod.idleMin, 30)
+  rp.statusd = readyStatus({ idleSec: 1790 })
+  await pod.refresh()
+  assert.equal(pod.guard(), null)
+  rp.statusd = readyStatus({ idleSec: 1800 })
+  await pod.refresh()
+  assert.equal(pod.guard(), 'Terminated after 30 idle minutes.')
+  clock.t += 1000
+  const old = setup()
+  await old.pod.start()
+  assert.equal(old.pod.status().pod.idleMin, 10, 'a Pod started before the change keeps its time')
+})
+
+await test('pods page: the page lists sizes with the models that need them, and checks a start from it', async () => {
+  const o = await core.podOptions()
+  assert.deepEqual(o.tiers.map((t) => [t.label, t.vramGb, t.rung.name]), [['Small', 24, 'RTX PRO 4000'], ['Medium', 32, 'RTX PRO 4500'], ['Large', 96, 'RTX PRO 6000']])
+  assert(o.tiers[0].models.includes('FLUX 3 Klein'))
+  assert(o.tiers[1].models.includes('LTX-2.5') && o.tiers[1].models.includes('MiniMax H3 (open weights)'), 'stock H3 runs on 32 GB')
+  assert.deepEqual(o.tiers[2].models, ['MiniMax H3 on FreeVideo'])
+  assert(!o.tiers.flatMap((t) => t.models).includes('MiniMax H3 image to video'), 'a partner node needs no Pod GPU')
+  assert.equal(o.rungs.length, GPU_LADDER.length)
+  assert.deepEqual([o.volumes, o.idleChoices, o.runtimes[0].diskGb], [[120, 200, 300], [5, 10, 15, 30, 60], 130])
+
+  const { podAction } = await import('../server/plugin.js')
+  await assert.rejects(podAction('start', { volumeGb: 150 }), /Pick a disk of 120, 200, 300 GB/)
+  await assert.rejects(podAction('start', { runtimes: 'freevideo' }), /Runtimes are a list/)
 })
