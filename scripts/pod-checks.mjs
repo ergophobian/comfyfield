@@ -32,6 +32,20 @@ const netFetch = globalThis.fetch
 const listen = (handler) => new Promise((resolve) => {
   const server = http.createServer(handler).listen(0, '127.0.0.1', () => resolve(server))
 })
+// Below Linux's ephemeral ports (32768 up): polling a port nobody listens on there can make a socket
+// connect to itself, which hangs the request and takes the port from the server.
+const freePort = () => 20000 + Math.floor(Math.random() * 12000)
+// Runs the status server and keeps its stderr. Requests wait until it has bound its port, and a check
+// that times out says what the server printed.
+function startStatusd(env) {
+  const proc = spawn(python[0], [...python.slice(1), statusd], { env: { ...process.env, ...env }, stdio: ['ignore', 'ignore', 'pipe'] })
+  proc.err = ''
+  proc.stderr.on('data', (d) => { proc.err += d })
+  const bound = () => fs.promises.readFile(path.join(env.CF_BASE, 'statusd.log'), 'utf8').then((t) => t.includes('status server on port')).catch(() => false)
+  proc.ready = (url, ok) => until(bound).then(() => until(ok))
+    .catch((e) => { throw new Error(`${e.message} for ${url}. The status server said: ${proc.err.slice(-1500) || 'nothing'}`) })
+  return proc
+}
 const until = async (fn, ms = 8000) => {
   const end = Date.now() + ms
   for (;;) {
@@ -118,20 +132,17 @@ await test('status server: auth, status, heartbeat, downloads and a boot-deadlin
     }
     res.writeHead(404).end()
   })
-  const port = 20000 + Math.floor(Math.random() * 20000)
+  const port = freePort()
   const base = path.join(tmp, 'statusd')
-  const proc = spawn(python[0], [...python.slice(1), statusd], {
-    env: {
-      ...process.env, POD_TOKEN: 'secret', CF_BASE: base, CF_MODELS: path.join(base, 'models'), CF_STATUS_PORT: String(port),
-      CF_COMFY_URL: 'http://127.0.0.1:9', CF_PROXY_URL: 'http://127.0.0.1:9', CF_HF_BASE: `http://127.0.0.1:${hf.address().port}`,
-      CF_TICK: '0.2', BOOT_DEADLINE: '2', CF_DRY_KILL: '1',
-    },
-    stdio: 'ignore',
+  const proc = startStatusd({
+    POD_TOKEN: 'secret', CF_BASE: base, CF_MODELS: path.join(base, 'models'), CF_STATUS_PORT: String(port),
+    CF_COMFY_URL: 'http://127.0.0.1:9', CF_PROXY_URL: 'http://127.0.0.1:9', CF_HF_BASE: `http://127.0.0.1:${hf.address().port}`,
+    CF_TICK: '0.2', BOOT_DEADLINE: '2', CF_DRY_KILL: '1',
   })
   t.after(() => { proc.kill(); hf.close() })
   const url = `http://127.0.0.1:${port}`
   const auth = { Authorization: 'Bearer secret' }
-  await until(async () => (await fetch(`${url}/status`)).status === 401)
+  await proc.ready(url, async () => (await fetch(`${url}/status`)).status === 401)
   assert.equal((await fetch(`${url}/status`, { headers: { Authorization: 'Bearer wrong' } })).status, 401)
 
   const s = await (await fetch(`${url}/status`, { headers: auth })).json()
@@ -924,7 +935,7 @@ await test('freevideo: the boot script pins FreeVideo, loads only its node, and 
 })
 
 await test('freevideo: the status server installs on request, reports it, counts it as busy and retries a failure', { skip: (!python || !hasBash) && 'needs Python 3.9+ and bash' }, async (t) => {
-  const port = 20000 + Math.floor(Math.random() * 20000)
+  const port = freePort()
   const base = path.join(tmp, 'statusd-fv').replace(/\\/g, '/')
   const home = `${base}/freevideo`
   fs.mkdirSync(base, { recursive: true })
@@ -934,16 +945,13 @@ await test('freevideo: the status server installs on request, reports it, counts
     '#!/bin/bash', 'echo "Installing the runtime"', 'sleep 1',
     `if [ -f "${base}/fail-once" ]; then rm "${base}/fail-once"; echo "Insufficient disk space: need 89.1 GiB"; echo "see the log"; exit 1; fi`,
     `mkdir -p "${home}" && echo '{"ready": true}' > "${home}/machine.json"`, ''].join('\n'))
-  const proc = spawn(python[0], [...python.slice(1), statusd], {
-    env: { ...process.env, POD_TOKEN: 'secret', CF_BASE: base, CF_MODELS: `${base}/models`, CF_STATUS_PORT: String(port), CF_FREEVIDEO_HOME: home,
-      CF_COMFY_URL: 'http://127.0.0.1:9', CF_PROXY_URL: 'http://127.0.0.1:9', CF_TICK: '0.2', CF_DRY_KILL: '1' },
-    stdio: 'ignore',
-  })
+  const proc = startStatusd({ POD_TOKEN: 'secret', CF_BASE: base, CF_MODELS: `${base}/models`, CF_STATUS_PORT: String(port), CF_FREEVIDEO_HOME: home,
+    CF_COMFY_URL: 'http://127.0.0.1:9', CF_PROXY_URL: 'http://127.0.0.1:9', CF_TICK: '0.2', CF_DRY_KILL: '1' })
   t.after(() => proc.kill())
   const url = `http://127.0.0.1:${port}`
   const auth = { Authorization: 'Bearer secret' }
   const status = async () => (await netFetch(`${url}/status`, { headers: auth })).json()
-  await until(async () => (await netFetch(`${url}/status`, { headers: auth })).ok)
+  await proc.ready(url, async () => (await netFetch(`${url}/status`, { headers: auth })).ok)
   assert.deepEqual((await status()).runtimes, {}, 'nothing installs until a run asks')
   assert.equal((await netFetch(`${url}/runtime/freevideo`, { method: 'POST' })).status, 401)
   assert.equal((await netFetch(`${url}/runtime/other`, { method: 'POST', headers: auth })).status, 404)
