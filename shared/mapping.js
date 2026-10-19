@@ -21,17 +21,37 @@ export function fill(node, vars) {
   return node
 }
 
+// A graph node marked `"_meta": { "optional": "<key>" }` exists only for that file (a second garment,
+// an optional reference). Without the file it drops out, with every input linked to it, so those
+// inputs must be optional in ComfyUI.
+export function dropOptional(graph, vars) {
+  const gone = new Set(Object.entries(graph).filter(([, n]) => {
+    const key = n?._meta?.optional
+    return key && (vars[key] == null || vars[key] === '')
+  }).map(([id]) => id))
+  if (!gone.size) return graph
+  return Object.fromEntries(Object.entries(graph).filter(([id]) => !gone.has(id)).map(([id, node]) => [id, {
+    ...node, inputs: Object.fromEntries(Object.entries(node.inputs || {}).filter(([, v]) => !(Array.isArray(v) && gone.has(String(v[0]))))),
+  }]))
+}
+
+// Upload slots a graph can take besides `image` and `video`.
+export const PICTURE_SLOTS = ['image', 'image2', 'image3', 'image4', 'image5']
+
 // `sizes` lets a model use its own canvas per aspect ratio, for example multiples of 64 for LTX-2.5.
-// A video edit reads the trimmed part of its clip: `start` and `duration` in seconds. A saved
-// character stands in for a photo with its first image.
+// A video edit reads the trimmed part of its clip: `start` and `duration` in seconds. A format's
+// pictures fill image, image2, ... in the order it lists them (`slots`, from recipeOptions), and a
+// saved character stands in with its first image. Without slots (the composer) attached images fill them.
 export function comfyVars(kind, o, sizes) {
   const [width, height] = sizes?.[o.aspect] || (kind === 'video' ? videoSize(o.aspect) : aspectSize[o.aspect])
   const trim = o.trim && o.trim.end > o.trim.start ? o.trim : null
   const seconds = (n) => Math.round(n * 1000) / 1000
+  const pictures = o.slots?.pictures || [o.images?.[0] || o.image || o.refs?.find((r) => r.images?.length)?.images[0], ...(o.images || []).slice(1)]
   return {
     prompt: o.prompt, width, height, count: o.count || 1, frames: (o.duration || 5) * 24 + 1,
     duration: trim ? seconds(trim.end - trim.start) : o.duration || 5, start: trim ? seconds(trim.start) : 0,
-    image: o.images?.[0] || o.image || o.refs?.find((r) => r.images?.length)?.images[0], video: o.video || o.media?.video,
+    ...Object.fromEntries(PICTURE_SLOTS.map((key, i) => [key, pictures[i] || undefined])),
+    mask: o.mask || undefined, video: o.video || o.media?.video, audio: o.slots?.audio || o.media?.audio || o.audio || undefined, voice: o.slots?.voice || undefined,
     seed: Math.floor(Math.random() * 2 ** 31), ...o.params, ...o.fields,
   }
 }

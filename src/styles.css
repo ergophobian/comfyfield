@@ -2543,6 +2543,15 @@ button.gen-step:active { transform: scale(.97); }
 .pods .field > .pod-note + .opt-grid { margin-top: 8px; }
 .pods-cap { display: flex; gap: 8px; }
 .pods-cap input { flex: 1; min-width: 0; }
+.pods-services { flex-wrap: wrap; }
+.pods-services button { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.pods .field > .pod-note + .pods-services { margin-top: 8px; }
+.pods .field .pod-acts { margin-top: 10px; }
+.pod-files { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.pod-files li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 12px; padding: 8px 12px; border-radius: var(--r-md); background: var(--ink-fill); }
+.pod-files strong { min-width: 0; font-size: var(--text-md); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pod-files small { grid-column: 1; min-width: 0; font-size: var(--text-sm); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pod-files .btn-soft { grid-column: 2; grid-row: 1 / span 2; }
 @media (max-width: 720px) {
   .pods-grid { grid-template-columns: minmax(0, 1fr); }
 }

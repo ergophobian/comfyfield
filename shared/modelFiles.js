@@ -82,7 +82,7 @@ export const MODEL_FILES = {
 }
 
 // Which input of which loader names a file, and the ComfyUI folder it loads from.
-const LOADERS = {
+export const LOADERS = {
   CheckpointLoaderSimple: { ckpt_name: 'checkpoints' },
   UNETLoader: { unet_name: 'diffusion_models' },
   VAELoader: { vae_name: 'vae' },
@@ -97,14 +97,37 @@ const LOADERS = {
   FreeVideoLoRA: { lora: 'loras' },
 }
 
-// Runtimes a Pod installs for nodes that need more than model files. Comfy Cloud has none of them.
+// Runtimes a Pod installs for nodes that need more than model files. Comfy Cloud has no FreeVideo.
 // FreeVideo runs MiniMax H3 as OpenVDN's 8-step VDN-H3 in its own Python env, with its own weights
 // (research_notes/engine/freevideo.md). It runs on 8 GB, but ComfyField uses it only on the 96 GB card
 // FreeVideo tests on, where it is faster and cheaper per video than stock H3. `gb` is the free disk
 // its installer asks for on a first install; `minutes` is the first install, a re-run is shorter.
-export const RUNTIMES = {
+const ENVS = {
   freevideo: { name: 'FreeVideo', nodes: /^FreeVideo/, vramGb: 96, gb: 96, minutes: [15, 40] },
 }
+
+// Custom node packs a Pod installs for graphs that use their nodes, pinned by commit, as model files
+// are pinned by sha256: a graph's node classes decide its packs, as its loaders decide its files.
+// `cloud` marks packs Comfy Cloud preinstalls (comfy.org/cloud/supported-nodes), so a graph that needs
+// only those still runs there at once. `classes` are the nodes ComfyField's graphs use; the Pod counts
+// a pack ready once ComfyUI lists them. Ids are lower-case letters and digits (they travel in the Pod env).
+export const NODE_PACKS = {
+  vhs: { name: 'VideoHelperSuite', repo: 'Kosinkadink/ComfyUI-VideoHelperSuite', commit: '4d907bee61e92c2e65af3bd6383a4e4d356126d1', date: '2026-09-02',
+    folder: 'ComfyUI-VideoHelperSuite', classes: ['VHS_SelectEveryNthImage', 'VHS_DuplicateImages', 'VHS_GetImageCount'], cloud: true },
+  kjnodes: { name: 'KJNodes', repo: 'kijai/ComfyUI-KJNodes', commit: '17195fcfa8a05f601b766a0f09c9733284f47416', date: '2026-10-15',
+    folder: 'ComfyUI-KJNodes', classes: ['ColorMatch'], cloud: true },
+}
+
+// Every runtime: FreeVideo's own env, and the node packs. A pack is small and installs in a minute or two.
+export const RUNTIMES = {
+  ...ENVS,
+  ...Object.fromEntries(Object.entries(NODE_PACKS).map(([id, p]) => [id, { name: p.name, pack: true, nodes: p.classes, vramGb: 0, gb: 1, minutes: [1, 3], cloud: p.cloud }])),
+}
+const usesRuntime = (runtime, type) => (Array.isArray(runtime.nodes) ? runtime.nodes.includes(type) : runtime.nodes.test(type))
+
+// The models folders a Pod makes and points ComfyUI at: every loader's folder and every file's.
+// A new loader brings its folder with it, so the boot script and the status server never lag.
+export const MODEL_DIRS = [...new Set([...Object.values(LOADERS).flatMap((inputs) => Object.values(inputs)), ...Object.values(MODEL_FILES).map((f) => f.dir)])]
 
 // Room on the volume for files later runs ask for, on top of the first run's.
 const HEADROOM_GB = 30
@@ -131,9 +154,12 @@ export function modelFilesOf(graph) {
 export function runtimesOf(graph) {
   const out = new Set()
   for (const node of Object.values(graph || {})) {
-    for (const [id, e] of Object.entries(RUNTIMES)) if (e.nodes.test(node?.class_type || '')) out.add(id)
+    for (const [id, e] of Object.entries(RUNTIMES)) if (usesRuntime(e, node?.class_type || '')) out.add(id)
   }
-  return [...out].map((id) => ({ runtime: id, name: RUNTIMES[id].name, gb: RUNTIMES[id].gb, vramGb: RUNTIMES[id].vramGb, minutes: RUNTIMES[id].minutes, cloud: false }))
+  return [...out].map((id) => {
+    const e = RUNTIMES[id]
+    return { runtime: id, name: e.name, gb: e.gb, vramGb: e.vramGb, minutes: e.minutes, cloud: Boolean(e.cloud), ...(e.pack ? { pack: true } : {}) }
+  })
 }
 
 // Everything a Pod needs for a graph: model files to download and runtimes to install.

@@ -71,7 +71,11 @@ export async function runFormat(format, inputs, { run, writePrompt, onChange, co
       const { formatStep, ...target } = model
       const options = { ...formatStep.options, count: unit.count, caption: format.name }
       if (formatStep.written && unit.prompt) options.prompt = unit.prompt
-      if (formatStep.from.length && unit.image) options.images = [unit.image]
+      if (formatStep.from.length && unit.image) {
+        options.images = [unit.image]
+        // An upstream picture takes the first slot; the format's other pictures keep theirs.
+        if (options.slots) options.slots = { ...options.slots, pictures: [unit.image, ...options.slots.pictures.slice(1)] }
+      }
       if (target.provider === 'comfy' && options.aspect === 'auto') options.aspect = '1:1'
       return run(target, options, { formatId: format.id, stepId: formatStep.id, formatRunId: batch, prompt: options.prompt })
     },
