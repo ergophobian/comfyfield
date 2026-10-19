@@ -24,7 +24,7 @@ npm start
 
 On restricted PowerShell, the last command is `npm.cmd start`.
 
-`npm start` installs missing dependencies, downloads bundled ffmpeg, builds the app on the first start, then opens your browser. The first start needs internet access and space for dependencies; later starts reuse the build. After updating source, run `npm run build` before restarting. Developers can use `npm run dev` for live reload.
+`npm start` checks every required app dependency and repairs partial installs, tries to download optional bundled ffmpeg, builds the app on the first start, then opens your browser. With a lockfile, setup uses `npm ci` to preserve locked versions. Installs run dependency lifecycle scripts, including the optional ffmpeg binary download. A failed download or unsupported architecture does not prevent startup: a working system ffmpeg is used instead, or startup warns that Stitch features are disabled. The first start needs internet access and space for dependencies; later starts reuse the build. After updating source, run `npm run build` before restarting. Developers can use `npm run dev` for live reload.
 
 ## Start without cloning after publication
 
@@ -58,7 +58,9 @@ $env:COMFYFIELD_HOME = 'D:\my-studio'
 npm.cmd start
 ```
 
-Your existing checkout data is not moved automatically. Keep keys private and do not commit or share the data folder. The launcher binds to `127.0.0.1`; it is for use on that computer. Keep the terminal open while working; press Ctrl+C to stop it.
+The launcher loads `.env`, `.env.local`, `.env.production` and `.env.production.local` from the app folder with the same Vite loader used by the development server (development uses its corresponding mode files). Existing shell variables take precedence. Put `COMFYFIELD_HOME` in `.env` to select storage before provider code loads. The loader does not log `.env` contents or provider key values.
+
+Your existing checkout data is not moved automatically. Keep keys private and do not commit or share the data folder. Both `npm start` and `npm run dev` bind to `127.0.0.1` by default. Only loopback Host headers and same-origin browser requests can use the local API. Setting `COMFYFIELD_HOST` explicitly opts into another listen address and prints a warning: anyone with access can use saved connections and spend credits. Use only a trusted network and firewall. A wildcard bind such as `0.0.0.0` does not allow arbitrary Host headers; use the exact configured hostname/address or localhost. Keep the terminal open while working; press Ctrl+C to stop it.
 
 ## Common fixes
 
@@ -72,10 +74,10 @@ Your existing checkout data is not moved automatically. Keep keys private and do
 | No keys yet | Open the printed Connections link; add only the providers you want to use. |
 | Comfy rejects the key or access | Replace the saved key in Connections, check account access and paid plan in Comfy, then use Test. |
 | Comfy cannot be reached | Check internet or proxy settings, then use Test in Connections later. You can still browse the studio. |
-| ffmpeg is missing or cannot run | In the installed app folder, run `npm rebuild ffmpeg-static` with install scripts enabled; check access to GitHub release downloads. Or install ffmpeg for your operating system and add it to your system path. No separate install is normally needed. |
-| Low disk space | Free space or choose another drive with `COMFYFIELD_HOME`. Startup warns below 5 GB and pauses below 200 MB; leave at least 1 GB for setup and more for media. |
+| ffmpeg is missing or cannot run | In the installed app folder, run `npm rebuild ffmpeg-static` with install scripts enabled; check access to GitHub release downloads. Or install ffmpeg for your operating system and add it to your system path. If neither binary works, browsing remains available and Stitch features are disabled. |
+| Low disk space | Free space or choose another drive with `COMFYFIELD_HOME`. Startup checks the data, checkout and npm-cache drives, warns below 5 GB and pauses below 200 MB; leave at least 1 GB for setup and more for media. Moving data does not move dependencies or npm cache. |
 | Cannot write the data folder | Set `COMFYFIELD_HOME` to a writable parent folder. Avoid running the studio as administrator. |
 | Installation or build did not finish | Check internet access, disk space and Node version, then retry `npm start`. Keep npm install scripts enabled so the bundled ffmpeg download can run. |
 | Page looks old after changing source | Stop the app, run `npm run build`, then `npm start`. |
 
-ffmpeg is supplied by `ffmpeg-static` for supported macOS, Windows and Linux architectures. The shared resolver prefers a working system ffmpeg and falls back to the npm binary. An unsupported architecture needs its own ffmpeg on the system path.
+ffmpeg is supplied by `ffmpeg-static` for supported macOS, Windows and Linux architectures. The shared resolver prefers a working system ffmpeg and falls back to the npm binary. An unsupported architecture, including Windows arm64, can start without the optional binary; install a compatible system ffmpeg to enable Stitch. The downloaded executable may include GPL components such as libx264. See [third-party notices](../NOTICE.md) for package/binary licenses, upstream source and redistribution requirements. To avoid the optional download, run `npm ci --omit=optional` before starting.

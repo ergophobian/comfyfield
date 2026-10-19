@@ -5,11 +5,17 @@ import http from 'node:http'
 import { spawn } from 'node:child_process'
 import { EventEmitter } from 'node:events'
 import { dataDirectory } from '../server/startup-paths.js'
-import { checkComfy, diskCheck, nodeProblem, startupChecks } from '../server/startup-checks.js'
+import { checkComfy, diskCheck, nodeProblem, startupChecks, installationStorageChecks } from '../server/startup-checks.js'
 import { createRequire } from 'node:module'
 import { findFfmpeg, probeFfmpeg, ffmpegFix } from '../server/ffmpeg.js'
-import { openBrowser } from '../server/start.js'
+import { openBrowser, ensureDependencies, missingDependencies, loadEnvironment } from '../server/start.js'
+import { allowedApiRequest, bindHost } from '../server/local-access.js'
+import vm from 'node:vm'
 import { killProcessTree } from './browser.mjs'
+
+const manifest = JSON.parse(fs.readFileSync('package.json', 'utf8'))
+assert.ok(manifest.optionalDependencies['ffmpeg-static'], 'ffmpeg download failures must stay optional')
+assert.ok(!manifest.dependencies['ffmpeg-static'])
 
 assert.match(nodeProblem('20.19.0'), /Node.js 22.*nodejs.org/)
 assert.equal(nodeProblem('22.0.0'), null)
@@ -24,8 +30,12 @@ assert.equal(diskCheck(10 * 1024 ** 3).level, 'ok')
 assert.equal(await findFfmpeg({ probe: async (p) => p === 'ffmpeg', bundled: () => { throw Error('unused') } }), 'ffmpeg')
 assert.equal(await findFfmpeg({ probe: async (p) => p === 'bundled', bundled: () => 'bundled' }), 'bundled')
 await assert.rejects(findFfmpeg({ probe: async () => false, bundled: () => null }), /npm rebuild ffmpeg-static/)
-assert.ok(await probeFfmpeg(createRequire(import.meta.url)('ffmpeg-static')), 'The npm-installed binary must run without a system ffmpeg')
-assert.ok(await findFfmpeg(), 'A real system or npm-installed ffmpeg must run on this operating system')
+let bundled
+try { bundled = createRequire(import.meta.url)('ffmpeg-static') } catch {}
+if (bundled) assert.ok(await probeFfmpeg(bundled), 'An installed optional binary must run')
+await findFfmpeg().catch((error) => assert.equal(error.message, ffmpegFix))
+assert.equal(await findFfmpeg({ probe: async (p) => p === 'ffmpeg', bundled: () => { throw Error('download failed') } }), 'ffmpeg')
+await assert.rejects(findFfmpeg({ probe: async () => false, bundled: () => { throw Error('download failed') } }), /Stitch features are disabled/)
 let requested = 0
 const request = (status, body = {}) => async (url, opts) => {
   requested++
@@ -56,6 +66,63 @@ assert.equal(await openBrowser('http://127.0.0.1:5173', { launch() {
 } }), false)
 fs.mkdirSync('outputs', { recursive: true })
 const directory = fs.mkdtempSync(path.resolve('outputs/startup-'))
+// A partial install must be repaired even though Vite still resolves; optional download failure is harmless.
+const fixture = path.join(directory, 'install')
+fs.mkdirSync(fixture)
+fs.writeFileSync(path.join(fixture, 'package.json'), JSON.stringify({ dependencies: { vite: '*', '@comfyorg/sdk': '*' }, optionalDependencies: { 'ffmpeg-static': '*' } }))
+fs.writeFileSync(path.join(fixture, 'package-lock.json'), 'lock fixture')
+let installed = false
+const resolve = (name) => { if (name === 'vite' || installed) return name; throw Error('missing sdk') }
+assert.deepEqual(missingDependencies({ directory: fixture, resolve }), ['@comfyorg/sdk'])
+let installs = 0
+await ensureDependencies({ directory: fixture, resolve, log() {}, runNpm: async (args) => {
+  assert.equal(args[0], 'ci')
+  installs++
+  installed = true // npm succeeds even if its optional ffmpeg lifecycle download fails.
+} })
+assert.equal(installs, 1)
+await ensureDependencies({ directory: fixture, resolve, log() {}, runNpm: async () => { throw Error('complete installs should be reused') } })
+assert.equal(fs.readFileSync(path.join(fixture, 'package-lock.json'), 'utf8'), 'lock fixture')
+
+const beforeHome = process.env.COMFYFIELD_HOME
+const dotenvHome = path.join(directory, 'dotenv-data')
+fs.writeFileSync(path.join(fixture, '.env'), `COMFYFIELD_HOME=${JSON.stringify(dotenvHome.replaceAll('\\', '/'))}\n`)
+delete process.env.COMFYFIELD_HOME
+await loadEnvironment(fixture)
+assert.equal(dataDirectory(), path.join(dotenvHome, '.comfyfield'))
+if (beforeHome === undefined) delete process.env.COMFYFIELD_HOME
+else process.env.COMFYFIELD_HOME = beforeHome
+const drives = []
+const space = await installationStorageChecks(fixture, path.join(fixture, 'new-cache'), { disk: async (dir) => {
+  drives.push(dir)
+  return { bavail: dir === fixture && drives.length === 2 ? 0n : 10n * 1024n ** 3n, bsize: 1n }
+} })
+assert.deepEqual(drives, [fixture, fixture])
+assert.equal(space[1].level, 'error')
+assert.match(space[1].message, /npm cache drive/)
+
+const oldExit = new Error('old node exit')
+let guidance = ''
+assert.throws(() => vm.runInNewContext(fs.readFileSync('bin/comfyfield.js', 'utf8'), {
+  process: { versions: { node: '16.20.2' }, exit(code) { assert.equal(code, 1); throw oldExit } },
+  console: { error(message) { guidance = message } },
+}), (error) => error === oldExit)
+assert.match(guidance, /Node.js 22.*16.20.2/)
+assert.equal(bindHost({}, () => { throw Error('loopback needs no warning') }), '127.0.0.1')
+let warning = ''
+assert.equal(bindHost({ COMFYFIELD_HOST: '0.0.0.0' }, (text) => { warning = text }), '0.0.0.0')
+assert.match(warning, /spend credits/)
+for (const host of ['localhost:5173', '127.0.0.1:5173', '[::1]:5173']) {
+  assert.equal(allowedApiRequest({ host, origin: `http://${host}` }, {}), true)
+  assert.equal(allowedApiRequest({ host, origin: 'https://foreign.example' }, {}), false)
+}
+assert.equal(allowedApiRequest({ host: 'rebind.example:5173', origin: 'http://rebind.example:5173' }, {}), false)
+assert.equal(allowedApiRequest({ host: 'studio.example:5173', origin: 'http://studio.example:5173' }, { COMFYFIELD_HOST: 'studio.example' }), true)
+assert.equal(allowedApiRequest({ host: 'unconfigured.example:5173' }, { COMFYFIELD_HOST: '0.0.0.0' }), false)
+const { resolveConfig } = await import('vite')
+const config = await resolveConfig({ envFile: false }, 'serve')
+assert.equal(config.server.host, '127.0.0.1', 'npm run dev defaults to loopback')
+assert.equal(config.preview.host, '127.0.0.1')
 const checks = await startupChecks(directory, {
   disk: async () => ({ bavail: 10n * 1024n ** 3n, bsize: 1n }),
   ffmpeg: async () => { throw new Error(ffmpegFix) },
@@ -107,9 +174,21 @@ try {
   const html = await fetch(`${origin}/connections`).then((r) => r.text())
   assert.match(html, /<div id="root">/)
   assert.ok(!html.includes('/@vite/client'), 'Launcher serves the production build')
+  const apiRequest = (method, headers) => new Promise((resolve, reject) => {
+    const request = http.request(`${origin}/api/connections`, { method, headers }, (response) => { response.resume(); response.on('end', () => resolve(response.statusCode)) })
+    request.on('error', reject)
+    request.end()
+  })
+  for (const method of ['GET', 'POST']) {
+    assert.equal(await apiRequest(method, { host: 'rebind.example', origin: 'http://rebind.example' }), 403)
+    assert.equal(await apiRequest(method, { origin: 'https://foreign.example' }), 403)
+    assert.equal(await apiRequest(method, { 'sec-fetch-site': 'cross-site' }), 403)
+  }
+  assert.equal(await apiRequest('GET', { origin }), 200)
+  assert.equal(await apiRequest('GET', { host: `localhost:${new URL(origin).port}` }), 200)
   const connections = await fetch(`${origin}/api/connections`).then((r) => r.json())
   assert.ok(Object.values(connections).every((c) => !c.connected), 'API is on the same port without any keys')
-  console.log(`Startup checks passed on ${process.platform}/${process.arch}: production app, same-port API, occupied port fallback, isolated per-user storage, no keys, ffmpeg, browser commands and failure guidance`)
+  console.log(`Startup checks passed on ${process.platform}/${process.arch}: production app, same-port API, occupied port fallback, isolated per-user storage, no keys, ffmpeg fallback, rebinding and origin guards, dependency repair, dotenv, disk drives, old Node guidance and browser commands`)
 } finally {
   await killProcessTree(child)
   await new Promise((resolve) => occupied.close(resolve))

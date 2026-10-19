@@ -7,11 +7,11 @@ export function nodeProblem(version) {
   return `ComfyField needs Node.js 22 or newer; you have ${version}. Install Node.js 22 or the current long-term support release from https://nodejs.org/en/download, reopen your terminal, then run npm start again.`
 }
 
-export function diskCheck(bytes) {
+export function diskCheck(bytes, label = 'data drive') {
   const gb = Number(bytes) / 1024 ** 3
-  if (gb < 0.2) return { level: 'error', message: `Only ${gb.toFixed(1)} GB free. Free at least 1 GB on the data drive, then start again.` }
-  if (gb < 5) return { level: 'warning', message: `Only ${gb.toFixed(1)} GB free. Free disk space or move your data with COMFYFIELD_HOME before downloading media.` }
-  return { level: 'ok', message: `${gb.toFixed(1)} GB free on the data drive.` }
+  if (gb < 0.2) return { level: 'error', message: `Only ${gb.toFixed(1)} GB free. Free at least 1 GB on the ${label}, then start again.` }
+  if (gb < 5) return { level: 'warning', message: `Only ${gb.toFixed(1)} GB free on the ${label}. Free disk space before installing dependencies or downloading media.` }
+  return { level: 'ok', message: `${gb.toFixed(1)} GB free on the ${label}.` }
 }
 
 // This read-only endpoint reports account status, not paid-plan entitlement.
@@ -33,6 +33,25 @@ export async function checkComfy(key, { request = fetch } = {}) {
   }
 }
 
+async function driveCheck(directory, label, disk) {
+  try {
+    const stat = await disk(directory, { bigint: true })
+    return diskCheck(stat.bavail * stat.bsize, label)
+  } catch { return { level: 'warning', message: `Could not check free disk space on the ${label}. Check that drive before installing dependencies or downloading media.` } }
+}
+
+export async function installationStorageChecks(checkout, cache, { disk = fs.statfs } = {}) {
+  // The npm cache can live on a different drive and may not exist on a first install.
+  let existing = path.resolve(cache)
+  while (true) {
+    try { await fs.access(existing); break } catch {}
+    const parent = path.dirname(existing)
+    if (parent === existing) break
+    existing = parent
+  }
+  return [await driveCheck(checkout, 'checkout drive', disk), await driveCheck(existing, 'npm cache drive', disk)]
+}
+
 export async function storageChecks(directory, { disk = fs.statfs } = {}) {
   const checks = []
   try {
@@ -41,10 +60,7 @@ export async function storageChecks(directory, { disk = fs.statfs } = {}) {
   } catch {
     throw new Error('Cannot write the data folder. Choose a writable folder with COMFYFIELD_HOME, then start again.')
   }
-  try {
-    const stat = await disk(directory, { bigint: true })
-    checks.push(diskCheck(stat.bavail * stat.bsize))
-  } catch { checks.push({ level: 'warning', message: 'Could not check free disk space. Check the data drive before downloading media.' }) }
+  checks.push(await driveCheck(directory, 'data drive', disk))
   return checks
 }
 
