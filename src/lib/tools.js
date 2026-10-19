@@ -68,7 +68,7 @@ export const openModels = [
   { id: 'hidream-o1', name: 'HiDream-O1', kind: 'image', vendor: 'HiDream', blurb: 'Detailed images with readable text', workflow: 'hidream', catalog: 'comfy-hidream-o1' },
   { id: 'minimax-h3', name: 'MiniMax H3', kind: 'video', vendor: 'MiniMax', blurb: 'Top open video model with native audio', workflow: 'h3_open_t2v', catalog: 'comfy-h3', badge: 'Top' },
   { id: 'ltx-2-5', name: 'LTX-2.5', kind: 'video', vendor: 'Lightricks', blurb: 'Fast video with multi-shot, keyframes and audio', workflow: 'ltx25_t2v', catalog: 'comfy-ltx25' },
-  { id: 'wan-2-2', name: 'Wan 2.2', kind: 'video', vendor: 'Alibaba Wan', blurb: 'Image to video, first and last frame', workflow: 'wan22_i2v' },
+  { id: 'wan-2-2', name: 'Wan 2.2', kind: 'video', vendor: 'Alibaba Wan', blurb: 'Image to video, first and last frame', workflow: 'wan22_t2v', catalog: 'comfy-wan22' },
   { id: 'wan-animate-2', name: 'Wan Animate 2', kind: 'video', vendor: 'Alibaba Wan', blurb: 'Transfer motion from a video to a character', workflow: 'wan_animate2' },
   { id: 'bernini-r', name: 'Bernini-R', kind: 'video', vendor: 'ByteDance', blurb: 'Restyle, relight and swap objects in real video', workflow: 'bernini_swap' },
   { id: 'infinitetalk', name: 'InfiniteTalk', kind: 'video', vendor: 'MeiGen', blurb: 'Talking heads and lipsync of any length', workflow: 'infinitetalk' },

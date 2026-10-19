@@ -1,5 +1,6 @@
 // Just for fun: toys, stickers, cards and game styles made from a photo.
 import { open, photo, note, covers } from './parts.js'
+import { h3Sizes } from '../catalog.js'
 
 const qwen = { runsOn: 'Qwen-Image 2.1', workflow: 'qwen_edit' }
 const klein = { runsOn: 'FLUX 3 Image Klein', workflow: 'klein_edit' }
@@ -127,7 +128,7 @@ export const fun = [
   open({
     id: 'cloud-surfing', name: 'Cloud surfing', kind: 'video', category: 'fun', hub: 'trending',
     blurb: 'Surf across a sea of clouds high in the sky.',
-    runsOn: 'MiniMax H3', workflow: 'h3_i2v',
+    runsOn: 'MiniMax H3', workflow: 'h3_open_i2v', sizes: h3Sizes,
     inputs: [photo, note],
     prompt: 'The subject rides a surfboard across a rolling sea of sunlit clouds high above the earth, carving smooth turns as wisps of cloud spray off the board, hair and clothes blowing in the wind. The camera tracks alongside in golden light under a deep blue sky. Their face and outfit stay true to the photo. {note}',
     settings: { aspect: 'auto', duration: 5 },

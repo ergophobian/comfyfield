@@ -1,7 +1,7 @@
 // Jobs from Higgsfield's use-case landing pages that had no ComfyField format yet.
 // Each is one default model, a tuned prompt and a shape. Upload-first jobs that read like an app also set `hub`.
 import { open, photo, clip, note, covers } from './parts.js'
-import { qwenImageSizes } from '../catalog.js'
+import { qwenImageSizes, h3Sizes } from '../catalog.js'
 
 const still = { aspect: 'auto' }
 const qwen = { runsOn: 'Qwen-Image 2.1', workflow: 'qwen_edit' }
@@ -9,8 +9,8 @@ const qwen = { runsOn: 'Qwen-Image 2.1', workflow: 'qwen_edit' }
 const qwenType = { runsOn: 'Qwen-Image 2.1', workflow: 'qwen_image21_t2i', imageWorkflow: 'qwen_image_ref', sizes: qwenImageSizes }
 const klein = { runsOn: 'FLUX 3 Image Klein', workflow: 'klein_edit' }
 const kleinLook = { runsOn: 'FLUX 3 Image Klein', workflow: 'flux_look' }
-const h3 = { runsOn: 'MiniMax H3', workflow: 'h3_i2v' }
-const h3Text = { runsOn: 'MiniMax H3', workflow: 'h3_t2v' }
+const h3 = { runsOn: 'MiniMax H3', workflow: 'h3_open_i2v', sizes: h3Sizes }
+const h3Text = { runsOn: 'MiniMax H3', workflow: 'h3_open_t2v', imageWorkflow: 'h3_t2v', sizes: h3Sizes }
 const storyChain = { runsOn: 'Qwen3.8, FLUX 3 Image Klein, MiniMax H3 and Chatterbox' }
 
 const shape = (initial = 'portrait') => ({ id: 'shape', type: 'choice', label: 'Shape', half: true, default: initial, options: [
@@ -556,6 +556,8 @@ const videoJobs = [
     id: 'brand-video', name: 'Brand film', kind: 'video', category: 'ads',
     blurb: 'Brand films, logo reveals and campaign spots.',
     runsOn: 'MiniMax H3', workflow: 'h3_ref2v',
+    // The brand's first picture, its logo, is the reference H3 keeps exact.
+    bindings: { image: 'brand.images.0' },
     inputs: [
       { id: 'brand', type: 'brand', label: 'Brand' },
       { id: 'brief', type: 'longtext', label: 'Brief', placeholder: 'Morning light in a small workshop as the first loaf comes out of the oven' },
@@ -770,7 +772,8 @@ const videoJobs = [
       { id: 'details', type: 'longtext', label: 'Details', placeholder: 'Sam and Alex, Saturday 14 June, 4pm, The Old Boathouse' },
       { id: 'image', type: 'image', label: 'Photo', optional: true },
     ],
-    prompt: 'An animated {event} invitation in {style}: the decorations animate in, then these details appear in clear, elegant type, spelled exactly: {details}',
+    prompt: 'A vertical {event} invitation card in {style}, with these details in clear, elegant type, spelled exactly: {details} If a photo is attached, frame it on the card as a keepsake picture.',
+    params: { motion: 'The video opens exactly on <Picture 1>. The decorations come alive: petals, confetti or foil shimmer drift and sparkle around the card while the camera pushes in slowly. The printed text stays perfectly still, sharp and unchanged. Audio: soft celebratory music.' },
     settings: { aspect: '9:16', duration: 8 },
     cover: covers.lilac,
   }),

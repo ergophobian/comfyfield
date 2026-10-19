@@ -54,3 +54,10 @@ export const sound = { id: 'audio', type: 'audio', label: 'Audio' }
 export const note = { id: 'note', type: 'text', label: 'Extra direction', optional: true, placeholder: 'Anything else to add' }
 
 export const open = (f) => defineFormat({ engine: 'comfy', settings: {}, prompt: '', ...f })
+
+// An effect trained as a Wan 2.2 LoRA, one file per expert (the low noise one may be off). Comfy Cloud
+// has no effect LoRA, so these run on a Pod, which downloads the files the run names.
+export const wanLora = (name, strength = 1, low = name.replace('_high_noise', '_low_noise'), lowStrength = strength) => ({
+  runsOn: 'Wan 2.2 with an effect LoRA', workflow: 'wan22_lora_i2v',
+  params: { lora: name + '.safetensors', lora_strength: strength, lora_low: low + '.safetensors', lora_low_strength: lowStrength },
+})

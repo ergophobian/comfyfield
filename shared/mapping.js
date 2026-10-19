@@ -35,6 +35,9 @@ export function dropOptional(graph, vars) {
   }]))
 }
 
+// A motion drawing's arrows, as recipeOptions keeps them, stand in for a mask.
+const motionStrokes = (o) => Object.entries(o.media || {}).find(([k]) => k.endsWith('Strokes'))?.[1]
+
 // Upload slots a graph can take besides `image` and `video`.
 export const PICTURE_SLOTS = ['image', 'image2', 'image3', 'image4', 'image5']
 
@@ -43,7 +46,9 @@ export const PICTURE_SLOTS = ['image', 'image2', 'image3', 'image4', 'image5']
 // pictures fill image, image2, ... in the order it lists them (`slots`, from recipeOptions), and a
 // saved character or product stands in with its first image (a brand logo never does). Without slots (the composer) attached images fill them.
 export function comfyVars(kind, o, sizes) {
-  const [width, height] = sizes?.[o.aspect] || (kind === 'video' ? videoSize(o.aspect) : aspectSize[o.aspect])
+  const [fullWidth, fullHeight] = sizes?.[o.aspect] || (kind === 'video' ? videoSize(o.aspect) : aspectSize[o.aspect])
+  // A draft scale shrinks the canvas, in multiples of 64 so every model takes it.
+  const [width, height] = o.scale && o.scale !== 1 ? [fullWidth, fullHeight].map((n) => Math.max(64, Math.round((n * o.scale) / 64) * 64)) : [fullWidth, fullHeight]
   const trim = o.trim && o.trim.end > o.trim.start ? o.trim : null
   const seconds = (n) => Math.round(n * 1000) / 1000
   const pictures = o.slots?.pictures || [o.images?.[0] || o.image || o.refs?.find((r) => (r.type === 'character' || r.type === 'product') && r.images?.length)?.images[0], ...(o.images || []).slice(1)]
@@ -51,7 +56,7 @@ export function comfyVars(kind, o, sizes) {
     prompt: o.prompt, width, height, count: o.count || 1, frames: (o.duration || 5) * 24 + 1,
     duration: trim ? seconds(trim.end - trim.start) : o.duration || 5, start: trim ? seconds(trim.start) : 0,
     ...Object.fromEntries(PICTURE_SLOTS.map((key, i) => [key, pictures[i] || undefined])),
-    mask: o.mask || undefined, video: o.video || o.media?.video, audio: o.slots?.audio || o.media?.audio || o.audio || undefined, voice: o.slots?.voice || undefined,
+    mask: o.mask || motionStrokes(o) || undefined, video: o.video || o.media?.video, audio: o.slots?.audio || o.media?.audio || o.audio || undefined, voice: o.slots?.voice || undefined,
     seed: Math.floor(Math.random() * 2 ** 31), ...o.params, ...o.fields,
   }
 }

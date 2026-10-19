@@ -8,6 +8,8 @@ import { topoOrder } from '../flowEngine.js'
 const types = new Set(['text', 'longtext', 'choice', 'count', 'image', 'video', 'audio', 'draw', 'character', 'product', 'brand', 'voice', ...widgetTypes])
 const media = new Set(['image', 'video', 'audio', 'draw', ...widgetTypes])
 const imageFields = ['image_url', 'start_image_url', 'first_frame_url', 'input_image_url', 'image', 'image_urls', 'input_image_urls', 'reference_image_urls']
+// Choice params that set the run itself (canvas, length, draft scale), not a model input.
+const RUN_SETTINGS = ['aspect', 'duration', 'scale']
 const variables = (text) => [...String(text || '').matchAll(/\{(\w+)\}/g)].map((m) => m[1])
 
 function sampleValues(format) {
@@ -144,7 +146,7 @@ export function validateFormat(format, schemas = savedSchemas) {
         const hasVideo = format.inputs.some((i) => i.type === 'video')
         // Each picture-like input fills one slot in order, so a format with three gives image to image3.
         const pictures = format.inputs.filter((i) => pictureTypes.includes(i.type)).length
-        const files = [...PICTURE_SLOTS.slice(1, pictures), ...(format.inputs.some((i) => i.type === 'mask' || (i.type === 'draw' && i.mode !== 'motion')) ? ['mask'] : []),
+        const files = [...PICTURE_SLOTS.slice(1, pictures), ...(format.inputs.some((i) => i.type === 'mask' || i.type === 'draw') ? ['mask'] : []),
           ...(format.inputs.some((i) => i.type === 'audio') ? ['audio'] : []), ...(format.inputs.some((i) => i.type === 'voice') ? ['voice'] : [])]
         const supplied = new Set(['prompt', 'width', 'height', 'count', 'frames', 'duration', 'start', 'seed', ...(hasVideo ? ['video'] : []), ...(stepOptions(format, step, values).images.length || upstream.length || pictures ? ['image'] : []), ...files, ...Object.keys(step.params || {}), ...Object.keys(step.bindings || {})])
         // A choice that always shows, and whose every option sets a param, supplies it.
@@ -164,8 +166,8 @@ export function validateFormat(format, schemas = savedSchemas) {
           for (const field of [...Object.keys(opts.params), ...Object.keys(opts.fields)]) if (!schema.includes(field)) bad(`${label} Unknown workflow placeholder ${field}`)
         }
         for (const input of format.inputs) {
-          // A shape choice sets the run's canvas, so it maps without a placeholder.
-          if (input.type === 'choice' && input.options.every((o) => Object.keys(o.params || {}).length && Object.keys(o.params).every((field) => field === 'aspect' || all.includes(field)))) used.add(input.id)
+          // A shape, length or quality choice sets the run's canvas or length, so it maps without a placeholder.
+          if (input.type === 'choice' && input.options.every((o) => Object.keys(o.params || {}).length && Object.keys(o.params).every((field) => RUN_SETTINGS.includes(field) || all.includes(field)))) used.add(input.id)
         }
         // A saved character or product gives its first image.
         if (PICTURE_SLOTS.some((k) => all.includes(k))) for (const input of format.inputs) if (pictureTypes.includes(input.type)) used.add(input.id)

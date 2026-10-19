@@ -1,6 +1,10 @@
 // Google prices are list-price estimates; check ai.google.dev/pricing. fal prices come live from fal.
-// Qwen-Image 2.1's own canvas, in multiples of 32; formats on it use the same.
+// Each model's own canvas; formats on that model use the same. Qwen-Image 2.1 and MiniMax H3 want
+// multiples of 32 (H3 a 768 px short edge), LTX-2.5 multiples of 64, Wan 2.2 multiples of 16.
 export const qwenImageSizes = { '16:9': [1664, 928], '9:16': [928, 1664], '1:1': [1344, 1344], '4:5': [1152, 1440] }
+export const h3Sizes = { '16:9': [1344, 768], '9:16': [768, 1344], '1:1': [768, 768], '4:5': [768, 960], '21:9': [1536, 672] }
+export const ltx25Sizes = { '16:9': [1280, 704], '9:16': [704, 1280], '1:1': [960, 960], '4:5': [768, 960] }
+export const wanSizes = { '16:9': [1280, 720], '9:16': [720, 1280], '1:1': [960, 960], '4:5': [768, 960] }
 
 // Pinned models in the composer. Any other fal model can be picked from the Models page.
 // provider 'comfy' runs public/workflows/<workflow>.json; 'fal' fills inputs from the model's schema.
@@ -33,9 +37,11 @@ export const models = [
   // Sizes follow each model's canvas: multiples of 64 for LTX-2.5, a 768 px short edge for H3.
   // podWorkflow: the graph a big enough Pod runs instead. H3 runs on FreeVideo on a 96 GB Pod.
   { id: 'comfy-ltx25', kind: 'video', provider: 'comfy', name: 'LTX-2.5', note: 'Open weights with sound. Attach an image to start from it.', workflow: 'ltx25_t2v', imageWorkflow: 'ltx25_i2v', durations: [5, 8, 10],
-    sizes: { '16:9': [1280, 704], '9:16': [704, 1280], '1:1': [960, 960], '4:5': [768, 960] } },
+    sizes: ltx25Sizes },
   { id: 'comfy-h3', kind: 'video', provider: 'comfy', name: 'MiniMax H3 (open weights)', note: 'Top open video model with sound. Attach an image to start from it. A 96 GB Pod runs it on FreeVideo.', workflow: 'h3_open_t2v', imageWorkflow: 'h3_open_i2v', podWorkflow: 'h3_freevideo_t2v', podImageWorkflow: 'h3_freevideo_i2v', durations: [5, 8, 10],
-    sizes: { '16:9': [1344, 768], '9:16': [768, 1344], '1:1': [768, 768], '4:5': [768, 960] } },
+    sizes: h3Sizes },
+  { id: 'comfy-wan22', kind: 'video', provider: 'comfy', name: 'Wan 2.2', note: 'Open weights from Alibaba Wan. Attach a start image, and a last frame to end on. On Comfy Cloud or a Pod.', workflow: 'wan22_t2v', imageWorkflow: 'wan22_i2v', durations: [5],
+    sizes: wanSizes },
   { id: 'fal:bytedance/seedance-2.5/text-to-video', kind: 'video', provider: 'fal', name: 'Seedance 2.5', note: 'ByteDance, via fal', model: 'bytedance/seedance-2.5/text-to-video' },
   { id: 'fal:fal-ai/kling-video/v3/pro/text-to-video', kind: 'video', provider: 'fal', name: 'Kling 3 Pro', note: 'Kling, via fal', model: 'fal-ai/kling-video/v3/pro/text-to-video' },
   { id: 'fal:minimax/h3/text-to-video', kind: 'video', provider: 'fal', name: 'MiniMax H3', note: 'MiniMax, via fal', model: 'minimax/h3/text-to-video' },
@@ -50,6 +56,9 @@ export const models = [
   { id: 'el-sfx', kind: 'audio', provider: 'elevenlabs', name: 'ElevenLabs sound effects', note: 'Describe a sound', mode: 'sfx' },
   { id: 'fal:minimax/music-3', kind: 'audio', provider: 'fal', name: 'MiniMax Music 3', note: 'Songs, via fal', model: 'minimax/music-3' },
 ]
+
+// Format graphs a big enough Pod runs on FreeVideo instead, as the catalog's H3 rows do.
+export const podWorkflows = { h3_flf2v: 'h3_freevideo_flf2v' }
 
 // fal catalog categories the composer can run from a text prompt.
 export const falCategories = [
