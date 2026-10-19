@@ -1,0 +1,218 @@
+[
+  {
+    "path": "/api/comfy/run",
+    "body": {
+      "workflow": "qwen2511_edit",
+      "vars": {
+        "prompt": "A vertical phone photograph of the generated fictional adult in image 1 with the product from image 2. Preserve the fictional character identity and the exact product design, label and colors. Seated at a tidy desk, the presenter holds the product beside their face with its key detail visible. Natural daylight, realistic hands, no captions. Product facts and direction: A reusable cup with a handle. Show how the handle makes carrying it easier.",
+        "width": 720,
+        "height": 1280,
+        "count": 1,
+        "frames": 121,
+        "duration": 5,
+        "start": 0,
+        "image": "/mock-presenter.svg",
+        "image2": "/mock-product.svg",
+        "seed": 1949812276
+      }
+    }
+  },
+  {
+    "path": "/api/prompt",
+    "body": {
+      "instructions": "Write only 8 to 12 spoken English words for a five-second product review by a generated fictional adult presenter. Use the supplied product facts and direction. Show one product detail and explain its practical use. Never invent a personal testimonial, product claim, price, discount or certification. Do not impersonate a real person. No scene directions, headings, quotes or captions. Return only the words to speak.",
+      "note": "A reusable cup with a handle. Show how the handle makes carrying it easier.",
+      "images": [
+        "/mock-presenter.svg",
+        "/mock-product.svg",
+        "/mock-stage.svg"
+      ],
+      "target": "Short creator script"
+    }
+  },
+  {
+    "path": "/api/comfy/run",
+    "body": {
+      "workflow": "ugc_presenter_talk",
+      "vars": {
+        "prompt": "This reusable cup has a handle that makes carrying easier.",
+        "width": 448,
+        "height": 768,
+        "count": 1,
+        "frames": 121,
+        "duration": 5,
+        "start": 0,
+        "image": "/mock-stage.svg",
+        "image2": "/mock-product.svg",
+        "seed": 1523125395
+      }
+    }
+  },
+  {
+    "path": "/api/comfy/run",
+    "body": {
+      "workflow": "qwen2511_edit",
+      "vars": {
+        "prompt": "A vertical phone photograph of the generated fictional adult in image 1 with the product from image 2. Preserve the fictional character identity and the exact product design, label and colors. The presenter sits behind an open, unbranded box with the product visible inside, hands ready to lift it. Natural daylight, realistic hands, no captions. Product facts and direction: A reusable cup with a handle. Show how the handle makes carrying it easier.",
+        "width": 720,
+        "height": 1280,
+        "count": 1,
+        "frames": 121,
+        "duration": 5,
+        "start": 0,
+        "image": "/mock-presenter.svg",
+        "image2": "/mock-product.svg",
+        "seed": 35131103
+      }
+    }
+  },
+  {
+    "path": "/api/prompt",
+    "body": {
+      "instructions": "Write only 8 to 12 spoken English words for a five-second unboxing by a generated fictional adult presenter. Use the supplied product facts and direction. Introduce a product as it comes out of a plain box. Never invent a personal testimonial, product claim, price, discount or certification. Do not impersonate a real person. No scene directions, headings, quotes or captions. Return only the words to speak.",
+      "note": "A reusable cup with a handle. Show how the handle makes carrying it easier.",
+      "images": [
+        "/mock-presenter.svg",
+        "/mock-product.svg",
+        "/mock-stage.svg"
+      ],
+      "target": "Short creator script"
+    }
+  },
+  {
+    "path": "/api/comfy/run",
+    "body": {
+      "workflow": "ugc_presenter_demo",
+      "vars": {
+        "prompt": "This reusable cup has a handle that makes carrying easier.",
+        "width": 704,
+        "height": 1280,
+        "count": 1,
+        "frames": 121,
+        "duration": 5,
+        "start": 0,
+        "image": "/mock-stage.svg",
+        "image2": "/mock-product.svg",
+        "seed": 1630731031,
+        "action": "The fictional adult presenter gently lifts the product out of the open box and holds it toward the camera. One continuous medium shot, modest hand movement. Keep the product design and label unchanged."
+      }
+    }
+  },
+  {
+    "path": "/api/comfy/run",
+    "body": {
+      "workflow": "qwen2511_edit",
+      "vars": {
+        "prompt": "A vertical phone photograph of the generated fictional adult in image 1 with the product from image 2. Preserve the fictional character identity and the exact product design, label and colors. The presenter faces the camera at a bright worktop, with the product upright and ready to demonstrate one simple use. Natural daylight, realistic hands, no captions. Product facts and direction: A reusable cup with a handle. Show how the handle makes carrying it easier.",
+        "width": 720,
+        "height": 1280,
+        "count": 1,
+        "frames": 121,
+        "duration": 5,
+        "start": 0,
+        "image": "/mock-presenter.svg",
+        "image2": "/mock-product.svg",
+        "seed": 785678201
+      }
+    }
+  },
+  {
+    "path": "/api/prompt",
+    "body": {
+      "instructions": "Write only 8 to 12 spoken English words for a five-second product tutorial by a generated fictional adult presenter. Use the supplied product facts and direction. Explain one simple step for using a product. Never invent a personal testimonial, product claim, price, discount or certification. Do not impersonate a real person. No scene directions, headings, quotes or captions. Return only the words to speak.",
+      "note": "A reusable cup with a handle. Show how the handle makes carrying it easier.",
+      "images": [
+        "/mock-presenter.svg",
+        "/mock-product.svg",
+        "/mock-stage.svg"
+      ],
+      "target": "Short creator script"
+    }
+  },
+  {
+    "path": "/api/comfy/run",
+    "body": {
+      "workflow": "ugc_presenter_demo",
+      "vars": {
+        "prompt": "This reusable cup has a handle that makes carrying easier.",
+        "width": 704,
+        "height": 1280,
+        "count": 1,
+        "frames": 121,
+        "duration": 5,
+        "start": 0,
+        "image": "/mock-stage.svg",
+        "image2": "/mock-product.svg",
+        "seed": 1642860467,
+        "action": "The fictional adult presenter points to one product detail, then demonstrates one simple use at the worktop. One continuous medium shot, restrained motion. Keep the product design and label unchanged."
+      }
+    }
+  },
+  {
+    "path": "/api/comfy/run",
+    "body": {
+      "workflow": "qwen2511_edit",
+      "vars": {
+        "prompt": "A vertical phone photograph of the generated fictional adult in image 1 with the product from image 2. Preserve the fictional character identity and the exact product design, label and colors. A chest-up presenter faces a phone camera at eye level in a bright home, holding the product beside them. Natural daylight, realistic hands, no captions. Product facts and direction: A reusable cup with a handle. Show how the handle makes carrying it easier.",
+        "width": 720,
+        "height": 1280,
+        "count": 1,
+        "frames": 121,
+        "duration": 5,
+        "start": 0,
+        "image": "/mock-presenter.svg",
+        "image2": "/mock-product.svg",
+        "seed": 1990068743
+      }
+    }
+  },
+  {
+    "path": "/api/prompt",
+    "body": {
+      "instructions": "Write only 8 to 12 spoken English words for a five-second presenter talking head by a generated fictional adult presenter. Use the supplied product facts and direction. Introduce the product directly to the viewer. Never invent a personal testimonial, product claim, price, discount or certification. Do not impersonate a real person. No scene directions, headings, quotes or captions. Return only the words to speak.",
+      "note": "A reusable cup with a handle. Show how the handle makes carrying it easier.",
+      "images": [
+        "/mock-presenter.svg",
+        "/mock-product.svg",
+        "/mock-stage.svg"
+      ],
+      "target": "Short creator script"
+    }
+  },
+  {
+    "path": "/api/comfy/run",
+    "body": {
+      "workflow": "ugc_presenter_talk",
+      "vars": {
+        "prompt": "This reusable cup has a handle that makes carrying easier.",
+        "width": 448,
+        "height": 768,
+        "count": 1,
+        "frames": 121,
+        "duration": 5,
+        "start": 0,
+        "image": "/mock-stage.svg",
+        "image2": "/mock-product.svg",
+        "seed": 1572476852
+      }
+    }
+  },
+  {
+    "path": "/api/comfy/run",
+    "body": {
+      "workflow": "wan_animate2",
+      "vars": {
+        "prompt": "The generated fictional adult character from the reference image performs the body movements from the reference video. Preserve the fictional identity and outfit. Use the clip only for motion, never copy its performer identity.",
+        "width": 448,
+        "height": 768,
+        "count": 1,
+        "frames": 121,
+        "duration": 5,
+        "start": 1,
+        "image": "/mock-presenter.svg",
+        "video": "/mock-motion.mp4",
+        "seed": 1808881793
+      }
+    }
+  }
+]

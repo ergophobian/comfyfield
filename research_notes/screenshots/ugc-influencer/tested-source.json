@@ -1,0 +1,17 @@
+{
+  "baseCommit": "7ee3b1c9c84ba1c5e59b9b4b3069f8af6ecef0c1",
+  "files": {
+    "public/workflows/ugc_presenter_demo.json": "930988451eccc5d5aef1e830ffe07f218502c30d6f8ec11369144955a48633ac",
+    "public/workflows/ugc_presenter_talk.json": "a0812c276cf079b7fda37b24c45e70bf6d6b4eda6a9ac890f5fd4ab2fe42fafa",
+    "research_notes/ugc-influencer.md": "9ba2a1169f159a60ba6a25f2975cb1c1bb8bce350806330c77e1d5118e0abfc3",
+    "scripts/format-runner-checks.mjs": "e218c266aca276620a1de3596afdd2cc3b66f6db346c0437593511bb1723ceed",
+    "scripts/integration-checks.mjs": "f74d755f01be4541d1b69877f2b2ad20542f98baf59f259c91f0a8d7e34503dd",
+    "scripts/presenter-checks.mjs": "905e063d07645f1f41656ee050151209e190388a0f59b83cfe259e3a70aa2a20",
+    "scripts/presenter-ui-check.mjs": "317c6f054225c3878d0f0adf220041a4a23bde70f2701b2e62b085825615e9f8",
+    "src/lib/formats/index.js": "1f58f16a88c504f2b55f523e7730c90143f817f47b139b5e4758c48eb5a12b4b",
+    "src/lib/formats/presenters.js": "0f572064ca45329e252005a4039288f3d7bf8f10a84e5879e4114af45d3001bf",
+    "src/lib/formats/schemas.js": "3e9820d9bfbf4b269b7ec6cc06c1d6194746d195f43a061fbf2060f055a5f8f5",
+    "src/pages/Influencer.jsx": "93202ba4d8b61c8e9b295d5d650b0b74d4495530636bd9a481a33bdec3154e75",
+    "src/styles.css": "2fc9fc0e0273bc5fd474dc56f1c39e9232fc23d0d2ee1f03703836b96966da0d"
+  }
+}

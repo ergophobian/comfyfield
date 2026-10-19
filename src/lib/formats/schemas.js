@@ -598,6 +598,8 @@ export const schemas = {
     }
   },
   "comfy": {
+    "ugc_presenter_demo": ["action", "duration", "frames", "height", "image", "prompt", "seed", "start", "voice", "width"],
+    "ugc_presenter_talk": ["image", "prompt", "seed", "voice"],
     "bernini_clone_edit": [
       "duration",
       "image",
@@ -1361,6 +1363,8 @@ export const schemas = {
     ]
   },
   "comfyOptional": {
+    "ugc_presenter_demo": ["voice"],
+    "ugc_presenter_talk": ["voice"],
     "bernini_clone_edit": [
       "image2",
       "image3"

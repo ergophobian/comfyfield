@@ -2690,3 +2690,8 @@ a.skill-chip:active { transform: scale(.96); }
   .skill-steps > li { grid-template-columns: 28px minmax(0, 1fr); padding: 16px; }
   .skill-steps > li > .copy-btn { grid-column: 2; justify-self: start; }
 }
+
+/* The presenter controls inherit the influencer panel's token spacing. */
+.inf-inputs { border: 0; padding: 0; margin: 0; min-width: 0; }
+.inf-panel select { width: 100%; min-height: var(--widget-touch); padding: var(--widget-gap) var(--widget-space); border: var(--widget-border) solid var(--line); border-radius: var(--r-md); font: inherit; color: var(--ink); background: var(--glass-strong); }
+.page:has(.lib-body) .page-head .seg, .lib-filters .seg { max-width: 100%; overflow-x: auto; scrollbar-width: thin; }
