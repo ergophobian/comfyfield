@@ -89,7 +89,7 @@ export const ads = [
   open({
     id: 'recreate-ad', name: 'Recreate an ad', kind: 'video', category: 'ads', layout: 'wide',
     blurb: 'Remake an ad shot for shot with your own product.',
-    runsOn: 'Bernini-R and MiniMax H3', workflow: 'bernini_recreate_ad',
+    runsOn: 'Bernini-R', workflow: 'bernini_recreate_ad',
     inputs: [
       { id: 'reference', type: 'video', label: 'Ad to recreate' },
       { id: 'product', type: 'product', label: 'Product', half: true },
@@ -97,7 +97,7 @@ export const ads = [
       { id: 'character', type: 'character', label: 'Character', optional: true, half: true },
       { ...note, half: true },
     ],
-    prompt: 'Recreate the reference ad shot for shot with {product} in place of the original product. Keep the cuts, pacing, camera moves, length and structure, replace any presenter with the saved character when one is given, and keep the product shape, label and colors exact in every frame. {note}',
+    prompt: 'Recreate the reference ad shot for shot with the product in image 0 ({product}) in place of the original product, in the colors of the brand {brand} if one is named. Keep the cuts, pacing, camera moves, length and structure, replace any presenter with the person in image 1 when one is given, and keep the product shape, label and colors exact in every frame. {note}',
     settings: { aspect: 'auto' },
     cover: covers.dusk,
   }),

@@ -1,0 +1,170 @@
+{
+  "1": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "{{image}}"
+    }
+  },
+  "2": {
+    "class_type": "LoadBackgroundRemovalModel",
+    "inputs": {
+      "bg_removal_name": "birefnet.safetensors"
+    }
+  },
+  "3": {
+    "class_type": "RemoveBackground",
+    "inputs": {
+      "bg_removal_model": [
+        "2",
+        0
+      ],
+      "image": [
+        "1",
+        0
+      ]
+    }
+  },
+  "4": {
+    "class_type": "InvertMask",
+    "inputs": {
+      "mask": [
+        "3",
+        0
+      ]
+    }
+  },
+  "5": {
+    "class_type": "JoinImageWithAlpha",
+    "inputs": {
+      "image": [
+        "1",
+        0
+      ],
+      "alpha": [
+        "4",
+        0
+      ]
+    }
+  },
+  "6": {
+    "class_type": "GetImageSize",
+    "inputs": {
+      "image": [
+        "1",
+        0
+      ]
+    }
+  },
+  "7": {
+    "class_type": "StringCompare",
+    "inputs": {
+      "string_a": "{{output}}",
+      "string_b": "green",
+      "mode": "Equal",
+      "case_sensitive": true
+    }
+  },
+  "8": {
+    "class_type": "PrimitiveInt",
+    "inputs": {
+      "value": 65280
+    }
+  },
+  "9": {
+    "class_type": "PrimitiveInt",
+    "inputs": {
+      "value": 16777215
+    }
+  },
+  "10": {
+    "class_type": "ComfySwitchNode",
+    "inputs": {
+      "switch": [
+        "7",
+        0
+      ],
+      "on_true": [
+        "8",
+        0
+      ],
+      "on_false": [
+        "9",
+        0
+      ]
+    }
+  },
+  "11": {
+    "class_type": "EmptyImage",
+    "inputs": {
+      "width": [
+        "6",
+        0
+      ],
+      "height": [
+        "6",
+        1
+      ],
+      "batch_size": 1,
+      "color": [
+        "10",
+        0
+      ]
+    }
+  },
+  "12": {
+    "class_type": "ImageCompositeMasked",
+    "inputs": {
+      "destination": [
+        "11",
+        0
+      ],
+      "source": [
+        "1",
+        0
+      ],
+      "x": 0,
+      "y": 0,
+      "resize_source": false,
+      "mask": [
+        "3",
+        0
+      ]
+    }
+  },
+  "13": {
+    "class_type": "StringCompare",
+    "inputs": {
+      "string_a": "{{output}}",
+      "string_b": "alpha",
+      "mode": "Equal",
+      "case_sensitive": true
+    }
+  },
+  "14": {
+    "class_type": "ComfySwitchNode",
+    "inputs": {
+      "switch": [
+        "13",
+        0
+      ],
+      "on_true": [
+        "5",
+        0
+      ],
+      "on_false": [
+        "12",
+        0
+      ]
+    }
+  },
+  "15": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": [
+        "14",
+        0
+      ],
+      "filename_prefix": "comfyfield/birefnet_image"
+    }
+  }
+}

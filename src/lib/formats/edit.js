@@ -290,7 +290,7 @@ const videoEdits = [
   open({
     id: 'color-grade', name: 'Color grade', kind: 'video', category: 'video-edit',
     blurb: 'Give a video a film look in one click.',
-    runsOn: 'KJNodes color match and Bernini-R', workflow: 'bernini_grade',
+    runsOn: 'Bernini-R', workflow: 'bernini_grade',
     inputs: [
       clip,
       { id: 'grade', type: 'choice', label: 'Grade', default: 'teal-orange', options: [
@@ -319,7 +319,7 @@ const videoEdits = [
   open({
     id: 'clone-edit', name: 'Clone an edit', kind: 'video', category: 'video-edit', layout: 'wide',
     blurb: 'Copy the cuts and pacing of any edit with your own cast.',
-    runsOn: 'Bernini-R and MiniMax H3', workflow: 'bernini_clone_edit',
+    runsOn: 'Bernini-R', workflow: 'bernini_clone_edit',
     inputs: [
       { id: 'reference', type: 'video', label: 'Reference edit' },
       { id: 'cast1', type: 'image', label: 'Your character, product or outfit', half: true },
@@ -327,7 +327,7 @@ const videoEdits = [
       { id: 'cast3', type: 'image', label: 'Your character, product or outfit', optional: true, half: true },
       { ...note, half: true },
     ],
-    prompt: 'Recreate the reference edit shot for shot, starring the subjects from the cast images in place of the originals. Keep the cuts, pacing, length, frame rate, camera moves and transitions exactly the same, and keep each cast subject consistent in every shot. {note}',
+    prompt: 'Recreate the reference edit shot for shot, starring the subjects from image 0, image 1 and image 2 in place of the originals. Keep the cuts, pacing, length, frame rate, camera moves and transitions exactly the same, and keep each cast subject consistent in every shot. {note}',
     settings: { aspect: 'auto' },
     cover: covers.sky,
   }),
@@ -338,11 +338,11 @@ const videoEdits = [
     inputs: [
       clip,
       { id: 'angle', type: 'choice', label: 'New angle', default: 'left', options: [
-        { id: 'left', label: 'From the left', text: 'from a camera on the left side', params: { trajectory: 'arc_left' } },
-        { id: 'right', label: 'From the right', text: 'from a camera on the right side', params: { trajectory: 'arc_right' } },
-        { id: 'above', label: 'From above', text: 'from a high camera looking down', params: { trajectory: 'rise' } },
-        { id: 'low', label: 'Low angle', text: 'from a low camera looking up', params: { trajectory: 'lower' } },
-        { id: 'orbit', label: 'Orbit around', text: 'with the camera orbiting around the action', params: { trajectory: 'orbit' } },
+        { id: 'left', label: 'From the left', text: 'from a camera on the left side', params: { trajectory: 'arc_left', orbit: false } },
+        { id: 'right', label: 'From the right', text: 'from a camera on the right side', params: { trajectory: 'arc_right', orbit: false } },
+        { id: 'above', label: 'From above', text: 'from a high camera looking down', params: { trajectory: 'translate_up', orbit: false } },
+        { id: 'low', label: 'Low angle', text: 'from a low camera looking up', params: { trajectory: 'translate_down', orbit: false } },
+        { id: 'orbit', label: 'Orbit around', text: 'with the camera orbiting around the action', params: { trajectory: 'arc_right', orbit: true } },
       ] },
     ],
     prompt: 'Re-film the same scene {angle}, keeping the action, timing, subjects and lighting identical.',
@@ -399,19 +399,23 @@ const enhance = [
   open({
     id: 'video-bg-remove', name: 'Video background remove', kind: 'video', category: 'enhance', hub: 'video-edit',
     blurb: 'Cut the subject out of every frame of a video.',
-    runsOn: 'SAM 3.1 and BiRefNet', workflow: 'birefnet_video_matte',
+    runsOn: 'SAM 3.1 and BiRefNet, with Qwen-Image 2.1 for a new background',
     inputs: [
       clip,
       { id: 'result', type: 'choice', label: 'Result', default: 'transparent', options: [
-        { id: 'transparent', label: 'Transparent', note: 'For editing apps', text: 'a fully transparent background', params: { output: 'alpha' } },
-        { id: 'green', label: 'Green screen', note: 'Solid chroma green', text: 'a flat chroma key green background', params: { output: 'green' } },
-        { id: 'new', label: 'New background', note: 'Describe a scene', text: 'this new scene:', params: { output: 'composite' } },
+        { id: 'transparent', label: 'Transparent', note: 'For editing apps' },
+        { id: 'green', label: 'Green screen', note: 'Solid chroma green' },
+        { id: 'new', label: 'New background', note: 'Describe a scene' },
       ] },
       { id: 'background', type: 'text', label: 'New background', when: ['result', 'new'], placeholder: 'A sunny beach boardwalk, softly out of focus' },
     ],
-    prompt: 'Keep the main subject in every frame with clean, stable edges around hair and fast motion, and replace the background with {result} {background}',
     output: 'A video with an alpha channel when you pick transparent',
     settings: { aspect: 'auto' },
+    steps: [{ id: 'generate', provider: 'comfy', kind: 'video', targetInput: 'result', settings: { aspect: 'auto' }, targets: {
+      transparent: { workflow: 'birefnet_video_matte_alpha' },
+      green: { workflow: 'birefnet_video_matte' },
+      new: { workflow: 'birefnet_video_matte_scene', bindings: { background: 'background' } },
+    } }],
     cover: covers.slate,
   }),
   open({

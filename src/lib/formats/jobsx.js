@@ -125,9 +125,9 @@ const imageJobs = [
     inputs: [
       photo,
       { id: 'size', type: 'choice', label: 'Size', default: '2k', options: [
-        { id: 'same', label: 'Same size', params: { upscale_factor: 1 } },
-        { id: '2k', label: '2K', params: { target: 2048 } },
-        { id: '4k', label: '4K', params: { target: 4096 } },
+        { id: 'same', label: 'Same size', params: { upscale_factor: 1, target: 0 } },
+        { id: '2k', label: '2K', params: { upscale_factor: 1, target: 2048 } },
+        { id: '4k', label: '4K', params: { upscale_factor: 1, target: 4096 } },
       ] },
     ],
     settings: still,
@@ -136,12 +136,12 @@ const imageJobs = [
   open({
     id: 'image-upscale', name: 'Image upscale', kind: 'image', category: 'enhance', hub: 'extras',
     blurb: 'More resolution and detail, same picture.',
-    runsOn: 'SeedVR2 or RealESRGAN', workflow: 'image_upscale',
+    runsOn: 'SeedVR2 or RealESRGAN',
     inputs: [
       photo,
       { id: 'mode', type: 'choice', label: 'Mode', default: 'enhance', options: [
-        { id: 'faithful', label: 'Faithful', note: 'Sharper, nothing new added', params: { model: 'realesrgan_x4plus' } },
-        { id: 'enhance', label: 'Enhance', note: 'Adds fine detail and fixes noise', params: { model: 'seedvr2' } },
+        { id: 'faithful', label: 'Faithful', note: 'Sharper, nothing new added' },
+        { id: 'enhance', label: 'Enhance', note: 'Adds fine detail and fixes noise' },
       ] },
       { id: 'factor', type: 'choice', label: 'Scale', default: '2', options: [
         { id: '2', label: '2x', params: { upscale_factor: 2 } },
@@ -149,6 +149,11 @@ const imageJobs = [
       ] },
     ],
     settings: still,
+    // The mode picks the model: RealESRGAN changes nothing, SeedVR2 adds detail.
+    steps: [{ id: 'generate', provider: 'comfy', kind: 'image', targetInput: 'mode', settings: still, targets: {
+      faithful: { workflow: 'image_upscale_esrgan' },
+      enhance: { workflow: 'image_upscale' },
+    } }],
     cover: covers.indigo,
   }),
   open({
@@ -464,7 +469,7 @@ const videoJobs = [
   open({
     id: 'edit-video', name: 'Edit a video by text', kind: 'video', category: 'video-edit', hub: 'video-edit',
     blurb: 'Describe a change and get the same video with it made.',
-    runsOn: 'Bernini-R with SAM 3.1', workflow: 'bernini_edit',
+    runsOn: 'Bernini-R', workflow: 'bernini_swap_noref', imageWorkflow: 'bernini_swap',
     inputs: [
       clip,
       { id: 'instruction', type: 'longtext', label: 'What to change', placeholder: 'Make it snow and turn the jacket red' },
@@ -480,26 +485,28 @@ const videoJobs = [
     runsOn: 'VOID with SAM 3.1', workflow: 'void_inpaint',
     inputs: [
       clip,
-      { id: 'target', type: 'text', label: 'What to remove', placeholder: 'The person walking past in the background' },
+      { id: 'target', type: 'text', label: 'What to remove', placeholder: 'Person in the blue jacket' },
     ],
-    prompt: 'Remove {target} from every frame of the video, along with its shadow and reflections, and fill the area with background that matches and moves naturally with the camera.',
+    // SAM 3.1 tracks the short label; VOID reads a description of the scene after the removal.
+    bindings: { target: 'target' },
+    prompt: 'The same scene with a clean, natural background that continues the surroundings, with consistent lighting, texture and camera motion.',
     settings: still,
     cover: covers.slate,
   }),
   open({
     id: 'video-remove-text', name: 'Remove text from a video', kind: 'video', category: 'video-edit', hub: 'video-edit',
     blurb: 'Erase subtitles, captions and your own logos from a clip.',
-    runsOn: 'LTX-2.5 Clean-Plate', workflow: 'ltx25_clean_plate',
+    runsOn: 'VOID with SAM 3.1', workflow: 'void_inpaint',
     inputs: [
       clip,
       { id: 'target', type: 'choice', label: 'Remove', default: 'all', options: [
-        { id: 'all', label: 'All on-screen text', text: 'all on-screen text' },
-        { id: 'subtitles', label: 'Subtitles', text: 'the burned in subtitles' },
-        { id: 'captions', label: 'Captions and titles', text: 'the captions and titles' },
-        { id: 'logo', label: 'My own logo', text: 'my own logo or watermark' },
+        { id: 'all', label: 'All on-screen text', text: 'all on-screen text', params: { target: 'text' } },
+        { id: 'subtitles', label: 'Subtitles', text: 'the burned in subtitles', params: { target: 'subtitles' } },
+        { id: 'captions', label: 'Captions and titles', text: 'the captions and titles', params: { target: 'title text' } },
+        { id: 'logo', label: 'My own logo', text: 'my own logo or watermark', params: { target: 'logo' } },
       ] },
     ],
-    prompt: 'Remove {target} from the whole video and rebuild the picture underneath so no trace remains, keeping the motion and everything else unchanged.',
+    prompt: 'The same video with a clean picture where {target} was, continuing the surroundings, with consistent lighting, texture and camera motion.',
     settings: still,
     cover: covers.sky,
   }),

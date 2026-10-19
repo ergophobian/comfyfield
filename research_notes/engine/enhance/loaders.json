@@ -1,0 +1,8 @@
+{
+  "LoadBackgroundRemovalModel": {
+    "bg_removal_name": "background_removal"
+  },
+  "FrameInterpolationModelLoader": {
+    "model_name": "frame_interpolation"
+  }
+}

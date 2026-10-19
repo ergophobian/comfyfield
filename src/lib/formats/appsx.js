@@ -289,7 +289,7 @@ const faceAndIdentity = [
   open({
     id: 'video-character-swap', name: 'Video character swap', kind: 'video', category: 'video-edit', hub: 'face', layout: 'wide',
     blurb: 'Replace the person in a video with your character, same moves and timing.',
-    runsOn: 'SCAIL-2, with Chatterbox for a new voice', workflow: 'scail2_character_swap',
+    runsOn: 'SCAIL-2', workflow: 'scail2_character_swap',
     inputs: [
       clip,
       { id: 'source', type: 'choice', label: 'New character', half: true, default: 'photo', options: [
@@ -298,15 +298,8 @@ const faceAndIdentity = [
       ] },
       { id: 'face', type: 'image', label: 'Character photo', half: true, when: ['source', 'photo'] },
       { id: 'character', type: 'character', label: 'Saved character', half: true, when: ['source', 'character'] },
-      { id: 'voice', type: 'voice', label: 'New voice', optional: true, half: true },
-      { id: 'background', type: 'choice', label: 'Background', half: true, default: 'keep', options: [
-        { id: 'keep', label: 'Keep it', text: 'keep the original background' },
-        { id: 'green', label: 'Green screen', text: 'replace the background with flat chroma green' },
-        { id: 'new', label: 'New scene', text: 'replace the background with this scene:' },
-      ] },
-      { id: 'scene', type: 'text', label: 'New scene', when: ['background', 'new'], placeholder: 'A rooftop at sunset over the city' },
     ],
-    prompt: 'Replace the main person in the video with the character from the reference, head to toe: face, hair, body and outfit. Keep every movement, gesture, expression, lip movement, camera move and cut from the original, and match the scene light on the new character. Then {background} {scene}',
+    prompt: 'The character from the reference image, with their own face, hair, body and outfit, performing the movements of the original video in the original scene.',
     settings: still,
     cover: covers.dusk,
   }),

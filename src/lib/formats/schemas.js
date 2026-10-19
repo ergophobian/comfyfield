@@ -598,9 +598,44 @@ export const schemas = {
     }
   },
   "comfy": {
+    "bernini_clone_edit": [
+      "duration",
+      "image",
+      "image2",
+      "image3",
+      "prompt",
+      "seed",
+      "start",
+      "video"
+    ],
+    "bernini_grade": [
+      "duration",
+      "prompt",
+      "seed",
+      "start",
+      "video"
+    ],
     "bernini_headswap": [
       "duration",
       "image",
+      "prompt",
+      "seed",
+      "start",
+      "video"
+    ],
+    "bernini_mixed": [
+      "duration",
+      "fps",
+      "prompt",
+      "seed",
+      "start",
+      "strength",
+      "video"
+    ],
+    "bernini_recreate_ad": [
+      "duration",
+      "image",
+      "image2",
       "prompt",
       "seed",
       "start",
@@ -631,6 +666,32 @@ export const schemas = {
     "bernini_swap_noref": [
       "duration",
       "prompt",
+      "seed",
+      "start",
+      "video"
+    ],
+    "birefnet_image": [
+      "image",
+      "output"
+    ],
+    "birefnet_qwen_background": [
+      "image",
+      "prompt",
+      "seed"
+    ],
+    "birefnet_video_matte": [
+      "duration",
+      "start",
+      "video"
+    ],
+    "birefnet_video_matte_alpha": [
+      "duration",
+      "start",
+      "video"
+    ],
+    "birefnet_video_matte_scene": [
+      "background",
+      "duration",
       "seed",
       "start",
       "video"
@@ -806,12 +867,27 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "image_grade": [
+      "grain",
+      "image",
+      "preset",
+      "temperature"
+    ],
     "image_sdxl": [
       "count",
       "height",
       "prompt",
       "seed",
       "width"
+    ],
+    "image_upscale": [
+      "image",
+      "seed",
+      "upscale_factor"
+    ],
+    "image_upscale_esrgan": [
+      "image",
+      "upscale_factor"
     ],
     "klein_character": [
       "count",
@@ -1080,6 +1156,42 @@ export const schemas = {
       "prompt",
       "seed"
     ],
+    "recammaster": [
+      "duration",
+      "orbit",
+      "prompt",
+      "seed",
+      "start",
+      "trajectory",
+      "video"
+    ],
+    "rife_interpolate": [
+      "duration",
+      "multiplier",
+      "start",
+      "video"
+    ],
+    "scail2_character_swap": [
+      "duration",
+      "image",
+      "prompt",
+      "seed",
+      "start",
+      "video"
+    ],
+    "seedvr2_image": [
+      "image",
+      "seed",
+      "target",
+      "upscale_factor"
+    ],
+    "seedvr2_video": [
+      "duration",
+      "seed",
+      "start",
+      "upscale_factor",
+      "video"
+    ],
     "storyboard": [
       "count",
       "height",
@@ -1095,12 +1207,27 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "video_bg_change": [
+      "duration",
+      "prompt",
+      "seed",
+      "start",
+      "video"
+    ],
     "video_ltx": [
       "frames",
       "height",
       "prompt",
       "seed",
       "width"
+    ],
+    "void_inpaint": [
+      "duration",
+      "prompt",
+      "seed",
+      "start",
+      "target",
+      "video"
     ],
     "wan22_i2v": [
       "duration",
@@ -1145,6 +1272,13 @@ export const schemas = {
     ]
   },
   "comfyOptional": {
+    "bernini_clone_edit": [
+      "image2",
+      "image3"
+    ],
+    "bernini_recreate_ad": [
+      "image2"
+    ],
     "h3_lora_i2v": [
       "image2"
     ],

@@ -1,0 +1,14 @@
+{
+  "OpticalFlowLoader": {
+    "model_name": "optical_flow"
+  },
+  "LoadBackgroundRemovalModel": {
+    "bg_removal_name": "background_removal"
+  },
+  "WanVideoModelLoader": {
+    "model": "diffusion_models"
+  },
+  "WanVideoVAELoader": {
+    "model_name": "vae"
+  }
+}
