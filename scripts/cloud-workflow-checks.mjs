@@ -87,6 +87,13 @@ assert.equal(submitted, null)
 reset()
 await core.runComfy('flux_look', vars, options(null))
 assert.deepEqual(submitted.json, expected('flux_look'), 'automatic ready-Pod routing keeps the original')
+reset()
+const originalVram = core.workflowNeeds('flux_look').minVramGb
+const alternateVram = core.workflowNeeds('flux_look_cloud').minVramGb
+assert(alternateVram < originalVram, 'fixture must fit the alternate but not the original')
+await core.runComfy('flux_look', vars, options(undefined, 'ready', alternateVram))
+assert.deepEqual(submitted.json, expected('flux_look_cloud'))
+assert.equal(leased, null, 'a smaller alternate must not change automatic Pod eligibility')
 core.writeKeys({ comfy: { key: '' } })
 reset()
 for (const [original] of Object.entries(cloudWorkflows)) {
@@ -97,5 +104,7 @@ for (const [original] of Object.entries(cloudWorkflows)) {
     assert.equal(submitted, null)
   }
 }
+reset()
+await assert.rejects(core.runComfy('flux_look', vars, options(undefined, 'none')), (e) => e.message === 'Comfy Cloud needs a Comfy API key on a paid plan, so this run needs a Pod. Start one in ComfyField from the Pod chip in the top bar.')
 for (const [original, cloud] of Object.entries(cloudWorkflows)) assert.deepEqual(schemas.comfy[cloud], schemas.comfy[original])
 console.log(`${Object.keys(cloudWorkflows).length} alternate pairs: Instant and unset runs without a fitting ready Pod select Cloud graphs; Session and fitting ready Pods preserve original graphs/files; optional uploads and target guards pass. Synthetic clients only; no live generations.`)

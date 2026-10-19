@@ -793,8 +793,9 @@ export async function runComfy(workflow, vars = {}, { createClient = (key, baseU
     // Instant workflow variants: resolve compatible files before the existing target policy.
     // Session and a ready Pod that fits the original keep its graph and model files.
     let targetPhase = podPhase
+    let targetRun = run
     const cloudWorkflow = run !== 'session' && cloudWorkflowOf(workflow)
-    if (cloudWorkflow) {
+    if (cloudWorkflow && config('comfy').key) {
       const phase = await podPhase()
       targetPhase = () => phase
       const vram = podVram()
@@ -810,6 +811,8 @@ export async function runComfy(workflow, vars = {}, { createClient = (key, baseU
             ({ file, template } = alternate)
             graph = alternateGraph
             needs = alternateNeeds
+            // An original that cannot use this Pod must not send its smaller alternate there.
+            targetRun = 'instant'
           }
         }
       }
@@ -817,7 +820,7 @@ export async function runComfy(workflow, vars = {}, { createClient = (key, baseU
     // End Instant workflow variants.
     // Errors name the model as the picker shows it.
     const label = modelOf(workflow)?.name
-    const target = await comfyTarget(needs, targetPhase, podVram, label, run, podArch)
+    const target = await comfyTarget(needs, targetPhase, podVram, label, targetRun, podArch)
     // A run that goes to a Pod big enough for the model's Pod graph runs that graph: H3 on FreeVideo.
     const alt = target === 'pod' && podWorkflowOf(workflow)
     if (alt) {
