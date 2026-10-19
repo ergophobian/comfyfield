@@ -86,6 +86,27 @@ Official contracts: [Klein guide](https://docs.comfy.org/tutorials/flux/flux-2-k
 
 Rebased `instant-ports` onto `origin/main`; Git reported it already up to date at parent `7ee3b1c`. Implementation started from `f59bef0`.
 
-Validation runs in a fresh isolated Windows scratch clone. No heavy checks run on the Mac. No paid runs, keys from the environment, authenticated provider requests or Pod changes.
+Validation ran in the fresh isolated Windows scratch clone `C:/comfyfield-instant-review-afa17030`, cloned from the local branch bundle. Changed code and check files were compared with `git hash-object`; all matched this worktree. No heavy checks run on the Mac. No paid runs, keys from the environment, authenticated provider requests or Pod changes.
 
-Build and full verification results will be recorded after the Windows pass.
+`npx vite build` passed in 2.77 seconds, with the existing bundle-size warning. `node scripts/verify.mjs` finished with 17 of 18 scripts passing (exit 1). The only failing script is `pod-checks.mjs`: 75 tests passed, seven failed, none skipped. The remaining failures are the known Windows environment selecting WSL Bash for native Windows paths: self-terminate shell fixture, FreeVideo boot/status install, pack boot/install, pack dependency filter and pack-file download/status fixture. Representative output:
+
+```text
+/bin/bash: C:comfyfield-instant-review-afa17030outputspod-check-...boot.sh: No such file or directory
+/bin/bash: C:/comfyfield-instant-review-afa17030/outputs/pod-check-.../statusd-fvruntime-freevideo.sh: No such file or directory
+```
+
+No Pod runtime files or shell-environment workarounds were changed. Three existing service checks were updated to assert the new default Cloud behavior and retain explicit Session rejection; those now pass. An initial verification also lacked the bundled ffmpeg executable because dependency install scripts were skipped. `npm rebuild ffmpeg-static` completed the normal dependency setup; the final full verification passes all Stitch checks.
+
+The full verification includes both new/expanded synthetic variant checks, core contracts, all optional-reference subsets, format validation/runner, graph validation, mocked provider checks, Stitch, theme/widget/writer checks and all three headless browser suites. No check invokes a live generation. Representative final output:
+
+```text
+Cloud references: separate vision images and ordered latents survive every optional subset; first-reference and requested-aspect canvases stay independent of reference count. No live runs.
+39 alternate pairs: Instant and unset runs without a fitting ready Pod select Cloud graphs; Session and fitting ready Pods preserve original graphs/files; optional uploads and target guards pass. Synthetic clients only; no live generations.
+39 Cloud alternates: core node contracts, links, placeholders and optional references valid; two Trellis graphs retain other Pod-only files. No live runs.
+Format check ok: 450 runnable, 29 hidden, 10 migrated recipes. No generation calls.
+Graph check: 147/147 graphs fit ComfyUI v0.41.1 and the listed packs.
+All Stitch checks passed.
+17/18 check scripts passed
+```
+
+These are observed check outputs, not fixed format-count assertions. Raw final verification remains at `C:/comfyfield-instant-review-afa17030/verify-review-final.log`; a copy is in this worktree's ignored `outputs/windows-verify-review-final.log`. The original graphs, `comfyTarget` body, protected Pod files, `usePod.js` and `scripts/verify.mjs` were compared against `f59bef0` and are unchanged.
