@@ -9,6 +9,8 @@ const PRICES = {
   'NVIDIA RTX PRO 4500 Blackwell': 0.7,
   'NVIDIA RTX PRO 6000 Blackwell Server Edition': 1.69,
   'NVIDIA RTX PRO 6000 Blackwell Workstation Edition': 1.69,
+  'NVIDIA H100 80GB HBM3': 2.69,
+  'NVIDIA H200': 3.59,
 }
 // Secure cloud costs a little more, as on RunPod. The quote and the Pod use the same price.
 const price = (gpu, secure) => Math.round(((PRICES[gpu] || 1) + (secure ? 0.2 : 0)) * 100) / 100

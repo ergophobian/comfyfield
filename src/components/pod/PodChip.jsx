@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { downloading, money, podAction, podLabel, showPod, spendText, usePod } from '../../lib/usePod.js'
+import { RUN_TYPES, downloading, money, podAction, podLabel, runTypeOf, setRunType, showPod, spendText, usePod } from '../../lib/usePod.js'
+import Segmented from '../Segmented.jsx'
+import { TIERS } from '../../../shared/gpuTiers.js'
+
+const tierName = (id) => TIERS.find((t) => t.id === id)?.name || id
 
 const CLOUD = { SECURE: 'Secure', COMMUNITY: 'Community' }
 const tone = (phase) => (phase === 'ready' ? ' ok' : phase === 'none' || phase === 'paused' ? '' : ' busy')
@@ -73,6 +77,11 @@ export default function PodChip() {
     }
   }
   const replace = async () => { if (await act('terminate', { now: true })) await act('start') }
+  const run = runTypeOf(s)
+  const pickRun = async (value) => {
+    setErr(null)
+    try { await setRunType(value) } catch (e) { setErr({ message: e.message }) }
+  }
   const going = Math.max(s.runs || 0, s.queue || 0)
   const end = (how) => (going > 0 ? setConfirm(how) : act(how, { now: true }))
   const label = podLabel(s)
@@ -85,12 +94,20 @@ export default function PodChip() {
       <button ref={btn} type="button" className={`btn-soft pod-chip${open ? ' on' : ''}`} aria-expanded={open} aria-haspopup="dialog"
         aria-controls={open ? 'pod-pop' : undefined} onClick={() => setOpen((o) => !o)}>
         <i className={`pod-dot${tone(p)}`} aria-hidden="true" />
-        <span>Pod · {label}</span>
+        <span>{run === 'instant' ? 'Instant' : `Session · ${label}`}</span>
         {p !== 'none' && <span className="pod-spend">· {money(s.spend?.today)} today</span>}
         {suggest && <em className="nav-badge">Suggested</em>}
       </button>
       {open && (
-        <div id="pod-pop" className="pod-pop glass pop" role="dialog" aria-label="Pod">
+        <div id="pod-pop" className="pod-pop glass pop" role="dialog" aria-label="Generation type and Pod">
+          <div className="pod-run">
+            <strong id="pod-run-label">Generation type</strong>
+            <Segmented className="seg-sm" options={RUN_TYPES.map((t) => ({ value: t.value, label: t.label }))} value={run} onChange={pickRun} />
+            <p className="pod-note">{run === 'instant'
+              ? (s.instant ? 'Runs go to Comfy Cloud at once. A job Cloud cannot run asks to start a Session.' : 'Instant needs a Comfy API key on a paid plan. Add it in Connections.')
+              : p === 'none' ? 'Runs go to your Pod. The next run asks which tier to start: Budget, Balanced or Performance.' : 'Runs go to your Pod.'}</p>
+            {run === 'instant' && p !== 'none' && p !== 'paused' && <p className="pod-note">Your Pod still charges until it ends. Terminate it below if you are done.</p>}
+          </div>
           <div className="pod-head">
             <strong>Pod</strong>
             {s.sandbox && <span className="todo">Sandbox</span>}
@@ -114,9 +131,7 @@ export default function PodChip() {
                   <button type="button" className="link-btn" onClick={skip}>Not now</button>
                 </div>
               )}
-              {!suggest && <p className="pod-note">{s.instant
-                ? `ComfyUI runs use Comfy Cloud at once. Start a Pod for a long session: it costs less when you run a lot, and it runs any model.${s.auto ? ' A run that needs a Pod starts one by itself.' : ''}`
-                : 'Add a Comfy API key in Connections for instant runs on Comfy Cloud, or start a Pod.'}</p>}
+              {!suggest && <p className="pod-note">A Pod costs less when you run a lot, and it runs any model.{s.auto ? ' A run that needs a Pod starts one by itself.' : ''}</p>}
               <dl className="pod-facts"><div><dt>Spent</dt><dd>{spendText(s)}</dd></div></dl>
             </>
           )}
@@ -131,8 +146,10 @@ export default function PodChip() {
               ? `${e.name} could not install: ${e.error || 'unknown error'}`
               : `Installing ${e.name} · ${Math.floor((e.sec || 0) / 60)} min.${e.minutes ? ` The first install takes ${e.minutes[0]} to ${e.minutes[1]} minutes.` : ''}`}</p>
           ))}
-          {p === 'ready' && <p className="pod-note">ComfyUI runs use this Pod.</p>}
-          {p === 'starting' && s.instant && <p className="pod-note">Runs use Comfy Cloud until the Pod is ready.</p>}
+          {p === 'ready' && run === 'session' && <p className="pod-note">ComfyUI runs use this Pod.</p>}
+          {p === 'starting' && s.instant && !s.run && <p className="pod-note">Runs use Comfy Cloud until the Pod is ready.</p>}
+          {p === 'starting' && s.run === 'session' && <p className="pod-note">Runs wait until the Pod is ready.</p>}
+          {s.pod?.tier && <p className="pod-note">{s.pod.fellBack ? `${tierName(s.pod.tier)} tier. Its first GPU had none free, so the Pod runs on ${s.pod.gpu}.` : `${tierName(s.pod.tier)} tier.`}</p>}
           {s.event && <p className="pod-note">{s.event.text}</p>}
           {s.sandbox && <p className="pod-note">Sandbox mode: no real Pod and no charges.</p>}
           {!s.connected && <p className="pod-note">Add your RunPod key in <Link to="/connections">Connections</Link> to start a Pod.</p>}

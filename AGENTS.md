@@ -28,6 +28,7 @@ Keys go in Connections (saved to `.comfyfield/keys.json`, gitignored) or `.env` 
 - `server/plugin.js`: HTTP routes inside the Vite dev server
 - `server/mcp.js`, `bin/comfyfield.js`: MCP server and CLI
 - `shared/mapping.js`: maps composer settings onto each model's inputs, and cost estimates
+- `server/pod.js`, `shared/modelFiles.js`, `shared/gpuTiers.js`: the RunPod Pod (GPU ladder and catalog), the files a Pod downloads, and the Session tiers (Budget, Balanced, Performance) with their GPU speed table
 - `src/lib/tools.js`: every tool page (name, nav menu, route, badge) and the open-weight models per kind. The top nav and Explore read from it
 - `src/App.jsx`: route table, and the shared format sheet via `useApp().openFormat` (`src/lib/appContext.js`)
 - `src/pages/`: one page per tool (generators, studios, apps), plus Flows (Canvas), Library (Assets), Models and Connections

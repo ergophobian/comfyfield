@@ -13,13 +13,25 @@ const GQL = 'https://api.runpod.io/graphql'
 // Runbook order. Ids and VRAM from RunPod's gpuTypes catalogue on 2026-10-16. PRO 4000 and PRO 4500
 // are Secure only today, so their Community rungs are left out: they never place.
 export const GPU_LADDER = [
-  { gpuTypeId: 'NVIDIA RTX PRO 4000 Blackwell', name: 'RTX PRO 4000', cloudType: 'SECURE', vramGb: 24 },
-  { gpuTypeId: 'NVIDIA RTX PRO 4500 Blackwell', name: 'RTX PRO 4500', cloudType: 'SECURE', vramGb: 32 },
-  { gpuTypeId: 'NVIDIA RTX PRO 6000 Blackwell Server Edition', name: 'RTX PRO 6000', cloudType: 'COMMUNITY', vramGb: 96 },
-  { gpuTypeId: 'NVIDIA RTX PRO 6000 Blackwell Workstation Edition', name: 'RTX PRO 6000 Workstation', cloudType: 'COMMUNITY', vramGb: 96 },
-  { gpuTypeId: 'NVIDIA RTX PRO 6000 Blackwell Server Edition', name: 'RTX PRO 6000', cloudType: 'SECURE', vramGb: 96 },
-  { gpuTypeId: 'NVIDIA RTX PRO 6000 Blackwell Workstation Edition', name: 'RTX PRO 6000 Workstation', cloudType: 'SECURE', vramGb: 96 },
+  { gpuTypeId: 'NVIDIA RTX PRO 4000 Blackwell', name: 'RTX PRO 4000', cloudType: 'SECURE', vramGb: 24, arch: 'blackwell' },
+  { gpuTypeId: 'NVIDIA RTX PRO 4500 Blackwell', name: 'RTX PRO 4500', cloudType: 'SECURE', vramGb: 32, arch: 'blackwell' },
+  { gpuTypeId: 'NVIDIA RTX PRO 6000 Blackwell Server Edition', name: 'RTX PRO 6000', cloudType: 'COMMUNITY', vramGb: 96, arch: 'blackwell' },
+  { gpuTypeId: 'NVIDIA RTX PRO 6000 Blackwell Workstation Edition', name: 'RTX PRO 6000 Workstation', cloudType: 'COMMUNITY', vramGb: 96, arch: 'blackwell' },
+  { gpuTypeId: 'NVIDIA RTX PRO 6000 Blackwell Server Edition', name: 'RTX PRO 6000', cloudType: 'SECURE', vramGb: 96, arch: 'blackwell' },
+  { gpuTypeId: 'NVIDIA RTX PRO 6000 Blackwell Workstation Edition', name: 'RTX PRO 6000 Workstation', cloudType: 'SECURE', vramGb: 96, arch: 'blackwell' },
 ]
+
+// GPUs only a Session tier starts, after the ladder: the faster cards Balanced and Performance need. Ids
+// and memory from RunPod's listing on 2026-10-19 (PatchWork's price snapshot). PatchWork ran both on the
+// same Pod image (CUDA 13), so they count as tested. Hopper has no NVFP4, so H3's NVFP4 text encoder
+// keeps H3 runs on Blackwell. Next to test: RTX 5090, RTX PRO 5000, L40S and B200.
+export const GPU_EXTRA = [
+  { gpuTypeId: 'NVIDIA H100 80GB HBM3', name: 'H100 SXM', cloudType: 'COMMUNITY', vramGb: 80, arch: 'hopper' },
+  { gpuTypeId: 'NVIDIA H100 80GB HBM3', name: 'H100 SXM', cloudType: 'SECURE', vramGb: 80, arch: 'hopper' },
+  { gpuTypeId: 'NVIDIA H200', name: 'H200', cloudType: 'COMMUNITY', vramGb: 141, arch: 'hopper' },
+  { gpuTypeId: 'NVIDIA H200', name: 'H200', cloudType: 'SECURE', vramGb: 141, arch: 'hopper' },
+]
+export const GPU_CATALOG = [...GPU_LADDER, ...GPU_EXTRA]
 
 export const IDLE_MIN = 10
 // Idle shutdown the user can pick on the Pods page, in minutes, and the disk sizes it offers in GB.
@@ -76,7 +88,9 @@ function envToken(pod) {
 
 // One manager per process. The app, CLI and MCP each make the default one; checks and the sandbox inject fakes.
 // `owner` marks the process that writes the spend ledger; the app's server becomes it when its monitor starts.
-export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now = Date.now, keys, dir, ladder = GPU_LADDER, sandbox = false, wait = sleep, owner = false } = {}) {
+export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now = Date.now, keys, dir, ladder = GPU_LADDER, extra = GPU_EXTRA, sandbox = false, wait = sleep, owner = false } = {}) {
+  // Every GPU a start may use: the ladder, then the cards only a Session tier picks.
+  const all = [...ladder, ...extra]
   const file = (name) => path.join(dir(), name)
   // `since` is when this process began watching, so a restart never counts the Pod as silent for its whole life.
   const m = { record: undefined, readAt: 0, remote: null, status: null, seenAt: null, since: now(), action: null, placing: false, ending: null, event: null,
@@ -184,9 +198,9 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
     const rows = Array.isArray(r.data) ? r.data : r.data?.data || []
     const pod = rows.find((p) => p.name?.startsWith(PREFIX) && p.desiredStatus !== 'TERMINATED' && envToken(p))
     if (!pod) return null
-    const rung = ladder.find((x) => x.gpuTypeId === pod.machine?.gpuTypeId) || {}
+    const rung = all.find((x) => x.gpuTypeId === pod.machine?.gpuTypeId) || {}
     save({
-      id: pod.id, name: pod.name, token: envToken(pod), gpuTypeId: rung.gpuTypeId || null, gpu: rung.name || 'GPU', vramGb: rung.vramGb || null, cloudType: rung.cloudType || null,
+      id: pod.id, name: pod.name, token: envToken(pod), gpuTypeId: rung.gpuTypeId || null, gpu: rung.name || 'GPU', vramGb: rung.vramGb || null, cloudType: rung.cloudType || null, arch: rung.arch || null,
       costPerHr: pod.costPerHr || 0, volumeGb: pod.volumeInGb || 60, createdAt: Date.parse(pod.createdAt) || now(), startedAt: Date.parse(pod.createdAt) || now(),
       pausedAt: pod.desiredStatus === 'EXITED' ? now() : null,
     })
@@ -256,6 +270,7 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
       phase: phase(), stage: stage(), sandbox,
       pod: rec && {
         id: rec.id, gpu: rec.gpu, vramGb: rec.vramGb ?? null, cloudType: rec.cloudType, costPerHr: rec.costPerHr, volumeGb: rec.volumeGb,
+        tier: rec.tier || null, fellBack: Boolean(rec.fellBack),
         startedAt: rec.startedAt, uptimeSec: Math.round((t - rec.startedAt) / 1000),
         pausedDiskPerDay: (rec.volumeGb * STOPPED_DISK_USD_GB_MONTH * 12) / 365, idleMin: rec.idleMin || IDLE_MIN,
       },
@@ -300,11 +315,14 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
 
   // ---- actions -----------------------------------------------------------------------------------
 
-  async function quote({ minVramGb = 0 } = {}) {
-    const rungs = ladder.filter((r) => r.vramGb >= minVramGb)
+  // Prices and stock for the GPUs that fit: the ladder, or with `catalog` every GPU a Session tier may
+  // start. `arch` keeps only GPUs of that architecture, for a run with a file that needs it.
+  async function quote({ minVramGb = 0, catalog = false, arch = null } = {}) {
+    const rungs = (catalog ? all : ladder).filter((r) => r.vramGb >= minVramGb && (!arch || r.arch === arch))
     const base = { rungs: rungs.map((r) => ({ ...r, usdPerHr: null, inStock: null })), spend: { today: spentToday(), cap: cap() }, bootMinutes: [5, 8], connected: Boolean(key()) }
     if (!key() || !rungs.length) return base
-    if (m.quote && now() - m.quote.at < 5 * MIN && m.quote.min === minVramGb) return { ...m.quote.data, spend: base.spend }
+    const tag = `${minVramGb}|${catalog}|${arch}`
+    if (m.quote && now() - m.quote.at < 5 * MIN && m.quote.min === tag) return { ...m.quote.data, spend: base.spend }
     const q = rungs.map((r, i) => `r${i}: gpuTypes(input: {id: ${JSON.stringify(r.gpuTypeId)}}) { lowestPrice(input: {gpuCount: 1, secureCloud: ${r.cloudType === 'SECURE'}}) { uninterruptablePrice availableGpuCounts stockStatus } }`)
     const data = await gql(`query { ${q.join(' ')} }`).catch(() => null)
     if (!data) return base
@@ -313,19 +331,25 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
       const counts = Array.isArray(lp.availableGpuCounts) ? lp.availableGpuCounts.filter((n) => n > 0) : null
       return { ...r, usdPerHr: lp.uninterruptablePrice ?? null, inStock: counts ? counts.length > 0 : null }
     }) }
-    m.quote = { at: now(), min: minVramGb, data: out }
+    m.quote = { at: now(), min: tag, data: out }
     return out
   }
 
   // `runtimes` start installing as soon as the Pod boots, for a run that waits on them. A `gpu` picked
-  // by hand ({ gpuTypeId, cloudType } from the ladder) is the only one tried.
-  async function start({ minVramGb = 0, volumeGb = 60, runtimes: want = [], gpu = null } = {}) {
+  // by hand ({ gpuTypeId, cloudType } from the ladder) is the only one tried. A Session tier's `order`
+  // lists the GPUs to try in its order instead of the ladder's.
+  async function start({ minVramGb = 0, volumeGb = 60, runtimes: want = [], gpu = null, order = null, tier = null } = {}) {
     if (!key()) throw fail('Add your RunPod key in Connections first.', 400)
     await adopt({ force: true }).catch(() => null)
     if (record() || m.placing) throw fail('A Pod already exists. ComfyField runs one Pod at a time.', 409)
     const spent = spentToday()
     if (spent >= cap()) throw fail(`Daily cap reached: ${money(spent)} of ${money(cap())} today. Raise it on the Pods page.`, 402)
     let rungs = ladder.filter((r) => r.vramGb >= minVramGb)
+    if (order && !gpu) {
+      const fits = all.filter((r) => r.vramGb >= minVramGb)
+      const listed = order.map((o) => fits.find((r) => r.gpuTypeId === o.gpuTypeId && r.cloudType === o.cloudType)).filter(Boolean)
+      rungs = [...new Set(listed)]
+    }
     if (gpu) {
       const picked = ladder.find((r) => r.gpuTypeId === gpu.gpuTypeId && r.cloudType === gpu.cloudType)
       if (!picked) throw fail('ComfyField does not start that GPU. Pick one from the Pods page.', 400)
@@ -357,7 +381,9 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
         } })
         if (r.ok && r.data?.id) {
           const t = now()
-          save({ id: r.data.id, name, token, gpuTypeId: rung.gpuTypeId, gpu: rung.name, vramGb: rung.vramGb, cloudType: rung.cloudType, costPerHr: r.data.costPerHr || 0, volumeGb: volume, idleMin, createdAt: t, startedAt: t, pausedAt: null })
+          // `fellBack`: the tier's first GPU had no machine free, so the Pod runs on a later one.
+          save({ id: r.data.id, name, token, gpuTypeId: rung.gpuTypeId, gpu: rung.name, vramGb: rung.vramGb, cloudType: rung.cloudType, arch: rung.arch || null, costPerHr: r.data.costPerHr || 0, volumeGb: volume, idleMin, createdAt: t, startedAt: t, pausedAt: null,
+            tier: tier || null, fellBack: Boolean(order && refused > 0) })
           charge(t)
           m.placing = false
           kick()
@@ -550,6 +576,8 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
     return phase()
   }
   const vramGb = () => record()?.vramGb ?? null
+  // Older records have no architecture; every ladder GPU before the Session tiers was Blackwell.
+  const arch = () => (record() ? record().arch || 'blackwell' : null)
   // What the Pod has room for: its free disk and its runtimes, for picking a run's graph.
   const room = () => ({ diskFreeGb: m.status?.diskFreeGb ?? null, runtimes: Object.fromEntries(runtimes().map((e) => [e.runtime, e.state])) })
 
@@ -558,5 +586,5 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
     return gql('query { myself { id } }').then((d) => Boolean(d?.myself?.id)).catch(() => false)
   }
 
-  return { status, quote, start, pause, resume, terminate, keep, lease, tick, refresh, phaseNow, vramGb, room, startMonitor, stopMonitor, test, guard, spentToday }
+  return { status, quote, start, pause, resume, terminate, keep, lease, tick, refresh, phaseNow, vramGb, arch, room, startMonitor, stopMonitor, test, guard, spentToday }
 }
