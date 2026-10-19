@@ -1,64 +1,69 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Field } from '../components/formats/Fields.jsx'
-import { Hero, Box, Ratios, Toggle, NotWired, ErrorNote, fitBox } from '../components/studiob/Kit.jsx'
-
-const targets = [
-  { id: '9:16', note: 'Stories and reels' },
-  { id: '1:1', note: 'Square feed' },
-  { id: '4:5', note: 'Tall feed' },
-  { id: '16:9', note: 'Widescreen' },
-  { id: '21:9', note: 'Cinema' },
-]
-
-const gcd = (a, b) => (b ? gcd(b, a % b) : a)
-const simplify = (ratio) => {
-  const [w, h] = (ratio || '').split(':').map(Number)
-  if (!(w > 0 && h > 0)) return null
-  const g = gcd(w, h)
-  const r = `${w / g}:${h / g}`
-  return r.length > 6 ? `${(w / h).toFixed(2)}:1` : r
-}
+import Results from '../components/Results.jsx'
+import { Hero, Box, Ratios, Pills, ErrorNote, fitBox } from '../components/studiob/Kit.jsx'
+import { useApp } from '../lib/appContext.js'
+import { reframeFormat, reframeRatios } from '../lib/formats/photodumpReframe.js'
 
 export default function Reframe() {
+  const { gens } = useApp()
+  const [mode, setMode] = useState('image')
+  const [image, setImage] = useState(null)
   const [video, setVideo] = useState(null)
   const [target, setTarget] = useState('9:16')
-  const [tracking, setTracking] = useState(true)
+  const [direction, setDirection] = useState('')
   const [error, setError] = useState(null)
-  const source = simplify(video?.ratio)
+  const [running, setRunning] = useState(false)
+  const media = mode === 'image' ? image : video
+  const items = gens.items.filter((item) => item.formatId === reframeFormat.id && !item.failed)
+  const run = async () => {
+    if (running || mode !== 'image' || !image?.url) return
+    setRunning(true)
+    setError(null)
+    try { await gens.generateFormat(reframeFormat, { image, ratio: target, direction }) }
+    catch (e) { setError(e.message) }
+    finally { setRunning(false) }
+  }
 
   return (
     <main className="sb-page">
-      <Hero badge="Reframe" title="Fit a video to any screen"
-        sub="Turn a wide video into a vertical one, or the other way round, and keep the subject in the shot." />
+      <Hero badge="Reframe" title="Fit a scene to any screen"
+        sub="Choose a new ratio and extend a photo with matching edges." />
       <div className="sb-work">
         <div className="sb-stage tall">
-          <Field input={{ id: 'video', type: 'video', label: 'Video to reframe' }} value={video} onChange={setVideo} setError={setError} />
+          <Box label="Media type"><Pills options={[{ id: 'image', label: 'Image' }, { id: 'video', label: 'Video' }]} value={mode} onChange={setMode} label="Media type" /></Box>
+          <Field key={mode} input={{ id: mode, type: mode, label: `${mode === 'image' ? 'Image' : 'Video'} to reframe` }} value={media} onChange={mode === 'image' ? setImage : setVideo} setError={setError} />
           <ErrorNote error={error} />
-          {video && (
-            <Box label="Preview" aside={<span className="muted">{source ? `${source} to ${target}` : `To ${target}`}</span>}>
+          {media && (
+            <Box label="Framing preview" aside={<span className="muted">To {target}</span>}>
               <div className="sb-reframe">
-                <div className={`sb-reframe-frame${tracking ? ' crop' : ' fill'}`} style={fitBox(target, 1.6, 92)}>
-                  <video src={video.url} muted loop playsInline autoPlay={!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches} />
+                <div className="sb-reframe-frame fill" style={fitBox(target, 1.6, 92)}>
+                  {mode === 'image' ? <img className="reframe-source" src={media.url} alt="Source fitted inside the target canvas" /> : <video src={media.url} muted playsInline controls />}
                 </div>
               </div>
-              <p className="sheet-note">
-                {tracking
-                  ? 'A rough center crop. Subject tracking moves the frame to follow the main subject in every shot.'
-                  : 'The striped area is new picture, painted in to match the scene.'}
-              </p>
+              <p className="sheet-note">{mode === 'image' ? 'Layout preview. The photo fits inside the new canvas. Generation fills the edges and blends the seam around the original center.' : 'Video preview only. Video outpainting and subject tracking are not wired yet.'}</p>
             </Box>
           )}
         </div>
         <aside className="sb-side glass" aria-label="Reframe settings">
-          <Box label="Target ratio"><Ratios options={targets} value={target} onChange={setTarget} label="Target ratio" /></Box>
-          <Box label="Framing">
-            <Toggle on={tracking} onChange={setTracking}>Follow the subject</Toggle>
-            <p className="sheet-note">{tracking ? 'Crops in and follows the person or product as they move.' : 'Keeps the whole frame and fills in the new edges.'}</p>
-          </Box>
-          <p className="sheet-note">Captions, prices and on-screen text are not moved, so fix them before you reframe.</p>
-          <NotWired runsOn={tracking ? 'SAM 3.1 and Wan VACE' : 'Wan VACE'} summary={video ? `${source || 'Your video'} to ${target}, ${tracking ? 'following the subject' : 'filling the edges'}` : 'Upload a video to start.'} />
+          <Box label="Target ratio"><Ratios options={reframeRatios.map((id) => ({ id }))} value={target} onChange={setTarget} label="Target ratio" /></Box>
+          {mode === 'image' ? (
+            <>
+              <Field input={{ id: 'direction', type: 'longtext', label: 'New edges', optional: true, placeholder: 'Continue the beach and sky' }} value={direction} onChange={setDirection} />
+              <p className="sheet-note">Qwen edit 2511. The source scales to fit, then the center is composited back with a blended seam. New workflow, untested live.</p>
+              <button type="button" className="btn-blue" disabled={!image?.url || running} onClick={run}>{running ? 'Reframing…' : 'Generate reframe'}</button>
+              <p className="sheet-note">Results save to the <Link to="/assets">Library</Link>.</p>
+            </>
+          ) : (
+            <div className="sb-go">
+              <button type="button" className="btn-blue" disabled>Reframe video</button>
+              <p className="sheet-note">Not wired yet. No bundled video outpaint or subject tracking workflow is available. Target ratio is a preview setting only.</p>
+            </div>
+          )}
         </aside>
       </div>
+      {items.length > 0 && <section aria-label="Reframed images"><h2>Reframed images</h2><Results items={items} /></section>}
     </main>
   )
 }

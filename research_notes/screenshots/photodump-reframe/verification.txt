@@ -1,0 +1,22 @@
+Photodump and Reframe verification
+
+Date: 2026-10-19
+Host: pi-windows
+Scratch clone: C:/temp/comfyfield-photodump-reframe-20261019
+Runtime: Node 24.11.1, Windows, headless Chrome
+Setup: npm install
+Build: npx vite build (passed, bundle size warning)
+Checks: node scripts/verify.mjs (Git Bash bin and usr/bin first in Path)
+No paid generations or provider calls in the page fixture. No keys supplied.
+
+qwen2511_photodump: references, canvas, prompt and saved output valid; untested live
+qwen2511_reframe: references, canvas, prompt and saved output valid; untested live
+Format check ok: 452 runnable, 29 hidden, 10 migrated recipes. No generation calls.
+Format runner checks ok: 31 recipe cases, approval and batching, concurrency, schema rejection, Comfy placeholders, writer handoff and provider failures. No network calls.
+Graph check: 110/110 graphs fit ComfyUI v0.41.1 and the listed packs.
+Photodump and Reframe checks passed: scene fan-out, references, ratios, quality, graph variables, center composition and Cloud files. No provider calls.
+theme ok
+Photodump and Reframe mock browser checks passed: 10 saved images, three references, saved character, dimensions, prompts, failure recovery, unwired video, Library after reload and desktop/390px screenshots. No provider calls.
+18/18 check scripts passed
+
+Screenshots: 16 mock captures, desktop 1440px and mobile 390px.

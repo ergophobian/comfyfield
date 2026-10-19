@@ -2690,3 +2690,5 @@ a.skill-chip:active { transform: scale(.96); }
   .skill-steps > li { grid-template-columns: 28px minmax(0, 1fr); padding: 16px; }
   .skill-steps > li > .copy-btn { grid-column: 2; justify-self: start; }
 }
+
+.reframe-source { display: block; width: 100%; height: 100%; object-fit: contain; }
