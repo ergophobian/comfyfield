@@ -42,7 +42,7 @@ export default function MixedMedia() {
         <p>Restyle a short clip with a hand-made look. Upload it, then pick a look.</p>
         <Field input={clipInput} value={clip} onChange={(v) => { setClip(v); setError(null) }} setError={setError} />
         {error && <p className="sheet-error">{error}</p>}
-        <p className="sheet-note">{clip ? 'Now pick a look. It opens with your clip attached.' : 'Use a clip of 1 to 10 seconds.'}</p>
+        <p className="sheet-note">{clip ? 'Now pick a look. It opens with your clip attached.' : 'Each look processes up to 81 sampled frames. Check its effective range before Run.'}</p>
       </aside>
 
       <section className="mixed-looks">

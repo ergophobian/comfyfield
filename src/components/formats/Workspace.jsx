@@ -1,3 +1,4 @@
+import RunNotes from './RunNotes.jsx'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Field } from './Fields.jsx'
@@ -20,6 +21,7 @@ const homes = { effects: '/effects', mixed: '/mixed-media', camera: '/motion' }
 
 // Used by app pages and studios so inputs, review, generation and Library results stay in sync.
 export default function FormatWorkspace({ format, motion = false, showMore = true, inputCache }) {
+  const Heading = showMore ? 'h1' : 'h2'
   const { gens, connections } = useApp()
   const { state } = useLocation()
   const [params] = useSearchParams()
@@ -96,7 +98,7 @@ export default function FormatWorkspace({ format, motion = false, showMore = tru
                 {format.preview && <video src={format.preview} muted loop playsInline autoPlay={!calm()} />}
               </span>
             )}
-            <h1>{format.name}</h1>
+            <Heading>{format.name}</Heading>
             <p>{format.blurb}</p>
             <span className="recipe-tags app-tags">
               {format.runsOn && <em title={format.runsOn}>{format.runsOn}</em>}
@@ -118,6 +120,7 @@ export default function FormatWorkspace({ format, motion = false, showMore = tru
           )) : (
             <p className="sheet-note">Nothing else to set. Add your {(main?.label || 'media').toLowerCase()} and generate.</p>
           )}
+          <RunNotes format={format} values={values} />
           {error && <p className="sheet-error">{error}</p>}
           {session && <FormatReview key={session.flow.id + session.flow.values.renderer} session={session} />}
           <div className="app-go">

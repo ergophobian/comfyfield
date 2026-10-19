@@ -253,6 +253,11 @@ const voice = [
     id: 'drama3-tts', name: 'Drama 3 speech', kind: 'audio', category: 'voice',
     blurb: 'Read a script, optionally guided by a voice sample.',
     runsOn: 'Fish Audio Drama 3', workflow: 'drama3_tts',
+    info: {
+      attribution: 'Built with Fish Audio',
+      text: 'Limited commercial use is available below $500,000 in annual revenue, subject to the license. Hosted speech-generation services require a separate written license regardless of revenue. Imitating an identifiable voice requires prior consent or another legal right.',
+      url: 'https://huggingface.co/fishaudio/drama-3/blob/main/LICENSE',
+    },
     inputs: [
       { id: 'script', type: 'longtext', label: 'Script', placeholder: 'Write exactly what the voice should say.' },
       { id: 'voice', type: 'voice', label: 'Voice sample', optional: true },

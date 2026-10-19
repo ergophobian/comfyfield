@@ -75,7 +75,7 @@ export const openModels = [
   { id: 'infinitetalk', name: 'InfiniteTalk', kind: 'video', vendor: 'MeiGen', blurb: 'Talking heads and lipsync of any length', workflow: 'infinitetalk' },
   { id: 'chatterbox-multilingual', name: 'Chatterbox Multilingual', kind: 'audio', vendor: 'Resemble AI', blurb: 'Speech in 23 languages with emotion control', workflow: 'chatterbox_tts' },
   { id: 'fish-drama-3', name: 'Fish Audio Drama 3', kind: 'audio', vendor: 'Fish Audio', blurb: 'Top open voice model, 83 languages', workflow: 'drama3_tts', catalog: 'comfy-drama3-tts', badge: 'Top' },
-  { id: 'qwen3-tts', name: 'Qwen3-TTS', kind: 'audio', vendor: 'Alibaba Qwen', blurb: 'Voice design and cloning from 3 seconds', workflow: 'qwen3_tts', catalog: 'comfy-qwen3-tts' },
+  { id: 'qwen3-tts', name: 'Qwen3-TTS', kind: 'audio', vendor: 'Alibaba Qwen', blurb: 'Voice design and cloning from 3 seconds', workflow: 'qwen3_tts' },
   { id: 'minimax-music-3', name: 'MiniMax Music 3', kind: 'audio', vendor: 'MiniMax', blurb: 'Songs with vocals and lyrics', workflow: 'minimax_music3' },
   { id: 'stable-audio-3', name: 'Stable Audio 3', kind: 'audio', vendor: 'Stability AI', blurb: 'Sound effects and instrumentals', workflow: 'stable_audio3' },
 ]

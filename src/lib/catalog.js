@@ -52,7 +52,6 @@ export const models = [
   { id: 'g-veo-lite', kind: 'video', provider: 'google', name: 'Veo 3.1 Lite', note: 'Lowest cost Veo', model: 'veo-3.1-lite-generate-preview', mode: 'video', durations: [4, 6, 8], price: { amount: 0.05, unit: 'second', estimate: true } },
 
   { id: 'comfy-drama3-tts', kind: 'audio', provider: 'comfy', name: 'Drama 3', note: 'Read a script. Use the Audio studio to attach a voice sample. Runs on a Pod.', workflow: 'drama3_tts', pod: true },
-  { id: 'comfy-qwen3-tts', kind: 'audio', provider: 'comfy', name: 'Qwen3-TTS', note: 'Requires a voice sample. Run it from the Audio studio.', workflow: 'qwen3_tts', pod: true },
   { id: 'g-tts', kind: 'audio', provider: 'google', name: 'Gemini voice', note: 'Text to speech, your Google key', model: 'gemini-3.8-flash-tts', mode: 'speech' },
   { id: 'el-speech', kind: 'audio', provider: 'elevenlabs', name: 'ElevenLabs voice', note: 'Text to speech with your key', mode: 'speech' },
   { id: 'el-sfx', kind: 'audio', provider: 'elevenlabs', name: 'ElevenLabs sound effects', note: 'Describe a sound', mode: 'sfx' },

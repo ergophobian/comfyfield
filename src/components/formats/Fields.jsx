@@ -233,6 +233,7 @@ function VoiceField({ value, onChange, ...props }) {
     <div>
       <MediaField {...props} input={{ type: 'audio' }} value={value?.sample ? { ...value, url: value.sample } : null}
         onChange={(v) => onChange({ name: v.name, sample: v.url })} />
+      <p className="sheet-note">Use a voice sample only with the speaker's prior consent or another legal right to use their voice.</p>
       {value?.sample && <button type="button" className="link-btn" onClick={() => onChange(null)}>Clear voice sample</button>}
     </div>
   )

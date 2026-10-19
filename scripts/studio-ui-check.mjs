@@ -52,13 +52,14 @@ const server = await preview({ configFile: false, envFile: false, plugins: [{
       if (url.pathname === '/api/stitch/exports') return res.end('[]')
       if (url.pathname === '/api/library/characters') return res.end(JSON.stringify([{ id: 'mock-character', name: 'Mock character', images: ['/mock-photo.svg'] }]))
       if (url.pathname.startsWith('/api/library/')) return res.end('[]')
-      if (url.pathname === '/api/connections') return res.end(JSON.stringify({ comfy: { connected: true } }))
+      if (url.pathname === '/api/connections') return res.end(JSON.stringify(Object.fromEntries(['comfy', 'google', 'elevenlabs', 'fal'].map((p) => [p, { connected: true }]))))
+      if (url.pathname === '/api/fal/schema') return res.end(JSON.stringify({ properties: { prompt: { type: 'string' } } }))
       if (req.method === 'POST') {
         let body = ''
         for await (const chunk of req) body += chunk
         const payload = JSON.parse(body)
         requests.push({ path: url.pathname, ...payload })
-        const kind = /chatterbox|drama3|qwen3/.test(payload.workflow) ? 'audio' : /image_upscale|seedvr2_image/.test(payload.workflow) ? 'image' : 'video'
+        const kind = ['/api/google', '/api/elevenlabs', '/api/fal'].includes(url.pathname) || /chatterbox|drama3|qwen3/.test(payload.workflow) ? 'audio' : /image_upscale|seedvr2_image/.test(payload.workflow) ? 'image' : 'video'
         return res.end(JSON.stringify({ files: [{ kind, url: kind === 'audio' ? '/mock-audio.wav' : kind === 'image' ? '/mock-photo.svg' : '/mock-clip.webm' }] }))
       }
       res.end('{}')
@@ -129,6 +130,7 @@ try {
     shots++
   }
   const pair = async (name) => {
+    assert.equal(await evaluate('document.querySelectorAll("main h1").length'), 1, `${name} has one page heading`)
     await screenshot(`${name}-desktop`)
     await cdp('Emulation.setDeviceMetricsOverride', { width: 390, height: 1100, deviceScaleFactor: 1, mobile: true })
     assert(await evaluate('document.documentElement.scrollWidth <= 390'), `${name} must fit 390px`)
@@ -147,6 +149,7 @@ try {
   await click('Faithful')
   await click('4x')
   await generate('image_upscale_esrgan', (vars) => { assert.equal(vars.upscale_factor, 4); assert.equal(vars.image, '/mock-photo.svg') })
+  assert((await evaluate('document.querySelector(".format-limit").textContent')).includes('4096'))
   await pair('upscale')
   await click('Enhance')
   await generate('image_upscale', (vars) => assert.equal(vars.upscale_factor, 4))
@@ -179,11 +182,13 @@ try {
   await click('New angleThe same take from another camera')
   await click('Orbit around')
   await generate('recammaster', (vars) => { assert.equal(vars.trajectory, 'arc_right'); assert.equal(vars.orbit, true) })
+  assert((await evaluate('document.querySelector(".format-limit").textContent')).includes('81'))
+  await pair('reshoot')
   await click('Color gradeGive the whole clip a film look')
   await click('Icy blue')
   await generate('bernini_grade', (vars) => assert(vars.prompt.includes('icy blue')))
 
-  await goto('/audio')
+  await goto('/audio?model=chatterbox-multilingual')
   assert(!(await evaluate('document.querySelector(".app-panel").innerText')).includes('Auto detect'))
   await type('.app-panel textarea', 'This is a mock speech check.')
   await click('Excited')
@@ -192,7 +197,11 @@ try {
   await generate('chatterbox_tts', (vars) => { assert.equal(vars.language, 'Chinese (zh)'); assert.equal(vars.exaggeration, 0.9); assert.equal(vars.voice, '/mock-audio.wav'); assert.equal(vars.prompt, 'This is a mock speech check.') })
   await pair('audio')
   await click('Drama 3Read a script, optionally in a sample voice')
+  await wait('document.querySelector(".format-info")?.textContent.includes("Built with Fish Audio")')
+  assert((await evaluate('document.querySelector(".format-info").textContent')).includes('$500,000'))
+  assert((await evaluate('document.querySelector(".app-panel").textContent')).includes('prior consent'))
   await generate('drama3_tts')
+  await pair('drama3')
   await click('Qwen3-TTSRead a script in an uploaded sample voice')
   await generate('qwen3_tts', (vars) => assert.equal(vars.voice, '/mock-audio.wav'))
   await click('Voice change', '.sb-hero button')
@@ -229,9 +238,37 @@ try {
   await evaluate('document.querySelector(".look").click()')
   await wait('document.querySelector(".sheet .widget video")')
   await click('FullThe look takes over', '.sheet button')
-  await click('8 fpsChoppy, hand-made feel', '.sheet button')
+  await click('Every third frameSource rate ÷ 3, e.g. 10 fps from 30 fps', '.sheet button')
+  assert((await evaluate('document.querySelector(".sheet .format-limit").textContent')).includes('81'))
   await pair('mixed-media-sheet')
-  await generate('bernini_mixed', (vars) => { assert.equal(vars.video, '/mock-clip.webm'); assert.equal(vars.start, 0.5); assert.equal(vars.fps, 8); assert.equal(vars.strength, 0.85) }, '.sheet-foot .btn-blue')
+  await generate('bernini_mixed', (vars) => { assert.equal(vars.video, '/mock-clip.webm'); assert.equal(vars.start, 0.5); assert.equal(vars.stride, 3); assert.equal(vars.strength, 0.85) }, '.sheet-foot .btn-blue')
+  await wait('!document.querySelector(".sheet")')
+  for (const [query, path, field, expected] of [
+    ['el-sfx', '/api/elevenlabs', 'mode', 'sfx'],
+    ['el-speech', '/api/elevenlabs', 'mode', 'speech'],
+    ['g-tts', '/api/google', 'model', 'gemini-3.8-flash-tts'],
+    ['fal:minimax/music-3', '/api/fal', 'model', 'minimax/music-3'],
+  ]) {
+    await goto(`/audio?model=${encodeURIComponent(query)}`)
+    await type('#provider-audio-prompt', 'A mock provider request')
+    const count = requests.length
+    await click('Generate audio')
+    await wait('!JSON.parse(localStorage.getItem("comfyfield.library") || "[]").some((g) => g.pending)')
+    assert.equal(requests.length, count + 1)
+    assert.equal(requests.at(-1).path, path)
+    assert.equal(requests.at(-1)[field], expected)
+    await goto('/audio')
+    await wait('document.querySelector("#provider-audio-prompt")')
+    if (query === 'el-sfx') await pair('audio-provider')
+  }
+  await evaluate(`localStorage.setItem('comfyfield.picker', JSON.stringify({kind:'audio',chosen:{audio:'fal:custom-audio'},extra:[{id:'fal:custom-audio',kind:'audio',provider:'fal',name:'Custom audio',model:'mock/audio'}],favorites:[]}))`)
+  await goto('/audio')
+  await type('#provider-audio-prompt', 'A saved custom fal model')
+  const providerCount = requests.length
+  await click('Generate audio')
+  await wait('!JSON.parse(localStorage.getItem("comfyfield.library") || "[]").some((g) => g.pending)')
+  assert.equal(requests.length, providerCount + 1)
+  assert.equal(requests.at(-1).model, 'mock/audio')
   assert.deepEqual(errors, [], 'No browser runtime exceptions')
   assert.equal(await evaluate('JSON.parse(localStorage.getItem("comfyfield.library")).length'), requests.length, 'Every output persists in Library')
   console.log(`Studio UI mock checks ok: ${requests.length} shared runner submissions, five studios, all six video edits, real upload URLs, language/delivery/voice/trim vars, Library persistence, disabled unavailable paths and 390px layouts. ${shots} labeled mock screenshots saved to ${dir}. No provider calls.`)

@@ -625,7 +625,7 @@ export const schemas = {
     ],
     "bernini_mixed": [
       "duration",
-      "fps",
+      "stride",
       "prompt",
       "seed",
       "start",

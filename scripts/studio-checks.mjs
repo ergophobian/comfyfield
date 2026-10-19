@@ -4,6 +4,7 @@ import { allFormats, formatById, isWired } from '../src/lib/formats/index.js'
 import { initialValues, missingInputs } from '../src/lib/recipes.js'
 import { runFormat } from '../src/lib/formats/runner.js'
 import { comfyVars, dropOptional, fill } from '../shared/mapping.js'
+import { studioLimitNote, upscaleOutput } from '../src/lib/studioLimits.js'
 import { models } from '../src/lib/catalog.js'
 
 // Exercise the same runner as the studio workspace. No provider or key loading.
@@ -18,6 +19,28 @@ const defaults = (format) => ({ ...initialValues(format), ...Object.fromEntries(
     : ['text', 'longtext'].includes(i.type) ? 'A quiet garden' : undefined
   return v === undefined ? [] : [[i.id, v]]
 })) })
+function assertFilled(value, path = 'graph') {
+  assert.notEqual(value, undefined, `${path} must not become undefined during fill`)
+  if (typeof value === 'string') assert(!/\{\{|undefined/.test(value), `${path} has an unresolved value`)
+  if (value && typeof value === 'object') for (const [key, child] of Object.entries(value)) assertFilled(child, `${path}.${key}`)
+}
+assert.throws(() => assertFilled(fill({ inputs: { missing: '{{absent}}' } }, {})), /undefined/)
+assert.throws(() => assertFilled(fill({ inputs: { missing: 'prefix {{absent}}' } }, {})), /unresolved/)
+
+// Resolve the actual numeric graph links rather than searching serialized copy.
+function numberAt(graph, link, fixtures = {}) {
+  if (!Array.isArray(link)) return link
+  const [id, output] = link
+  if (fixtures[id]) return fixtures[id][output]
+  const node = graph[id]
+  if (node.class_type.startsWith('Primitive')) return node.inputs.value
+  assert.equal(node.class_type, 'ComfyMathExpression', `Unsupported numeric test node ${id}`)
+  const vars = Object.entries(node.inputs).filter(([key]) => key.startsWith('values.'))
+  const keys = vars.map(([key]) => key.slice(7))
+  const values = vars.map(([, value]) => numberAt(graph, value, fixtures))
+  const result = Function(...keys, 'min', 'max', 'floor', `return ${node.inputs.expression}`)(...values, Math.min, Math.max, Math.floor)
+  return output === 1 ? Math.trunc(result) : result
+}
 let checked = 0
 async function run(id, values = {}) {
   const format = formatById(id)
@@ -29,7 +52,7 @@ async function run(id, values = {}) {
     const graph = fill(dropOptional(JSON.parse(readFileSync(`public/workflows/${workflow}.json`, 'utf8')), vars), vars)
     assert.equal(meta.formatId, id)
     assert.equal(meta.stepId, 'generate')
-    assert(!JSON.stringify(graph).includes('{{'), `${id} must fill all graph variables`)
+    assertFilled(graph)
     result = { model, options, vars, workflow, graph }
     return [{ url: '/mock-result', kind: model.kind }]
   } })
@@ -112,7 +135,7 @@ for (const id of ['drama3-tts', 'qwen3-tts']) {
   const r = await run(id, { script: 'Exact sample script' })
   assert.equal(r.vars.prompt, 'Exact sample script')
   assert.equal(r.vars.voice, voice.sample)
-  assert(models.some((m) => m.workflow === r.workflow), `${id} has a catalog model`)
+  assert.equal(models.some((m) => m.workflow === r.workflow), id !== 'qwen3-tts', 'Qwen requires its format voice input and must stay out of the generic picker')
 }
 assert(!('3' in (await run('drama3-tts', { voice: null })).graph))
 await assert.rejects(() => run('qwen3-tts', { voice: null }), /Still needed: Voice sample/)
@@ -131,7 +154,10 @@ assert.equal(synced.vars.video, video.url)
 assert.equal(synced.vars.audio, audio.url)
 for (const r of [spoken, recorded, synced]) {
   assert(JSON.stringify(r.graph).includes('480p'), 'Only the available 480p model is used')
-  assert(JSON.stringify(r.graph).includes('30'), 'Graphs limit speech to 30 seconds')
+  if (r.workflow !== 'infinitetalk_v2v') {
+    assert.equal(r.graph['16'].inputs.num_frames / r.graph['16'].inputs.fps, 30)
+    assert.equal(r.graph['21'].inputs.duration, 30)
+  }
 }
 
 const looks = allFormats.filter((f) => f.category === 'mixed')
@@ -142,7 +168,11 @@ for (const look of looks) {
     for (const fps of look.inputs.find((i) => i.id === 'fps').options) {
       const r = await run(look.id, { strength: strength.id, fps: fps.id })
       assert.equal(r.workflow, 'bernini_mixed')
-      assert.equal(r.graph['85'].inputs.value, fps.params.fps)
+      assert.equal(r.graph['85'].inputs.value, fps.params.stride)
+      for (const sourceFps of [15, 24, 30, 60]) {
+        const actual = numberAt(r.graph, ['90', 0], { '3': [null, null, sourceFps] })
+        assert.equal(actual, sourceFps / fps.params.stride)
+      }
       assert.equal(r.graph['93'].inputs.blend_factor, strength.params.strength)
       assert.equal(r.vars.start, 2.125)
       assert.equal(r.vars.duration, 5.25)
@@ -150,4 +180,36 @@ for (const look of looks) {
     }
   }
 }
+for (const [duration, sourceFps] of [[5.25, 15], [30, 15], [60, 15], [30, 60], [0.5, 24]]) {
+  const r = await run('lipsync', { video: { ...video, trim: { start: 2, end: 2 + duration } } })
+  const fixtures = { '3': [null, null, sourceFps], '5': [160, 90, Math.ceil(Math.min(30, duration) * sourceFps)] }
+  const frames = numberAt(r.graph, r.graph['22'].inputs.num_frames, fixtures)
+  const audioDuration = numberAt(r.graph, r.graph['27'].inputs.duration, fixtures)
+  assert.equal(numberAt(r.graph, r.graph['2'].inputs.duration, fixtures), Math.min(30, duration))
+  assert.equal(numberAt(r.graph, r.graph['28'].inputs.fps, fixtures), sourceFps)
+  assert.equal(frames, Math.floor(Math.min(30, duration) * sourceFps))
+  assert.equal(audioDuration, Math.min(30, duration))
+  assert(frames / sourceFps <= 30)
+  assert.deepEqual(r.graph['22'].inputs.audio_1, ['27', 0])
+}
+for (const id of ['edit-video', 'video-character-swap', 'reshoot', 'color-grade', looks[0].id]) {
+  const r = await run(id)
+  assert.equal(r.graph['81'].inputs.value, 81)
+  assert.equal(numberAt(r.graph, ['82', 1], { '80': [0, 0, 300], '79': [0, 0, 150] }), 81)
+  const note = studioLimitNote(formatById(id), { video, fps: '24' })
+  assert(note.includes('81') && note.includes('from 2.13 seconds') && note.includes('selected clip is not generated'))
+}
+assert.deepEqual(upscaleOutput({ ratio: '1920:1080' }, 4, 3840), { width: 3840, height: 2160, scale: 2 })
+assert.deepEqual(upscaleOutput({ ratio: '1920:1080' }, 4, 4096), { width: 4096, height: 2304, scale: 4096 / 1920 })
+for (const id of ['image-upscale', 'video-upscale']) {
+  const r = await run(id)
+  const node = id === 'image-upscale' ? ['4', 0] : ['6', 0]
+  const scale = numberAt(r.graph, node, { '2': [1920, 1080], '4': id === 'video-upscale' ? [1920, 1080] : undefined })
+  assert.equal(scale, id === 'image-upscale' ? 0.5 : 2)
+  assert(studioLimitNote(formatById(id), { image: { ratio: '1920:1080' }, video: { ratio: '1920:1080' }, factor: '4' }).includes(id === 'image-upscale' ? '4096' : '3840'))
+}
+const info = formatById('drama3-tts').info
+assert.equal(info.attribution, 'Built with Fish Audio')
+for (const term of ['$500,000', 'Hosted', 'prior consent', 'separate written license']) assert(info.text.includes(term))
+assert.equal(info.url, 'https://huggingface.co/fishaudio/drama-3/blob/main/LICENSE')
 console.log(`Studio checks ok: ${checked} runner cases; upscale modes/scale/size, all six video edits and trim, speech language/delivery/voice, Drama 3/Qwen3-TTS, photo/video lipsync and ${looks.filter(isWired).length}/33 mixed media looks. No provider calls.`)

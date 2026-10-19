@@ -955,7 +955,7 @@ code { font-size: .92em; }
 .app-hero { width: min(440px, 100%); display: flex; flex-direction: column; gap: 6px; padding: 10px 10px 14px; border-radius: var(--r-2xl); text-align: center; }
 .app-cover { position: relative; display: block; aspect-ratio: 16 / 10; border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--inset-hi); }
 .app-cover video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.app-hero h1 { margin: 10px 12px 0; font-size: var(--text-2xl); font-weight: 600; letter-spacing: -.02em; line-height: 1.2; }
+.app-hero :is(h1, h2) { margin: 10px 12px 0; font-size: var(--text-2xl); font-weight: 600; letter-spacing: -.02em; line-height: 1.2; }
 .app-hero > p { margin: 0 16px; font-size: var(--text-md); color: var(--ink-2); }
 .app-tags { justify-content: center; margin: 2px 0 0; }
 .app-main { margin-top: 8px; text-align: left; }
