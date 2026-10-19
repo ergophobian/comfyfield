@@ -1261,6 +1261,13 @@ export const schemas = {
       "upscale_factor",
       "video"
     ],
+    "seedvr2_video_7b": [
+      "duration",
+      "seed",
+      "start",
+      "upscale_factor",
+      "video"
+    ],
     "stable_audio3": [
       "duration",
       "prompt",
