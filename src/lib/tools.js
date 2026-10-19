@@ -70,7 +70,7 @@ export const openModels = [
   { id: 'ltx-2-5', name: 'LTX-2.5', kind: 'video', vendor: 'Lightricks', blurb: 'Fast video with multi-shot, keyframes and audio', workflow: 'ltx25_t2v', catalog: 'comfy-ltx25' },
   { id: 'wan-2-2', name: 'Wan 2.2', kind: 'video', vendor: 'Alibaba Wan', blurb: 'Image to video, first and last frame', workflow: 'wan22_i2v' },
   { id: 'wan-animate-2', name: 'Wan Animate 2', kind: 'video', vendor: 'Alibaba Wan', blurb: 'Transfer motion from a video to a character', workflow: 'wan_animate2' },
-  { id: 'bernini-r', name: 'Bernini-R', kind: 'video', vendor: 'Open source', blurb: 'Restyle, relight and swap objects in real video', workflow: 'bernini_swap' },
+  { id: 'bernini-r', name: 'Bernini-R', kind: 'video', vendor: 'ByteDance', blurb: 'Restyle, relight and swap objects in real video', workflow: 'bernini_swap' },
   { id: 'infinitetalk', name: 'InfiniteTalk', kind: 'video', vendor: 'MeiGen', blurb: 'Talking heads and lipsync of any length', workflow: 'infinitetalk' },
   { id: 'chatterbox-multilingual', name: 'Chatterbox Multilingual', kind: 'audio', vendor: 'Resemble AI', blurb: 'Speech in 23 languages with emotion control', workflow: 'chatterbox_tts' },
   { id: 'fish-drama-3', name: 'Fish Audio Drama 3', kind: 'audio', vendor: 'Fish Audio', blurb: 'Top open voice model, 83 languages', workflow: 'drama3_tts', badge: 'Top' },

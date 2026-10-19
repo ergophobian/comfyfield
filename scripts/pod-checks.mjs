@@ -716,7 +716,7 @@ await test('models: every bundled workflow fills all its placeholders, and the n
   for (const w of fs.readdirSync('public/workflows')) {
     const g = JSON.parse(fs.readFileSync(`public/workflows/${w}`, 'utf8'))
     const kind = /video|v2v|i2v|t2v|ltx/.test(w) ? 'video' : 'image'
-    const filled = JSON.stringify(fill(g, comfyVars(kind, { prompt: 'A fox', aspect: '16:9', duration: 5, image: 'start.png' })))
+    const filled = JSON.stringify(fill(g, comfyVars(kind, { prompt: 'A fox', aspect: '16:9', duration: 5, image: 'start.png', video: 'clip.mp4' })))
     assert(!filled.includes('{{'), `${w} leaves a placeholder unfilled`)
   }
   const ltx = models.find((m) => m.id === 'comfy-ltx25')
@@ -775,7 +775,7 @@ await test('models: every bundled workflow is a linked API graph that saves medi
   const { comfyVars, fill } = await import('../shared/mapping.js')
   for (const w of fs.readdirSync('public/workflows')) {
     const kind = /video|i2v|t2v|ltx/.test(w) ? 'video' : 'image'
-    const graph = fill(JSON.parse(fs.readFileSync(`public/workflows/${w}`, 'utf8')), comfyVars(kind, { prompt: 'A fox', aspect: '16:9', duration: 5, image: 'start.png' }))
+    const graph = fill(JSON.parse(fs.readFileSync(`public/workflows/${w}`, 'utf8')), comfyVars(kind, { prompt: 'A fox', aspect: '16:9', duration: 5, image: 'start.png', video: 'clip.mp4' }))
     const visit = (value) => {
       if (Array.isArray(value) && value.length === 2 && typeof value[0] === 'string' && Number.isInteger(value[1])) assert(graph[value[0]], `${w}: dangling link to ${value[0]}`)
       else if (value && typeof value === 'object') Object.values(value).forEach(visit)
@@ -1109,4 +1109,123 @@ await test('freevideo: the sandbox installs FreeVideo on a Pod started for it, a
   clock.t += 12000
   assert.equal((await pod.tick()).runtimes[0].state, 'installing', 'a resumed Pod runs the installer again')
   await pod.terminate({ now: true })
+})
+
+// ---- video edits -----------------------------------------------------------------------------------
+
+const EDITS = { bernini_swap: [848, 81], bernini_swap_noref: [848, 81], bernini_restyle: [848, 81], bernini_relight: [848, 81], bernini_headswap: [640, 73], wan_animate2: [832, 81] }
+const readGraph = (n) => JSON.parse(fs.readFileSync(`public/workflows/${n}.json`, 'utf8'))
+// ComfyMathExpression runs Python, whose round() rounds a half to the even number.
+const pyRound = (x) => { const r = Math.round(x); return Math.abs(x % 1) === 0.5 && r % 2 ? r - 1 : r }
+const evalMath = (expr, a, b) => new Function('a', 'b', 'min', 'max', 'round', 'floor', `return ${expr}`)(a, b, Math.min, Math.max, pyRound, Math.floor)
+
+await test('video edits: a clip travels with its trim, and a saved character stands in for a photo', async () => {
+  const { comfyVars } = await import('../shared/mapping.js')
+  const v = comfyVars('video', { prompt: 'x', aspect: '1:1', video: '/media/clip.mp4', trim: { start: 1.25, end: 4.5 }, duration: 5 })
+  assert.deepEqual([v.video, v.start, v.duration], ['/media/clip.mp4', 1.25, 3.25])
+  assert.deepEqual([comfyVars('video', { prompt: 'x', aspect: '1:1', media: { video: '/media/a.mp4' } }).video, comfyVars('video', { prompt: 'x', aspect: '1:1' }).start], ['/media/a.mp4', 0])
+  assert.equal(comfyVars('video', { prompt: 'x', aspect: '1:1', duration: 8 }).duration, 8, 'without a clip, duration is the length to make')
+  const ref = { type: 'character', name: 'Mia', images: ['/media/mia.png'] }
+  assert.equal(comfyVars('video', { prompt: 'x', aspect: '1:1', refs: [{ type: 'brand', images: [] }, ref] }).image, '/media/mia.png')
+  assert.equal(comfyVars('video', { prompt: 'x', aspect: '1:1', images: ['/media/face.png'], refs: [ref] }).image, '/media/face.png', 'a photo wins over a character')
+})
+
+await test('video edits: each graph trims, sizes and caps itself from its clip', () => {
+  for (const [name, [edge, cap]] of Object.entries(EDITS)) {
+    const g = readGraph(name)
+    assert.equal(g['1'].class_type, 'LoadVideo')
+    assert.equal(g['1'].inputs.file, '{{video}}', name)
+    assert.deepEqual([g['2'].inputs.start_time, g['2'].inputs.duration], ['{{start}}', '{{duration}}'], `${name} uses the trim`)
+    assert.equal(g['81'].inputs.value, cap, `${name} frame cap`)
+    const at = (a, b) => [evalMath(g['83'].inputs.expression, a, b), evalMath(g['84'].inputs.expression, a, b)]
+    const wide = at(1920, 1080)
+    assert.equal(Math.max(...wide), edge, `${name} long edge`)
+    assert(wide.every((n) => n % 16 === 0), `${name} multiples of 16`)
+    assert.deepEqual(at(1080, 1920), [...wide].reverse(), `${name} portrait`)
+    assert.deepEqual(at(320, 240), [320, 240], `${name} never upscales`)
+    assert.equal(evalMath(g['82'].inputs.expression, 121, cap), cap, `${name} caps a long clip`)
+    assert.equal(evalMath(g['82'].inputs.expression, 50, cap), 49, `${name} keeps a short clip at 4n+1`)
+    assert(!JSON.stringify(g).includes('{{width}}') && !JSON.stringify(g).includes('{{frames}}'))
+    for (const node of Object.values(g)) for (const [k, val] of Object.entries(node.inputs)) if (val?.[0] === '83' || val?.[0] === '84') assert(['width', 'height'].includes(k), `${name}: ${k}`)
+  }
+  assert.deepEqual(evalMath(readGraph('bernini_swap')['83'].inputs.expression, 1920, 1080), 848)
+  assert.deepEqual(evalMath(readGraph('bernini_swap')['84'].inputs.expression, 1920, 1080), 480, '1080p becomes 848x480, as the Bernini-R template')
+})
+
+await test('video edits: Cloud takes the edits it has every file for; the face swap needs a Pod that downloads both LoRAs', async () => {
+  const sent = []
+  const client = {
+    assets: { fromBytes: (buf, o) => ({ asset: o.filename, type: o.contentType, bytes: buf.length }) },
+    workflows: { fromFile: async (f) => ({ file: f, json: null, inputs: {}, setInput(id, field, v) { this.inputs[`${id}.${field}`] = v } }) },
+    run: async (wf) => { sent.push({ file: path.basename(wf.file), inputs: wf.inputs }); return { outputs: [{ type: 'image', contentType: 'video/mp4', name: 'out.mp4', toBytes: async () => Buffer.from('mp4') }] } },
+  }
+  const leases = []
+  const lease = async (o) => { leases.push(o); return { baseUrl: 'https://p-8189.proxy.runpod.net', token: 't', sandbox: false, signal: new AbortController().signal, reason: () => null, release() {} } }
+  const clip = 'data:video/mp4;base64,AAAAIGZ0eXBpc29t'
+  const face = 'data:image/png;base64,iVBORw0KGgo='
+  const vars = { prompt: 'Swap', seed: 1, start: 0, duration: 3, video: clip, image: face }
+  const run = (w, phase = 'none') => core.runComfy(w, vars, { createClient: () => client, lease, podPhase: async () => phase, podVram: () => 24, podRoom: () => ({}) })
+
+  podMode()
+  for (const w of ['bernini_swap', 'bernini_swap_noref', 'bernini_restyle', 'bernini_relight', 'wan_animate2']) {
+    const files = await run(w)
+    assert.equal(files[0].kind, 'video')
+    assert.equal(sent.at(-1).file, `${w}.json`)
+    assert.deepEqual(sent.at(-1).inputs['1.file'], { asset: 'input.mp4', type: 'video/mp4', bytes: 12 }, `${w} uploads the clip to LoadVideo`)
+  }
+  assert.equal(leases.length, 0, 'Comfy Cloud has every file these use')
+  assert.equal(sent.find((x) => x.file === 'bernini_swap.json').inputs['12.image'].type, 'image/png', 'the reference uploads too')
+  await assert.rejects(run('bernini_headswap'), (e) => e.code === 'needs_pod' && e.reason === 'The head swap LoRA is not on Comfy Cloud yet')
+
+  await run('bernini_headswap', 'ready')
+  assert.deepEqual(leases.at(-1).files.filter((f) => f.dir === 'loras').map((f) => f.name).sort(),
+    ['headswap_bernini_r64_73f640_step3000_high_noise.safetensors', 'headswap_bernini_r64_73f640_step3000_low_noise.safetensors'], 'the Pod downloads both head swap LoRAs')
+  assert(leases.at(-1).files.every((f) => /^[0-9a-f]{64}$/.test(f.sha256)), 'each download is pinned by sha256')
+  assert.equal(core.workflowNeeds('wan_animate2').files.find((f) => f.dir === 'clip_vision').name, 'clip_vision_h.safetensors', 'a CLIP vision file downloads to its own folder')
+  assert(podBootScript().includes('clip_vision: clip_vision'), 'ComfyUI on the Pod finds that folder')
+  assert.equal(core.podNeedsFor('bernini_headswap').minVramGb, 24)
+})
+
+await test('video edits: local ComfyUI gets the clip through its upload route', async () => {
+  podMode()
+  core.saveConnection('comfy', { mode: 'local', url: 'http://comfy.test', key: '' })
+  const calls = []
+  let prompt = null
+  globalThis.fetch = async (url, init = {}) => {
+    const u = new URL(url)
+    calls.push(`${init.method || 'GET'} ${u.pathname}`)
+    if (u.pathname === '/upload/image') {
+      const file = init.body.get('image')
+      return jsonReply({ name: file.name.replace(/^comfyfield-[\w-]+/, 'up'), subfolder: '' })
+    }
+    if (u.pathname === '/prompt') { prompt = JSON.parse(init.body).prompt; return jsonReply({ prompt_id: 'p1' }) }
+    if (u.pathname === '/history/p1') return jsonReply({ p1: { outputs: { 21: { images: [{ filename: 'out.mp4', subfolder: 'comfyfield', type: 'output' }] } } } })
+    throw new Error(`unexpected ${url}`)
+  }
+  const files = await core.runComfy('bernini_swap', { prompt: 'Swap', seed: 1, start: 0.5, duration: 2, video: 'data:video/quicktime;base64,AAAA', image: 'data:image/png;base64,iVBORw0KGgo=' })
+  assert.deepEqual([prompt['1'].inputs.file, prompt['12'].inputs.image], ['up.mov', 'up.png'], 'a .mov keeps its extension, so LoadVideo lists it')
+  assert.deepEqual([prompt['2'].inputs.start_time, prompt['2'].inputs.duration], [0.5, 2])
+  assert.equal(calls.filter((c) => c === 'POST /upload/image').length, 2)
+  assert.equal(files[0].kind, 'video')
+})
+
+await test('video edits: the Genjutsu formats run on these graphs and show in the app', async () => {
+  const { formats } = await import('../src/lib/formats/index.js')
+  const { compileFormat } = await import('../src/lib/formats/runner.js')
+  const { validateFormat } = await import('../src/lib/formats/validate.js')
+  const byId = Object.fromEntries(formats.map((f) => [f.id, f]))
+  for (const id of ['swap-element', 'motion-transfer', 'face-swap-video', 'restyle-video', 'video-relight']) {
+    assert(byId[id], `${id} shows`)
+    assert.deepEqual(validateFormat(byId[id]), [], id)
+  }
+  assert.equal(byId['face-swap-video'].steps[0].workflow, 'bernini_headswap')
+  assert.deepEqual([byId['swap-element'].steps[0].workflow, byId['swap-element'].steps[0].imageWorkflow], ['bernini_swap_noref', 'bernini_swap'])
+  const clipValue = { url: '/media/clip.mp4', duration: 6, ratio: '1920:1080', trim: { start: 1, end: 4 } }
+  const motion = compileFormat(byId['motion-transfer'], { video: clipValue, image: { url: '/media/me.png' }, background: 'rooftop' }).nodes.find((n) => n.type === 'model')
+  assert.equal(motion.data.prompt, 'Character appearance: the person from the image, with their own face, hair, outfit and look. Background: a city rooftop at sunset.')
+  assert(!/move|gesture|perform/i.test(motion.data.prompt), 'Wan Animate 2 wants no motion words in the prompt')
+  const swap = compileFormat(byId['swap-element'], { video: clipValue, change: 'the car', into: 'a scooter' }).nodes.find((n) => n.type === 'model').data.model
+  assert.deepEqual([swap.workflow, swap.imageWorkflow], ['bernini_swap_noref', 'bernini_swap'], 'the reference graph waits for a reference')
+  const { openModels } = await import('../src/lib/tools.js')
+  assert.equal(openModels.find((m) => m.id === 'bernini-r').vendor, 'ByteDance')
 })

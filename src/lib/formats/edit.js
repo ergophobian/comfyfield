@@ -184,7 +184,8 @@ const videoEdits = [
   open({
     id: 'swap-element', name: 'Swap an element', kind: 'video', category: 'video-edit', featured: true,
     blurb: 'Change one thing in a video and keep the rest.',
-    runsOn: 'Bernini-R', workflow: 'bernini_swap',
+    // The reference graph runs only when a reference is attached.
+    runsOn: 'Bernini-R', workflow: 'bernini_swap_noref', imageWorkflow: 'bernini_swap',
     inputs: [
       clip,
       { id: 'change', type: 'text', label: 'What to change', placeholder: 'The red car' },
@@ -202,16 +203,27 @@ const videoEdits = [
     inputs: [
       { id: 'video', type: 'video', label: 'Motion video' },
       { id: 'image', type: 'image', label: 'Who performs it' },
+      { id: 'background', type: 'choice', label: 'Background', default: 'studio', options: [
+        { id: 'studio', label: 'Studio', text: 'a clean, softly lit studio backdrop' },
+        { id: 'street', label: 'City street', text: 'a busy city street in daylight' },
+        { id: 'beach', label: 'Beach', text: 'a sunny beach with gentle waves behind' },
+        { id: 'stage', label: 'Stage', text: 'a concert stage with colored spotlights' },
+        { id: 'park', label: 'Park', text: 'a green park on a calm afternoon' },
+        { id: 'rooftop', label: 'Rooftop', text: 'a city rooftop at sunset' },
+      ] },
       note,
     ],
-    prompt: 'The character from the image performs the exact movements, gestures and expressions from the motion video while keeping their own face, outfit and look. {note}',
+    // Wan Animate 2 takes the motion from the video and the look from the prompt, which must not
+    // describe motion. The background comes from the prompt too, not from either input.
+    prompt: 'Character appearance: the person from the image, with their own face, hair, outfit and look. Background: {background}. {note}',
     settings: { aspect: 'auto' },
     cover: covers.rose,
   }),
   open({
     id: 'face-swap-video', name: 'Video face swap', kind: 'video', category: 'video-edit', hub: 'face',
     blurb: 'Swap the face in a video for your own face or a saved character.',
-    runsOn: 'Wan 2.2 Animate Mix', workflow: 'wan22_animate_face_swap',
+    // Bernini-R with the BFS head swap LoRAs, which a Pod downloads: Comfy Cloud does not have them.
+    runsOn: 'Bernini-R head swap', workflow: 'bernini_headswap',
     inputs: [
       clip,
       { id: 'source', type: 'choice', label: 'New face', default: 'photo', options: [

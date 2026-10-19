@@ -3,6 +3,8 @@ import { clamp, trimRange } from '../../../shared/widgetInputs.js'
 import Upload from './Upload.jsx'
 import { canvasBlob, uploadMedia } from './media.js'
 
+const two = (n) => Number(n.toFixed(2))
+
 export default function Video({ value, onChange, setError }) {
   const player = useRef(null)
   const [busy, setBusy] = useState(false)
@@ -47,8 +49,9 @@ export default function Video({ value, onChange, setError }) {
       }} />
     <fieldset className="widget-fieldset" disabled={busy || !duration}>
       <div className="widget-controls">
+        {/* Bounds round like the value: an end shown as 2.07 over a max of 2.0667 would block the form's submit. */}
         {['start', 'end'].map((key) => <label className="widget-control" key={key}>{key === 'start' ? 'Start (seconds)' : 'End (seconds)'}
-          <input type="number" min={key === 'end' ? trim.start + 0.01 : 0} max={key === 'start' ? Math.max(0, trim.end - 0.01) : duration} step="0.01" value={Number(trim[key].toFixed(2))} onChange={(e) => { if (e.target.value !== '') setTrim(key, Number(e.target.value)) }} />
+          <input type="number" min={key === 'end' ? two(trim.start + 0.01) : 0} max={two(key === 'start' ? Math.max(0, trim.end - 0.01) : duration)} step="0.01" value={two(trim[key])} onChange={(e) => { if (e.target.value !== '') setTrim(key, Number(e.target.value)) }} />
         </label>)}
         <label className="widget-control">Preview frame <input type="range" min="0" max={duration} step="0.01" value={clamp(time, 0, duration)} onChange={(e) => { const n = Number(e.target.value); player.current.pause(); player.current.currentTime = n; setTime(n) }} /><output>{time.toFixed(2)}s</output></label>
       </div>

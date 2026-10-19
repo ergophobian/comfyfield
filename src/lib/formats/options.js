@@ -14,7 +14,7 @@ export function bindingValue(values, binding) {
 export function stepModel(format, step, values) {
   step = selectedStep(format, step, values)
   if (step.model) return models.find((m) => m.id === step.model)
-  return { id: `format:${format.id}:${step.id}`, provider: step.provider, model: step.endpoint, workflow: step.workflow, kind: step.kind || format.kind, name: format.runsOn || format.name }
+  return { id: `format:${format.id}:${step.id}`, provider: step.provider, model: step.endpoint, workflow: step.workflow, ...(step.imageWorkflow && { imageWorkflow: step.imageWorkflow }), kind: step.kind || format.kind, name: format.runsOn || format.name }
 }
 
 export function stepOptions(format, step, values) {

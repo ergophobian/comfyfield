@@ -6,7 +6,7 @@ export function defineFormat(format) {
     ...format,
     steps: format.steps || [{
       id: 'generate',
-      ...(format.engine === 'comfy' ? { provider: 'comfy', workflow: format.workflow } : { provider: 'fal', endpoint: format.model }),
+      ...(format.engine === 'comfy' ? { provider: 'comfy', workflow: format.workflow, ...(format.imageWorkflow && { imageWorkflow: format.imageWorkflow }) } : { provider: 'fal', endpoint: format.model }),
       kind: format.kind,
       prompt: format.prompt || '',
       params: format.params || {},

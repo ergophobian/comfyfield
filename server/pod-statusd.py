@@ -23,7 +23,7 @@ HF = E.get('CF_HF_BASE', 'https://huggingface.co')
 TOKEN = E.get('POD_TOKEN', '')
 PORT = int(E.get('CF_STATUS_PORT', '8190'))
 TICK = float(E.get('CF_TICK', '15'))
-DIRS = ('checkpoints', 'diffusion_models', 'text_encoders', 'vae', 'loras', 'upscale_models', 'latent_upscale_models')
+DIRS = ('checkpoints', 'diffusion_models', 'text_encoders', 'vae', 'loras', 'upscale_models', 'latent_upscale_models', 'clip_vision')
 # Runtimes the boot script wrote an installer for, and where each one writes machine.json when it is ready.
 RUNTIME_HOMES = {'freevideo': E.get('CF_FREEVIDEO_HOME', '/workspace/freevideo')}
 CFG = {
