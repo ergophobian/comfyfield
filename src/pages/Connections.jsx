@@ -37,7 +37,14 @@ function Provider({ id, info, state, onSaved }) {
       {info.fields.filter((f) => !(id === 'comfy' && f.id === 'url' && ['cloud', 'pod'].includes(values.mode || state?.mode))).map((f) => (
         <div className="field" key={f.id}>
           <label htmlFor={`${id}-${f.id}`}>{f.label}</label>
-          {f.options ? <select className="sb-select" id={`${id}-${f.id}`} value={values[f.id] || state?.[f.id] || 'local'} onChange={(e) => setValues((v) => ({ ...v, [f.id]: e.target.value }))}>
+          {f.toggle ? (
+            // On unless the saved value is off; a change is saved with the card.
+            <button type="button" id={`${id}-${f.id}`} className={`switch${(values[f.id] ?? (state?.[f.id] === false ? 'off' : 'on')) === 'on' ? ' on' : ''}`}
+              aria-pressed={(values[f.id] ?? (state?.[f.id] === false ? 'off' : 'on')) === 'on'}
+              onClick={() => setValues((v) => ({ ...v, [f.id]: (v[f.id] ?? (state?.[f.id] === false ? 'off' : 'on')) === 'on' ? 'off' : 'on' }))}>
+              <i />{f.note}
+            </button>
+          ) : f.options ? <select className="sb-select" id={`${id}-${f.id}`} value={values[f.id] || state?.[f.id] || 'local'} onChange={(e) => setValues((v) => ({ ...v, [f.id]: e.target.value }))}>
             {f.options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select> : <input
             id={`${id}-${f.id}`}

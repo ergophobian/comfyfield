@@ -216,7 +216,7 @@ function mount(server, harness) {
         const status = core.pod().status()
         const cloud = mode === 'cloud' || mode === 'pod'
         const suggest = cloud && status.phase === 'none' && status.connected ? await core.podSuggestion() : null
-        return send(res, 200, { ...status, mode: cloud ? 'cloud' : mode || 'local', instant: Boolean(key), suggest })
+        return send(res, 200, { ...status, mode: cloud ? 'cloud' : mode || 'local', instant: Boolean(key), auto: core.podAutoStart(), suggest })
       }
       if (url.pathname === '/api/pod/quote') return send(res, 200, await podQuote(url.searchParams.get('workflow')))
       if (url.pathname.startsWith('/api/pod/') && req.method === 'POST') return send(res, 200, await podAction(url.pathname.slice('/api/pod/'.length), await body(req)))

@@ -23,7 +23,7 @@ export const providers = {
   fal: { env: ['FAL_KEY'], fields: ['key'] },
   google: { env: ['GEMINI_API_KEY'], fields: ['key'] },
   elevenlabs: { env: ['ELEVENLABS_API_KEY'], fields: ['key'] },
-  runpod: { env: ['RUNPOD_API_KEY', 'RUNPOD_DAILY_CAP'], fields: ['key', 'cap'] },
+  runpod: { env: ['RUNPOD_API_KEY', 'RUNPOD_DAILY_CAP', 'RUNPOD_AUTO_START'], fields: ['key', 'cap', 'auto'] },
 }
 
 export const home = () => path.resolve(process.env.COMFYFIELD_HOME || '.', '.comfyfield')
@@ -84,6 +84,9 @@ function gpuSeconds(job, t0) {
   const end = new Date(job.completedAt ?? NaN).getTime()
   return Number.isFinite(start) && Number.isFinite(end) && end > start ? (end - start) / 1000 : (Date.now() - t0) / 1000
 }
+
+// On Generate, a run that needs a Pod starts one by itself unless the user turned this off.
+export const podAutoStart = () => config('runpod').auto !== 'off'
 
 export function pod() {
   if (!podOne) {
@@ -441,13 +444,14 @@ export function connections() {
   }))
   out.comfyRouter = { connected: Boolean(config('comfy').key) }
   const rp = config('runpod')
-  out.runpod = { connected: Boolean(rp.key) || sandboxed(), key: mask(rp.key), cap: pod().status().spend.cap, sandbox: sandboxed() }
+  out.runpod = { connected: Boolean(rp.key) || sandboxed(), key: mask(rp.key), cap: pod().status().spend.cap, auto: podAutoStart(), sandbox: sandboxed() }
   return out
 }
 
 export function saveConnection(id, values) {
   if (!providers[id]) throw Object.assign(new Error('Unknown provider'), { status: 400 })
   if (id === 'comfy' && values.mode && !['local', 'cloud'].includes(values.mode)) throw Object.assign(new Error('Choose Local or Comfy Cloud + Pod.'), { status: 400 })
+  if (id === 'runpod' && values.auto != null && !['on', 'off'].includes(values.auto)) throw Object.assign(new Error('Start Pods automatically is on or off.'), { status: 400 })
   if (id === 'runpod' && values.cap != null && !(parseFloat(values.cap) > 0)) throw Object.assign(new Error('The daily cap is a dollar amount above 0.'), { status: 400 })
   if (id === 'runpod' && values.cap != null) values = { ...values, cap: String(Math.round(parseFloat(values.cap) * 100) / 100) }
   const keys = readKeys()

@@ -820,3 +820,70 @@ await test('suggestion: Cloud runs are logged with their GPU time, and a busy ho
   core.logCloudRun({ seconds: 1, at: now })
   assert.equal(JSON.parse(fs.readFileSync(path.join(process.env.COMFYFIELD_HOME, '.comfyfield', 'cloud-runs.json'), 'utf8')).length, 4, 'the log keeps one day')
 })
+
+// ---- auto-start --------------------------------------------------------------------------------------
+
+await test('auto-start: Generate starts, resumes or keeps the Pod by itself, once for several runs', async () => {
+  const { run } = await import('../src/lib/providers.js')
+  const usePod = await import('../src/lib/usePod.js')
+  const model = { id: 'm', provider: 'comfy', kind: 'image', name: 'FLUX 3 Klein', workflow: 'flux3_klein_t2i' }
+  const opts = { prompt: 'A fox', aspect: '1:1' }
+  // A stub of the app's API: runs need a Pod until one exists.
+  const api = (start = {}) => {
+    const s = { phase: 'none', auto: true, connected: true, posts: [], ...start }
+    globalThis.fetch = async (url, init = {}) => {
+      const reply = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } })
+      if (url === '/api/pod') return reply({ phase: s.phase, auto: s.auto, connected: s.connected, spend: { today: 0, cap: 20 } })
+      if (url.startsWith('/api/pod/')) {
+        s.posts.push({ action: url.slice(9), body: JSON.parse(init.body || '{}') })
+        if (s.refuse) return reply({ error: s.refuse }, 402)
+        s.phase = url.endsWith('/keep') ? 'ready' : 'starting'
+        return reply({ phase: s.phase })
+      }
+      if (url === '/api/comfy/run') {
+        if (['none', 'paused', 'ending'].includes(s.phase)) return reply({ error: 'needs a Pod', code: 'needs_pod', reason: 'FLUX 3 Klein is not on Comfy Cloud yet' }, 409)
+        return reply({ files: [{ url: '/media/x.png', kind: 'image' }] })
+      }
+      throw new Error(`unexpected ${url}`)
+    }
+    return s
+  }
+
+  let s = api()
+  let waited = 0
+  const files = await run(model, opts, { onPod: () => waited++ })
+  assert.equal(files[0].url, '/media/x.png')
+  assert.deepEqual(s.posts, [{ action: 'start', body: { workflow: 'flux3_klein_t2i' } }], 'sized for the service: the start names its workflow')
+  assert.equal(waited, 1, 'the take is marked as waiting for the Pod')
+
+  s = api()
+  await Promise.all([run(model, opts), run(model, opts), run(model, opts)])
+  assert.equal(s.posts.length, 1, 'three runs share one start')
+
+  s = api({ phase: 'paused' })
+  await run(model, opts)
+  assert.deepEqual(s.posts.map((p) => p.action), ['resume'])
+  s = api({ phase: 'ending' })
+  await run(model, opts)
+  assert.deepEqual(s.posts.map((p) => p.action), ['keep'])
+
+  s = api({ refuse: 'Daily cap reached: $20.00 of $20.00 today. Raise it in Connections.' })
+  await assert.rejects(run(model, opts), /Daily cap reached/)
+
+  s = api({ auto: false })
+  const asked = run(model, opts)
+  await new Promise((r) => setTimeout(r, 20))
+  assert(usePod.usePod && s.posts.length === 0, 'with auto-start off nothing starts by itself')
+  s.phase = 'starting' // the sheet's button starts it
+  usePod.answerPod(true)
+  assert.equal((await asked)[0].url, '/media/x.png')
+})
+
+await test('auto-start: the RunPod switch is saved as on or off, and on by default', () => {
+  podMode()
+  assert.equal(core.podAutoStart(), true)
+  assert.equal(core.connections().runpod.auto, true)
+  core.saveConnection('runpod', { auto: 'off' })
+  assert.equal(core.podAutoStart(), false)
+  assert.throws(() => core.saveConnection('runpod', { auto: 'maybe' }), /on or off/)
+})
