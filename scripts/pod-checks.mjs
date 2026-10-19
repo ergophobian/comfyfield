@@ -1660,3 +1660,108 @@ print(json.dumps(seen))`
   assert.equal(r.status, 0, r.stderr)
   assert.deepEqual(JSON.parse(r.stdout), ['https://huggingface.co/org/r/resolve/main/sub/%5BWAN2.2-I2V%5DMy%20LoRA.safetensors'])
 })
+
+// ---- Image services ---------------------------------------------------------------------------------
+
+// A value for each input as a user would give it, so a format's own options fill its graph.
+function sampleInputs(format) {
+  const picture = { url: '/media/in.png', ratio: '4:5', name: 'in.png' }
+  const values = {}
+  for (const i of format.inputs) {
+    if (i.type === 'choice') values[i.id] = i.default ?? i.options[0].id
+    else if (i.type === 'count') values[i.id] = i.default ?? i.options[0]
+    else if (i.type === 'text' || i.type === 'longtext') values[i.id] = 'Sample'
+    else if (['image', 'draw', 'crop', 'face'].includes(i.type)) values[i.id] = { ...picture, faceUrl: '/media/face.png', box: { x: 0, y: 0, width: 1, height: 1 }, aspect: '1:1' }
+    else if (i.type === 'mask') values[i.id] = { ...picture, maskUrl: '/media/mask.png' }
+    else if (i.type === 'video') values[i.id] = { url: '/media/clip.mp4', ratio: '16:9', duration: 6, trim: { start: 1, end: 4 } }
+    else if (i.type === 'audio') values[i.id] = { url: '/media/voice.mp3', name: 'voice.mp3' }
+    else if (['character', 'product', 'brand'].includes(i.type)) values[i.id] = { type: i.type, name: 'Mia', images: ['/media/mia.png'] }
+  }
+  return values
+}
+
+await test('image services: every Comfy format that shows fills its graph with its own values and loads only listed files', async () => {
+  const { formats } = await import('../src/lib/formats/index.js')
+  const { stepOptions, stepModel, selectedStep } = await import('../src/lib/formats/options.js')
+  const { comfyVars, fill, dropOptional } = await import('../shared/mapping.js')
+  const { nearestAspect } = await import('../src/lib/formats/runner.js')
+  let n = 0
+  for (const f of formats) {
+    for (const raw of f.steps.filter((s) => !s.type && (s.provider === 'comfy' || s.targets))) {
+      for (const target of raw.targets ? Object.keys(raw.targets) : [null]) {
+        const values = { ...sampleInputs(f), ...(target ? { [raw.targetInput]: target } : {}) }
+        const step = selectedStep(f, raw, values)
+        const model = stepModel(f, step, values)
+        if (model?.provider !== 'comfy') continue
+        const o = stepOptions(f, step, values)
+        // A writer step writes the prompt when the format runs.
+        if (f.writer || f.steps.some((s) => s.type === 'writer')) o.prompt = 'Written prompt'
+        if (o.aspect === 'auto') o.aspect = nearestAspect(o.shape)
+        const vars = comfyVars(model.kind, o, model.sizes)
+        const w = vars.image && model.imageWorkflow ? model.imageWorkflow : model.workflow
+        const graph = dropOptional(readGraph(w), vars)
+        const unset = [...JSON.stringify(graph).matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1]).filter((k) => vars[k] == null || vars[k] === '')
+        assert.deepEqual(unset, [], `${f.id} leaves ${unset.join(', ')} empty in ${w}`)
+        modelFilesOf(fill(graph, vars))
+        n++
+      }
+    }
+  }
+  assert(n > 150, `checked ${n} format runs`)
+})
+
+await test('image services: a shape choice sets the canvas, and a character makes a look run its reference graph', async () => {
+  const { formats } = await import('../src/lib/formats/index.js')
+  const { stepOptions, stepModel } = await import('../src/lib/formats/options.js')
+  const { comfyVars, dropOptional } = await import('../shared/mapping.js')
+  const { nearestAspect } = await import('../src/lib/formats/runner.js')
+  const by = Object.fromEntries(formats.map((f) => [f.id, f]))
+  const run = (id, values) => {
+    const f = by[id]
+    const o = stepOptions(f, f.steps[0], { ...sampleInputs(f), ...values })
+    if (o.aspect === 'auto') o.aspect = nearestAspect(o.shape)
+    const model = stepModel(f, f.steps[0])
+    const vars = comfyVars(model.kind, o, model.sizes)
+    return { o, vars, workflow: vars.image && model.imageWorkflow ? model.imageWorkflow : model.workflow }
+  }
+  const wide = run('look-golden-hour', { shape: 'wide', character: null })
+  assert.deepEqual([wide.o.aspect, 'aspect' in wide.o.params, wide.vars.width, wide.vars.height, wide.workflow], ['16:9', false, 1280, 720, 'flux_look'])
+  const withMia = run('look-golden-hour', { shape: 'square' })
+  assert.deepEqual([withMia.workflow, withMia.vars.image, withMia.vars.width], ['flux_look_ref', '/media/mia.png', 1024], 'a picked character is the reference')
+  const qwen = run('look-cctv', { shape: 'wide', character: null })
+  assert.deepEqual([qwen.workflow, qwen.vars.width, qwen.vars.height], ['qwen_image21_t2i', 1664, 928], 'a Qwen look draws on its own canvas')
+  const tryOn = run('try-on', { garment2: null })
+  assert.deepEqual([tryOn.vars.image, tryOn.vars.image2, tryOn.vars.image3], ['/media/in.png', '/media/in.png', undefined])
+  assert(!JSON.stringify(dropOptional(readGraph('qwen_edit_try_on'), tryOn.vars)).includes('{{image3}}'), 'no second garment, no third loader')
+  assert.equal(run('influencer-post', {}).vars.count, 5, 'the posts count reaches the loop')
+  assert.equal(run('layers', { layers: 6 }).vars.layers, 6)
+  assert.equal(run('ad-variants', { variants: 8 }).vars.count, 8)
+})
+
+await test('image services: Cloud takes Edit 2511, Krea 2, Z-Image and HiDream at once; Qwen-Image 2.1 and Klein need a Pod that downloads their files and LoRAs', async () => {
+  podMode()
+  const client = {
+    assets: { fromBytes: (buf, o) => ({ asset: o.filename }) },
+    workflows: { fromFile: async (f) => ({ file: f, json: null, setInput() {} }) },
+    run: async () => ({ outputs: [{ type: 'image', contentType: 'image/png', name: 'out.png', toBytes: async () => Buffer.from('png') }] }),
+  }
+  const leases = []
+  const lease = async (o) => { leases.push(o); return { baseUrl: 'https://p-8189.proxy.runpod.net', token: 't', sandbox: false, signal: new AbortController().signal, reason: () => null, release() {} } }
+  const vars = { prompt: 'A fox', width: 1024, height: 1024, count: 1, seed: 1, image: 'data:image/png;base64,iVBORw0KGgo=', image2: 'data:image/png;base64,iVBORw0KGgo=', azimuth: 45, elevation: 0, zoom: 'medium', batch: 1, layers: 4 }
+  const run = (w, phase = 'none') => core.runComfy(w, vars, { createClient: () => client, lease, podPhase: async () => phase, podVram: () => 24, podRoom: () => ({}) })
+  for (const w of ['qwen2511_edit', 'qwen2511_relight', 'qwen_multiangle', 'qwen_image_layered', 'krea2_t2i', 'z_image', 'hidream']) {
+    assert.equal((await run(w))[0].kind, 'image', w)
+  }
+  assert.equal(leases.length, 0, 'Comfy Cloud has every file these load')
+  for (const w of ['qwen_edit', 'qwen_image_ref', 'qwen_image_logo', 'flux_look', 'flux_look_ref', 'klein_edit', 'klein_character_swap', 'storyboard']) {
+    await assert.rejects(run(w), (e) => e.code === 'needs_pod', `${w} needs a Pod`)
+  }
+  await run('qwen_multiangle', 'ready')
+  assert.deepEqual(leases.at(-1).files.filter((f) => f.dir === 'loras').map((f) => f.name).sort(),
+    ['Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors', 'qwen-image-edit-2511-multiple-angles-lora.safetensors'], 'a Pod downloads both LoRAs')
+  assert(leases.at(-1).files.every((f) => /^[0-9a-f]{64}$/.test(f.sha256)))
+  const { models } = await import('../src/lib/catalog.js')
+  for (const id of ['comfy-z-image-turbo', 'comfy-hidream-o1', 'comfy-qwen-image-edit-2511']) assert(!models.find((m) => m.id === id).pod, `${id} runs on Cloud`)
+  const { openModels } = await import('../src/lib/tools.js')
+  assert.deepEqual(['qwen-image-edit-2511', 'z-image-turbo', 'hidream-o1'].map((id) => openModels.find((m) => m.id === id).catalog), ['comfy-qwen-image-edit-2511', 'comfy-z-image-turbo', 'comfy-hidream-o1'])
+})

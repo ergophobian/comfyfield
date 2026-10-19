@@ -1,8 +1,10 @@
 // Looks: style presets for a whole picture. You describe the subject and the look does the rest.
 import { open, covers } from './parts.js'
+import { qwenImageSizes } from '../catalog.js'
 
 const subject = (placeholder) => ({ id: 'subject', type: 'longtext', label: 'What is in the picture', placeholder })
-// A picked character travels as a ref, so the prompt never names them.
+// A picked character travels as a reference picture, so the prompt never names them: with one,
+// the look runs its reference graph.
 const character = { id: 'character', type: 'character', label: 'Character', optional: true }
 const shape = (initial = 'portrait') => ({ id: 'shape', type: 'choice', label: 'Shape', default: initial, options: [
   { id: 'portrait', label: 'Portrait', note: '4:5', params: { aspect: '4:5' } },
@@ -12,7 +14,7 @@ const shape = (initial = 'portrait') => ({ id: 'shape', type: 'choice', label: '
 
 const look = ({ slug, name, group, blurb, placeholder, style, cover, initial, runsOn = 'FLUX 3 Image Klein', ...rest }) => open({
   id: `look-${slug}`, name, kind: 'image', category: 'looks', group, blurb,
-  runsOn, workflow: 'flux_look',
+  runsOn, workflow: 'flux_look', imageWorkflow: 'flux_look_ref',
   inputs: [subject(placeholder), character, shape(initial)],
   prompt: `{subject}. ${style}`,
   cover,
@@ -49,14 +51,14 @@ const photoLooks = [
     cover: covers.sky,
   }),
   look({
-    slug: 'magazine-90s', name: '90s magazine', group: 'Photo', runsOn: 'Qwen-Image 2.1', workflow: 'qwen_image',
+    slug: 'magazine-90s', name: '90s magazine', sizes: qwenImageSizes, imageWorkflow: 'qwen_image_ref', group: 'Photo', runsOn: 'Qwen-Image 2.1', workflow: 'qwen_image21_t2i',
     blurb: 'Put the subject on a glossy 1990s cover, masthead and all.',
     placeholder: 'A skateboarder in a bright windbreaker grinning at the camera',
     style: 'Styled as a glossy 1990s magazine cover. A bold invented masthead in heavy serif letters across the top, short stacked cover lines in condensed sans serif type down one side, a small price and issue tag in the corner. Bright direct flash, saturated primary colors, slightly overexposed skin, a playful confident pose against a solid color backdrop, visible print texture and a subtle halftone in the shadows.',
     cover: covers.rose,
   }),
   look({
-    slug: 'cctv', name: 'CCTV still', group: 'Photo', runsOn: 'Qwen-Image 2.1', workflow: 'qwen_image', initial: 'wide',
+    slug: 'cctv', name: 'CCTV still', sizes: qwenImageSizes, imageWorkflow: 'qwen_image_ref', group: 'Photo', runsOn: 'Qwen-Image 2.1', workflow: 'qwen_image21_t2i', initial: 'wide',
     blurb: 'Turn the scene into a grainy security camera frame.',
     placeholder: 'A raccoon pushing a shopping cart down an empty grocery aisle at 3am',
     style: 'A still frame from a ceiling mounted security camera. A high angle wide view with barrel distortion, a washed out low resolution image with blocky compression, muted greenish gray color, flat fluorescent light, a slight smear on anything moving, a white monospace timestamp and camera number in the top corner, the cold matter of fact look of surveillance footage.',
@@ -146,7 +148,7 @@ const artLooks = [
     cover: covers.rose,
   }),
   look({
-    slug: 'comic-book', name: 'Comic book', group: 'Art', runsOn: 'Qwen-Image 2.1', workflow: 'qwen_image',
+    slug: 'comic-book', name: 'Comic book', sizes: qwenImageSizes, imageWorkflow: 'qwen_image_ref', group: 'Art', runsOn: 'Qwen-Image 2.1', workflow: 'qwen_image21_t2i',
     blurb: 'Bold inks, halftone dots and a speech bubble.',
     placeholder: 'A kid in a homemade cape leaping off a backyard fence',
     style: 'A comic book panel. Bold black ink outlines with dynamic line weight, flat bright colors with a halftone dot texture, a dramatic angle with speed lines for energy, a hand lettered caption box at the top and a speech bubble with a short exclamation, slightly off register print color, the punchy look of a classic printed comic page.',

@@ -5,7 +5,7 @@ const characters = [
   open({
     id: 'character-sheet', name: 'Character sheet', kind: 'image', category: 'characters',
     blurb: 'Turn one photo into a sheet of angles and expressions.',
-    runsOn: 'Qwen-Image Edit 2511', workflow: 'qwen_character_sheet',
+    runsOn: 'Qwen-Image 2.1', workflow: 'qwen_character_sheet',
     inputs: [
       photo,
       { id: 'style', type: 'choice', label: 'Style', default: 'same', options: [
@@ -31,7 +31,7 @@ const characters = [
         { id: 'wide', label: 'Wide', text: 'A wide shot' },
       ] },
     ],
-    prompt: '{shot} of {character}. Scene: {scene}. Keep their face, hair, build and signature outfit exactly as in the reference, with lighting that fits the scene and photographic detail.',
+    prompt: '{shot} of the person in the first image. Scene: {scene}. Keep their face, hair, build and signature outfit exactly as in the reference, with lighting that fits the scene and photographic detail.',
     settings: { aspect: '1:1' },
     cover: covers.peach,
   }),
@@ -60,7 +60,7 @@ const characters = [
         { id: 'photo', label: 'Keep the photo outfit', text: 'wearing the outfit from the photo' },
       ] },
     ],
-    prompt: 'Replace the main person in this photo with {character}, {outfit}, with their face, hair and build exactly as in the reference. Keep the pose, framing, lighting, scene and everything else in the photo the same.',
+    prompt: 'Replace the main person in the first image with the person in the second image, {outfit}, with their face, hair and build exactly as in the second image. Keep the pose, framing, lighting, scene and everything else in the photo the same.',
     settings: { aspect: 'auto' },
     cover: covers.lilac,
   }),
@@ -104,7 +104,8 @@ const characters = [
         { id: 'cover', label: 'Cover', note: 'Wide, 16:9', text: 'wide cover images', params: { aspect: '16:9' } },
       ] },
     ],
-    prompt: 'A set of {posts} social media photos of {character} for a {niche} account, as {format}. Each post shows a different moment, setting and outfit that fits the niche, with the same face and identity in every image, natural candid light and an authentic phone photo feel.',
+    bindings: { count: 'posts' },
+    prompt: 'A set of {posts} social media photos of the person in the first image for a {niche} account, as {format}. Each post shows a different moment, setting and outfit that fits the niche, with the same face and identity in every image, natural candid light and an authentic phone photo feel.',
     settings: { aspect: '1:1' },
     cover: covers.rose,
   }),

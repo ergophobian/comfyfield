@@ -225,12 +225,14 @@ export function recipeOptions(recipe, values) {
   const prompt = recipe.prompt.replace(/\{(\w+)\}/g, (_, k) => fill[k] ?? '').replace(/[^\S\n]+/g, ' ').replace(/ *\n\s*/g, '\n').trim()
   const first = recipe.inputs.find((i) => i.type === 'image' || i.type === 'draw' || widgetTypes.includes(i.type))
   const slots = fileSlots(recipe, values)
+  // A shape choice sets the run's canvas; it is no input of the model.
+  const { aspect: shaped, ...rest } = params
   return {
-    ...widgets, prompt, caption: recipe.name, images, fields, params, count: 1,
+    ...widgets, prompt, caption: recipe.name, images, fields, params: rest, count: 1,
     ...(slots && { slots }),
     ...(Object.keys(inputs).length && { inputs }),
     ...(Object.keys(media).length && { media }), ...(refs.length && { refs }),
-    aspect: recipe.settings.aspect, duration: recipe.settings.duration, shape: first ? values[first.id]?.ratio : undefined,
+    aspect: shaped || recipe.settings.aspect, duration: recipe.settings.duration, shape: first ? values[first.id]?.ratio : undefined,
   }
 }
 

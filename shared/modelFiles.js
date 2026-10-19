@@ -79,6 +79,37 @@ export const MODEL_FILES = {
     sha256: 'd2e566ecac3f164cb1a6b63dc7d868d6678c9affa49fbceb3abe4f9458f89c8a' },
   'clip_vision_h.safetensors': { repo: 'Comfy-Org/Wan-Animate-2', path: 'clip_vision/clip_vision_h.safetensors', dir: 'clip_vision', gb: 1.26, vramGb: 0, cloud: true,
     sha256: '64a7ef761bfccbadbaa3da77366aac4185a6c58fa5de5f589b42a65bcc21f161' },
+  // Image services (research_notes/engine/t2i and qwen-edit), checked against the Hugging Face API and the Comfy Cloud listing on 2026-10-19.
+  'krea2_turbo_fp8_scaled.safetensors': { repo: 'Comfy-Org/Krea-2', path: 'diffusion_models/krea2_turbo_fp8_scaled.safetensors', dir: 'diffusion_models', gb: 13.14, vramGb: 24, cloud: true,
+    label: 'Krea 2 Turbo', sha256: 'eb4dd8c612cfd10f64f25b057e6e6bbcb5737c94a7372177e456dbf7579502f1' },
+  'qwen_image_vae.safetensors': { repo: 'Comfy-Org/Qwen-Image_ComfyUI', path: 'split_files/vae/qwen_image_vae.safetensors', dir: 'vae', gb: 0.25, vramGb: 0, cloud: true,
+    sha256: 'a70580f0213e67967ee9c95f05bb400e8fb08307e017a924bf3441223e023d1f' },
+  'z_image_turbo_bf16.safetensors': { repo: 'Comfy-Org/z_image_turbo', path: 'split_files/diffusion_models/z_image_turbo_bf16.safetensors', dir: 'diffusion_models', gb: 12.31, vramGb: 24, cloud: true,
+    label: 'Z-Image Turbo', sha256: '2407613050b809ffdff18a4ac99af83ea6b95443ecebdf80e064a79c825574a6' },
+  'qwen_3_4b.safetensors': { repo: 'Comfy-Org/z_image_turbo', path: 'split_files/text_encoders/qwen_3_4b.safetensors', dir: 'text_encoders', gb: 8.04, vramGb: 0, cloud: true,
+    sha256: '6c671498573ac2f7a5501502ccce8d2b08ea6ca2f661c458e708f36b36edfc5a' },
+  'ae.safetensors': { repo: 'Comfy-Org/z_image_turbo', path: 'split_files/vae/ae.safetensors', dir: 'vae', gb: 0.34, vramGb: 0, cloud: true,
+    sha256: 'afc8e28272cd15db3919bacdb6918ce9c1ed22e96cb12c4d5ed0fba823529e38' },
+  'hidream_o1_image_bf16.safetensors': { repo: 'Comfy-Org/HiDream-O1-Image', path: 'checkpoints/hidream_o1_image_bf16.safetensors', dir: 'checkpoints', gb: 16.37, vramGb: 24, cloud: true,
+    label: 'HiDream-O1-Image', sha256: '0520134a47e5b2bacea25804b2a6021413eb95945344b5a953aa14170edff1aa' },
+  'birefnet.safetensors': { repo: 'Comfy-Org/BiRefNet', path: 'background_removal/birefnet.safetensors', dir: 'background_removal', gb: 0.44, vramGb: 0, cloud: true,
+    label: 'BiRefNet', sha256: '9ab37426bf4de0567af6b5d21b16151357149139362e6e8992021b8ce356a154' },
+  'qwen_image_edit_2511_int8_convrot.safetensors': { repo: 'Comfy-Org/Qwen-Image-Edit_ComfyUI', path: 'split_files/diffusion_models/qwen_image_edit_2511_int8_convrot.safetensors', dir: 'diffusion_models', gb: 20.50, vramGb: 24, cloud: true,
+    sha256: '11b5af5ac601821d73930c84846c9a158e67177356daf927ce1c8d10f3963829' },
+  'qwen_2.5_vl_7b_fp8_scaled.safetensors': { repo: 'Comfy-Org/Qwen-Image_ComfyUI', path: 'split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors', dir: 'text_encoders', gb: 9.38, vramGb: 0, cloud: true,
+    sha256: 'cb5636d852a0ea6a9075ab1bef496c0db7aef13c02350571e388aea959c5c0b4' },
+  'Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors': { repo: 'lightx2v/Qwen-Image-Edit-2511-Lightning', path: 'Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors', dir: 'loras', gb: 0.85, vramGb: 0, cloud: true,
+    label: 'The Qwen-Image-Edit 2511 Lightning LoRA', sha256: '22226e8d05d354bb356627d428809f5afd7819399b077238a2b70a82883a904f' },
+  'qwen-image-edit-2511-multiple-angles-lora.safetensors': { repo: 'fal/Qwen-Image-Edit-2511-Multiple-Angles-LoRA', path: 'qwen-image-edit-2511-multiple-angles-lora.safetensors', dir: 'loras', gb: 0.30, vramGb: 0, cloud: true,
+    label: 'The Multiple-Angles LoRA', sha256: '42426ded4e25fd22879d9e198b857556445ef4ca56e8da3246d0345155bb6765' },
+  'qwen_image_layered_fp8mixed.safetensors': { repo: 'Comfy-Org/Qwen-Image-Layered_ComfyUI', path: 'split_files/diffusion_models/qwen_image_layered_fp8mixed.safetensors', dir: 'diffusion_models', gb: 20.53, vramGb: 24, cloud: true,
+    sha256: 'e68c406b1bc08c97382a46dce6ed46699bc18a0f50422d97952ee4e8b63ad50a' },
+  'qwen_image_layered_vae.safetensors': { repo: 'Comfy-Org/Qwen-Image-Layered_ComfyUI', path: 'split_files/vae/qwen_image_layered_vae.safetensors', dir: 'vae', gb: 0.25, vramGb: 0, cloud: true,
+    sha256: 'c5320595fc61859ccdd0282184208f7b781c983b8ce4c6bc3e7723a807d3d28d' },
+  'seedvr2_7b_int8_convrot.safetensors': { repo: 'Comfy-Org/SeedVR2', path: 'diffusion_models/seedvr2_7b_int8_convrot.safetensors', dir: 'diffusion_models', gb: 8.33, vramGb: 24, cloud: true,
+    sha256: '5aa0d25fc9d35e449b659d0c9a5dcb22e2a4fa04032101b95a39da42b32c1be6' },
+  'seedvr2_ema_vae_fp16.safetensors': { repo: 'Comfy-Org/SeedVR2', path: 'vae/seedvr2_ema_vae_fp16.safetensors', dir: 'vae', gb: 0.50, vramGb: 0, cloud: true,
+    sha256: '20678548f420d98d26f11442d3528f8b8c94e57ee046ef93dbb7633da8612ca1' },
 }
 
 // Which input of which loader names a file, and the ComfyUI folder it loads from.
@@ -95,6 +126,7 @@ export const LOADERS = {
   UpscaleModelLoader: { model_name: 'upscale_models' },
   LatentUpscaleModelLoader: { model_name: 'latent_upscale_models' },
   FreeVideoLoRA: { lora: 'loras' },
+  LoadBackgroundRemovalModel: { bg_removal_name: 'background_removal' },
 }
 
 // Runtimes a Pod installs for nodes that need more than model files. Comfy Cloud has no FreeVideo.

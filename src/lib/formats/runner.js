@@ -2,6 +2,15 @@ import { createEngine } from '../flowEngine.js'
 import { initialValues, missingInputs, visibleInputs } from '../recipes.js'
 import { stepModel, stepOptions } from './options.js'
 import { validateFormat } from './validate.js'
+import { aspectSize } from '../catalog.js'
+
+// The canvas whose ratio is nearest a picture's 'w:h' shape, or square without one.
+export function nearestAspect(shape) {
+  const [w, h] = String(shape || '').split(':').map(Number)
+  if (!(w > 0 && h > 0)) return '1:1'
+  const gap = (a) => Math.abs(Math.log((w / h) / (aspectSize[a][0] / aspectSize[a][1])))
+  return Object.keys(aspectSize).reduce((best, a) => (gap(a) < gap(best) ? a : best), '1:1')
+}
 
 export function compileFormat(format, userInputs = {}) {
   const problems = validateFormat(format)
@@ -76,7 +85,8 @@ export async function runFormat(format, inputs, { run, writePrompt, onChange, co
         // An upstream picture takes the first slot; the format's other pictures keep theirs.
         if (options.slots) options.slots = { ...options.slots, pictures: [unit.image, ...options.slots.pictures.slice(1)] }
       }
-      if (target.provider === 'comfy' && options.aspect === 'auto') options.aspect = '1:1'
+      // A graph needs a canvas: 'auto' takes the one nearest the first picture's shape.
+      if (target.provider === 'comfy' && options.aspect === 'auto') options.aspect = nearestAspect(options.shape)
       return run(target, options, { formatId: format.id, stepId: formatStep.id, formatRunId: batch, prompt: options.prompt })
     },
   })
