@@ -1,15 +1,266 @@
-Host: pi-windows (native Windows, Node v24.11.1)
-Workspace: C:/Users/User/comfyfield-issue-101
-Git Bash first in the validation process path
-Commands: npx vite build, then node scripts/verify.mjs
-Both commands exited with status 0. Checks run sequentially; Chrome stays headless.
+Validated source: eeb9534737f68bea754c1ba849076ddf6db90b91
+Rebased main: 7ee3b1c
+Host: pi-windows
+Scratch clone: D:/comfyfield-lanes/issue101-review-20261019
+Git Bash precedes the WSL bash launcher in the validation process path.
+Build and verification both exited with status 0. Commands ran sequentially.
+No real keys, provider calls or paid generations. Screenshots use synthetic mock media.
 
-✓ built in 2.01s
+Command: node scripts/studio-checks.mjs
+Studio checks ok: 436 runner cases; upscale modes/scale/size, all six video edits and trim, speech language/delivery/voice, Drama 3/Qwen3-TTS, photo/video lipsync and 33/33 mixed media looks. No provider calls.
+
+Command: npx vite build
+vite v5.4.21 building for production...
+transforming...
+Γ£ô 336 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                     0.71 kB Γöé gzip:   0.38 kB
+dist/assets/index-BDaWpOfr.css    215.87 kB Γöé gzip:  34.02 kB
+dist/assets/index-ClKk8MIL.js   1,249.20 kB Γöé gzip: 369.67 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+Γ£ô built in 2.06s
+
+Command: node scripts/verify.mjs
+Running agent-checks.mjs
+ok    server generation preserves reference routing for fal and Google, with mocked transport
+ok    shared flow persistence, conflict detection and connection validation
+ok    running flows permit selection but refuse definition changes
+ok    adapter session, message events, MCP attachment and canvas presence
+ok    generation waits, one-shot approval, rejection and paid prompt guard
+ok    stale plans refused, server execution preserves gate and fills-gap rules
+ok    stop cancels approvals and blocks subsequent tools
+ok    MCP protocol discovers and invokes shared flow tools, validates input
+ok    Claude SDK adapter resumes, normalizes events and interrupts
+ok    Codex handshake, MCP configuration, events and denied shell approvals
+ok    local routes reject cross-origin calls, remote hosts and invalid bridge tokens
+ok    real HTTP/SSE and stdio MCP bridge carry fake adapter tools through approval
+ok    an ended agent turn invalidates pending approvals without spending
+all agent checks passed; no paid calls
+Running comfy-checks.mjs
+Γ£ö Comfy Router submit, Retry-After polling, native result and credentials (12.6768ms)
+Γ£ö Comfy Router rate limits and a result that is still pending (1.4683ms)
+Γ£ö Comfy Router explains credits and completed failures; never collects failed jobs (1.4908ms)
+Γ£ö Router discovery preserves pagination and encodes the cursor (0.7416ms)
+Γ£ö Shared CLI generation preserves the requested Router image count (4.5224ms)
+Γ£ö Key gating and model input mapping (15.2528ms)
+Γ£ö Local image upload, partner credentials, submission and history (5.9234ms)
+Γ£ö Cloud uses the SDK workflow and asset interfaces and saves downloaded media (7.1158ms)
+Γ£ö Connection checks are read-only for Local and Cloud (2.6731ms)
+Γ£ö Real Cloud SDK against mocked HTTP: asset upload, submit, poll, download and credits (11.7194ms)
+Γä╣ tests 10
+Γä╣ suites 0
+Γä╣ pass 10
+Γä╣ fail 0
+Γä╣ cancelled 0
+Γä╣ skipped 0
+Γä╣ todo 0
+Γä╣ duration_ms 71.389
+Running comfy-format-check.mjs
+ltx_i2v: API graph, placeholders and links valid
+h3_i2v: API graph, placeholders and links valid
+Running flow-checks.mjs
+ok    topological order and loop detection
+ok    csv first column, header skipped, quotes kept intact
+ok    rows x takes fan out, rule 1: run stops at the approval gate
+ok    approve only marks, empty never goes straight to sent
+ok    rules 2 and 3: send runs only downstream, never upstream, passes the image
+ok    send with no picks sends everything; frozen output
+ok    rule 4: gates do not cascade (second gate holds the next model)
+ok    fan-out from one gate: nodes with output are skipped
+ok    rule 5: Run fills gaps only, failures retried, kept outputs untouched
+ok    rule 5: Regenerate all wipes and re-runs everything, gates reset
+ok    rule 6: Rerun re-runs one node, no cascade, blocked behind an unsent gate
+ok    gate rerun regenerates feeder and returns to empty/reviewing
+ok    stop halts: output stays null and nothing runs
+ok    concurrency never exceeds 3
+ok    fan-in waits for every input
+ok    writer gathers images and note, waits for review, sends edited text without rewriting
+ok    writer works with approval gates, persistence, rerun and regenerate all
+ok    writer failures retry without rendering and respect upstream gates
+ok    widget inputs hold until ready and pass structured values through approval gates
+ok    widget references supplement image rows instead of adding unwanted generations
+ok    Stitch waits for Send, preserves clip order and trim options, and fills gaps only
+ok    Stitch retries failures, waits for every input, and preserves outputs on Send
+all 22 passed
+Running format-check.mjs
+Hidden explainer: generate: Missing Comfy workflow explainer
+Hidden faceless: generate: Missing Comfy workflow faceless
+Hidden motion-graphics: generate: Missing Comfy workflow motion_graphics
+Hidden ai-influencer-video: generate: Missing Comfy workflow influencer_video
+Hidden dub: generate: Missing Comfy workflow dub
+Hidden ugc-ad: generate: Missing Comfy workflow ugc_ad
+Hidden link-to-ads: generate: Missing Comfy workflow link_to_ads
+Hidden hook-check: generate: Missing Comfy workflow qwen3_vl_hook_check
+Hidden whats-next: generate: Missing Comfy workflow whats_next
+Hidden likeness-record: generate: Missing Comfy workflow likeness_record
+Hidden outfit-reel: generate: Missing Comfy workflow beat_cut_reel
+Hidden beat-cut-outfits: generate: Missing Comfy workflow beat_cut_reel
+Hidden sticker-match-cut: generate: Missing Comfy workflow sticker_match_cut
+Hidden breakdown: generate: Missing Comfy workflow breakdown
+Hidden asmr-add-on: generate: Missing Comfy workflow asmr_product
+Hidden asmr-promo: generate: Missing Comfy workflow asmr_product
+Hidden rap-video: generate: Missing Comfy workflow rap_video
+Hidden add-text-video: generate: Missing Comfy workflow add_text_video
+Hidden url-to-video: generate: Missing Comfy workflow link_to_video
+Hidden story-video: generate: Missing Comfy workflow story_video
+Hidden script-to-video: generate: Missing Comfy workflow script_to_video
+Hidden podcast-clips: generate: Missing Comfy workflow podcast_clips
+Hidden clip-to-shorts: generate: Missing Comfy workflow clip_to_shorts
+Hidden event-video: generate: Missing Comfy workflow event_video
+Hidden anniversary-video: generate: Missing Comfy workflow event_video
+Hidden voice-over-video: generate: Missing Comfy workflow voice_over_video
+Hidden scene-3d: generate: Missing Comfy workflow qwen3_blender_scene
+Hidden game: generate: Missing Comfy workflow qwen3_coder_game
+Hidden world-3d: generate: Missing Comfy workflow hyworld2
 Format check ok: 452 runnable, 29 hidden, 10 migrated recipes. No generation calls.
+Running format-runner-checks.mjs
 Format runner checks ok: 31 recipe cases, approval and batching, concurrency, schema rejection, Comfy placeholders, writer handoff and provider failures. No network calls.
-Studio checks ok: 423 runner cases; upscale modes/scale/size, all six video edits and trim, speech language/delivery/voice, Drama 3/Qwen3-TTS, photo/video lipsync and 33/33 mixed media looks. No provider calls.
-Studio UI mock checks ok: 18 shared runner submissions, five studios, all six video edits, real upload URLs, language/delivery/voice/trim vars, Library persistence, disabled unavailable paths and 390px layouts. 16 labeled mock screenshots saved to research_notes/screenshots/issue-101. No provider calls.
+Running graph-check.mjs
+Graph check: 108/108 graphs fit ComfyUI v0.41.1 and the listed packs.
+Running integration-checks.mjs
+ok    all 45 effect chains, three rendering choices, unchanged instructions, editable review gates and provider payloads
+ok    inpaint mask, selected face, trim and crop mapping
+ok    server Writer edits and widget inputs survive restart, downstream Stitch runs once, combined MCP accepts new nodes
+ok    agent flow plans include Writer cost, approval precedes writing, and output remains held for review
+All cross-lane integration checks passed. No keys or provider calls.
+Running pod-checks.mjs
+Γ£ö boot script: start command fits, decodes and holds no secrets (5.0401ms)
+Γ£ö boot script: env carries the token and timers, the app guard fires first (0.1515ms)
+Γ£ö status server: binds its port without a hostname lookup (70.5838ms)
+Γ£ö status server: watchdog rules (68.0319ms)
+Γ£ö status server: auth, status, heartbeat, downloads and a boot-deadline terminate (4418.1158ms)
+Γ£ö lifecycle: start walks the ladder on capacity refusals only, and sends no account key to the Pod (5.7591ms)
+Γ£ö lifecycle: a VRAM floor skips small GPUs; a key error stops the walk; all refused names it (10.7584ms)
+Γ£ö lifecycle: a 5xx that still created a Pod is found and adopted (2.5694ms)
+Γ£ö lifecycle: phases, heartbeats with the Pod token, and spend (5.8484ms)
+Γ£ö lifecycle: the daily cap refuses a new Pod but leaves a running one alone (6.1013ms)
+Γ£ö lifecycle: guards terminate an idle, silent, failed or old Pod, but not a busy one (29.7443ms)
+Γ£ö lifecycle: Pause and Terminate end after the queue, or now; Keep cancels the end (14.2362ms)
+Γ£ö lifecycle: a paused Pod charges disk only, and a resume without a GPU says what to do (7.9603ms)
+Γ£ö lifecycle: a restarted server adopts its Pod, and a lost pod.json is recovered by name (7.4729ms)
+Γ£ö lifecycle: a lease waits for a starting Pod, downloads missing files and reports failures (4.5932ms)
+Γ£ö lifecycle: the sandbox runs a whole Pod life without RunPod (18.314ms)
+Γ£ö runs: model files come from the loader nodes and the file list (39.9038ms)
+Γ£ö runs: the Pod runs a workflow through the real SDK with the Pod token, and the Comfy key only pays partner nodes (7.2969ms)
+Γ£ö runs: no Pod, an ended Pod and the sandbox each fail the run with a reason (28.6111ms)
+Γ£ö runs: Comfy Cloud + Pod is a saved choice, and the needs of a workflow size the Pod (11.9726ms)
+Γ£ö fixes: self-terminate succeeds only when RunPod clearly accepts it (652.1159ms)
+Γ£ö fixes: a ComfyUI restart after ready does not terminate a busy Pod (5.6397ms)
+Γ£ö fixes: a Pod found gone after a long gap costs only its watchdog minutes, split by day (13.2104ms)
+Γ£ö fixes: a slow refresh during a resume does not bring back the old start time (38.7662ms)
+Γ£ö fixes: the CLI and MCP see a new Pod at once, and never remove a newer Pod record (1111.4295ms)
+Γ£ö fixes: requests from other sites are refused (67.5294ms)
+Γ£ö routing: Comfy Cloud takes runs at once, a ready Pod takes every run, and a run Cloud cannot take needs a Pod (27.0719ms)
+Γ£ö models: every bundled workflow fills all its placeholders, and the new models size their canvas (63.9198ms)
+Γ£ö routing: a ready Pod too small for the run sends it to Cloud, or says to start a bigger Pod (7.59ms)
+Γ£ö models: every bundled workflow is a linked API graph that saves media (43.7193ms)
+Γ£ö suggestion: Cloud runs are logged with their GPU time, and a busy hour suggests a Pod (16.6767ms)
+Γ£ö auto-start: Generate starts, resumes or keeps the Pod by itself, once for several runs (43.2024ms)
+Γ£ö auto-start: the RunPod switch is saved as on or off, and on by default (5.9579ms)
+Γ£ö freevideo: the boot script pins FreeVideo, loads only its node, and installs it outside the boot (35.94ms)
+Γ£ö freevideo: the status server installs on request, reports it, counts it as busy and retries a failure (2385.9ms)
+Γ£ö freevideo: a Pod started for H3 installs FreeVideo at boot; a lease waits for it and reports a failure (5.2798ms)
+Γ£ö freevideo: H3 runs stock on Cloud and small Pods, and on FreeVideo on a 96 GB Pod with room (18.8165ms)
+Γ£ö freevideo: the model list makes FreeVideo graphs Pod-only, sizes their Pod and downloads their LoRAs (3.5238ms)
+Γ£ö freevideo: the sandbox installs FreeVideo on a Pod started for it, and again after a resume (17.9565ms)
+Γ£ö cloud only: ComfyUI runs on Comfy Cloud and Pods by default, and saved settings cannot pick a local ComfyUI (11.2799ms)
+Γ£ö video edits: a clip travels with its trim, and a saved character stands in for a photo (0.291ms)
+Γ£ö video edits: each graph trims, sizes and caps itself from its clip (3.7737ms)
+Γ£ö video edits: Cloud takes the edits it has every file for; the face swap needs a Pod that downloads both LoRAs (16.8283ms)
+Γ£ö video edits: local ComfyUI gets the clip through its upload route (5.2528ms)
+Γ£ö video edits: the Genjutsu formats run on these graphs and show in the app (44.8802ms)
+Γ£ö pods page: a GPU picked by hand is the only one tried, and it must fit (4.6175ms)
+Γ£ö pods page: FreeVideo installs only on a 96 GB GPU, with a disk big enough for it (3.0214ms)
+Γ£ö pods page: the idle shutdown is a setting each Pod keeps, for the app and its own watchdog (16.6495ms)
+Γ£ö pods page: the page lists sizes with the models that need them, and checks a start from it (60.9489ms)
+Γ£ö tiers: Budget is the lowest cost per job, Balanced faster within 1.5 times that, Performance the fastest (0.4495ms)
+Γ£ö tiers: stock moves free GPUs first, Balanced falls back to Budget, and twins are named (0.2107ms)
+Γ£ö tiers: a job takes the longest reference time of its model files (0.0905ms)
+Γ£ö tiers: a start walks the tier order on capacity refusals, and records the tier (6.3847ms)
+Γ£ö generation type: Instant never uses a Pod, Session never uses Cloud, and unset keeps the old routing (9.3804ms)
+Γ£ö tiers: Session tiers may start the faster cards, and an NVFP4 run stays on Blackwell (4.0517ms)
+Γ£ö generation type: approving a Session switches the user to it, on the tier they picked (1.8837ms)
+Γ£ö node packs: a graph's node classes decide its packs, and a pack Comfy Cloud has keeps the graph on Cloud (2.2885ms)
+Γ£ö node packs: the boot script installs packs before ComfyUI starts, keeps them on the volume and whitelists them (32.9906ms)
+Γ£ö node packs: the status server installs a pack, restarts ComfyUI with an empty queue to load it, and says when it did not load (9331.5347ms)
+Γ£ö disk: the status server makes room by removing the files used longest ago, never one a run needs (85.0722ms)
+Γ£ö lease: a run asks for its files while the Pod boots, keeps what other runs need, and says how much room it lacks (4.3338ms)
+Γ£ö prepare: a Pod gets ready for services before their first run, at start or while it runs (9.6143ms)
+Γ£ö remove: the Pods page frees one model file; a file a run uses stays (3.4824ms)
+Γ£ö services: the Pods page offers each service once, with its files, size and GPU (9.1684ms)
+Γ£ö uploads: a graph takes more pictures, a mask and audio, and an optional node drops with its links (1.8377ms)
+Γ£ö 3D: a .glb a graph saves is kept as a 3D model (3.2558ms)
+Γ£ö sandbox: packs install and load, a Pod gets ready for a service, makes room and removes a file (27.2536ms)
+Γ£ö downloads: a file whose path has brackets or spaces is fetched with an encoded URL (68.05ms)
+Γ£ö image services: every Comfy format that shows fills its graph with its own values and loads only listed files (207.4882ms)
+Γ£ö image services: a shape choice sets the canvas, and a character makes a look run its reference graph (1.5717ms)
+Γ£ö image services: Cloud takes Edit 2511, Krea 2, Z-Image and HiDream at once; Qwen-Image 2.1 and Klein need a Pod that downloads their files and LoRAs (27.4319ms)
+Γ£ö video services: no format runs on the paid partner node or on LTX Video 2B (0.7093ms)
+Γ£ö video services: presets and the H3, LTX-2.5 and Wan 2.2 graphs go to Comfy Cloud at once (28.8104ms)
+Γ£ö video services: an effect LoRA and a chain need a Pod, which downloads that LoRA; first and last frame runs on FreeVideo on 96 GB (11.3236ms)
+Γ£ö video services: each video format draws on its model's canvas, a draft is smaller, and arrows, seconds and a brand reach their graphs (0.635ms)
+Γ£ö edits and enhance: Bernini-R, VOID, SCAIL-2, SeedVR2, RIFE and BiRefNet go to Comfy Cloud; reshoot installs WanVideoWrapper on a Pod; Qwen backgrounds need a Pod (45.5731ms)
+Γ£ö edits and enhance: upscale and background removal pick their graph by choice; reshoot uses ReCamMaster names (0.7001ms)
+Γ£ö pack files: a pack's own files download with it, pinned, and the Pod links its folder from ComfyUI to the volume (65.2496ms)
+Γ£ö pack files: the status server downloads into a pack's subfolder, lists and removes it, and loads Foley only after its files (4731.4473ms)
+Γ£ö pack files: the Pods page lists and removes a pack's file by its subfolder, and a run sends each file's exact size (5.0321ms)
+Γ£ö audio and 3D: Chatterbox, MiniMax Music 3 and Stable Audio 3 go to Comfy Cloud; Foley, InfiniteTalk, Drama 3, Qwen3-TTS and TRELLIS.2 need a Pod with their packs and files (34.9623ms)
+Γ£ö audio and 3D: formats send Chatterbox its own language labels, a script or a recording, lyrics or an instrumental, and TRELLIS.2 its values (7.2625ms)
+Γä╣ tests 82
+Γä╣ suites 0
+Γä╣ pass 82
+Γä╣ fail 0
+Γä╣ cancelled 0
+Γä╣ skipped 0
+Γä╣ todo 0
+Γä╣ duration_ms 24510.8888
+Running stitch-checks.mjs
+check synthetic fixtures with ffmpeg on win32/x64
+check input validation and system ffmpeg preview
+check decoded frame pixels and audio samples
+ok    trims, mixed formats, ordering, captions, clip audio, preview and Library export
+check bundled preview with D:\comfyfield-lanes\issue101-review-20261019\node_modules\ffmpeg-static\ffmpeg.exe
+Encode clip 1
+Join clips and mix audio
+ok    bundled ffmpeg, portrait aspect, music looping, volume and fades
+check CLI subprocess
+ok    CLI stitch and automatic Library export
+check MCP tools
+ok    MCP stitch and export_stitch tools
+check HTTP routes
+ok    HTTP upload, preview, media playback and Library export
+All Stitch checks passed. Synthetic fixtures retained at D:\comfyfield-lanes\issue101-review-20261019\.comfyfield\stitch-checks\clips with spaces ' FwjdbA
+Running studio-checks.mjs
+Studio checks ok: 436 runner cases; upscale modes/scale/size, all six video edits and trim, speech language/delivery/voice, Drama 3/Qwen3-TTS, photo/video lipsync and 33/33 mixed media looks. No provider calls.
+Running theme-check.mjs
+theme ok
+Running widget-checks.mjs
+Widget geometry, format values, upload limits and video byte ranges passed
+Running writer-check.mjs
+ok    Google request uses effect instructions, ordered inline images, note and target
+ok    text-only writer works without optional inputs
+ok    local prompt route returns text and validation errors
+ok    invalid inputs fail before network calls
+ok    provider errors, empty, filtered and truncated responses fail clearly
+ok    missing Google key reaches the explicit Router fallback stub without a call
+all 6 writer checks passed (mocked network only)
+Running agent-ui-checks.mjs
+Agent UI fixture: http://127.0.0.1:49450/assistant
+Agent UI fixture: http://127.0.0.1:49451/assistant
+agent-ui: Chrome pid 24292, DevTools port 49452, profile D:\comfyfield-lanes\issue101-review-20261019\outputs\browser-profiles\agent-ui-7Ofdyp
+ok    desktop/mobile chat, approval, canvas presence, stop, conflicting edits and missing-agent setup; screenshots saved
+Running format-ui-check.mjs
+format-ui: Chrome pid 12508, DevTools port 59713, profile D:\comfyfield-lanes\issue101-review-20261019\outputs\browser-profiles\format-ui-PMJw1E
+UI mock checks ok: app runner, shared sheet, Library after reload, 390px layout, Create generation/feed/camera presets and hidden invalid route. Four mocked generations and one reviewed writer request; no provider calls. Six screenshots saved.
+Running studio-ui-check.mjs
+studio-ui: Chrome pid 9060, DevTools port 64955, profile D:\comfyfield-lanes\issue101-review-20261019\outputs\browser-profiles\studio-ui-LAAA71
+Studio UI mock checks ok: 23 mocked generation requests, five studios, all six video edits, real upload URLs, language/delivery/voice/trim vars, Library persistence, disabled unavailable paths and 390px layouts. 25 labeled mock screenshots saved to research_notes/screenshots/issue-101. No provider calls.
+Running widget-browser-checks.mjs
+widget-browser: Chrome pid 12660, DevTools port 65245, profile D:\comfyfield-lanes\issue101-review-20261019\outputs\browser-profiles\widget-browser-7q91My
+Browser checks passed: PNG mask pixels, face crop and Library pick, aspect ratio, keyboard, touch, video trim/poster, four Flow nodes, 390px layout
 18/18 check scripts passed
-
-Build emitted the existing bundle size advisory (chunk over 500 kB).
-No paid generations or provider calls were used for this evidence.
