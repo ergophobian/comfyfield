@@ -679,6 +679,11 @@ export const schemas = {
       "prompt",
       "seed"
     ],
+    "birefnet_qwen_background_cloud": [
+      "image",
+      "prompt",
+      "seed"
+    ],
     "birefnet_video_matte": [
       "duration",
       "start",
@@ -690,6 +695,13 @@ export const schemas = {
       "video"
     ],
     "birefnet_video_matte_scene": [
+      "background",
+      "duration",
+      "seed",
+      "start",
+      "video"
+    ],
+    "birefnet_video_matte_scene_cloud": [
       "background",
       "duration",
       "seed",
@@ -734,7 +746,22 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "flux3_klein_t2i_cloud": [
+      "count",
+      "height",
+      "prompt",
+      "seed",
+      "width"
+    ],
     "flux_character_set": [
+      "count",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "flux_character_set_cloud": [
       "count",
       "height",
       "image",
@@ -749,6 +776,13 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "flux_look_cloud": [
+      "count",
+      "height",
+      "prompt",
+      "seed",
+      "width"
+    ],
     "flux_look_ref": [
       "count",
       "height",
@@ -757,7 +791,19 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "flux_look_ref_cloud": [
+      "count",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
     "flux_trellis2": [
+      "prompt",
+      "seed"
+    ],
+    "flux_trellis2_cloud": [
       "prompt",
       "seed"
     ],
@@ -824,6 +870,13 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "h3_loop_cloud": [
+      "duration",
+      "height",
+      "prompt",
+      "seed",
+      "width"
+    ],
     "h3_lora_i2v": [
       "frames",
       "image",
@@ -873,6 +926,14 @@ export const schemas = {
       "width"
     ],
     "h3_truck_ad": [
+      "duration",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "h3_truck_ad_cloud": [
       "duration",
       "height",
       "image",
@@ -955,7 +1016,21 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "klein_character_cloud": [
+      "count",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
     "klein_character_swap": [
+      "image",
+      "image2",
+      "prompt",
+      "seed"
+    ],
+    "klein_character_swap_cloud": [
       "image",
       "image2",
       "prompt",
@@ -974,7 +1049,27 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "klein_edit_canvas_cloud": [
+      "count",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "klein_edit_cloud": [
+      "image",
+      "prompt",
+      "seed"
+    ],
     "klein_h3": [
+      "frames",
+      "image",
+      "motion",
+      "prompt",
+      "seed"
+    ],
+    "klein_h3_cloud": [
       "frames",
       "image",
       "motion",
@@ -989,7 +1084,22 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "klein_headshot_cloud": [
+      "count",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
     "klein_ltx": [
+      "frames",
+      "image",
+      "motion",
+      "prompt",
+      "seed"
+    ],
+    "klein_ltx_cloud": [
       "frames",
       "image",
       "motion",
@@ -1006,7 +1116,22 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "klein_moodboard_cloud": [
+      "count",
+      "height",
+      "image",
+      "image2",
+      "image3",
+      "prompt",
+      "seed",
+      "width"
+    ],
     "klein_retouch": [
+      "image",
+      "prompt",
+      "seed"
+    ],
+    "klein_retouch_cloud": [
       "image",
       "prompt",
       "seed"
@@ -1080,13 +1205,35 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "qwen_character_sheet_cloud": [
+      "count",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
     "qwen_edit": [
       "count",
       "image",
       "prompt",
       "seed"
     ],
+    "qwen_edit_cloud": [
+      "count",
+      "image",
+      "prompt",
+      "seed"
+    ],
     "qwen_edit_mockup": [
+      "count",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "qwen_edit_mockup_cloud": [
       "count",
       "height",
       "image",
@@ -1101,6 +1248,13 @@ export const schemas = {
       "prompt",
       "seed"
     ],
+    "qwen_edit_outpaint_cloud": [
+      "count",
+      "image",
+      "pad",
+      "prompt",
+      "seed"
+    ],
     "qwen_edit_place_product": [
       "count",
       "image",
@@ -1108,7 +1262,21 @@ export const schemas = {
       "prompt",
       "seed"
     ],
+    "qwen_edit_place_product_cloud": [
+      "count",
+      "image",
+      "image2",
+      "prompt",
+      "seed"
+    ],
     "qwen_edit_style_ref": [
+      "count",
+      "image",
+      "image2",
+      "prompt",
+      "seed"
+    ],
+    "qwen_edit_style_ref_cloud": [
       "count",
       "image",
       "image2",
@@ -1123,7 +1291,21 @@ export const schemas = {
       "prompt",
       "seed"
     ],
+    "qwen_edit_try_on_cloud": [
+      "count",
+      "image",
+      "image2",
+      "image3",
+      "prompt",
+      "seed"
+    ],
     "qwen_edit_variants": [
+      "count",
+      "image",
+      "prompt",
+      "seed"
+    ],
+    "qwen_edit_variants_cloud": [
       "count",
       "image",
       "prompt",
@@ -1138,7 +1320,23 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "qwen_h3_cloud": [
+      "frames",
+      "height",
+      "image",
+      "motion",
+      "prompt",
+      "seed",
+      "width"
+    ],
     "qwen_image21_t2i": [
+      "count",
+      "height",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "qwen_image21_t2i_cloud": [
       "count",
       "height",
       "prompt",
@@ -1157,7 +1355,22 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "qwen_image_logo_cloud": [
+      "count",
+      "height",
+      "prompt",
+      "seed",
+      "width"
+    ],
     "qwen_image_ref": [
+      "count",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "qwen_image_ref_cloud": [
       "count",
       "height",
       "image",
@@ -1172,6 +1385,13 @@ export const schemas = {
       "prompt",
       "seed"
     ],
+    "qwen_ltx_cloud": [
+      "frames",
+      "image",
+      "motion",
+      "prompt",
+      "seed"
+    ],
     "qwen_mockup_ltx": [
       "frames",
       "image",
@@ -1179,7 +1399,25 @@ export const schemas = {
       "prompt",
       "seed"
     ],
+    "qwen_mockup_ltx_cloud": [
+      "frames",
+      "image",
+      "motion",
+      "prompt",
+      "seed"
+    ],
     "qwen_multi_h3": [
+      "frames",
+      "image",
+      "image2",
+      "image3",
+      "image4",
+      "image5",
+      "motion",
+      "prompt",
+      "seed"
+    ],
+    "qwen_multi_h3_cloud": [
       "frames",
       "image",
       "image2",
@@ -1203,6 +1441,11 @@ export const schemas = {
       "prompt",
       "seed"
     ],
+    "qwen_restore_cloud": [
+      "image",
+      "prompt",
+      "seed"
+    ],
     "qwen_shots_grid": [
       "image",
       "seed"
@@ -1219,7 +1462,25 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "qwen_try_on_h3_cloud": [
+      "frames",
+      "height",
+      "image",
+      "image2",
+      "image3",
+      "image4",
+      "motion",
+      "prompt",
+      "seed",
+      "width"
+    ],
     "qwen_zoom_grid": [
+      "count",
+      "image",
+      "prompt",
+      "seed"
+    ],
+    "qwen_zoom_grid_cloud": [
       "count",
       "image",
       "prompt",
@@ -1273,6 +1534,13 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "storyboard_cloud": [
+      "count",
+      "height",
+      "prompt",
+      "seed",
+      "width"
+    ],
     "storyboard_ref": [
       "count",
       "height",
@@ -1281,7 +1549,20 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "storyboard_ref_cloud": [
+      "count",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
     "trellis2_character": [
+      "image",
+      "prompt",
+      "seed"
+    ],
+    "trellis2_character_cloud": [
       "image",
       "prompt",
       "seed"
@@ -1384,6 +1665,10 @@ export const schemas = {
       "image2",
       "image3"
     ],
+    "klein_moodboard_cloud": [
+      "image2",
+      "image3"
+    ],
     "ltx25_multishot": [
       "image"
     ],
@@ -1394,7 +1679,13 @@ export const schemas = {
     "qwen_edit_try_on": [
       "image3"
     ],
+    "qwen_edit_try_on_cloud": [
+      "image3"
+    ],
     "qwen_h3": [
+      "image"
+    ],
+    "qwen_h3_cloud": [
       "image"
     ],
     "qwen_multi_h3": [
@@ -1403,7 +1694,18 @@ export const schemas = {
       "image4",
       "image5"
     ],
+    "qwen_multi_h3_cloud": [
+      "image2",
+      "image3",
+      "image4",
+      "image5"
+    ],
     "qwen_try_on_h3": [
+      "image2",
+      "image3",
+      "image4"
+    ],
+    "qwen_try_on_h3_cloud": [
       "image2",
       "image3",
       "image4"
