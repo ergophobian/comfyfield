@@ -29,6 +29,8 @@ import Upscale from './pages/Upscale.jsx'
 import EditVideo from './pages/EditVideo.jsx'
 import Reframe from './pages/Reframe.jsx'
 import Assistant from './pages/Assistant.jsx'
+import Skills from './pages/Skills.jsx'
+import SkillPage from './pages/SkillPage.jsx'
 import Library from './pages/Library.jsx'
 import Connections from './pages/Connections.jsx'
 import Pods from './pages/Pods.jsx'
@@ -96,6 +98,8 @@ export default function App() {
           <Route path="/upscale" element={<Upscale />} />
           <Route path="/reframe" element={<Reframe />} />
           <Route path="/assistant" element={<Assistant />} />
+          <Route path="/skills" element={<Skills />} />
+          <Route path="/skills/:id" element={<SkillPage />} />
           <Route path="/assets" element={<Library gens={gens} />} />
           <Route path="/library" element={<Navigate to={`/assets${search}`} replace />} />
           <Route path="/flows" element={<Flows picker={picker} />} />

@@ -9,6 +9,7 @@ export const barItems = [
   link('explore'),
   ...menus.map((m) => ({ ...m, menu: m.id })),
   link('apps'),
+  link('skills'),
   { id: 'div', divider: true },
   link('cinema-studio'),
   link('influencer'),

@@ -54,6 +54,7 @@ export const tools = [
   { id: 'marketing', name: 'Marketing studio', menu: 'studio', route: '/marketing', blurb: 'Product videos and ads from one brief' },
   { id: 'ads', name: 'Ads studio', menu: ['studio', 'top'], route: '/ads', blurb: 'Branded ads from a link', badge: 'New' },
   { id: 'assistant', name: 'Assistant', menu: 'studio', route: '/assistant', blurb: 'Describe it, get a plan with costs, approve it' },
+  { id: 'skills', name: 'Skills', menu: 'top', route: '/skills', blurb: 'Ready-made jobs your agent runs on ComfyField' },
   { id: 'assets', name: 'Assets', menu: 'top', route: '/assets', blurb: 'Your generations and saved elements' },
 ]
 
