@@ -241,7 +241,7 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
   }
 
   function downloads() {
-    return Object.entries(m.status?.downloads || {}).map(([k, v]) => ({ file: k.split('/').pop(), dir: k.split('/')[0], ...v }))
+    return Object.entries(m.status?.downloads || {}).map(([k, v]) => ({ file: k.slice(k.lastIndexOf('/') + 1), dir: k.slice(0, k.lastIndexOf('/')), ...v }))
   }
   const runtimeName = (id) => RUNTIMES[id]?.name || id
   function runtimes() {
@@ -455,7 +455,8 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
 
   // Files other runs on the Pod still need, which making room must not remove.
   const kept = (except) => [...new Set([...m.leases].filter((x) => x !== except).flatMap((x) => x.files).map((f) => `${f.dir}/${f.name}`))]
-  const wire = (files) => files.map(({ repo, path: p, dir, name, sha256, gb }) => ({ repo, path: p, dir, name, ...(sha256 ? { sha256 } : {}), ...(gb ? { bytes: Math.round(gb * 1e9) } : {}) }))
+  const wire = (files) => files.map(({ repo, path: p, dir, name, sha256, gb, bytes }) => ({ repo, path: p, dir, name, ...(sha256 ? { sha256 } : {}),
+    ...(Number.isInteger(bytes) ? { bytes } : gb ? { bytes: Math.round(gb * 1e9) } : {}) }))
 
   // Asks the Pod for files and runtimes it lacks. A failed install starts again on this request.
   async function ask(rec, files, need, except) {
@@ -510,7 +511,9 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
     const rec = record()
     if (!rec || rec.pausedAt || !m.status) throw fail('The Pod is not running.', 409)
     if (kept(null).includes(`${dir}/${name}`)) throw fail(`A run is using ${name}.`, 409)
-    const r = await call(`${statusUrl(rec.id)}/models/${encodeURIComponent(dir)}/${encodeURIComponent(name)}`, { method: 'DELETE', token: rec.token })
+    // A pack's own files sit in subfolders: each part of the folder travels encoded on its own.
+    const at = `${dir.split('/').map(encodeURIComponent).join('/')}/${encodeURIComponent(name)}`
+    const r = await call(`${statusUrl(rec.id)}/models/${at}`, { method: 'DELETE', token: rec.token })
     if (!r.ok && r.status !== 404) throw fail(`The Pod could not remove ${name}: ${errorText(r.data) || `HTTP ${r.status}`}`, r.status === 409 ? 409 : 502)
     await refresh().catch(() => null)
     return status()

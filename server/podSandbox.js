@@ -27,6 +27,9 @@ export function sandboxFetch({ file, now = Date.now, mode = process.env.COMFYFIE
   const save = (pods) => { fs.mkdirSync(path.dirname(file()), { recursive: true }); fs.writeFileSync(file(), JSON.stringify(pods, null, 2)) }
   const json = (data, status = 200) => new Response(data == null ? null : JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } })
 
+  // A pack's own files sit in subfolders, so the name is what follows the last slash.
+  const keyed = (k) => ({ dir: k.slice(0, k.lastIndexOf('/')), name: k.slice(k.lastIndexOf('/') + 1) })
+
   function podStatus(pod) {
     const t = now()
     const up = t - pod.bootAt
@@ -39,7 +42,7 @@ export function sandboxFetch({ file, now = Date.now, mode = process.env.COMFYFIE
       const total = Math.round(d.gb * 1e9)
       downloads[k] = { state: done >= 1 ? 'done' : 'downloading', bytes: Math.round(total * done), total, error: null }
       lastWork = Math.max(lastWork, d.at + DOWNLOAD)
-      if (done >= 1) models.push({ dir: k.split('/')[0], name: k.split('/')[1], bytes: total, usedAt: Math.round((d.used || d.at) / 1000) })
+      if (done >= 1) models.push({ ...keyed(k), bytes: total, usedAt: Math.round((d.used || d.at) / 1000) })
     }
     const runtimes = {}
     for (const [k, e] of Object.entries(pod.runtimes || {})) {
@@ -121,16 +124,16 @@ export function sandboxFetch({ file, now = Date.now, mode = process.env.COMFYFIE
         if (short <= 0) break
         if (keep.has(k) || now() - d.at < DOWNLOAD) continue
         delete pod.downloads[k]
-        pod.evicted = [...(pod.evicted || []), { dir: k.split('/')[0], name: k.split('/')[1], bytes: Math.round(d.gb * 1e9), at: Math.round(now() / 1000) }].slice(-20)
+        pod.evicted = [...(pod.evicted || []), { ...keyed(k), bytes: Math.round(d.gb * 1e9), at: Math.round(now() / 1000) }].slice(-20)
         short -= d.gb
       }
       for (const f of fresh) pod.downloads[`${f.dir}/${f.name}`] = short > 0 ? { at: now(), gb: 0, failed: Math.round(short * 10) / 10 } : { at: now(), gb: f.bytes ? f.bytes / 1e9 : 6 }
       save(pods)
       return json({ downloads: podStatus(pod).downloads }, 202)
     }
-    const mm = /^\/models\/([\w]+)\/(.+)$/.exec(u.pathname)
+    const mm = /^\/models\/(.+\/.+)$/.exec(u.pathname)
     if (mm && method === 'DELETE') {
-      const k = `${mm[1]}/${decodeURIComponent(mm[2])}`
+      const k = decodeURIComponent(mm[1])
       if (!pod.downloads[k] || pod.downloads[k].failed) return json({ error: 'not on the Pod' }, 404)
       if (now() - pod.downloads[k].at < DOWNLOAD) return json({ error: 'it is still downloading' }, 409)
       delete pod.downloads[k]

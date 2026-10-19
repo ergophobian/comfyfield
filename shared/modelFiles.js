@@ -192,6 +192,45 @@ export const MODEL_FILES = {
     label: 'RealESRGAN', sha256: '37f9a931c215f040aa6d50f711f2cb115f713c46df1d0d6469a8bd7bfe9a60bb' },
   'rife_v4.26.safetensors': { repo: 'Comfy-Org/frame_interpolation', path: 'frame_interpolation/rife_v4.26.safetensors', dir: 'frame_interpolation', gb: 0.02, vramGb: 24, cloud: true,
     label: 'RIFE 4.26', sha256: '151874592c877740e5db11522f4514df569eeafb0a0fcb2696f16e9e8d317c94' },
+  // Audio, talking heads (research_notes/engine/audio-talk/) and TRELLIS.2 3D (research_notes/engine/3d/), 2026-10-19.
+  'minimax_music3_dit_fp16.safetensors': { repo: 'Comfy-Org/MiniMax-Music-3', path: 'diffusion_models/minimax_music3_dit_fp16.safetensors', dir: 'diffusion_models', gb: 4.91, vramGb: 24, cloud: true,
+    label: 'MiniMax Music 3', sha256: '45494a2b6b69af115902ff28eaf54118d19067aa54da01000f3e3efce7ba0e34' },
+  'minimax_music3_text_encoder_pruned_int8_convrot.safetensors': { repo: 'Comfy-Org/MiniMax-Music-3', path: 'text_encoders/minimax_music3_text_encoder_pruned_int8_convrot.safetensors', dir: 'text_encoders', gb: 9.20, vramGb: 0, cloud: true,
+    sha256: '010b7416d2336a08c711bc22ee65849c9623069ddb7d89bec011a75699e52014' },
+  'minimax_music3_dav.safetensors': { repo: 'Comfy-Org/MiniMax-Music-3', path: 'vae/minimax_music3_dav.safetensors', dir: 'vae', gb: 0.22, vramGb: 0, cloud: true,
+    sha256: '2a32155b769be01445fcc2a8663b910fc9e1751e18dc1c3ec528064512d9ef0c' },
+  'stable_audio_3_medium.safetensors': { repo: 'Comfy-Org/stable-audio-3', path: 'checkpoints/stable_audio_3_medium.safetensors', dir: 'checkpoints', gb: 9.22, vramGb: 24, cloud: true,
+    label: 'Stable Audio 3 Medium', sha256: '48d9c65e290e7bcd5194e0633bfc2424a59ee9683f5c2d58762d997b7d8ce0b5' },
+  't5gemma_b_b_ul2.safetensors': { repo: 'Comfy-Org/stable-audio-3', path: 'text_encoders/t5gemma_b_b_ul2.safetensors', dir: 'text_encoders', gb: 1.19, vramGb: 0, cloud: true,
+    sha256: '1e1eba25be8872edb0d3c6335c6658fd6388e7b14b60da6e454e404cfcd8150e' },
+  'qwen3.5_2b_bf16.safetensors': { repo: 'Comfy-Org/Qwen3.5', path: 'text_encoders/qwen3.5_2b_bf16.safetensors', dir: 'text_encoders', gb: 4.55, vramGb: 0, cloud: true,
+    sha256: 'aa33250c4fc64891ddfaba3a314fd9542ea371843c387178b425fbcc5ed680b1' },
+  'Wan2_1-I2V-14B-480p_fp8_e4m3fn_scaled_KJ.safetensors': { repo: 'Kijai/WanVideo_comfy_fp8_scaled', path: 'I2V/Wan2_1-I2V-14B-480p_fp8_e4m3fn_scaled_KJ.safetensors', dir: 'diffusion_models', gb: 16.64, vramGb: 24, cloud: true,
+    label: 'InfiniteTalk', sha256: '2ff922282cd84589702e6e8c26e083d1160bfc2b217dd44e1ae2688441dc495d' },
+  'Wan2_1-InfiniTetalk-Single_fp16.safetensors': { repo: 'Kijai/WanVideo_comfy', path: 'InfiniteTalk/Wan2_1-InfiniTetalk-Single_fp16.safetensors', dir: 'diffusion_models', gb: 5.13, vramGb: 0, cloud: true,
+    label: 'InfiniteTalk', sha256: 'bf212c5c647eaf1c019b2158d2edf4a360d97e38b746c4bac994fee485e09fc3' },
+  'umt5-xxl-enc-bf16.safetensors': { repo: 'Kijai/WanVideo_comfy', path: 'umt5-xxl-enc-bf16.safetensors', dir: 'text_encoders', gb: 11.36, vramGb: 0, cloud: true,
+    sha256: '4fa971faf306cad919033d5bbe192e571dc08452f800cbf2ec3c73977c01b2cc' },
+  'wav2vec2-chinese-base_fp16.safetensors': { repo: 'Kijai/wav2vec2_safetensors', path: 'wav2vec2-chinese-base_fp16.safetensors', dir: 'wav2vec2', gb: 0.19, vramGb: 0, cloud: false,
+    label: 'The wav2vec2 audio encoder', sha256: '000813e441020f18cff844c969d2d5d4adc2a5ce46b2db1f23950b05d88805b4' },
+  'hunyuanvideo_foley.pth': { repo: 'tencent/HunyuanVideo-Foley', path: 'hunyuanvideo_foley.pth', dir: 'hunyuan_foley', gb: 10.30, vramGb: 24, cloud: false,
+    label: 'HunyuanVideo-Foley', sha256: '2900021f8ee562a8175b2f1a3fafb06b9e9e848f11f4c6d4d5d72e126f7c0475' },
+  'vae_128d_48k.pth': { repo: 'tencent/HunyuanVideo-Foley', path: 'vae_128d_48k.pth', dir: 'vae', gb: 1.49, vramGb: 0, cloud: false,
+    label: 'HunyuanVideo-Foley', sha256: '07e6139ff33bd21ba8a7a7f40ed24aab13ac0d100cd686f8a9f3e03dc5251cb1' },
+  'drama3_fp8experts_bf16.safetensors': { repo: 'PedroMarinhoDev/Drama-3-ComfyUI', path: 'drama3_fp8experts_bf16.safetensors', dir: 'diffusion_models', gb: 38.58, vramGb: 24, cloud: false,
+    label: 'Fish Audio Drama 3', sha256: '5d053a200cf0f77faa13c087c78ef200c3b53f288451a6b9e7a8fa421c03a67b' },
+  'drama3_codec.safetensors': { repo: 'PedroMarinhoDev/Drama-3-ComfyUI', path: 'drama3_codec.safetensors', dir: 'vae', gb: 1.57, vramGb: 0, cloud: false,
+    label: 'Fish Audio Drama 3', sha256: '4fecf102907a48414230da9a74d72d07c3a92368eab53fab655797837bddf5ae' },
+  'qwen3_asr_0.6b_bf16.safetensors': { repo: 'PedroMarinhoDev/Qwen3-ASR-ComfyUI', path: 'qwen3_asr_0.6b_bf16.safetensors', dir: 'asr', gb: 1.56, vramGb: 0, cloud: false,
+    label: 'Qwen3-ASR', sha256: 'eb350ce7510a538eb136d8320db470a0761713c47de6e12b0fca090d4fc15ecf' },
+  'trellis_2_int8_convrot.safetensors': { repo: 'Comfy-Org/TRELLIS.2', path: 'diffusion_models/trellis_2_int8_convrot.safetensors', dir: 'diffusion_models', gb: 5.25, vramGb: 24, cloud: false,
+    label: 'TRELLIS.2', sha256: 'd01952ad137213f6a868f86b6b877026276f84af5eec23069217475a0bad3a31' },
+  'trellis_2_shape_vae_bf16.safetensors': { repo: 'Comfy-Org/TRELLIS.2', path: 'vae/trellis_2_shape_vae_bf16.safetensors', dir: 'vae', gb: 1.10, vramGb: 0, cloud: false,
+    label: 'TRELLIS.2', sha256: 'de0cb4949a76c59ee5c091a995a69bcc8c51d5aeda939f0c641a50d2a72341f4' },
+  'trellis_2_texture_vae_bf16.safetensors': { repo: 'Comfy-Org/TRELLIS.2', path: 'vae/trellis_2_texture_vae_bf16.safetensors', dir: 'vae', gb: 0.95, vramGb: 0, cloud: false,
+    label: 'TRELLIS.2', sha256: '714e5ebf094a610e12a8e3b5175c18a62f37f6ea4218acb6073644456b73ab0e' },
+  'dino_v3_vit_l.safetensors': { repo: 'Comfy-Org/TRELLIS.2', path: 'clip_vision/dino_v3_vit_l.safetensors', dir: 'clip_vision', gb: 1.21, vramGb: 0, cloud: false,
+    label: 'TRELLIS.2', sha256: '5cb785e458de7c460579082418af81f5c62380c181599344bdc60898c63468ee' },
 }
 
 // Which input of which loader names a file, and the ComfyUI folder it loads from.
@@ -208,6 +247,15 @@ export const LOADERS = {
   UpscaleModelLoader: { model_name: 'upscale_models' },
   LatentUpscaleModelLoader: { model_name: 'latent_upscale_models' },
   FreeVideoLoRA: { lora: 'loras' },
+  MultiTalkModelLoader: { model: 'diffusion_models' },
+  WanVideoLoraSelect: { lora: 'loras' },
+  WanVideoTextEncodeCached: { model_name: 'text_encoders' },
+  Wav2VecModelLoader: { model: 'wav2vec2' },
+  HunyuanFoleyModelLoader: { foley_checkpoint_name: 'hunyuan_foley' },
+  LoadDACHunyuanVAE: { vae_name: 'vae' },
+  Drama3Loader: { model_name: 'diffusion_models' },
+  Drama3CodecLoader: { codec_name: 'vae' },
+  Qwen3ASRLoader: { model_name: 'asr' },
   OpticalFlowLoader: { model_name: 'optical_flow' },
   WanVideoModelLoader: { model: 'diffusion_models' },
   WanVideoVAELoader: { model_name: 'vae' },
@@ -230,15 +278,106 @@ const ENVS = {
 // `cloud` marks packs Comfy Cloud preinstalls (comfy.org/cloud/supported-nodes), so a graph that needs
 // only those still runs there at once. `classes` are the nodes ComfyField's graphs use; the Pod counts
 // a pack ready once ComfyUI lists them. Ids are lower-case letters and digits (they travel in the Pod env).
+// `files` are model files a pack reads from its own folder under ComfyUI/models instead of a loader's,
+// keyed by folder and name; a Pod links that folder to the volume and downloads them with the pack.
+// A file with `for` downloads only for graphs that use that node.
+// `before` lists files that must be on the disk before ComfyUI loads the pack. `pip` adds pinned
+// packages its requirements leave out; `skip` drops requirements it must not install.
 export const NODE_PACKS = {
   vhs: { name: 'VideoHelperSuite', repo: 'Kosinkadink/ComfyUI-VideoHelperSuite', commit: '4d907bee61e92c2e65af3bd6383a4e4d356126d1', date: '2026-09-02',
     folder: 'ComfyUI-VideoHelperSuite', classes: ['VHS_SelectEveryNthImage', 'VHS_DuplicateImages', 'VHS_GetImageCount', 'VHS_VideoCombine'], cloud: true },
   kjnodes: { name: 'KJNodes', repo: 'kijai/ComfyUI-KJNodes', commit: '17195fcfa8a05f601b766a0f09c9733284f47416', date: '2026-10-15',
     folder: 'ComfyUI-KJNodes', classes: ['ColorMatch'], cloud: true },
-  // ReCamMaster runs only in this wrapper. Newest commit on main (no tags), five months older than
-  // ComfyUI v0.41.1, so the first reshoot on a Pod is its test.
+  // ReCamMaster and InfiniteTalk's loop run only in this wrapper. Newest commit on main (no tags), five
+  // months older than ComfyUI v0.41.1, so the first reshoot and talking head on a Pod are its test.
+  // The MultiTalk nodes are an optional module of it, so the Pod waits for them by name.
   wanvideo: { name: 'WanVideoWrapper', repo: 'kijai/ComfyUI-WanVideoWrapper', commit: '088128b224242e110d3906c6750e9a3a348a659b', date: '2026-05-24',
-    folder: 'ComfyUI-WanVideoWrapper', classes: ['WanVideoModelLoader', 'WanVideoVAELoader', 'WanVideoEncode', 'WanVideoDecode', 'WanVideoTextEmbedBridge', 'WanVideoReCamMasterDefaultCamera', 'WanVideoReCamMasterGenerateOrbitCamera', 'WanVideoReCamMasterCameraEmbed', 'WanVideoSampler'], cloud: true },
+    folder: 'ComfyUI-WanVideoWrapper', classes: ['WanVideoModelLoader', 'WanVideoVAELoader', 'WanVideoEncode', 'WanVideoDecode', 'WanVideoTextEmbedBridge', 'WanVideoReCamMasterDefaultCamera', 'WanVideoReCamMasterGenerateOrbitCamera', 'WanVideoReCamMasterCameraEmbed', 'WanVideoSampler',
+      'WanVideoLoraSelect', 'WanVideoBlockSwap', 'WanVideoTextEncodeCached', 'WanVideoClipVisionEncode', 'WanVideoImageToVideoMultiTalk', 'MultiTalkModelLoader', 'Wav2VecModelLoader', 'MultiTalkWav2VecEmbeds'], cloud: true },
+  // The audio packs (research_notes/engine/audio-talk/). Chatterbox and Qwen-TTS would download their
+  // files themselves on first use, unpinned; files placed first are used as they are.
+  chatterbox: { name: 'Fill-ChatterBox', repo: 'filliptm/ComfyUI_Fill-ChatterBox', commit: 'f7d7a16187430abcaf91a3039b9c83aa9960816a', date: '2026-08-24',
+    folder: 'ComfyUI_Fill-ChatterBox', classes: ['FL_ChatterboxMultilingualTTS', 'FL_ChatterboxVC'], cloud: true,
+    // Its tokenizer skips Japanese and Mandarin text normalization without these, which the formats offer.
+    pip: ['pykakasi==2.3.0', 'spacy-pkuseg==1.0.1'],
+    files: {
+      'chatterbox/chatterbox_multilingual/ve.pt': { for: 'FL_ChatterboxMultilingualTTS', repo: 'ResembleAI/chatterbox', path: 've.pt', gb: 0.01, bytes: 5698626,
+        sha256: '4b16d836bc598509860f6fa068165a8bb5e9ac84f05582dfcf278a5a372879f1' },
+      'chatterbox/chatterbox_multilingual/t3_mtl23ls_v2.safetensors': { for: 'FL_ChatterboxMultilingualTTS', repo: 'ResembleAI/chatterbox', path: 't3_mtl23ls_v2.safetensors', gb: 2.14, bytes: 2143989752,
+        sha256: 'b1237586127ce98e7800a68e49938eb5092846862aabcb6e17b2fda7889a6c75' },
+      'chatterbox/chatterbox_multilingual/s3gen.pt': { for: 'FL_ChatterboxMultilingualTTS', repo: 'ResembleAI/chatterbox', path: 's3gen.pt', gb: 1.06, bytes: 1057165844,
+        sha256: '9b9ff07e60b20c136e2b1b3d7563a24604e8d2c4c267888d1ee929dd0151d2a3' },
+      'chatterbox/chatterbox_multilingual/grapheme_mtl_merged_expanded_v1.json': { for: 'FL_ChatterboxMultilingualTTS', repo: 'ResembleAI/chatterbox', path: 'grapheme_mtl_merged_expanded_v1.json', gb: 0.00, bytes: 69989,
+        sha256: '69632f47220a788a52ce2661d096453c5655e9bf25289d89a8d832c46ee07dbf' },
+      'chatterbox/chatterbox_multilingual/conds.pt': { for: 'FL_ChatterboxMultilingualTTS', repo: 'ResembleAI/chatterbox', path: 'conds.pt', gb: 0.00, bytes: 107374,
+        sha256: '6552d70568833628ba019c6b03459e77fe71ca197d5c560cef9411bee9d87f4e' },
+      'chatterbox/chatterbox_multilingual/Cangjie5_TC.json': { for: 'FL_ChatterboxMultilingualTTS', repo: 'ResembleAI/chatterbox', path: 'Cangjie5_TC.json', gb: 0.00, bytes: 1920163,
+        sha256: '7073fd9de919443ae88e0bd2449917a65fe54898a4413ed1edcc4b67f28bce8c' },
+      'chatterbox/chatterbox_vc/s3gen.pt': { for: 'FL_ChatterboxVC', repo: 'ResembleAI/chatterbox', path: 's3gen.pt', gb: 1.06, bytes: 1057165844,
+        sha256: '9b9ff07e60b20c136e2b1b3d7563a24604e8d2c4c267888d1ee929dd0151d2a3' },
+      'chatterbox/chatterbox_vc/conds.pt': { for: 'FL_ChatterboxVC', repo: 'ResembleAI/chatterbox', path: 'conds.pt', gb: 0.00, bytes: 107374,
+        sha256: '6552d70568833628ba019c6b03459e77fe71ca197d5c560cef9411bee9d87f4e' },
+    } },
+  foley: { name: 'ComfyUI-HunyuanVideo_Foley', repo: 'BobRandomNumber/ComfyUI-HunyuanVideo_Foley', commit: 'b94f7aca877ff2be5bc264b057abee3dac682c1b', date: '2026-02-18',
+    folder: 'ComfyUI-HunyuanVideo_Foley', classes: ['HunyuanFoleyModelLoader', 'LoadDACHunyuanVAE', 'HunyuanFoleySampler', 'DACHunyuanVAEDecode'], cloud: false,
+    // Its loaders list their files when ComfyUI loads the pack, and keep that list.
+    before: ['hunyuan_foley/hunyuanvideo_foley.pth', 'vae/vae_128d_48k.pth'],
+    files: {
+      'hunyuan_foley/synchformer_state_dict.pth': { repo: 'tencent/HunyuanVideo-Foley', path: 'synchformer_state_dict.pth', gb: 0.95, bytes: 950058171,
+        sha256: '8aff082f2df5c3bc52759db0c865c7ee772ae6400b860d1b7e90413f2defb67c' },
+      'hunyuan_foley/siglip2/model.safetensors': { repo: 'google/siglip2-base-patch16-512', path: 'model.safetensors', gb: 1.50, bytes: 1503344520,
+        sha256: 'fe0e601c625e69eed8e73500d39e9b6164403fe03db8048e87913c3cefbbb3fe' },
+      'hunyuan_foley/siglip2/config.json': { repo: 'google/siglip2-base-patch16-512', path: 'config.json', gb: 0.00, bytes: 276,
+        sha256: 'a15bc39fbcd92498dea6d5d3cb2b0d8b9ba389d6a3f2b565ea66128a2d141934' },
+      'hunyuan_foley/siglip2/preprocessor_config.json': { repo: 'google/siglip2-base-patch16-512', path: 'preprocessor_config.json', gb: 0.00, bytes: 394,
+        sha256: '63ff380d3e424f93e6fbca5cc8e74eeed882e96fd6be2b7728aed308f3ad1513' },
+      'hunyuan_foley/clap/pytorch_model.bin': { repo: 'laion/larger_clap_general', path: 'pytorch_model.bin', gb: 0.78, bytes: 776444665,
+        sha256: '314eb00cce6ad68d25237b8446b659ccdb136ed4672c1bca470f142f72455026' },
+      'hunyuan_foley/clap/config.json': { repo: 'laion/larger_clap_general', path: 'config.json', gb: 0.00, bytes: 643,
+        sha256: '6268f76a067e3104bf9001e97d7dcc0fcfb16f3086cfb478ee72d95900d7fc1d' },
+      'hunyuan_foley/clap/merges.txt': { repo: 'laion/larger_clap_general', path: 'merges.txt', gb: 0.00, bytes: 456318,
+        sha256: '1ce1664773c50f3e0cc8842619a93edc4624525b728b188a9e0be33b7726adc5' },
+      'hunyuan_foley/clap/vocab.json': { repo: 'laion/larger_clap_general', path: 'vocab.json', gb: 0.00, bytes: 798293,
+        sha256: 'ed19656ea1707df69134c4af35c8ceda2cc9860bf2c3495026153a133670ab5e' },
+    } },
+  drama3: { name: 'ComfyUI-Drama3', repo: 'PedroMarinhoDev/ComfyUI-Drama3', commit: '67a733a96890637dc27b1914974ad00c569405fb', date: '2026-10-17',
+    folder: 'ComfyUI-Drama3', classes: ['Drama3Loader', 'Drama3CodecLoader', 'Drama3EncodeVoice', 'Drama3Generate', 'Drama3Decode', 'Qwen3ASRLoader', 'Qwen3ASRTranscribe'], cloud: false },
+  qwentts: { name: 'ComfyUI-Qwen-TTS', repo: 'flybirdxx/ComfyUI-Qwen-TTS', commit: 'a1328c8a731eff82cf4c205b31bdfb7f29d817f4', date: '2026-09-22',
+    folder: 'ComfyUI-Qwen-TTS', classes: ['FB_Qwen3TTSVoiceClone'], cloud: false,
+    // It would replace the onnxruntime other packs use, and its speech nodes never import it.
+    skip: ['onnxruntime-openvino'],
+    files: {
+      'qwen-tts/Qwen3-TTS-12Hz-1.7B-Base/model.safetensors': { repo: 'Qwen/Qwen3-TTS-12Hz-1.7B-Base', path: 'model.safetensors', gb: 3.86, bytes: 3857413744,
+        sha256: '38fc7fc51c5e776e840414b6fd443962e9411b9654888fd7913e4da643cb857c' },
+      'qwen-tts/Qwen3-TTS-12Hz-1.7B-Base/config.json': { repo: 'Qwen/Qwen3-TTS-12Hz-1.7B-Base', path: 'config.json', gb: 0.00, bytes: 4494,
+        sha256: 'b4f01752d15a488abde3e1ab44723ae4f4b9e68a4037257b098b3737893cc1f9' },
+      'qwen-tts/Qwen3-TTS-12Hz-1.7B-Base/generation_config.json': { repo: 'Qwen/Qwen3-TTS-12Hz-1.7B-Base', path: 'generation_config.json', gb: 0.00, bytes: 245,
+        sha256: 'f1b90b4513f3b34c62851049e2492d7b4c5940daf1276f89c82b8ef04127f3aa' },
+      'qwen-tts/Qwen3-TTS-12Hz-1.7B-Base/merges.txt': { repo: 'Qwen/Qwen3-TTS-12Hz-1.7B-Base', path: 'merges.txt', gb: 0.00, bytes: 1671839,
+        sha256: '599bab54075088774b1733fde865d5bd747cbcc7a547c5bc12610e874e26f5e3' },
+      'qwen-tts/Qwen3-TTS-12Hz-1.7B-Base/preprocessor_config.json': { repo: 'Qwen/Qwen3-TTS-12Hz-1.7B-Base', path: 'preprocessor_config.json', gb: 0.00, bytes: 127,
+        sha256: 'efdde1022ea9d76928bf7a9cd53139138f5ba2e466e837f08f6105ab1af1c119' },
+      'qwen-tts/Qwen3-TTS-12Hz-1.7B-Base/tokenizer_config.json': { repo: 'Qwen/Qwen3-TTS-12Hz-1.7B-Base', path: 'tokenizer_config.json', gb: 0.00, bytes: 7344,
+        sha256: 'dc3c31c3bdaedd5016382bb3cbe07323026775ad51f5a4fb564505992ae4a670' },
+      'qwen-tts/Qwen3-TTS-12Hz-1.7B-Base/vocab.json': { repo: 'Qwen/Qwen3-TTS-12Hz-1.7B-Base', path: 'vocab.json', gb: 0.00, bytes: 2776833,
+        sha256: 'ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910' },
+      'qwen-tts/Qwen3-TTS-12Hz-1.7B-Base/speech_tokenizer/model.safetensors': { repo: 'Qwen/Qwen3-TTS-12Hz-1.7B-Base', path: 'speech_tokenizer/model.safetensors', gb: 0.68, bytes: 682293092,
+        sha256: '836b7b357f5ea43e889936a3709af68dfe3751881acefe4ecf0dbd30ba571258' },
+      'qwen-tts/Qwen3-TTS-12Hz-1.7B-Base/speech_tokenizer/config.json': { repo: 'Qwen/Qwen3-TTS-12Hz-1.7B-Base', path: 'speech_tokenizer/config.json', gb: 0.00, bytes: 2336,
+        sha256: 'ee65bb901c876664ab8707c487157aa1a6ee57c65969b28fb5ec9dc211e68167' },
+      'qwen-tts/Qwen3-TTS-12Hz-1.7B-Base/speech_tokenizer/configuration.json': { repo: 'Qwen/Qwen3-TTS-12Hz-1.7B-Base', path: 'speech_tokenizer/configuration.json', gb: 0.00, bytes: 76,
+        sha256: '6bc26d64eb5024b4d1dab5a52371958b429256d6c9d59787f1f5294a54e0cebd' },
+      'qwen-tts/Qwen3-TTS-12Hz-1.7B-Base/speech_tokenizer/preprocessor_config.json': { repo: 'Qwen/Qwen3-TTS-12Hz-1.7B-Base', path: 'speech_tokenizer/preprocessor_config.json', gb: 0.00, bytes: 234,
+        sha256: 'fcb3805e597e786d4067706e602f6688524640f8d3396790e2e09b5942fcbdfb' },
+      'qwen-tts/Qwen3-TTS-Tokenizer-12Hz/model.safetensors': { repo: 'Qwen/Qwen3-TTS-Tokenizer-12Hz', path: 'model.safetensors', gb: 0.68, bytes: 682293092,
+        sha256: '836b7b357f5ea43e889936a3709af68dfe3751881acefe4ecf0dbd30ba571258' },
+      'qwen-tts/Qwen3-TTS-Tokenizer-12Hz/config.json': { repo: 'Qwen/Qwen3-TTS-Tokenizer-12Hz', path: 'config.json', gb: 0.00, bytes: 2336,
+        sha256: 'ee65bb901c876664ab8707c487157aa1a6ee57c65969b28fb5ec9dc211e68167' },
+      'qwen-tts/Qwen3-TTS-Tokenizer-12Hz/configuration.json': { repo: 'Qwen/Qwen3-TTS-Tokenizer-12Hz', path: 'configuration.json', gb: 0.00, bytes: 76,
+        sha256: '6bc26d64eb5024b4d1dab5a52371958b429256d6c9d59787f1f5294a54e0cebd' },
+      'qwen-tts/Qwen3-TTS-Tokenizer-12Hz/preprocessor_config.json': { repo: 'Qwen/Qwen3-TTS-Tokenizer-12Hz', path: 'preprocessor_config.json', gb: 0.00, bytes: 234,
+        sha256: 'fcb3805e597e786d4067706e602f6688524640f8d3396790e2e09b5942fcbdfb' },
+    } },
 }
 
 // Every runtime: FreeVideo's own env, and the node packs. A pack is small and installs in a minute or two.
@@ -251,6 +390,16 @@ const usesRuntime = (runtime, type) => (Array.isArray(runtime.nodes) ? runtime.n
 // The models folders a Pod makes and points ComfyUI at: every loader's folder and every file's.
 // A new loader brings its folder with it, so the boot script and the status server never lag.
 export const MODEL_DIRS = [...new Set([...Object.values(LOADERS).flatMap((inputs) => Object.values(inputs)), ...Object.values(MODEL_FILES).map((f) => f.dir)])]
+
+// A pack's own files, shaped like a loader's: Comfy Cloud has them when it has the pack.
+const packFiles = (id) => Object.entries(NODE_PACKS[id]?.files || {}).map(([key, f]) => {
+  const at = key.lastIndexOf('/')
+  return { ...f, dir: key.slice(0, at), name: key.slice(at + 1), vramGb: 0, cloud: NODE_PACKS[id].cloud, label: NODE_PACKS[id].name }
+})
+// The folders packs read themselves, subfolders included. The Pod links each top folder from
+// ComfyUI/models to the volume; ComfyUI's own folder list never names them.
+export const PACK_DIRS = [...new Set(Object.keys(NODE_PACKS).flatMap((id) => packFiles(id).map((f) => f.dir)))]
+export const PACK_ROOTS = [...new Set(PACK_DIRS.map((d) => d.split('/')[0]))]
 
 // Room on the volume for files later runs ask for, on top of the first run's.
 const HEADROOM_GB = 30
@@ -285,8 +434,16 @@ export function runtimesOf(graph) {
   })
 }
 
-// Everything a Pod needs for a graph: model files to download and runtimes to install.
-export const podNeedsOf = (graph) => [...modelFilesOf(graph), ...runtimesOf(graph)]
+// Everything a Pod needs for a graph: model files to download, its packs' own files, and runtimes to install.
+export function podNeedsOf(graph) {
+  const runtimes = runtimesOf(graph)
+  const classes = new Set(Object.values(graph || {}).map((n) => n?.class_type))
+  const files = new Map(modelFilesOf(graph).map((f) => [`${f.dir}/${f.name}`, f]))
+  for (const r of runtimes) {
+    for (const f of packFiles(r.runtime)) if ((!f.for || classes.has(f.for)) && !files.has(`${f.dir}/${f.name}`)) files.set(`${f.dir}/${f.name}`, f)
+  }
+  return [...files.values(), ...runtimes]
+}
 
 // Files a run needs that Comfy Cloud does not have.
 export const notOnCloud = (files) => files.filter((f) => !f.cloud)

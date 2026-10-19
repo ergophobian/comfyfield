@@ -42,14 +42,16 @@ USED_FILE = os.path.join(MODELS, '.cf-used.json')
 
 
 def read_packs():
-  # Node packs the boot script knows, from packs.tsv: id, folder, the classes ComfyUI lists once it loads.
+  # Node packs the boot script knows, from packs.tsv: id, folder, the classes ComfyUI lists once it loads,
+  # and the model files that must be on the disk before it loads.
   out = {}
   try:
     with open(E.get('CF_PACKS', os.path.join(BASE, 'packs.tsv'))) as f:
       for line in f:
         parts = line.rstrip('\n').split('\t')
-        if len(parts) == 3 and parts[0]:
-          out[parts[0]] = {'folder': parts[1], 'classes': [c for c in parts[2].split(',') if c]}
+        if len(parts) in (3, 4) and parts[0]:
+          before = [k for k in (parts[3] if len(parts) == 4 else '').split(',') if k]
+          out[parts[0]] = {'folder': parts[1], 'classes': [c for c in parts[2].split(',') if c], 'before': before}
   except OSError:
     pass
   return out
@@ -284,34 +286,66 @@ def restart_comfy():
     return False
 
 
+def comfy_started():
+  # The boot script writes ComfyUI's pid each time it starts it.
+  try:
+    return os.path.getmtime(os.path.join(BASE, 'comfy.pid'))
+  except OSError:
+    return None
+
+
+def files_since(k):
+  """When a pack became loadable: its install's end, or later, when the last file it reads as it loads
+  was placed. None while one of those files is missing."""
+  t = RUNTIMES[k]['endedAt']
+  for key in PACKS[k]['before']:
+    p = os.path.join(MODELS, key)
+    if not os.path.isfile(p):
+      return None
+    t = max(t, os.path.getmtime(p))
+  return t
+
+
 def load_packs(comfy, queue, now):
   """Moves installed packs to ready once ComfyUI lists their classes. ComfyUI loads custom nodes only when
   it starts, so a pack installed while it runs needs one restart, made only with an empty queue and with
-  no other pack still installing, so several packs share it."""
+  no other pack still installing, so several packs share it. A pack that reads model files as it loads
+  waits for them, and counts as ready only from a ComfyUI that started after they were placed."""
   with LOCK:
     waiting = [k for k, v in RUNTIMES.items() if k in PACKS and v['state'] == 'loading']
     busy = any(k in PACKS and v['state'] == 'installing' for k, v in RUNTIMES.items())
     restarted = S['restarted_at']
-  if not waiting or not comfy:
-    for k in waiting:
-      if now - RUNTIMES[k]['endedAt'] > LOAD_DEADLINE:
+  since = {}
+  for k in waiting:
+    s = files_since(k)
+    if s is not None:
+      since[k] = s
+      continue
+    with LOCK:
+      fetching = any(DOWNLOADS.get(key, {}).get('state') in ('queued', 'downloading') for key in PACKS[k]['before'])
+      if not fetching and now - RUNTIMES[k]['endedAt'] > LOAD_DEADLINE:
+        RUNTIMES[k].update(state='failed', error='its model files are not on the Pod')
+  if not since or not comfy:
+    for k, s in since.items():
+      if now - s > LOAD_DEADLINE:
         with LOCK:
           RUNTIMES[k].update(state='failed', error='ComfyUI did not start again to load it')
     return
+  started = comfy_started() or restarted or 0
   stale = []
-  for k in waiting:
-    if lists_classes(PACKS[k]['classes']):
+  for k, s in since.items():
+    if lists_classes(PACKS[k]['classes']) and (not PACKS[k]['before'] or started > s):
       with LOCK:
         RUNTIMES[k].update(state='ready', error=None)
       log('%s ready' % k)
-    elif restarted and restarted > RUNTIMES[k]['endedAt'] and now - restarted > RESTART_GRACE:
+    elif restarted and restarted > s and now - restarted > RESTART_GRACE:
       # ComfyUI started after the install and still lacks the nodes: the pack failed to import.
       # The grace skips the moment the old ComfyUI still answers.
       with LOCK:
         RUNTIMES[k].update(state='failed', error=comfy_error(PACKS[k]['folder']) or 'ComfyUI did not load it')
       log('%s did not load' % k)
-    elif not restarted or restarted < RUNTIMES[k]['endedAt']:
-      # Installed after the last restart (or with none yet): this pack needs one.
+    elif not restarted or restarted < s:
+      # Installed (or its files placed) after the last restart, or with none yet: this pack needs one.
       stale.append(k)
   if stale and not busy and queue == 0:
     with LOCK:
@@ -415,7 +449,8 @@ def valid(item):
 
 
 def plain_key(key):
-  d, _, name = str(key).partition('/')
+  # A pack's own files sit in subfolders, so the name is what follows the last slash.
+  d, _, name = str(key).rpartition('/')
   return d in DIRS and SAFE_NAME.match(name) is not None
 
 
@@ -452,6 +487,8 @@ def make_room(need, protect):
 def fetch(item, key):
   dest = os.path.join(MODELS, item['dir'], item['name'])
   part = dest + '.part'
+  # A pack's subfolders are made only when a file goes in: some packs take a folder that exists as complete.
+  os.makedirs(os.path.dirname(dest), exist_ok=True)
   # Some repos keep files under names with brackets or spaces; the URL carries them encoded.
   url = '%s/%s/resolve/main/%s' % (HF, item['repo'], urllib.parse.quote(item['path'], safe='/'))
   have = os.path.getsize(part) if os.path.exists(part) else 0
@@ -609,10 +646,10 @@ class Handler(BaseHTTPRequestHandler):
     # Removes one model file to free the disk. A download in flight is not removed.
     if not self.authorized():
       return
-    key = self.path[len('/models/'):] if self.path.startswith('/models/') else ''
+    key = urllib.parse.unquote(self.path[len('/models/'):]) if self.path.startswith('/models/') else ''
     if not plain_key(key):
       return self.reply(404, {'error': 'not found'})
-    path = os.path.join(MODELS, *key.split('/', 1))
+    path = os.path.join(MODELS, *key.rpartition('/')[::2])
     with LOCK:
       if DOWNLOADS.get(key, {}).get('state') in ('queued', 'downloading'):
         return self.reply(409, {'error': 'it is still downloading'})
@@ -631,7 +668,8 @@ def main():
     raise SystemExit('POD_TOKEN is not set')
   os.makedirs(BASE, exist_ok=True)
   for d in DIRS:
-    os.makedirs(os.path.join(MODELS, d), exist_ok=True)
+    if '/' not in d:
+      os.makedirs(os.path.join(MODELS, d), exist_ok=True)
   for target in (watchdog, downloader):
     threading.Thread(target=target, daemon=True).start()
   log('starting on port %d' % PORT)

@@ -190,13 +190,17 @@ function PodModels({ s, services, ready, toggle, chosen, readyGb, busy, act, get
           {files.length > 0
             ? (
               <ul className="pod-files">
-                {files.map((f) => (
-                  <li key={`${f.dir}/${f.name}`}>
-                    <strong title={f.name}>{f.name}</strong>
-                    <small>{gb(f.bytes / 1e9)}{f.usedBy?.length ? ` · for ${shortList(f.usedBy)}` : ''}</small>
-                    <button type="button" className="btn-soft xs danger" disabled={busy} aria-label={`Remove ${f.name}`} onClick={() => act('remove', { dir: f.dir, name: f.name })}>Remove</button>
-                  </li>
-                ))}
+                {files.map((f) => {
+                  // A pack's own files keep their subfolder, where two packs' files can share a name.
+                  const label = f.dir.includes('/') ? `${f.dir.slice(f.dir.indexOf('/') + 1)}/${f.name}` : f.name
+                  return (
+                    <li key={`${f.dir}/${f.name}`}>
+                      <strong title={label}>{label}</strong>
+                      <small>{gb(f.bytes / 1e9)}{f.usedBy?.length ? ` · for ${shortList(f.usedBy)}` : ''}</small>
+                      <button type="button" className="btn-soft xs danger" disabled={busy} aria-label={`Remove ${label}`} onClick={() => act('remove', { dir: f.dir, name: f.name })}>Remove</button>
+                    </li>
+                  )
+                })}
               </ul>
             )
             : <p className="pod-note">No models on the disk yet.</p>}

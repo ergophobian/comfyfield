@@ -149,9 +149,11 @@ export function validateFormat(format, schemas = savedSchemas) {
         const files = [...PICTURE_SLOTS.slice(1, pictures), ...(format.inputs.some((i) => i.type === 'mask' || i.type === 'draw') ? ['mask'] : []),
           ...(format.inputs.some((i) => i.type === 'audio') ? ['audio'] : []), ...(format.inputs.some((i) => i.type === 'voice') ? ['voice'] : [])]
         const supplied = new Set(['prompt', 'width', 'height', 'count', 'frames', 'duration', 'start', 'seed', ...(hasVideo ? ['video'] : []), ...(stepOptions(format, step, values).images.length || upstream.length || pictures ? ['image'] : []), ...files, ...Object.keys(step.params || {}), ...Object.keys(step.bindings || {})])
-        // A choice that always shows, and whose every option sets a param, supplies it.
+        // A choice that always shows (or shows whenever this target runs), and whose every option sets a
+        // param, supplies it.
         for (const input of format.inputs) {
-          if (input.type !== 'choice' || input.when) continue
+          const withTarget = input.when && target && input.when[0] === raw.targetInput && input.when[1] === target
+          if (input.type !== 'choice' || (input.when && !withTarget)) continue
           for (const field of new Set(input.options.flatMap((o) => Object.keys(o.params || {})))) if (input.options.every((o) => field in (o.params || {}))) supplied.add(field)
         }
         // A placeholder only on nodes that drop without their file may stay empty.

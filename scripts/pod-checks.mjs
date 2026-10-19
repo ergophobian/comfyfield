@@ -1386,7 +1386,7 @@ await test('node packs: a graph\'s node classes decide its packs, and a pack Com
 await test('node packs: the boot script installs packs before ComfyUI starts, keeps them on the volume and whitelists them', async () => {
   const script = podBootScript()
   assert(script.includes('vhs\tComfyUI-VideoHelperSuite\tVHS_SelectEveryNthImage'), 'the status server learns each pack and the classes to look for')
-  assert(script.includes('  vhs) repo=https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git; commit=4d907bee61e92c2e65af3bd6383a4e4d356126d1; folder=ComfyUI-VideoHelperSuite ;;'), 'each pack is pinned by commit')
+  assert(script.includes('  vhs) repo=https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git; commit=4d907bee61e92c2e65af3bd6383a4e4d356126d1; folder=ComfyUI-VideoHelperSuite; ;;'), 'each pack is pinned by commit')
   const pack = script.slice(script.indexOf("<<'PACK'"), script.lastIndexOf('\nPACK\n'))
   assert(pack.includes('P=/workspace/cf-nodes'), 'clones stay on the volume, so a paused Pod keeps them')
   assert(pack.includes('-c /root/cf/constraints.txt') && pack.includes("grep -iE '^(torch|torchvision|torchaudio|numpy"), 'a pack\'s requirements never move the image\'s torch')
@@ -1397,9 +1397,9 @@ await test('node packs: the boot script installs packs before ComfyUI starts, ke
   const at = (s) => script.indexOf(s)
   assert(at('STAGE freevideo-clone') < at('touch "$CF/.base-ready"') && at('touch "$CF/.base-ready"') < at('STAGE packs') && at('STAGE packs') < at('STAGE comfy ') && at('STAGE comfy ') < at('main.py'),
     'installs wait for the boot\'s own pip, and ComfyUI waits for the packs')
-  assert(/while IFS=\$'\\t' read -r id folder classes; do \[ -d "\/workspace\/cf-nodes\/\$folder" \] && want="\$want \$id"/.test(script), 'a resumed Pod installs its packs again')
-  const { MODEL_DIRS } = await import('../shared/modelFiles.js')
-  assert(script.includes(`CF_DIRS="${MODEL_DIRS.join(' ')}" nohup`), 'the status server takes its folders from the loaders')
+  assert(/while IFS=\$'\\t' read -r id folder classes before; do \[ -d "\/workspace\/cf-nodes\/\$folder" \] && want="\$want \$id"/.test(script), 'a resumed Pod installs its packs again')
+  const { MODEL_DIRS, PACK_DIRS } = await import('../shared/modelFiles.js')
+  assert(script.includes(`CF_DIRS="${[...new Set([...MODEL_DIRS, ...PACK_DIRS])].join(' ')}" nohup`), 'the status server takes its folders from the loaders and the packs')
   for (const d of MODEL_DIRS) assert(script.includes(`  ${d}: ${d}\n`), `ComfyUI finds ${d} on the volume`)
   const proxy = script.slice(script.indexOf('STAGE proxy-install'), script.indexOf('STAGE comfy-update'))
   assert(proxy.includes(`sed -i 's/^\\(    "files": "file",\\)$/\\1\\n    "3d": "file",/' "$PA"`), 'the proxy passes on 3D outputs')
@@ -1707,6 +1707,7 @@ function sampleInputs(format) {
     else if (i.type === 'mask') values[i.id] = { ...picture, maskUrl: '/media/mask.png' }
     else if (i.type === 'video') values[i.id] = { url: '/media/clip.mp4', ratio: '16:9', duration: 6, trim: { start: 1, end: 4 } }
     else if (i.type === 'audio') values[i.id] = { url: '/media/voice.mp3', name: 'voice.mp3' }
+    else if (i.type === 'voice') values[i.id] = { name: 'Narrator', sample: '/media/narrator.wav' }
     else if (['character', 'product', 'brand'].includes(i.type)) values[i.id] = { type: i.type, name: 'Mia', images: ['/media/mia.png'] }
   }
   return values
@@ -1939,4 +1940,208 @@ await test('edits and enhance: upscale and background removal pick their graph b
   assert.equal(pick('video-erase', { target: 'the red car' }).o.fields.target, 'the red car', 'SAM 3.1 gets the label as typed')
   assert.deepEqual([pick('edit-video', {}).model.workflow, pick('edit-video', {}).model.imageWorkflow], ['bernini_swap_noref', 'bernini_swap'])
   assert.deepEqual(['same', '2k', '4k'].map((size) => pick('unblur', { size }).o.params), [{ upscale_factor: 1, target: 0 }, { upscale_factor: 1, target: 2048 }, { upscale_factor: 1, target: 4096 }])
+})
+
+// ---- Audio, talking heads and 3D --------------------------------------------------------------------
+
+// FLAC headers as PyAV writes them (ComfyUI's SaveAudioAdvanced): one sample of 24 kHz stereo, and 2 s.
+const flacOneSample = Buffer.from('ZkxhQwAAACIJAAkAAAAPAAAPBdwC8AAAAAHx0/+EQyl3MoYt8h3E5XJi', 'base64')
+const flacTwoSeconds = Buffer.from('ZkxhQwAAACIJAAkAAAAOAAAQBdwC8AAAu4D+OE9mjaKCaUwpqE69M0gd', 'base64')
+
+await test('pack files: a pack\'s own files download with it, pinned, and the Pod links its folder from ComfyUI to the volume', () => {
+  const read = (n) => JSON.parse(fs.readFileSync(`public/workflows/${n}.json`, 'utf8'))
+  const key = (n) => n.runtime || `${n.dir}/${n.name}`
+  const tts = podNeedsOf(read('chatterbox_tts'))
+  const t3 = tts.find((n) => key(n) === 'chatterbox/chatterbox_multilingual/t3_mtl23ls_v2.safetensors')
+  assert.deepEqual([t3.repo, t3.path, t3.bytes, t3.sha256.length, t3.cloud], ['ResembleAI/chatterbox', 't3_mtl23ls_v2.safetensors', 2143989752, 64, true], 'pinned by sha256, with its exact size')
+  assert(tts.some((n) => n.runtime === 'chatterbox'), 'and the pack itself')
+  assert(!tts.some((n) => n.dir === 'chatterbox/chatterbox_vc'), 'speech takes only the files its node reads')
+  assert(!podNeedsOf(read('chatterbox_vc')).some((n) => n.dir === 'chatterbox/chatterbox_multilingual'), 'and voice change only its own')
+  const qwen = podNeedsOf(read('qwen3_tts'))
+  assert(qwen.some((n) => key(n) === 'qwen-tts/Qwen3-TTS-12Hz-1.7B-Base/speech_tokenizer/model.safetensors'), 'subfolders keep their place')
+  const both = podNeedsOf(read('infinitetalk_tts'))
+  assert.equal(new Set(both.map(key)).size, both.length, 'a file two needs share comes once')
+
+  const script = podBootScript()
+  assert(script.includes('for d in chatterbox hunyuan_foley qwen-tts; do') && script.includes('  ln -sfn "$M/$d" "$C/models/$d"'), 'each pack folder is linked to the volume')
+  assert(script.includes('  [ -L "$C/models/$d" ] || rm -rf "$C/models/$d"'))
+  const at = (s) => script.indexOf(s)
+  assert(at('STAGE comfy-update') < at('for d in chatterbox') && at('for d in chatterbox') < at('STAGE comfy '), 'after ComfyUI moves to its pin, before it starts')
+  assert(!script.includes('  chatterbox/chatterbox_vc:'), 'ComfyUI\'s own folder list never names a pack folder')
+  assert(script.includes('foley\tComfyUI-HunyuanVideo_Foley\tHunyuanFoleyModelLoader,LoadDACHunyuanVAE,HunyuanFoleySampler,DACHunyuanVAEDecode\thunyuan_foley/hunyuanvideo_foley.pth,vae/vae_128d_48k.pth\n'),
+    'the status server learns which files Foley waits for')
+  assert(script.includes('folder=ComfyUI_Fill-ChatterBox; pip="pykakasi==2.3.0 spacy-pkuseg==1.0.1"; ;;'), 'Chatterbox gets its Japanese and Mandarin text packages, pinned')
+  assert(script.includes('folder=ComfyUI-Qwen-TTS; skip="onnxruntime-openvino"; ;;'))
+  for (const d of ['wav2vec2', 'asr', 'hunyuan_foley']) assert(script.includes(`  ${d}: ${d}\n`), `ComfyUI finds ${d} on the volume`)
+  const ok = { repo: 'x/y', commit: 'a'.repeat(40), folder: 'F', classes: ['C'] }
+  assert.throws(() => podBootScript({ packs: { x: { ...ok, pip: ['evil; rm -rf /'] } } }), /unsafe/)
+  assert.throws(() => podBootScript({ packs: { x: { ...ok, pip: ['unpinned'] } } }), /unsafe/, 'an extra package is pinned')
+  assert.throws(() => podBootScript({ packs: { x: { ...ok, before: ['../etc/passwd'] } } }), /unsafe/)
+  if (hasBash) {
+    const req = path.join(tmp, 'qwen-requirements.txt')
+    fs.writeFileSync(req, 'torch\nonnxruntime-openvino\nonnxruntime-openvino>=1.18\n  onnxruntime-openvino ; sys_platform == "linux"\nonnxruntime\nsox\n')
+    const r = spawnSync('bash', ['-c', `skip="onnxruntime-openvino"; grep -viE "^[[:space:]]*($skip)([[:space:]<>=!~;[]|$)" "${req.replace(/\\/g, '/')}"`], { encoding: 'utf8' })
+    assert.deepEqual(r.stdout.trim().split('\n'), ['torch', 'onnxruntime', 'sox'], 'a skipped requirement goes in every spelling, and only it')
+  }
+})
+
+await test('pack files: the status server downloads into a pack\'s subfolder, lists and removes it, and loads Foley only after its files', { skip: (!python || !hasBash) && 'needs Python 3.9+ and bash' }, async (t) => {
+  const bytes = { 'conds.pt': Buffer.alloc(2048, 1), 'hunyuanvideo_foley.pth': Buffer.alloc(4096, 2), 'vae_128d_48k.pth': Buffer.alloc(1024, 3) }
+  const hold = { release: null }
+  const hf = await listen(async (req, res) => {
+    const name = req.url.split('/').pop()
+    if (!bytes[name]) return res.writeHead(404).end()
+    if (name === 'hunyuanvideo_foley.pth') await new Promise((r) => { hold.release = r })
+    res.writeHead(200, { 'Content-Length': bytes[name].length })
+    res.end(bytes[name])
+  })
+  t.after(() => hf.close())
+  const port = freePort()
+  const base = path.join(tmp, 'statusd-pack-files').replace(/\\/g, '/')
+  fs.mkdirSync(base, { recursive: true })
+  fs.writeFileSync(`${base}/.base-ready`, '')
+  fs.writeFileSync(`${base}/packs.tsv`, 'foley\tComfyUI-HunyuanVideo_Foley\tHunyuanFoleyModelLoader\thunyuan_foley/hunyuanvideo_foley.pth,vae/vae_128d_48k.pth\n')
+  fs.writeFileSync(`${base}/runtime-pack.sh`, ['#!/bin/bash', 'echo "installing $1"', ''].join('\n'))
+  // A fake ComfyUI that lists Foley's loader at once: the pack loads without its files, but then lists
+  // no models, so only a ComfyUI started after the files counts.
+  const comfy = { starts: 0 }
+  let dummy
+  const startDummy = () => {
+    dummy = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' })
+    fs.writeFileSync(`${base}/comfy.pid`, String(dummy.pid))
+    dummy.once('exit', () => { comfy.starts++; startDummy() })
+  }
+  startDummy()
+  t.after(() => { dummy.removeAllListeners('exit'); dummy.kill() })
+  const server = await listen((req, res) => {
+    if (req.url === '/queue') return res.end(JSON.stringify({ queue_running: [], queue_pending: [] }))
+    if (req.url.startsWith('/object_info/')) return res.end(JSON.stringify({ [req.url.split('/')[2]]: {} }))
+    res.end('{}')
+  })
+  t.after(() => server.close())
+  const proc = startStatusd({ POD_TOKEN: 'secret', CF_BASE: base, CF_MODELS: `${base}/models`, CF_STATUS_PORT: String(port), CF_DIRS: 'vae hunyuan_foley chatterbox/chatterbox_vc',
+    CF_HF_BASE: `http://127.0.0.1:${hf.address().port}`, CF_COMFY_URL: `http://127.0.0.1:${server.address().port}`, CF_PROXY_URL: 'http://127.0.0.1:9',
+    CF_TICK: '0.2', CF_RESTART_GRACE: '0.5', CF_DRY_KILL: '1' })
+  t.after(() => proc.kill())
+  const url = `http://127.0.0.1:${port}`
+  const auth = { Authorization: 'Bearer secret' }
+  const status = async () => (await netFetch(`${url}/status`, { headers: auth })).json()
+  const post = (files) => netFetch(`${url}/download`, { method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' }, body: JSON.stringify({ files }) })
+  const sha = (name) => createHash('sha256').update(bytes[name]).digest('hex')
+  await proc.ready(url, async () => (await netFetch(`${url}/status`, { headers: auth })).ok)
+  assert(!fs.existsSync(`${base}/models/chatterbox`), 'a pack folder is made only when a file goes in')
+
+  assert.equal((await post([{ repo: 'ResembleAI/chatterbox', path: 'conds.pt', dir: 'chatterbox/other', name: 'conds.pt' }])).status, 400, 'only the folders the boot script names')
+  assert.equal((await post([{ repo: 'ResembleAI/chatterbox', path: 'conds.pt', dir: 'chatterbox/chatterbox_vc', name: 'conds.pt', sha256: sha('conds.pt'), bytes: 2048 }])).status, 202)
+  const listed = await until(async () => { const s = await status(); return s.downloads['chatterbox/chatterbox_vc/conds.pt']?.state === 'done' && s })
+  assert.deepEqual(listed.models.map((f) => `${f.dir}/${f.name}`), ['chatterbox/chatterbox_vc/conds.pt'], 'listed under its subfolder')
+  assert.equal(fs.statSync(`${base}/models/chatterbox/chatterbox_vc/conds.pt`).size, 2048)
+  assert.equal((await netFetch(`${url}/models/chatterbox/chatterbox_vc/conds.pt`, { method: 'DELETE', headers: auth })).status, 204)
+  assert(!fs.existsSync(`${base}/models/chatterbox/chatterbox_vc/conds.pt`))
+  assert.equal((await netFetch(`${url}/models/chatterbox/other/conds.pt`, { method: 'DELETE', headers: auth })).status, 404)
+
+  await netFetch(`${url}/runtime/foley`, { method: 'POST', headers: auth })
+  await until(async () => (await status()).runtimes.foley?.state === 'loading')
+  assert.equal((await post([{ repo: 'tencent/HunyuanVideo-Foley', path: 'hunyuanvideo_foley.pth', dir: 'hunyuan_foley', name: 'hunyuanvideo_foley.pth', sha256: sha('hunyuanvideo_foley.pth') },
+    { repo: 'Comfy-Org/HunyuanVideo-Foley', path: 'vae_128d_48k.pth', dir: 'vae', name: 'vae_128d_48k.pth', sha256: sha('vae_128d_48k.pth') }])).status, 202)
+  await new Promise((r) => setTimeout(r, 1000))
+  assert.equal(comfy.starts, 0, 'no restart while its checkpoint downloads')
+  assert.equal((await status()).runtimes.foley.state, 'loading', 'listed by a ComfyUI that started without its files, so not ready')
+  hold.release()
+  const done = await until(async () => { const e = (await status()).runtimes.foley; return e.state === 'ready' && e }, 15000)
+  assert.equal(done.error, null)
+  assert.equal(comfy.starts, 1, 'one restart, once the files are in place')
+})
+
+await test('pack files: the Pods page lists and removes a pack\'s file by its subfolder, and a run sends each file\'s exact size', async () => {
+  const { pod, rp } = setup()
+  await pod.start()
+  const deep = 'qwen-tts/Qwen3-TTS-12Hz-1.7B-Base/speech_tokenizer'
+  rp.statusd = readyStatus({ models: [{ dir: deep, name: 'model.safetensors', bytes: 1 }], downloads: { [`${deep}/model.safetensors`]: { state: 'done' } } })
+  await pod.refresh()
+  assert.deepEqual(pod.status().downloads.map((d) => [d.dir, d.file]), [[deep, 'model.safetensors']])
+  await pod.remove({ dir: deep, name: 'model.safetensors' })
+  assert.equal(rp.calls.find((c) => c.method === 'DELETE').path, `/models/${deep}/model.safetensors`, 'each part of the folder travels as it is')
+  const read = (n) => JSON.parse(fs.readFileSync(`public/workflows/${n}.json`, 'utf8'))
+  const files = podNeedsOf(read('chatterbox_vc')).filter((n) => !n.runtime)
+  rp.statusd = readyStatus({ downloads: Object.fromEntries(files.map((f) => [`${f.dir}/${f.name}`, { state: 'done' }])), runtimes: { chatterbox: { state: 'ready' } } })
+  ;(await pod.lease({ files, runtimes: ['chatterbox'] })).release()
+  const sent = rp.calls.find((c) => c.path === '/download').body.files.find((f) => f.name === 's3gen.pt' && f.dir === 'chatterbox/chatterbox_vc')
+  assert.equal(sent.bytes, 1057165844, 'its size from the Hugging Face listing, not rounded from gigabytes')
+})
+
+await test('audio and 3D: Chatterbox, MiniMax Music 3 and Stable Audio 3 go to Comfy Cloud; Foley, InfiniteTalk, Drama 3, Qwen3-TTS and TRELLIS.2 need a Pod with their packs and files', async () => {
+  podMode()
+  let out = { type: 'audio', contentType: 'audio/flac', name: 'speech_00001_.flac', toBytes: async () => flacTwoSeconds }
+  const client = {
+    assets: { fromBytes: (buf, o) => ({ asset: o.filename }) },
+    workflows: { fromFile: async (f) => ({ file: f, json: null, setInput() {} }) },
+    run: async () => ({ outputs: [out] }),
+  }
+  const leases = []
+  const lease = async (o) => { leases.push(o); return { baseUrl: 'https://p-8189.proxy.runpod.net', token: 't', sandbox: false, signal: new AbortController().signal, reason: () => null, release() {} } }
+  const png = 'data:image/png;base64,iVBORw0KGgo='
+  const flac = `data:audio/flac;base64,${flacTwoSeconds.toString('base64')}`
+  const vars = { prompt: 'A line', script: 'Hello there', lyrics: '[Instrumental]', language: 'English (en)', exaggeration: 0.5, cfg_weight: 0.5, seed: 1, start: 0, duration: 5,
+    resolution: 1024, background: '#ffffff', image: png, audio: flac, voice: flac, video: 'data:video/mp4;base64,AAAAIGZ0eXBpc29t' }
+  const run = (w, phase = 'none') => core.runComfy(w, vars, { createClient: () => client, lease, podPhase: async () => phase, podVram: () => 24, podRoom: () => ({}) })
+  for (const w of ['chatterbox_tts', 'chatterbox_clone', 'chatterbox_vc', 'minimax_music3', 'stable_audio3']) {
+    const files = await run(w)
+    assert.deepEqual(files.map((f) => f.kind), ['audio'], `${w} keeps its speech`)
+  }
+  assert.equal(leases.length, 0, 'Comfy Cloud has these packs and files')
+  for (const w of ['hunyuan_foley', 'infinitetalk', 'infinitetalk_tts', 'infinitetalk_v2v', 'drama3_tts', 'qwen3_tts', 'trellis2_image', 'flux_trellis2', 'trellis2_character', 'trellis2_turntable']) {
+    await assert.rejects(run(w), (e) => e.code === 'needs_pod', `${w} needs a Pod`)
+  }
+  const key = (f) => `${f.dir}/${f.name}`
+  await run('hunyuan_foley', 'ready')
+  assert.deepEqual(leases.at(-1).runtimes, ['foley'])
+  for (const k of ['hunyuan_foley/hunyuanvideo_foley.pth', 'vae/vae_128d_48k.pth', 'hunyuan_foley/siglip2/model.safetensors', 'hunyuan_foley/clap/pytorch_model.bin']) {
+    assert(leases.at(-1).files.some((f) => key(f) === k), `Foley downloads ${k}`)
+  }
+  await run('infinitetalk_tts', 'ready')
+  assert.deepEqual(leases.at(-1).runtimes, ['chatterbox', 'wanvideo'], 'a typed script runs Chatterbox, then InfiniteTalk, in one graph')
+  assert(leases.at(-1).files.some((f) => key(f) === 'wav2vec2/wav2vec2-chinese-base_fp16.safetensors'))
+  await run('qwen3_tts', 'ready')
+  assert.deepEqual(leases.at(-1).runtimes, ['qwentts'], 'the Qwen-TTS pack that runs the open weights, not the Cloud one that calls a paid API')
+  await run('drama3_tts', 'ready')
+  assert(leases.at(-1).files.some((f) => key(f) === 'asr/qwen3_asr_0.6b_bf16.safetensors'))
+  out = { type: 'file', contentType: 'application/octet-stream', name: 'trellis2_00001_.glb', toBytes: async () => Buffer.from('glTF') }
+  assert.deepEqual((await run('trellis2_image', 'ready')).map((f) => f.kind), ['3d'])
+  assert.deepEqual(leases.at(-1).runtimes, [], 'TRELLIS.2 runs on core nodes')
+
+  // Chatterbox answers an error with one sample of silence.
+  out = { type: 'audio', contentType: 'audio/flac', name: 'speech_00001_.flac', toBytes: async () => flacOneSample }
+  await assert.rejects(run('chatterbox_tts'), /The voice model returned no sound/)
+  assert.deepEqual([core.flacSeconds(flacOneSample) < 0.001, core.flacSeconds(flacTwoSeconds), core.flacSeconds(Buffer.from('ID3 not flac at all, long enough'))], [true, 2, null])
+})
+
+await test('audio and 3D: formats send Chatterbox its own language labels, a script or a recording, lyrics or an instrumental, and TRELLIS.2 its values', async () => {
+  const { formats } = await import('../src/lib/formats/index.js')
+  const { stepOptions, stepModel, selectedStep } = await import('../src/lib/formats/options.js')
+  const by = Object.fromEntries(formats.map((f) => [f.id, f]))
+  const pick = (id, values) => {
+    const f = by[id]
+    const all = { ...sampleInputs(f), ...values }
+    const step = selectedStep(f, f.steps[0], all)
+    return { model: stepModel(f, step, all), o: stepOptions(f, step, all) }
+  }
+  const nodes = JSON.parse(fs.readFileSync('scripts/fixtures/comfy-nodes.json', 'utf8'))
+  const labels = nodes.packs.chatterbox.nodes.FL_ChatterboxMultilingualTTS.in.language[0]
+  for (const id of ['tts', 'talking-head']) {
+    for (const opt of by[id].inputs.find((i) => i.id === 'language').options) assert(labels.includes(opt.params.language), `${id} ${opt.id}: ${opt.params.language}`)
+  }
+  assert.equal(pick('tts', { language: 'zh' }).o.params.language, 'Chinese (zh)')
+  const typed = pick('talking-head', { source: 'script', script: 'Hi, welcome back.', language: 'es', emotion: 'warm' })
+  assert.deepEqual([typed.model.workflow, typed.o.fields.script, typed.o.params.language, typed.o.params.exaggeration], ['infinitetalk_tts', 'Hi, welcome back.', 'Spanish (es)', 0.6])
+  assert(!typed.o.prompt.includes('welcome back'), 'the video prompt describes the scene; Chatterbox speaks the script')
+  const recorded = pick('talking-head', { source: 'audio' })
+  assert.deepEqual([recorded.model.workflow, recorded.o.params], ['infinitetalk', {}], 'a recording sets no speech values')
+  assert(!by['talking-head'].inputs.some((i) => i.id === 'accent'), 'Chatterbox has no accent control')
+  assert.deepEqual(['', '   ', null, 'Verse one'].map((lyrics) => pick('music', { lyrics }).o.fields.lyrics), ['[Instrumental]', '[Instrumental]', '[Instrumental]', 'Verse one'])
+  assert.deepEqual(['draft', 'final'].map((detail) => pick('image-to-3d', { detail }).o.params.resolution), [1024, 1536])
+  const spin = pick('turntable', { background: 'dark' })
+  assert.deepEqual([spin.o.params.background, spin.o.prompt], ['#1c1c22', ''])
+  assert.equal(pick('voice-clone', { name: 'My narrator voice' }).o.prompt, 'Hello, this is My narrator voice. It is ready to read anything you write.')
+  assert.equal(pick('character-to-3d', {}).model.workflow, 'trellis2_character')
 })
