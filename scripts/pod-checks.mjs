@@ -35,15 +35,28 @@ const listen = (handler) => new Promise((resolve) => {
 // Below Linux's ephemeral ports (32768 up): polling a port nobody listens on there can make a socket
 // connect to itself, which hangs the request and takes the port from the server.
 const freePort = () => 20000 + Math.floor(Math.random() * 12000)
-// Runs the status server and keeps its stderr. Requests wait until it has bound its port, and a check
-// that times out says what the server printed.
+// Runs the status server and keeps its stderr. Requests wait until it has bound its port. A check
+// that times out says which wait failed, how long it took, the last request error, the server's log
+// and its stderr.
 function startStatusd(env) {
   const proc = spawn(python[0], [...python.slice(1), statusd], { env: { ...process.env, ...env }, stdio: ['ignore', 'ignore', 'pipe'] })
   proc.err = ''
   proc.stderr.on('data', (d) => { proc.err += d })
-  const bound = () => fs.promises.readFile(path.join(env.CF_BASE, 'statusd.log'), 'utf8').then((t) => t.includes('status server on port')).catch(() => false)
-  proc.ready = (url, ok) => until(bound).then(() => until(ok))
-    .catch((e) => { throw new Error(`${e.message} for ${url}. The status server said: ${proc.err.slice(-1500) || 'nothing'}`) })
+  proc.on('exit', (code, signal) => { proc.ended = `exited (${signal || code})` })
+  const readLog = () => fs.promises.readFile(path.join(env.CF_BASE, 'statusd.log'), 'utf8').catch(() => '')
+  proc.ready = async (url, ok) => {
+    const t0 = Date.now()
+    let stage = 'bind its port'
+    let last = null
+    try {
+      await until(async () => (await readLog()).includes('status server on port'))
+      stage = `answer ${url}/status`
+      await until(async () => { try { return await ok() } catch (e) { last = e.cause?.code || e.cause?.message || e.message; return false } })
+    } catch {
+      throw new Error(`The status server did not ${stage} within ${Math.round((Date.now() - t0) / 100) / 10} s${last ? ` (last request: ${last})` : ''}; it ${proc.ended || 'is still running'}.`
+        + ` Its log: ${(await readLog()).trim().slice(-800) || 'empty'}. Its stderr: ${proc.err.trim().slice(-800) || 'empty'}`)
+    }
+  }
   return proc
 }
 const until = async (fn, ms = 8000) => {
@@ -563,6 +576,9 @@ await test('runs: Comfy Cloud + Pod is a saved choice, and the needs of a workfl
 // ---- review fixes ----------------------------------------------------------------------------------
 
 const hasBash = spawnSync('bash', ['-c', 'exit 0']).status === 0
+// Git Bash as a Windows path, for the status server: Windows' process search looks in System32
+// before PATH, so a plain 'bash' there can be the WSL launcher.
+const bashPath = process.platform === 'win32' && hasBash ? spawnSync('bash', ['-c', 'cygpath -w "$(command -v bash)"'], { encoding: 'utf8' }).stdout.trim() : ''
 await test('fixes: self-terminate succeeds only when RunPod clearly accepts it', { skip: !hasBash && 'no bash' }, () => {
   const script = podBootScript()
   const kill = script.slice(script.indexOf("<<'KILL'\n") + 9, script.indexOf('\nKILL\n'))
@@ -946,7 +962,7 @@ await test('freevideo: the status server installs on request, reports it, counts
     `if [ -f "${base}/fail-once" ]; then rm "${base}/fail-once"; echo "Insufficient disk space: need 89.1 GiB"; echo "see the log"; exit 1; fi`,
     `mkdir -p "${home}" && echo '{"ready": true}' > "${home}/machine.json"`, ''].join('\n'))
   const proc = startStatusd({ POD_TOKEN: 'secret', CF_BASE: base, CF_MODELS: `${base}/models`, CF_STATUS_PORT: String(port), CF_FREEVIDEO_HOME: home,
-    CF_COMFY_URL: 'http://127.0.0.1:9', CF_PROXY_URL: 'http://127.0.0.1:9', CF_TICK: '0.2', CF_DRY_KILL: '1' })
+    CF_COMFY_URL: 'http://127.0.0.1:9', CF_PROXY_URL: 'http://127.0.0.1:9', CF_TICK: '0.2', CF_DRY_KILL: '1', ...(bashPath ? { CF_BASH: bashPath } : {}) })
   t.after(() => proc.kill())
   const url = `http://127.0.0.1:${port}`
   const auth = { Authorization: 'Bearer secret' }
