@@ -5,7 +5,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { randomUUID } from 'node:crypto'
 import { Comfy } from '@comfyorg/sdk'
-import { models as pinned, falCategories, podWorkflows } from '../src/lib/catalog.js'
+import { models as pinned, falCategories, podWorkflows, cloudWorkflows } from '../src/lib/catalog.js'
 import { comfyVars, comfyRouterInput, falInput, estimate, fill, falEndpointFor, dropOptional } from '../shared/mapping.js'
 import { renderStitch } from './stitch.js'
 import { archOf, minVramOf, notOnCloud, podNeedsOf, volumeFor, RUNTIMES } from '../shared/modelFiles.js'
@@ -609,6 +609,11 @@ function podWorkflowOf(workflow) {
   return (m && (workflow === m.imageWorkflow ? m.podImageWorkflow : m.podWorkflow)) || podWorkflows[workflow] || null
 }
 
+function cloudWorkflowOf(workflow) {
+  const m = modelOf(workflow)
+  return (m && (workflow === m.imageWorkflow ? m.cloudImageWorkflow : m.cloudWorkflow)) || cloudWorkflows[workflow] || null
+}
+
 // A Pod started for a workflow is sized for its Pod graph, so H3 gets the GPU FreeVideo runs on.
 export const podNeedsFor = (workflow) => workflowNeeds(podWorkflowOf(workflow) || workflow)
 
@@ -774,7 +779,9 @@ async function comfyTarget(files, podPhase, podVram, label, run = null, podArch 
 
 // Runs a bundled workflow on Comfy Cloud or the Pod, or in development on a local ComfyUI, and returns file URLs.
 export async function runComfy(workflow, vars = {}, { createClient = (key, baseUrl) => comfyClient(baseUrl, key), lease = (o) => pod().lease(o), podPhase = () => pod().phaseNow(), podVram = () => pod().vramGb(), podRoom = () => pod().room(), podArch = () => pod().arch(), run = runType() } = {}) {
-  let { file, template } = readWorkflow(workflow)
+  // Explicit Instant uses Cloud's compatible model; Session and automatic Pod routing keep the original.
+  const cloudWorkflow = comfyMode() === 'cloud' && run === 'instant' && cloudWorkflowOf(workflow)
+  let { file, template } = readWorkflow(cloudWorkflow || workflow)
   // Nodes for a file the run did not attach (a second garment, an optional reference) drop out first.
   template = dropOptional(template, vars)
   const unset = unsetInput(template, vars)

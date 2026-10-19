@@ -1,0 +1,342 @@
+{
+  "1": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "2": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": {
+      "model": [
+        "1",
+        0
+      ],
+      "lora_name": "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors",
+      "strength_model": 1.0
+    }
+  },
+  "3": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+      "type": "minimax",
+      "device": "default"
+    }
+  },
+  "4": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "minimax_h3_video_vae_fp16.safetensors"
+    }
+  },
+  "101": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "flux-2-klein-4b-fp8.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "102": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "qwen_3_4b.safetensors",
+      "type": "flux2",
+      "device": "default"
+    }
+  },
+  "103": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "flux2-vae.safetensors"
+    }
+  },
+  "105": {
+    "class_type": "PrimitiveStringMultiline",
+    "inputs": {
+      "value": "A still frame from this video, with no text or letters in it: {{prompt}}"
+    }
+  },
+  "106": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": [
+        "105",
+        0
+      ],
+      "clip": [
+        "102",
+        0
+      ]
+    }
+  },
+  "107": {
+    "class_type": "ConditioningZeroOut",
+    "inputs": {
+      "conditioning": [
+        "106",
+        0
+      ]
+    }
+  },
+  "108": {
+    "class_type": "EmptyFlux2LatentImage",
+    "inputs": {
+      "width": "{{width}}",
+      "height": "{{height}}",
+      "batch_size": 1
+    }
+  },
+  "109": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": [
+        "111",
+        0
+      ],
+      "guider": [
+        "112",
+        0
+      ],
+      "sampler": [
+        "113",
+        0
+      ],
+      "sigmas": [
+        "114",
+        0
+      ],
+      "latent_image": [
+        "108",
+        0
+      ]
+    }
+  },
+  "110": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "109",
+        0
+      ],
+      "vae": [
+        "103",
+        0
+      ]
+    }
+  },
+  "20": {
+    "class_type": "PrimitiveFloat",
+    "inputs": {
+      "value": "{{duration}}"
+    }
+  },
+  "21": {
+    "class_type": "ComfyMathExpression",
+    "inputs": {
+      "expression": "max(5, round(a * 24)) + (5 - (max(5, round(a * 24)) % 17)) % 17",
+      "values.a": [
+        "20",
+        0
+      ]
+    }
+  },
+  "6": {
+    "class_type": "MiniMaxH3ImageToVideo",
+    "inputs": {
+      "clip": [
+        "3",
+        0
+      ],
+      "vae": [
+        "4",
+        0
+      ],
+      "prompt": "How the reference pictures align with the target video \u2014 Picture 1 (from Shot 1) aligns with the 0.00-second mark of the target video; Picture 2 (from Shot 1) aligns with the {{duration}}-second mark of the target video.\n\n{{prompt}}",
+      "width": "{{width}}",
+      "height": "{{height}}",
+      "length": [
+        "21",
+        1
+      ],
+      "first_frame": [
+        "110",
+        0
+      ],
+      "last_frame": [
+        "110",
+        0
+      ]
+    }
+  },
+  "7": {
+    "class_type": "RandomNoise",
+    "inputs": {
+      "noise_seed": "{{seed}}"
+    }
+  },
+  "8": {
+    "class_type": "KSamplerSelect",
+    "inputs": {
+      "sampler_name": "res_multistep"
+    }
+  },
+  "9": {
+    "class_type": "BasicScheduler",
+    "inputs": {
+      "model": [
+        "2",
+        0
+      ],
+      "scheduler": "simple",
+      "steps": 8,
+      "denoise": 1.0
+    }
+  },
+  "10": {
+    "class_type": "BasicGuider",
+    "inputs": {
+      "model": [
+        "2",
+        0
+      ],
+      "conditioning": [
+        "6",
+        0
+      ]
+    }
+  },
+  "11": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": [
+        "7",
+        0
+      ],
+      "guider": [
+        "10",
+        0
+      ],
+      "sampler": [
+        "8",
+        0
+      ],
+      "sigmas": [
+        "9",
+        0
+      ],
+      "latent_image": [
+        "6",
+        1
+      ]
+    }
+  },
+  "12": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "11",
+        0
+      ],
+      "vae": [
+        "4",
+        0
+      ]
+    }
+  },
+  "30": {
+    "class_type": "GetImageSize",
+    "inputs": {
+      "image": [
+        "12",
+        0
+      ]
+    }
+  },
+  "33": {
+    "class_type": "ComfyMathExpression",
+    "inputs": {
+      "expression": "a - 1",
+      "values.a": [
+        "30",
+        2
+      ]
+    }
+  },
+  "34": {
+    "class_type": "ImageFromBatch",
+    "inputs": {
+      "image": [
+        "12",
+        0
+      ],
+      "batch_index": 0,
+      "length": [
+        "33",
+        1
+      ]
+    }
+  },
+  "14": {
+    "class_type": "CreateVideo",
+    "inputs": {
+      "images": [
+        "34",
+        0
+      ],
+      "fps": 24
+    }
+  },
+  "15": {
+    "class_type": "SaveVideo",
+    "inputs": {
+      "video": [
+        "14",
+        0
+      ],
+      "filename_prefix": "comfyfield/h3_loop",
+      "format": "mp4",
+      "codec": "h264",
+      "format.codec": "h264"
+    }
+  },
+  "111": {
+    "class_type": "RandomNoise",
+    "inputs": {
+      "noise_seed": "{{seed}}"
+    }
+  },
+  "112": {
+    "class_type": "CFGGuider",
+    "inputs": {
+      "model": [
+        "101",
+        0
+      ],
+      "positive": [
+        "106",
+        0
+      ],
+      "negative": [
+        "107",
+        0
+      ],
+      "cfg": 1
+    }
+  },
+  "113": {
+    "class_type": "KSamplerSelect",
+    "inputs": {
+      "sampler_name": "euler"
+    }
+  },
+  "114": {
+    "class_type": "Flux2Scheduler",
+    "inputs": {
+      "steps": 4,
+      "width": "{{width}}",
+      "height": "{{height}}"
+    }
+  }
+}
