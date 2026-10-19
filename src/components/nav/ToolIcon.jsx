@@ -46,6 +46,7 @@ const paths = {
   pause: <><path d="M9 6v12M15 6v12" /></>,
   playmark: <><path d="M8 5.5v13l10.5-6.5Z" /></>,
   code: <><path d="m8 8-4 4 4 4M16 8l4 4-4 4M14 5l-4 14" /></>,
+  slash: <><rect x="3" y="3" width="18" height="18" rx="5" /><path d="m14.5 7-5 10" /></>,
   bars: <><path d="M4 18V9M9 18V5M14 18v-7M19 18V8" /></>,
   link: <><path d="M10 14a4 4 0 0 0 5.6 0l3-3a4 4 0 0 0-5.6-5.6l-1 1M14 10a4 4 0 0 0-5.6 0l-3 3a4 4 0 0 0 5.6 5.6l1-1" /></>,
   gpu: <><rect x="7" y="7" width="10" height="10" rx="2" /><path d="M10 3v4M14 3v4M10 17v4M14 17v4M3 10h4M3 14h4M17 10h4M17 14h4" /></>,
@@ -60,7 +61,7 @@ const byTool = {
   'click-to-ad': 'cursor', 'color-palette': 'palette', 'motion-control': 'path', lipsync: 'lips',
   'text-to-speech': 'mic', 'voice-change': 'wave', translate: 'translate',
   explore: 'compass', apps: 'apps', effects: 'spark', motion: 'move', marketing: 'megaphone', ads: 'ad',
-  assistant: 'chat', assets: 'folder',
+  assistant: 'chat', assets: 'folder', skills: 'slash',
 }
 
 export const Glyph = ({ name }) => <svg {...s}>{paths[name] || paths.spark}</svg>

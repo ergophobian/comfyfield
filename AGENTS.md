@@ -33,6 +33,7 @@ Keys go in Connections (saved to `.comfyfield/keys.json`, gitignored) or `.env` 
 - `src/pages/`: one page per tool (generators, studios, apps), plus Flows (Canvas), Library (Assets), Models and Connections
 - `src/lib/flowEngine.js`: Flows execution rules (see below)
 - `src/lib/formats/`: formats as data (apps, presets, effects, looks, jobs). `index.js` holds categories, app hubs and helpers. `src/lib/recipes.js` keeps the teammate's fal recipes
+- `src/lib/skills.js`: the skill library on /skills (agent jobs, their prompts and the formats they run) and the agent setup snippets. Plain JS so `server/mcp.js` can import it
 - `public/workflows/`: ComfyUI workflows in API format with `{{placeholders}}`
 
 ## How we work
