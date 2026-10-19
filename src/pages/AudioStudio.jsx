@@ -1,3 +1,4 @@
+import { PageArt } from '../components/Art.jsx'
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import Segmented from '../components/Segmented.jsx'
@@ -115,6 +116,7 @@ export default function AudioStudio() {
   const explainer = (
     <div className="gen-explain">
       <div className="gen-explain-head rise">
+        <PageArt id="audio" />
         <h1>{how.title}</h1>
         <p>{how.text}</p>
       </div>

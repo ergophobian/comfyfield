@@ -1,3 +1,4 @@
+import { ArtImage } from '../Art.jsx'
 import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { IconCheck } from '../Icons.jsx'
@@ -27,6 +28,7 @@ export function AppCard({ format, to, i = 0, picked = false, disabled = false, o
   const body = (
     <>
       <span className="recipe-cover" style={{ background: format.cover }}>
+        <ArtImage id={format.id} alt={`${format.name} example`} />
         {format.preview && <video ref={ref} className={live ? 'on' : ''} src={format.preview} muted loop playsInline preload="none" />}
         {badge && <i className="app-badge">{badge}</i>}
         {onPick && <i className="app-check" aria-hidden="true"><IconCheck /></i>}

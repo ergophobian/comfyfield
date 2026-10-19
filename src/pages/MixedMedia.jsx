@@ -1,3 +1,4 @@
+import { PageArt, ArtImage } from '../components/Art.jsx'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Segmented from '../components/Segmented.jsx'
@@ -44,6 +45,7 @@ export default function MixedMedia() {
       </aside>
 
       <section className="mixed-looks">
+        <PageArt id="mixed-media" />
         {groups.length > 1 && (
           <div className="apps-bar rise">
             <div className="apps-tabs"><Segmented options={tabs} value={tab} onChange={setTab} /></div>
@@ -55,6 +57,7 @@ export default function MixedMedia() {
               <Link key={f.id} to={`/apps/${f.id}`} state={carry(f, clip)} className="look rise"
                 style={{ background: f.cover, '--d': `calc(${Math.min(i, 12)} * var(--stagger))` }}
                 onPointerEnter={(e) => play(e, true)} onPointerLeave={(e) => play(e, false)} onFocus={(e) => play(e, true)} onBlur={(e) => play(e, false)}>
+                <ArtImage id={f.id} alt={`${f.name} example`} />
                 {f.preview && <video src={f.preview} muted loop playsInline preload="none" />}
                 {!isWired(f) && <em className="look-tag">Not wired yet</em>}
                 <span><strong>{f.name}</strong><small>{f.blurb}</small></span>

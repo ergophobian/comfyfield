@@ -1,3 +1,4 @@
+import { ArtImage } from '../components/Art.jsx'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Field } from '../components/formats/Fields.jsx'
@@ -114,6 +115,7 @@ function AppView({ format, motion }) {
           <div className="app-hero glass rise">
             {!(main && values[main.id]) && (
               <span className="app-cover" style={{ background: format.cover }}>
+                <ArtImage id={format.id} alt={`${format.name} example`} />
                 {format.preview && <video src={format.preview} muted loop playsInline autoPlay={!calm()} />}
               </span>
             )}
