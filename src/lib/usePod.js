@@ -36,6 +36,19 @@ export async function podAction(action, body = {}) {
   return status
 }
 
+// The generation type: Instant runs on Comfy Cloud, Session on the user's Pod. Before the user picks one,
+// a live Pod means Session, because a ready Pod takes every run.
+export const RUN_TYPES = [
+  { value: 'instant', label: 'Instant', line: 'Comfy Cloud, ready at once' },
+  { value: 'session', label: 'Session', line: 'Your own GPU on RunPod' },
+]
+export const runTypeOf = (s) => s?.run || (s && !['none', 'paused'].includes(s.phase) ? 'session' : 'instant')
+
+export async function setRunType(run) {
+  await call('/api/connections', { id: 'comfy', values: { run } })
+  return refreshPod()
+}
+
 export const downloading = (s) => (s?.downloads || []).filter((d) => d.state === 'queued' || d.state === 'downloading')
 export const installing = (s) => (s?.runtimes || []).filter((e) => e.state === 'installing')
 
@@ -66,8 +79,9 @@ export function takeLabel(it, s) {
   return null
 }
 
-// The chip shows where a Pod is an option, and always while one exists, because a Pod charges.
-export const showPod = (s) => Boolean(s && (s.phase !== 'none' || (s.mode === 'cloud' && s.connected)))
+// The chip shows wherever ComfyUI runs on Comfy Cloud or a Pod, since it holds the generation type,
+// and always while a Pod exists, because a Pod charges.
+export const showPod = (s) => Boolean(s && (s.phase !== 'none' || s.mode === 'cloud'))
 
 // A run Comfy Cloud cannot take asks once for a Pod. `reason` says why Cloud cannot take it.
 export function askPod(workflow, reason) {

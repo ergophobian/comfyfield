@@ -44,6 +44,22 @@ _Avoid_: tool (that is a page), provider
 The most the user lets Pods spend in one day. When today's spend reaches it, no new Pod starts; a running Pod is not touched.
 _Avoid_: budget, limit (alone)
 
+**Generation type**:
+How the user's ComfyUI runs execute: Instant or Session, picked in the top bar.
+_Avoid_: mode, backend (for the user's choice)
+
+**Instant**:
+The generation type that sends ComfyUI runs to Comfy Cloud at once. It runs only the models and LoRAs Cloud has installed.
+_Avoid_: cloud mode
+
+**Session**:
+The generation type that sends ComfyUI runs to the user's Pod. A Session starts when the user approves a Session tier.
+_Avoid_: pod mode, long session
+
+**Session tier**:
+Budget, Balanced or Performance: the rule that picks a Session's GPU from its estimated cost and time per job.
+_Avoid_: size (that is GPU memory), plan
+
 ## Flows
 
 **Flows engine**:

@@ -37,6 +37,7 @@ Keys go in Connections (saved to `.comfyfield/keys.json`, gitignored) or `.env` 
 - `public/workflows/`: ComfyUI workflows in API format with `{{placeholders}}`. Uploads: `{{image}}` to `{{image5}}`, `{{mask}}`, `{{video}}`, `{{audio}}`, `{{voice}}`; a node with `"_meta": { "optional": "<key>" }` drops out, with its links, when the run has no such file. `node scripts/graph-check.mjs` checks every graph against `scripts/fixtures/comfy-nodes.json` (rebuild it with `scripts/node-schema.mjs` after moving the ComfyUI pin or adding a pack; a pack the Comfy registry has no node scan for takes a hand schema from `scripts/fixtures/pack-nodes.json`)
 - `shared/modelFiles.js`: every model file and LoRA a Pod can download (pinned by sha256), the loaders that name them, and the node packs a Pod installs (pinned by commit), with the files a pack reads from its own folder. A graph's loaders and node classes decide what a Pod gets
 - `server/pod.js`, `server/podBoot.js`, `server/pod-statusd.py`: the Pod manager, its boot script and the status server that runs on the Pod
+- `shared/gpuTiers.js`: the Session tiers (Budget, Balanced, Performance) and the GPU speed table they estimate cost and time per job from
 
 ## How we work
 

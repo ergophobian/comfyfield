@@ -8,7 +8,8 @@ import { Comfy } from '@comfyorg/sdk'
 import { models as pinned, falCategories, podWorkflows } from '../src/lib/catalog.js'
 import { comfyVars, comfyRouterInput, falInput, estimate, fill, falEndpointFor, dropOptional } from '../shared/mapping.js'
 import { renderStitch } from './stitch.js'
-import { minVramOf, notOnCloud, podNeedsOf, volumeFor, RUNTIMES } from '../shared/modelFiles.js'
+import { archOf, minVramOf, notOnCloud, podNeedsOf, volumeFor, RUNTIMES } from '../shared/modelFiles.js'
+import { DEFAULT_TIER, TIER_IDS } from '../shared/gpuTiers.js'
 
 import { podManager, GPU_LADDER, IDLE_CHOICES, POD_VOLUMES, STOPPED_DISK_USD_GB_MONTH, idleMinutes } from './pod.js'
 import { sandboxFetch } from './podSandbox.js'
@@ -19,11 +20,11 @@ export { GPU_LADDER, NO_POD } from './pod.js'
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
 export const providers = {
-  comfy: { env: ['COMFY_URL', 'COMFY_API_KEY', 'COMFY_MODE'], fields: ['url', 'key', 'mode'] },
+  comfy: { env: ['COMFY_URL', 'COMFY_API_KEY', 'COMFY_MODE', 'COMFY_RUN'], fields: ['url', 'key', 'mode', 'run'] },
   fal: { env: ['FAL_KEY'], fields: ['key'] },
   google: { env: ['GEMINI_API_KEY'], fields: ['key'] },
   elevenlabs: { env: ['ELEVENLABS_API_KEY'], fields: ['key'] },
-  runpod: { env: ['RUNPOD_API_KEY', 'RUNPOD_DAILY_CAP', 'RUNPOD_AUTO_START', 'RUNPOD_IDLE_MIN'], fields: ['key', 'cap', 'auto', 'idle'] },
+  runpod: { env: ['RUNPOD_API_KEY', 'RUNPOD_DAILY_CAP', 'RUNPOD_AUTO_START', 'RUNPOD_IDLE_MIN', 'RUNPOD_TIER'], fields: ['key', 'cap', 'auto', 'idle', 'tier'] },
 }
 
 export const home = () => path.resolve(process.env.COMFYFIELD_HOME || '.', '.comfyfield')
@@ -93,6 +94,13 @@ function gpuSeconds(job, t0) {
 
 // On Generate, a run that needs a Pod starts one by itself unless the user turned this off.
 export const podAutoStart = () => config('runpod').auto !== 'off'
+
+// The generation type the user picked: 'instant' (Comfy Cloud) or 'session' (their Pod). Null until they
+// pick one, and then a ready Pod takes every run and Cloud takes the rest, as before the choice existed.
+export const RUN_TYPES = ['instant', 'session']
+const ARCH_NAMES = { blackwell: 'Blackwell', hopper: 'Hopper' }
+export const runType = () => (RUN_TYPES.includes(config('comfy').run) ? config('comfy').run : null)
+export const podTier = () => (TIER_IDS.includes(config('runpod').tier) ? config('runpod').tier : DEFAULT_TIER)
 
 export function pod() {
   if (!podOne) {
@@ -457,6 +465,8 @@ export function connections() {
 export function saveConnection(id, values) {
   if (!providers[id]) throw Object.assign(new Error('Unknown provider'), { status: 400 })
   if (id === 'comfy' && (values.mode || values.url)) throw Object.assign(new Error('ComfyUI runs on Comfy Cloud and Pods. A local ComfyUI is for development only: set COMFY_MODE=local and COMFY_URL in .env.'), { status: 400 })
+  if (id === 'comfy' && values.run != null && !RUN_TYPES.includes(values.run)) throw Object.assign(new Error('The generation type is instant or session.'), { status: 400 })
+  if (id === 'runpod' && values.tier != null && !TIER_IDS.includes(values.tier)) throw Object.assign(new Error(`The Session tier is ${TIER_IDS.join(', ')}.`), { status: 400 })
   if (id === 'runpod' && values.auto != null && !['on', 'off'].includes(values.auto)) throw Object.assign(new Error('Start Pods automatically is on or off.'), { status: 400 })
   if (id === 'runpod' && values.cap != null && !(parseFloat(values.cap) > 0)) throw Object.assign(new Error('The daily cap is a dollar amount above 0.'), { status: 400 })
   if (id === 'runpod' && values.idle != null && !IDLE_CHOICES.includes(Number(values.idle))) throw Object.assign(new Error(`Idle shutdown is ${IDLE_CHOICES.join(', ')} minutes.`), { status: 400 })
@@ -707,8 +717,9 @@ export async function podStatus() {
 
 // A Pod can take a graph when its GPU is big enough and its disk has room for the runtimes it has not
 // installed. Unknown disk counts as room: a Pod started for the graph was sized for it.
-function podHasRoom(needs, vram, room = {}) {
+function podHasRoom(needs, vram, room = {}, arch = null) {
   if (vram == null || vram < minVramOf(needs)) return false
+  if (arch && archOf(needs) && archOf(needs) !== arch) return false
   return needs.filter((n) => n.runtime && !['ready', 'installing', 'loading'].includes(room.runtimes?.[n.runtime]))
     .every((n) => room.diskFreeGb == null || room.diskFreeGb >= n.gb)
 }
@@ -732,29 +743,37 @@ async function readUploads(uploads, vars) {
   return out
 }
 
-// Comfy Cloud is the instant option and a Pod the long-term one. A ready Pod takes every ComfyUI run;
-// otherwise a run goes to Comfy Cloud at once, unless Cloud cannot take it. Then it waits for a
-// starting Pod, or fails with needs_pod so the app can offer to start one. It never starts a Pod.
-async function comfyTarget(files, podPhase, podVram, label) {
+// Comfy Cloud is the Instant option and a Pod the Session one. With no generation type picked, a ready
+// Pod takes every ComfyUI run and Cloud takes the rest. Instant never uses a Pod; Session never uses
+// Cloud. A run neither can take fails with needs_pod so the app can offer a Session. It never starts a Pod.
+async function comfyTarget(files, podPhase, podVram, label, run = null, podArch = () => null) {
   const phase = await podPhase()
-  // A Pod too small for the run's models is no Pod for this run. Unknown memory counts as enough.
+  // A Pod too small for the run's models, or of the wrong GPU architecture, is no Pod for this run.
+  // Unknown memory or architecture counts as enough.
   const need = minVramOf(files)
   const vram = podVram()
-  const fits = vram == null || vram >= need
-  if (phase === 'ready' && fits) return 'pod'
+  const needArch = archOf(files)
+  const arch = podArch()
+  const archOk = !needArch || !arch || arch === needArch
+  const fits = (vram == null || vram >= need) && archOk
+  if (run !== 'instant' && phase === 'ready' && fits) return 'pod'
   const missing = notOnCloud(files)
-  const why = !config('comfy').key ? 'Comfy Cloud needs a Comfy API key on a paid plan'
-    : missing.length ? `${label || missing[0].label || missing[0].name} is not on Comfy Cloud yet` : null
-  if (!why) return 'cloud'
+  const why = run === 'session' ? null
+    : !config('comfy').key ? 'Comfy Cloud needs a Comfy API key on a paid plan'
+      : missing.length ? `${label || missing[0].label || missing[0].name} is not on Comfy Cloud yet` : null
+  if (run !== 'session' && !why) return 'cloud'
+  const needs = (text, code, status = 409) => Object.assign(new Error(text), { status, code, reason: why })
+  if (run === 'instant') throw needs(`${why}, so this run needs a Session. Start one from the run type in the top bar.`, 'needs_pod')
   if (!fits && phase !== 'none') {
-    throw Object.assign(new Error(`${why}, and this run needs a ${need} GB GPU; your Pod has ${vram} GB. Terminate it and start a new Pod.`), { status: 409, code: 'pod_too_small', reason: why })
+    const gap = archOk ? `a ${need} GB GPU; your Pod has ${vram} GB` : `a ${ARCH_NAMES[needArch] || needArch} GPU; your Pod has a ${ARCH_NAMES[arch] || arch} one`
+    throw needs(`${why ? `${why}, and this` : 'This'} run needs ${gap}. Terminate it and start a new Pod.`, 'pod_too_small')
   }
   if (phase === 'starting' || phase === 'resuming') return 'pod'
-  throw Object.assign(new Error(`${why}, so this run needs a Pod. Start one in ComfyField from the Pod chip in the top bar.`), { status: 409, code: 'needs_pod', reason: why })
+  throw needs(why ? `${why}, so this run needs a Pod. Start one in ComfyField from the Pod chip in the top bar.` : 'You picked Session, so this run needs a Pod. Start one from the run type in the top bar.', 'needs_pod')
 }
 
 // Runs a bundled workflow on Comfy Cloud or the Pod, or in development on a local ComfyUI, and returns file URLs.
-export async function runComfy(workflow, vars = {}, { createClient = (key, baseUrl) => comfyClient(baseUrl, key), lease = (o) => pod().lease(o), podPhase = () => pod().phaseNow(), podVram = () => pod().vramGb(), podRoom = () => pod().room() } = {}) {
+export async function runComfy(workflow, vars = {}, { createClient = (key, baseUrl) => comfyClient(baseUrl, key), lease = (o) => pod().lease(o), podPhase = () => pod().phaseNow(), podVram = () => pod().vramGb(), podRoom = () => pod().room(), podArch = () => pod().arch(), run = runType() } = {}) {
   let { file, template } = readWorkflow(workflow)
   // Nodes for a file the run did not attach (a second garment, an optional reference) drop out first.
   template = dropOptional(template, vars)
@@ -765,7 +784,7 @@ export async function runComfy(workflow, vars = {}, { createClient = (key, baseU
     let needs = podNeedsOf(graph)
     // Errors name the model as the picker shows it.
     const label = modelOf(workflow)?.name
-    const target = await comfyTarget(needs, podPhase, podVram, label)
+    const target = await comfyTarget(needs, podPhase, podVram, label, run, podArch)
     // A run that goes to a Pod big enough for the model's Pod graph runs that graph: H3 on FreeVideo.
     const alt = target === 'pod' && podWorkflowOf(workflow)
     if (alt) {
@@ -773,7 +792,7 @@ export async function runComfy(workflow, vars = {}, { createClient = (key, baseU
       w.template = dropOptional(w.template, vars)
       const g = unsetInput(w.template, vars) ? null : fill(w.template, vars)
       const n = g && podNeedsOf(g)
-      if (n && podHasRoom(n, podVram(), podRoom())) {
+      if (n && podHasRoom(n, podVram(), podRoom(), podArch())) {
         ({ file, template } = w)
         graph = g
         needs = n

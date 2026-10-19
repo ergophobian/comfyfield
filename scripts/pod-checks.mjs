@@ -1362,6 +1362,130 @@ await test('pods page: the page lists sizes with the models that need them, and 
   await assert.rejects(podAction('start', { runtimes: 'freevideo' }), /Runtimes are a list/)
 })
 
+// ---- Generation type and Session tiers ---------------------------------------------------------------
+
+const { tierPicks, jobSecondsOf, DEFAULT_REF_SECONDS } = await import('../shared/gpuTiers.js')
+const gpu = (id, usdPerHr, speed, extra = {}) => ({ gpuTypeId: id, cloudType: 'SECURE', name: id, vramGb: 48, usdPerHr, speed, inStock: true, ...extra })
+const ids = (t) => t.order.map((o) => o.gpuTypeId)
+
+await test('tiers: Budget is the lowest cost per job, Balanced faster within 1.5 times that, Performance the fastest', () => {
+  // A 60 s job: Slow costs $0.0167, Mid $0.0150, Fast $0.0167 (1.11x Mid), Fastest $0.0267 (1.78x Mid).
+  const rungs = [gpu('Slow', 0.5, 0.5), gpu('Mid', 0.9, 1), gpu('Fast', 2, 2), gpu('Fastest', 4, 2.5)]
+  const [budget, balanced, performance] = tierPicks(rungs, { refSeconds: 60 })
+  assert.equal(budget.gpu.gpuTypeId, 'Mid', 'the cheapest per job, not the cheapest per hour')
+  assert.equal(Math.round(budget.gpu.usdPerJob * 10000), 150)
+  assert.equal(balanced.gpu.gpuTypeId, 'Fast', 'Fastest costs 1.78 times Budget, above the cap')
+  assert.equal(performance.gpu.gpuTypeId, 'Fastest')
+  assert.equal(performance.gpu.seconds, 24)
+  assert.deepEqual(ids(budget), ['Mid', 'Fast', 'Slow', 'Fastest'], 'ties on cost go to the faster GPU')
+  for (const t of [budget, balanced, performance]) assert.equal(t.order.length, 4, 'every fitting GPU is a fallback')
+  assert(tierPicks(rungs, { refSeconds: 60, cap: 2 })[1].gpu.gpuTypeId === 'Fastest', 'the cap is a setting')
+})
+
+await test('tiers: stock moves free GPUs first, Balanced falls back to Budget, and twins are named', () => {
+  const rungs = [gpu('Mid', 0.9, 1), gpu('Fast', 2, 2, { inStock: false }), gpu('Fastest', 4, 2.5)]
+  const [budget, balanced, performance] = tierPicks(rungs, { refSeconds: 60 })
+  assert.equal(balanced.gpu.gpuTypeId, 'Mid', 'with Fast taken, Balanced falls back to Budget, not to a GPU above the cap')
+  assert.equal(balanced.sameAs, 'budget')
+  assert.deepEqual(ids(balanced), ['Mid', 'Fastest', 'Fast'])
+  assert.equal(performance.gpu.gpuTypeId, 'Fastest')
+  assert.equal(budget.sameAs, null)
+  // With one GPU, all three tiers are that GPU.
+  const one = tierPicks([gpu('Only', 1, 1)], { refSeconds: 30 })
+  assert.deepEqual(one.map((t) => [t.gpu.gpuTypeId, t.sameAs]), [['Only', null], ['Only', 'budget'], ['Only', 'budget']])
+  // No price yet (no RunPod key): times still show, costs are unknown.
+  const unpriced = tierPicks([gpu('A', null, 1), gpu('B', null, 2)], { refSeconds: 60 })
+  assert.deepEqual(unpriced.map((t) => t.gpu.usdPerJob), [null, null, null])
+  assert.equal(unpriced[2].gpu.gpuTypeId, 'B')
+  assert.deepEqual(tierPicks([], { refSeconds: 60 }).map((t) => t.gpu), [null, null, null])
+})
+
+await test('tiers: a job takes the longest reference time of its model files', () => {
+  assert.equal(jobSecondsOf([{ refSec: 40 }, { refSec: 200 }, {}]), 200)
+  assert.equal(jobSecondsOf([{ gb: 3 }]), DEFAULT_REF_SECONDS)
+  assert.equal(jobSecondsOf([]), DEFAULT_REF_SECONDS)
+})
+
+await test('tiers: a start walks the tier order on capacity refusals, and records the tier', async () => {
+  const [small, big] = [GPU_LADDER[1], GPU_LADDER[2]]
+  const { pod, rp } = setup()
+  rp.create.push({ status: 500, data: { error: 'There are no instances currently available' } })
+  const s = await pod.start({ minVramGb: 32, order: [big, small].map(({ gpuTypeId, cloudType }) => ({ gpuTypeId, cloudType })), tier: 'performance' })
+  assert.deepEqual(creates(rp).map((b) => [b.gpuTypeIds[0], b.cloudType]), [[big.gpuTypeId, big.cloudType], [small.gpuTypeId, small.cloudType]])
+  assert.equal(s.pod.gpu, small.name)
+  assert.deepEqual([s.pod.tier, s.pod.fellBack], ['performance', true])
+  // An order naming a GPU too small for the job skips it.
+  const b = setup()
+  await b.pod.start({ minVramGb: 96, order: [GPU_LADDER[0], big].map(({ gpuTypeId, cloudType }) => ({ gpuTypeId, cloudType })), tier: 'budget' })
+  assert.deepEqual(creates(b.rp).map((x) => x.gpuTypeIds[0]), [big.gpuTypeId])
+  assert.equal(b.pod.status().pod.fellBack, false)
+})
+
+await test('generation type: Instant never uses a Pod, Session never uses Cloud, and unset keeps the old routing', async () => {
+  const client = { workflows: { fromFile: async () => ({ json: null, setInput() {} }) }, run: async () => ({ outputs: [{ type: 'image', contentType: 'image/png', name: 'x.png', toBytes: async () => Buffer.from('i') }] }) }
+  let leased = 0
+  const lease = async () => { leased++; return { baseUrl: 'https://p-8189.proxy.runpod.net', token: 't', sandbox: false, signal: new AbortController().signal, reason: () => null, release() {} } }
+  const opts = (phase, run) => ({ createClient: () => client, lease, podPhase: async () => phase, podVram: () => 96, podRoom: () => ({}), run })
+
+  podMode()
+  await core.runComfy('image_sdxl', sdxl, opts('ready', 'instant'))
+  assert.equal(leased, 0, 'Instant sends the run to Cloud even with a ready Pod')
+  await core.runComfy('image_sdxl', sdxl, opts('ready', null))
+  assert.equal(leased, 1, 'unset: a ready Pod takes the run, as before')
+  await core.runComfy('image_sdxl', sdxl, opts('ready', 'session'))
+  assert.equal(leased, 2, 'Session: the Pod takes it')
+  await assert.rejects(core.runComfy('image_sdxl', sdxl, opts('none', 'session')),
+    (e) => e.code === 'needs_pod' && e.reason === null && /You picked Session/.test(e.message))
+  await core.runComfy('image_sdxl', sdxl, opts('starting', 'session'))
+  assert.equal(leased, 3, 'Session waits for a starting Pod instead of using Cloud')
+
+  podMode({})
+  await assert.rejects(core.runComfy('image_sdxl', sdxl, opts('ready', 'instant')),
+    (e) => e.code === 'needs_pod' && /Comfy API key/.test(e.reason) && /needs a Session/.test(e.message))
+  assert.equal(leased, 3, 'Instant without a Comfy key still never uses the Pod')
+
+  podMode()
+  assert.throws(() => core.saveConnection('comfy', { run: 'local' }), /instant or session/)
+  core.saveConnection('comfy', { run: 'instant' })
+  assert.equal(core.runType(), 'instant')
+  assert.throws(() => core.saveConnection('runpod', { tier: 'cheap' }), /budget, balanced, performance/)
+  assert.equal(core.podTier(), 'balanced')
+})
+
+await test('tiers: Session tiers may start the faster cards, and an NVFP4 run stays on Blackwell', async () => {
+  const { GPU_EXTRA, GPU_CATALOG } = await import('../server/pod.js')
+  const { archOf, RUNTIMES } = await import('../shared/modelFiles.js')
+  const { pod, rp } = setup()
+  const h200 = GPU_EXTRA.find((g) => g.name === 'H200' && g.cloudType === 'COMMUNITY')
+  const s = await pod.start({ minVramGb: 32, order: [{ gpuTypeId: h200.gpuTypeId, cloudType: h200.cloudType }], tier: 'performance' })
+  assert.deepEqual([s.pod.gpu, s.pod.vramGb], ['H200', 141])
+  assert.equal(pod.arch(), 'hopper')
+  assert.deepEqual(creates(rp).map((b) => b.gpuTypeIds[0]), ['NVIDIA H200'])
+  // The ladder alone still starts only ladder GPUs, and the Pods page cannot pick an extra card by hand.
+  assert(GPU_CATALOG.length === GPU_LADDER.length + GPU_EXTRA.length)
+  await assert.rejects(setup().pod.start({ gpu: { gpuTypeId: h200.gpuTypeId, cloudType: h200.cloudType } }), /does not start that GPU/)
+  // A quote over the catalog with an architecture keeps only that architecture.
+  const q = await setup().pod.quote({ minVramGb: 32, catalog: true, arch: 'blackwell' })
+  assert(q.rungs.length > 0 && q.rungs.every((r) => r.arch === 'blackwell' && r.vramGb >= 32))
+  assert((await setup().pod.quote({ minVramGb: 32, catalog: true })).rungs.some((r) => r.arch === 'hopper'))
+  assert.equal(archOf([{ name: 'qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors', ...MODEL_FILES['qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors'] }]), 'blackwell')
+  assert.equal(RUNTIMES.freevideo.arch, 'blackwell')
+  // H3's graph needs Blackwell, and a Hopper Pod is too small for it in the same way a small Pod is.
+  const h3 = { prompt: 'A fox', width: 1344, height: 768, frames: 121, seed: 1 }
+  const client = { workflows: { fromFile: async () => ({ json: null, setInput() {} }) }, run: async () => ({ outputs: [] }) }
+  podMode({})
+  await assert.rejects(core.runComfy('h3_open_t2v', h3, { createClient: () => client, lease: async () => { throw new Error('no lease') }, podPhase: async () => 'ready', podVram: () => 141, podArch: () => 'hopper', run: 'session' }),
+    (e) => e.code === 'pod_too_small' && /needs a Blackwell GPU; your Pod has a Hopper one/.test(e.message))
+})
+
+await test('generation type: approving a Session switches the user to it, on the tier they picked', async () => {
+  podMode()
+  core.saveConnection('comfy', { run: 'instant' })
+  const plugin = await import('../server/plugin.js')
+  await assert.rejects(plugin.podAction('start', { workflow: 'image_sdxl', tier: 'cheap' }), /The Session tier is budget, balanced, performance/)
+  assert.equal(core.runType(), 'instant', 'a refused start changes nothing')
+})
+
 // ---- Every service on a Pod: node packs, early downloads, disk room, uploads ----------------------
 
 await test('node packs: a graph\'s node classes decide its packs, and a pack Comfy Cloud has keeps the graph on Cloud', async () => {
