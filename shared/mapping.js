@@ -46,7 +46,9 @@ export const PICTURE_SLOTS = ['image', 'image2', 'image3', 'image4', 'image5']
 // pictures fill image, image2, ... in the order it lists them (`slots`, from recipeOptions), and a
 // saved character or product stands in with its first image (a brand logo never does). Without slots (the composer) attached images fill them.
 export function comfyVars(kind, o, sizes) {
-  const [fullWidth, fullHeight] = sizes?.[o.aspect] || (kind === 'video' ? videoSize(o.aspect) : aspectSize[o.aspect])
+  // Audio and 3D runs have no shape; their graphs read no canvas, so a square stands in.
+  const aspect = aspectSize[o.aspect] ? o.aspect : '1:1'
+  const [fullWidth, fullHeight] = sizes?.[o.aspect] || (kind === 'video' ? videoSize(aspect) : aspectSize[aspect])
   // A draft scale shrinks the canvas, in multiples of 64 so every model takes it.
   const [width, height] = o.scale && o.scale !== 1 ? [fullWidth, fullHeight].map((n) => Math.max(64, Math.round((n * o.scale) / 64) * 64)) : [fullWidth, fullHeight]
   const trim = o.trim && o.trim.end > o.trim.start ? o.trim : null

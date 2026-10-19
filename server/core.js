@@ -811,7 +811,12 @@ export async function runComfy(workflow, vars = {}, { createClient = (key, baseU
       for (const output of job.outputs) {
         const kind = outputKind(output.contentType, output.name, output.type)
         if (!kind) continue
-        files.push({ ...saveMedia(Buffer.from(await output.toBytes()), outputExt(output.contentType, output.name)), kind, name: output.name })
+        const buf = Buffer.from(await output.toBytes())
+        // Chatterbox answers an error with one sample of silence, which ComfyUI counts as a success.
+        if (kind === 'audio' && flacSeconds(buf) != null && flacSeconds(buf) < 0.1) {
+          throw new Error('The voice model returned no sound. Try a shorter script or another voice sample.')
+        }
+        files.push({ ...saveMedia(buf, outputExt(output.contentType, output.name)), kind, name: output.name })
       }
       if (!files.length) throw new Error(`${where} finished but returned no media.`)
       return files
@@ -869,6 +874,14 @@ function outputKind(contentType = '', name = '', type = '') {
   if (/\.(mp4|webm|mov)$/i.test(name)) return 'video'
   if (/\.(wav|mp3|flac|ogg|m4a|opus)$/i.test(name)) return 'audio'
   return ['image', 'video', 'audio'].includes(type) ? type : null
+}
+// The length of a FLAC file in seconds, from its STREAMINFO block (a 20-bit sample rate, then a 36-bit
+// sample count). Null for another format, or when the encoder left the count out.
+export function flacSeconds(buf) {
+  if (buf.length < 26 || buf.toString('latin1', 0, 4) !== 'fLaC' || (buf[4] & 0x7f) !== 0) return null
+  const rate = (buf[18] << 12) | (buf[19] << 4) | (buf[20] >> 4)
+  const samples = (buf[21] & 0x0f) * 2 ** 32 + buf.readUInt32BE(22)
+  return rate && samples ? samples / rate : null
 }
 const outputExt = (contentType, name) => {
   const ext = /\.(\w{2,5})$/.exec(name || '')?.[1]?.toLowerCase()

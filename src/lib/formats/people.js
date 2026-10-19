@@ -1,6 +1,14 @@
 // Characters, voice and avatars.
 import { open, photo, clip, sound, covers } from './parts.js'
 
+// Chatterbox Multilingual takes its own language labels (mtl_tts.py SUPPORTED_LANGUAGES). It has no
+// accent control: the accent comes from the voice sample.
+const speechLanguages = [
+  ['en', 'English', 'English (en)'], ['es', 'Spanish', 'Spanish (es)'], ['fr', 'French', 'French (fr)'], ['de', 'German', 'German (de)'],
+  ['ja', 'Japanese', 'Japanese (ja)'], ['pt', 'Portuguese', 'Portuguese (pt)'], ['hi', 'Hindi', 'Hindi (hi)'], ['ko', 'Korean', 'Korean (ko)'],
+  ['zh', 'Mandarin', 'Chinese (zh)'],
+].map(([id, label, language]) => ({ id, label, params: { language } }))
+
 const characters = [
   open({
     id: 'character-sheet', name: 'Character sheet', kind: 'image', category: 'characters',
@@ -137,7 +145,7 @@ const voice = [
   open({
     id: 'talking-head', name: 'Talking head', kind: 'video', category: 'voice', featured: true, layout: 'wide',
     blurb: 'Make a face in a photo speak your script.',
-    runsOn: 'InfiniteTalk', workflow: 'infinitetalk',
+    runsOn: 'InfiniteTalk',
     inputs: [
       { id: 'image', type: 'image', label: 'Face', half: true },
       { id: 'template', type: 'choice', label: 'Setup', half: true, default: 'keep', options: [
@@ -165,28 +173,17 @@ const voice = [
         { id: 'serious', label: 'Serious', text: 'They are serious and focused, with a steady gaze.', params: { exaggeration: 0.4, cfg_weight: 0.6 } },
         { id: 'sad', label: 'Sad', text: 'They sound sad and subdued, with a soft, downcast look.', params: { exaggeration: 0.4, cfg_weight: 0.5 } },
       ] },
-      { id: 'language', type: 'choice', label: 'Language', half: true, when: ['source', 'script'], default: 'en', options: [
-        { id: 'en', label: 'English', params: { language: 'en' } },
-        { id: 'es', label: 'Spanish', params: { language: 'es' } },
-        { id: 'fr', label: 'French', params: { language: 'fr' } },
-        { id: 'de', label: 'German', params: { language: 'de' } },
-        { id: 'ja', label: 'Japanese', params: { language: 'ja' } },
-        { id: 'pt', label: 'Portuguese', params: { language: 'pt' } },
-        { id: 'hi', label: 'Hindi', params: { language: 'hi' } },
-        { id: 'ko', label: 'Korean', params: { language: 'ko' } },
-        { id: 'zh', label: 'Mandarin', params: { language: 'zh' } },
-      ] },
-      { id: 'accent', type: 'choice', label: 'Accent', half: true, when: ['source', 'script'], default: 'neutral', options: [
-        { id: 'neutral', label: 'Neutral', params: { accent: 'neutral' } },
-        { id: 'american', label: 'American', params: { accent: 'american' } },
-        { id: 'british', label: 'British', params: { accent: 'british' } },
-        { id: 'australian', label: 'Australian', params: { accent: 'australian' } },
-        { id: 'indian', label: 'Indian', params: { accent: 'indian' } },
-      ] },
+      { id: 'language', type: 'choice', label: 'Language', half: true, when: ['source', 'script'], default: 'en', options: speechLanguages },
       { id: 'audio', type: 'audio', label: 'Recorded audio', when: ['source', 'audio'] },
     ],
-    prompt: 'The person in the photo speaks to camera {template}, with accurate lip sync, subtle head movement, natural blinks and expressions that match the words. {emotion} {script}',
+    // The prompt describes the scene; the script goes to Chatterbox, which speaks it before InfiniteTalk
+    // animates the face, in one graph. Either way a run covers the first 30 seconds of speech.
+    prompt: 'The person in the photo speaks to camera {template}, with accurate lip sync, subtle head movement, natural blinks and expressions that match the words. {emotion}',
     settings: { aspect: 'auto' },
+    steps: [{ id: 'generate', provider: 'comfy', kind: 'video', targetInput: 'source', settings: { aspect: 'auto' }, targets: {
+      script: { workflow: 'infinitetalk_tts', runsOn: 'Chatterbox and InfiniteTalk', bindings: { script: 'script' } },
+      audio: { workflow: 'infinitetalk' },
+    } }],
     cover: covers.indigo,
   }),
   open({
@@ -194,7 +191,8 @@ const voice = [
     blurb: 'Match the lips in a video to new audio.',
     runsOn: 'InfiniteTalk', workflow: 'infinitetalk_v2v',
     inputs: [clip, sound],
-    prompt: 'Re-time the mouth and jaw of the speaker to match the audio exactly, keeping the face, head motion and everything else in the video unchanged.',
+    // UMT5 reads a description, not an instruction. A run covers the first 30 seconds of the clip.
+    prompt: 'A person talks to the camera, with natural mouth and jaw motion that follows the speech, the same face, head motion and scene as the video.',
     settings: { aspect: 'auto' },
     cover: covers.lilac,
   }),
@@ -246,6 +244,7 @@ const voice = [
         { id: 'calm', label: 'Calm', params: { exaggeration: 0.3, cfg_weight: 0.5 } },
         { id: 'serious', label: 'Serious', params: { exaggeration: 0.4, cfg_weight: 0.6 } },
       ] },
+      { id: 'language', type: 'choice', label: 'Language', default: 'en', options: speechLanguages },
     ],
     prompt: '{script}',
     cover: covers.sky,
@@ -258,8 +257,9 @@ const voice = [
       { id: 'audio', type: 'audio', label: 'Sample, 10 to 30 seconds' },
       { id: 'name', type: 'text', label: 'Voice name', placeholder: 'My narrator voice' },
     ],
-    // A short preview line so the saved voice can be heard right away.
-    prompt: 'Hello, this is my new voice. It is ready to read anything you write.',
+    // Chatterbox clones from the sample itself (its first 10 seconds count), so the run reads a short
+    // preview line in the new voice.
+    prompt: 'Hello, this is {name}. It is ready to read anything you write.',
     cover: covers.dusk,
   }),
   open({
@@ -267,7 +267,8 @@ const voice = [
     blurb: 'Make a recording sound like another voice, same timing and emotion.',
     runsOn: 'Chatterbox', workflow: 'chatterbox_vc',
     inputs: [
-      { id: 'audio', type: 'audio', label: 'Recording' },
+      // The graph changes the first 27 seconds, as the Chatterbox template does.
+      { id: 'audio', type: 'audio', label: 'Recording, up to 27 seconds' },
       { id: 'voice', type: 'voice', label: 'New voice' },
     ],
     cover: covers.rose,
@@ -278,13 +279,15 @@ const voice = [
     runsOn: 'MiniMax Music 3', workflow: 'minimax_music3',
     inputs: [
       { id: 'brief', type: 'longtext', label: 'Describe the music', placeholder: 'Warm lo-fi hip hop, mellow keys, soft vinyl crackle, 80 bpm' },
-      { id: 'lyrics', type: 'longtext', label: 'Lyrics', optional: true, placeholder: 'Leave empty for an instrumental' },
+      // MiniMax's own section tag stands for no lyrics.
+      { id: 'lyrics', type: 'longtext', label: 'Lyrics', optional: true, blank: '[Instrumental]', placeholder: 'Leave empty for an instrumental' },
       { id: 'length', type: 'choice', label: 'Length', default: '30', options: [
         { id: '30', label: '30 seconds', params: { duration: 30 } },
         { id: '60', label: '1 minute', params: { duration: 60 } },
         { id: '120', label: '2 minutes', params: { duration: 120 } },
       ] },
     ],
+    bindings: { lyrics: 'lyrics' },
     prompt: '{brief}',
     cover: covers.night,
   }),

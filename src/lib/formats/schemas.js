@@ -696,6 +696,24 @@ export const schemas = {
       "start",
       "video"
     ],
+    "chatterbox_clone": [
+      "audio",
+      "prompt",
+      "seed"
+    ],
+    "chatterbox_tts": [
+      "cfg_weight",
+      "exaggeration",
+      "language",
+      "prompt",
+      "seed",
+      "voice"
+    ],
+    "chatterbox_vc": [
+      "audio",
+      "seed",
+      "voice"
+    ],
     "cinema_shot": [
       "duration",
       "height",
@@ -703,6 +721,11 @@ export const schemas = {
       "prompt",
       "seed",
       "width"
+    ],
+    "drama3_tts": [
+      "prompt",
+      "seed",
+      "voice"
     ],
     "flux3_klein_t2i": [
       "count",
@@ -733,6 +756,10 @@ export const schemas = {
       "prompt",
       "seed",
       "width"
+    ],
+    "flux_trellis2": [
+      "prompt",
+      "seed"
     ],
     "h3_draw": [
       "duration",
@@ -860,6 +887,13 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "hunyuan_foley": [
+      "duration",
+      "prompt",
+      "seed",
+      "start",
+      "video"
+    ],
     "image_flux": [
       "count",
       "height",
@@ -888,6 +922,30 @@ export const schemas = {
     "image_upscale_esrgan": [
       "image",
       "upscale_factor"
+    ],
+    "infinitetalk": [
+      "audio",
+      "image",
+      "prompt",
+      "seed"
+    ],
+    "infinitetalk_tts": [
+      "cfg_weight",
+      "exaggeration",
+      "image",
+      "language",
+      "prompt",
+      "script",
+      "seed",
+      "voice"
+    ],
+    "infinitetalk_v2v": [
+      "audio",
+      "duration",
+      "prompt",
+      "seed",
+      "start",
+      "video"
     ],
     "klein_character": [
       "count",
@@ -991,6 +1049,12 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "minimax_music3": [
+      "duration",
+      "lyrics",
+      "prompt",
+      "seed"
+    ],
     "qwen2511_edit": [
       "image",
       "image2",
@@ -1002,6 +1066,11 @@ export const schemas = {
       "image",
       "prompt",
       "seed"
+    ],
+    "qwen3_tts": [
+      "prompt",
+      "seed",
+      "voice"
     ],
     "qwen_character_sheet": [
       "count",
@@ -1192,6 +1261,11 @@ export const schemas = {
       "upscale_factor",
       "video"
     ],
+    "stable_audio3": [
+      "duration",
+      "prompt",
+      "seed"
+    ],
     "storyboard": [
       "count",
       "height",
@@ -1206,6 +1280,21 @@ export const schemas = {
       "prompt",
       "seed",
       "width"
+    ],
+    "trellis2_character": [
+      "image",
+      "prompt",
+      "seed"
+    ],
+    "trellis2_image": [
+      "image",
+      "resolution",
+      "seed"
+    ],
+    "trellis2_turntable": [
+      "background",
+      "image",
+      "seed"
     ],
     "video_bg_change": [
       "duration",
@@ -1279,8 +1368,17 @@ export const schemas = {
     "bernini_recreate_ad": [
       "image2"
     ],
+    "chatterbox_tts": [
+      "voice"
+    ],
+    "drama3_tts": [
+      "voice"
+    ],
     "h3_lora_i2v": [
       "image2"
+    ],
+    "infinitetalk_tts": [
+      "voice"
     ],
     "klein_moodboard": [
       "image2",

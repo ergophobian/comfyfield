@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { gzipSync } from 'node:zlib'
 import { fileURLToPath } from 'node:url'
-import { NODE_PACKS, MODEL_DIRS } from '../shared/modelFiles.js'
+import { NODE_PACKS, MODEL_DIRS, PACK_DIRS, PACK_ROOTS } from '../shared/modelFiles.js'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 
@@ -51,19 +51,26 @@ export function podEnv({ token, idleMin = 10, bootDeadlineSec = 900, runtimes = 
 }
 
 if (!MODEL_DIRS.every((d) => /^[a-z0-9_]+$/.test(d))) throw new Error('A models folder name is unsafe.')
-const DIRS = MODEL_DIRS.join(' ')
-
-// One case per pack for the installer, and the list the status server reads: id, folder, a class to look for.
 const SAFE = /^[\w.-]+$/
+const safePath = (p) => p.split('/').every((s) => SAFE.test(s) && !/^\.+$/.test(s))
+if (!PACK_DIRS.every(safePath) || !PACK_ROOTS.every((d) => /^[a-z0-9_-]+$/.test(d))) throw new Error('A node pack folder name is unsafe.')
+const DIRS = MODEL_DIRS.join(' ')
+// The status server downloads into, lists and removes from these: ComfyUI's folders and the packs' own.
+const STATUS_DIRS = [...new Set([...MODEL_DIRS, ...PACK_DIRS])].join(' ')
+
+// One case per pack for the installer, and the list the status server reads: id, folder, the classes to
+// look for, and the files it waits for before ComfyUI loads the pack.
 function packCases(packs) {
   for (const [id, p] of Object.entries(packs)) {
-    if (!/^[a-z0-9]+$/.test(id) || !/^[\w.-]+\/[\w.-]+$/.test(p.repo) || !/^[0-9a-f]{40}$/.test(p.commit) || !SAFE.test(p.folder) || !p.classes.every((c) => SAFE.test(c))) {
-      throw new Error(`Node pack ${id} has an unsafe repo, commit, folder or class name.`)
+    if (!/^[a-z0-9]+$/.test(id) || !/^[\w.-]+\/[\w.-]+$/.test(p.repo) || !/^[0-9a-f]{40}$/.test(p.commit) || !SAFE.test(p.folder) || !p.classes.every((c) => SAFE.test(c))
+      || !(p.pip || []).every((x) => /^[A-Za-z0-9_.-]+==[\w.]+$/.test(x)) || !(p.skip || []).every((x) => /^[A-Za-z0-9_-]+$/.test(x)) || !(p.before || []).every(safePath)) {
+      throw new Error(`Node pack ${id} has an unsafe repo, commit, folder, class, package or file name.`)
     }
   }
+  const extra = (p) => `${p.pip?.length ? ` pip="${p.pip.join(' ')}";` : ''}${p.skip?.length ? ` skip="${p.skip.join('|')}";` : ''}`
   return {
-    cases: Object.entries(packs).map(([id, p]) => `  ${id}) repo=https://github.com/${p.repo}.git; commit=${p.commit}; folder=${p.folder} ;;`).join('\n'),
-    list: Object.entries(packs).map(([id, p]) => `${id}\t${p.folder}\t${p.classes.join(',')}`).join('\n'),
+    cases: Object.entries(packs).map(([id, p]) => `  ${id}) repo=https://github.com/${p.repo}.git; commit=${p.commit}; folder=${p.folder};${extra(p)} ;;`).join('\n'),
+    list: Object.entries(packs).map(([id, p]) => `${id}\t${p.folder}\t${p.classes.join(',')}\t${(p.before || []).join(',')}`).join('\n'),
   }
 }
 
@@ -114,7 +121,8 @@ cat > "$CF/statusd.py" <<'STATUSD'
 ${statusd.trimEnd()}
 STATUSD
 
-# The node packs ComfyField knows: id, folder and the classes ComfyUI lists once the pack loads.
+# The node packs ComfyField knows: id, folder, the classes ComfyUI lists once the pack loads, and the
+# files that must be on the disk before it loads.
 cat > "$CF/packs.tsv" <<'PACKS'
 ${list}
 PACKS
@@ -128,6 +136,7 @@ cat > "$CF/runtime-pack.sh" <<'PACK'
 C=/root/h3/ComfyUI
 V=/root/h3/venv-cu130/bin/python
 P=${PACKS_HOME}
+pip=""; skip=""
 case "$1" in
 ${cases}
   *) echo "unknown node pack $1"; exit 3 ;;
@@ -142,7 +151,15 @@ fi
 ln -sfn "$d" "$C/custom_nodes/$folder" || { echo "could not link $folder into ComfyUI"; exit 1; }
 "$V" -m pip freeze 2>/dev/null | grep -iE '^(torch|torchvision|torchaudio|numpy|xformers|triton|sageattention|nvidia-[a-z0-9-]+)==' > /root/cf/constraints.txt
 if [ -f "$d/requirements.txt" ]; then
-  PIP_CACHE_DIR=${PIP_CACHE} "$V" -m pip install --quiet -r "$d/requirements.txt" -c /root/cf/constraints.txt || { echo "could not install the requirements of $folder"; exit 1; }
+  req="$d/requirements.txt"
+  if [ -n "$skip" ]; then
+    grep -viE "^[[:space:]]*($skip)([[:space:]<>=!~;[]|$)" "$d/requirements.txt" > "/root/cf/req-$1.txt"
+    req="/root/cf/req-$1.txt"
+  fi
+  PIP_CACHE_DIR=${PIP_CACHE} "$V" -m pip install --quiet -r "$req" -c /root/cf/constraints.txt || { echo "could not install the requirements of $folder"; exit 1; }
+fi
+if [ -n "$pip" ]; then
+  PIP_CACHE_DIR=${PIP_CACHE} "$V" -m pip install --quiet $pip -c /root/cf/constraints.txt || { echo "could not install $pip for $folder"; exit 1; }
 fi
 grep -qxF "$folder" /root/cf/nodes.list 2>/dev/null || echo "$folder" >> /root/cf/nodes.list
 PACK
@@ -156,7 +173,7 @@ PATHS
 
 [ -x "$V" ] || { bash "$CF/kill-pod.sh" "the image has no Python at $V"; sleep infinity; }
 [ -n "$POD_TOKEN" ] || { bash "$CF/kill-pod.sh" "the Pod has no token"; sleep infinity; }
-CF_DIRS="${DIRS}" nohup "$V" "$CF/statusd.py" >> "$CF/statusd.log" 2>&1 &
+CF_DIRS="${STATUS_DIRS}" nohup "$V" "$CF/statusd.py" >> "$CF/statusd.log" 2>&1 &
 up=0
 for i in $(seq 1 40); do
   curl -sf -m 2 -o /dev/null -H "Authorization: Bearer $POD_TOKEN" http://127.0.0.1:${STATUS_PORT}/status && { up=1; break; }
@@ -181,6 +198,13 @@ if [ "$(git -C "$C" rev-parse HEAD 2>/dev/null)" != "${COMFY_COMMIT}" ]; then
   git -C "$C" fetch --quiet --depth 1 origin ${COMFY_COMMIT} && git -C "$C" checkout --quiet ${COMFY_COMMIT} || die "could not move ComfyUI to ${COMFY_VERSION}"
   "$V" -m pip install --quiet -r "$C/requirements.txt" || die "could not install the requirements of ComfyUI ${COMFY_VERSION}"
 fi
+# Some packs read their models from their own folder under ComfyUI/models, on the container disk.
+# Linked to the volume, the files the status server downloads there outlive a resume.
+for d in ${PACK_ROOTS.join(' ')}; do
+  mkdir -p "$M/$d"
+  [ -L "$C/models/$d" ] || rm -rf "$C/models/$d"
+  ln -sfn "$M/$d" "$C/models/$d" || echo "could not link the $d models folder"
+done
 
 echo "STAGE freevideo-clone $(date +%s)"
 # FreeVideo's node must be in place before ComfyUI starts. Every other graph runs without it, so a
@@ -213,7 +237,7 @@ FVSETUP
 # again, which is short, so it is ready again after a resume.
 want="$CF_RUNTIMES"
 [ -f ${FREEVIDEO_HOME}/machine.json ] && want="$want freevideo"
-while IFS=$'\\t' read -r id folder classes; do [ -d "${PACKS_HOME}/$folder" ] && want="$want $id"; done < "$CF/packs.tsv"
+while IFS=$'\\t' read -r id folder classes before; do [ -d "${PACKS_HOME}/$folder" ] && want="$want $id"; done < "$CF/packs.tsv"
 for e in $(printf '%s\\n' $want | sort -u); do
   curl -sf -m 5 -o /dev/null -X POST -H "Authorization: Bearer $POD_TOKEN" http://127.0.0.1:${STATUS_PORT}/runtime/$e || echo "could not start the $e install"
 done
