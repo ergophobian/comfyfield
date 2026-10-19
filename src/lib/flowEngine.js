@@ -234,9 +234,9 @@ export function createEngine({ run, writePrompt, stitch, onChange = () => {}, co
       try {
         const files = await limit(async () => {
           if (n.type === 'stitch') return [await stitch(u.opts)]
-          if (n.type !== 'writer') return run(model, u.opts)
+          if (n.type !== 'writer') return run(model, u.opts, { stepId: id, unitId: u.key })
           if (!writePrompt) throw new Error('Prompt writing is not connected.')
-          const text = await writePrompt(u.opts)
+          const text = await writePrompt(u.opts, { stepId: id, unitId: u.key })
           if (typeof text !== 'string' || !text.trim()) throw new Error('Writer returned no prompt.')
           return [{ kind: 'text', text: text.trim(), prompt: text.trim() }]
         })

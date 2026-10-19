@@ -261,7 +261,12 @@ function mount(server, harness) {
         // run: the generation type the user picked (null until they pick); tier: their Session tier.
         return send(res, 200, { ...status, mode, instant: Boolean(key), auto: core.podAutoStart(), suggest, run: core.runType(), tier: core.podTier() })
       }
-      if (url.pathname === '/api/comfy/requirements' && req.method === 'POST') return send(res, 200, core.formatRequirements((await body(req)).workflows))
+      if (url.pathname === '/api/comfy/requirements' && req.method === 'POST') {
+        const input = await body(req)
+        if (!input || typeof input !== 'object' || Array.isArray(input) || !Array.isArray(input.workflows) ||
+          (input.runType != null && !['instant', 'session'].includes(input.runType))) return send(res, 400, { error: 'Supply workflows and a valid run type.' })
+        return send(res, 200, await core.formatRequirements(input.workflows, { run: input.runType ?? core.runType() }))
+      }
       if (url.pathname === '/api/pod/quote') return send(res, 200, await podQuote(url.searchParams.get('workflow')))
       if (url.pathname === '/api/pod/options' && req.method === 'GET') return send(res, 200, await core.podOptions())
       if (url.pathname.startsWith('/api/pod/') && req.method === 'POST') return send(res, 200, await podAction(url.pathname.slice('/api/pod/'.length), await body(req)))

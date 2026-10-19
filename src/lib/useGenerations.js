@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { run, writePrompt } from './providers.js'
 import { modelPrices } from './cost.js'
-import { createRouterBatch } from './routerBatch.js'
 import { runFormat } from './formats/runner.js'
 
 const KEY = 'comfyfield.library'
@@ -20,7 +19,7 @@ export function useGenerations() {
   const [, changed] = useState(0)
   const active = useRef(0)
   const waiting = useRef([])
-  const busy = items.some((i) => i.pending)
+  const busy = items.some((i) => i.pending) || [...sessions.current.values()].some((session) => session.busy)
 
   const add = (files) => setItems((xs) => [...files.filter((file) => !xs.some((item) => item.id === file.id)), ...xs])
   useEffect(() => {
@@ -44,12 +43,11 @@ export function useGenerations() {
     const base = { aspect: opts.shape || opts.aspect, caption: opts.caption, model: model.name, kind: model.kind, provider: model.provider, ...meta }
     setError(null)
     setRetryLast(null)
-    setItems((xs) => [{ id, pending: true, ...base }, ...xs])
+    setItems((xs) => [{ id, pending: true, ...base }, ...xs.filter((x) => x.id !== id)])
     return new Promise((resolve, reject) => {
       waiting.current.push(async () => {
         setItems((xs) => xs.map((x) => (x.id === id ? { ...x, started: true } : x)))
         try {
-          if (model.provider === 'comfyRouter' && !opts.routerBatch) opts = { ...opts, routerBatch: createRouterBatch(model, opts) }
           const files = await run(model, opts, {
             onFiles: (files, index) => setItems((xs) => [...files.map((f, i) => ({ ...base, ...f, id: `${id}-${index}-${i}`, created: Date.now() })), ...xs]),
             onPod: () => setItems((xs) => xs.map((x) => (x.id === id ? { ...x, pod: true } : x))),
@@ -79,27 +77,25 @@ export function useGenerations() {
 
   const generate = (model, opts, meta) => { execute(model, opts, meta).catch(() => {}) }
   const generateFormat = (format, values, options = {}) => {
-    const previous = sessions.current.get(format.id)
-    if (previous && (previous.pending || previous.session?.busy)) return previous.session?.inFlight?.then(() => previous.session) || previous.promise
-    const record = { pending: true }
-    sessions.current.set(format.id, record)
-    record.promise = runFormat(format, values, {
+    let session
+    return runFormat(format, values, {
       prices: modelPrices,
       ...options,
-      run: (model, opts, meta) => {
-        // A successful retry replaces the failed Library take for the same session step.
-        setItems((xs) => xs.filter((x) => !(x.failed && x.formatRunId === meta.formatRunId && x.stepId === meta.stepId)))
-        return execute(model, opts, meta, undefined, () => record.session.retry(meta.stepId))
+      run: (model, opts, meta) => execute(model, opts, meta, meta.itemId, () => session.retry(meta.stepId).catch(() => {})),
+      writePrompt: ({ instructions, note, images, target, idempotencyKey }) => writePrompt({ instructions, note, images, target, idempotencyKey }),
+      onSession: (current) => {
+        session = current
+        sessions.current.set(session.id, session)
+        options.onSession?.(session)
       },
-      writePrompt: ({ instructions, note, images, target }) => writePrompt({ instructions, note, images, target }),
-      onSession: (session) => { record.session = session; options.onSession?.(session) },
       onChange: (state, session) => {
+        if (session?.busy) sessions.current.set(session.id, session)
+        else if (session) sessions.current.delete(session.id)
         changed((n) => n + 1)
         setError(session?.error?.message || null)
         options.onChange?.(state, session)
       },
-    }).finally(() => { record.pending = false })
-    return record.promise
+    })
   }
 
   const toggleApprove = (id) => setItems((xs) => xs.map((x) => (x.id === id ? { ...x, approved: !x.approved } : x)))

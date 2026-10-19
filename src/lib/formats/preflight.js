@@ -1,9 +1,9 @@
 import { topoOrder } from '../flowEngine.js'
 import { comfyVars, estimate } from '../../../shared/mapping.js'
 
-async function loadRequirements(workflows) {
+async function loadRequirements(workflows, { runType } = {}) {
   const response = await fetch('/api/comfy/requirements', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ workflows }),
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ workflows, runType }),
   })
   const data = await response.json()
   if (!response.ok) throw Object.assign(new Error(data.error || 'Could not check pipeline requirements.'), { code: 'preflight_failed' })
@@ -27,18 +27,14 @@ export async function preflightFlow(flow, { runType, pod, requirements = loadReq
       // An upstream image will occupy the first image slot at execution time.
       const upstreamImage = flow.edges.some((e) => e.target === node.id && imageSource(e.source))
       if (upstreamImage) vars.image ||= 'preflight://upstream-image'
+      if (model.formatStep.written) vars.prompt ||= 'preflight://writer-prompt'
       entry.workflow = vars.image && model.imageWorkflow ? model.imageWorkflow : model.workflow
       entry.requirementIndex = workflows.length
       workflows.push({ workflow: entry.workflow, vars })
-      if (model.cloudWorkflow) {
-        entry.cloudWorkflow = model.cloudWorkflow
-        entry.cloudRequirementIndex = workflows.length
-        workflows.push({ workflow: model.cloudWorkflow, vars })
-      }
     }
     return entry
   })
-  const context = typeof requirements === 'function' ? await requirements(workflows) : requirements
+  const context = typeof requirements === 'function' ? await requirements(workflows, { runType, pod }) : requirements
   if (!context?.connections || !Array.isArray(context.requirements)) throw Object.assign(new Error('Pipeline requirements are unavailable.'), { code: 'preflight_failed' })
   pod = pod ?? context.pod ?? { phase: 'none' }
   runType = runType ?? context.runType
@@ -75,20 +71,11 @@ export async function preflightFlow(flow, { runType, pod, requirements = loadReq
       continue
     }
     const own = context.requirements[step.requirementIndex]
-    const cloud = context.requirements[step.cloudRequirementIndex] || own
-    if (!own || !cloud || !Array.isArray(own.notOnCloud) || !Array.isArray(cloud.notOnCloud)) throw Object.assign(new Error(`Requirements missing for ${step.workflow}.`), { code: 'preflight_failed' })
-    Object.assign(step, { notOnCloud: own.notOnCloud, minVramGb: own.minVramGb, arch: own.arch, cloud: { ...cloud } })
-    const vram = pod.vramGb ?? pod.pod?.vramGb
-    const fits = (vram == null || vram >= own.minVramGb) && (!own.arch || !pod.arch || own.arch === pod.arch)
-    if (context.local) { step.target = 'local'; continue }
-    const cloudConnected = context.cloudConnected ?? context.connections.comfyRouter?.connected ?? false
-    if (runType !== 'instant' && pod.phase === 'ready' && fits) { step.target = 'pod'; continue }
-    if (runType !== 'session' && cloudConnected && !cloud.notOnCloud.length) { step.target = 'cloud'; continue }
-    if (runType !== 'instant' && !fits && pod.phase && pod.phase !== 'none') {
-      fail('pod_too_small', `This pipeline needs a Session with ${own.minVramGb} gigabytes of graphics memory and a compatible architecture.`, { minVramGb: own.minVramGb, podVramGb: vram, arch: own.arch })
-    } else if (runType !== 'instant' && ['starting', 'resuming'].includes(pod.phase) && fits) step.target = 'pod'
-    else if (!cloudConnected && runType !== 'session' && !cloud.notOnCloud.length) fail('missing_key', 'Connect Comfy Cloud or run as a Session.', { provider: 'comfyRouter' })
-    else fail('needs_pod', 'Run as a Session to finish this pipeline.', { minVramGb: own.minVramGb, notOnCloud: cloud.notOnCloud })
+    if (!own || !Array.isArray(own.notOnCloud)) throw Object.assign(new Error(`Requirements missing for ${step.workflow}.`), { code: 'preflight_failed' })
+    Object.assign(step, { notOnCloud: own.notOnCloud, minVramGb: own.minVramGb, arch: own.arch,
+      cloud: own.cloud, target: own.target, selectedWorkflow: own.selectedWorkflow })
+    if (own.reason) fail(own.reason.code, own.reason.message, { ...own.reason, stepId: step.stepId })
+    else if (!own.target) throw Object.assign(new Error(`Target missing for ${step.workflow}.`), { code: 'preflight_failed' })
   }
   const known = costs.every((c) => c.usd != null)
   return { ok: !reasons.length, reason: reasons[0] || null, reasons, steps, runType, pod,

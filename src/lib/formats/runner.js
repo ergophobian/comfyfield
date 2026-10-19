@@ -89,19 +89,30 @@ export async function runFormat(format, inputs, { run, writePrompt, onChange = (
   let operationError = setupError || null
   let plan = null
   let inFlight = null
+  const adapters = new Map()
+  const adapterFor = ({ stepId, unitId }, options) => {
+    const key = JSON.stringify([stepId, unitId])
+    let adapter = adapters.get(key)
+    // A deliberate Rerun after success gets a new request; failures retain their body and keys.
+    if (!adapter || adapter.done) {
+      adapter = { options, itemId: crypto.randomUUID(), done: false }
+      adapters.set(key, adapter)
+    }
+    return adapter
+  }
   const notify = () => onChange(engine.state, session)
   const engine = createEngine({
     concurrency,
     onChange: notify,
-    writePrompt: writePrompt ? (input) => writePrompt({ ...input, inputs: flow.values, format }) : undefined,
-    run: (model, unit) => {
+    writePrompt: writePrompt ? async (input, identity) => {
+      const adapter = adapterFor(identity, { ...input, inputs: flow.values, format, idempotencyKey: crypto.randomUUID() })
+      const text = await writePrompt(adapter.options)
+      if (typeof text === 'string' && text.trim()) adapter.done = true
+      return text
+    } : undefined,
+    run: async (model, unit, identity) => {
       const { formatStep, ...target } = model
       const options = { ...formatStep.options, count: unit.count, caption: format.name }
-      const requirement = plan?.steps.find((s) => s.stepId === formatStep.id)
-      if (requirement?.target === 'cloud' && requirement.cloudWorkflow) {
-        target.workflow = requirement.cloudWorkflow
-        delete target.imageWorkflow
-      }
       if (formatStep.written && unit.prompt) options.prompt = unit.prompt
       if (formatStep.from.length && unit.image) {
         options.images = [unit.image]
@@ -109,7 +120,10 @@ export async function runFormat(format, inputs, { run, writePrompt, onChange = (
         if (options.slots) options.slots = { ...options.slots, pictures: [unit.image, ...options.slots.pictures.slice(1)] }
       }
       if (target.provider === 'comfy' && options.aspect === 'auto') options.aspect = nearestAspect(options.shape)
-      return run(target, options, { formatId: format.id, stepId: formatStep.id, formatRunId: batch, prompt: options.prompt })
+      const adapter = adapterFor(identity, options)
+      const files = await run(target, adapter.options, { formatId: format.id, stepId: formatStep.id, formatRunId: batch, itemId: adapter.itemId, prompt: adapter.options.prompt })
+      adapter.done = true
+      return files
     },
   })
   const failures = () => Object.entries(engine.state).flatMap(([stepId, state]) => (state.items || []).filter((i) => i.status === 'failed').map((item) => ({ stepId, ...item })))
@@ -119,7 +133,7 @@ export async function runFormat(format, inputs, { run, writePrompt, onChange = (
   }
   async function perform(action, overrides = {}, only = null) {
     if (session.busy) return { ok: false, reason: { code: 'busy', message: 'This session is already running.' } }
-    if (setupError) return { ok: false, reason: session.reason }
+    if (setupError) throw session.error
     operating = true
     operationError = null
     notify()
@@ -130,12 +144,13 @@ export async function runFormat(format, inputs, { run, writePrompt, onChange = (
       const reasons = plan.reasons.filter((r) => !completed.has(r.stepId) && (!only || only.has(r.stepId)))
       plan = { ...plan, reasons, reason: reasons[0] || null, ok: !reasons.length }
       notify()
-      if (!plan.ok) return { ok: false, reason: plan.reason }
+      if (!plan.ok) throw session.error
       const result = await action()
-      return session.error ? { ...result, ok: false, reason: session.reason } : result
+      if (session.error) throw session.error
+      return result
     } catch (error) {
-      operationError = error
-      return { ok: false, reason: session.reason }
+      if (!error.session) operationError = error
+      throw Object.assign(error, { session })
     } finally {
       operating = false
       notify()
@@ -147,7 +162,7 @@ export async function runFormat(format, inputs, { run, writePrompt, onChange = (
     return inFlight
   }
   session = {
-    flow, engine, id: batch,
+    flow, engine, id: batch, formatRunId: batch,
     results: () => flow.outputs.flatMap((out) => engine.itemsOf(flow, out.step) || []),
     get busy() { return operating || engine.isRunning() },
     get inFlight() { return inFlight },
@@ -160,7 +175,7 @@ export async function runFormat(format, inputs, { run, writePrompt, onChange = (
       const failed = failures()[0]
       return failed ? { code: failed.code || 'step_failed', stepId: failed.stepId, message: failed.error, detail: failed.reason } : null
     },
-    get error() { const reason = session.reason; return reason ? Object.assign(new Error(reason.message), reason) : null },
+    get error() { const reason = session.reason; return reason ? Object.assign(new Error(reason.message), reason, { session }) : null },
     get ok() { return !session.reason },
     start: (options) => launch(() => engine.runNew(flow), options),
     retry: (id, options) => launch(() => engine.retryFailed(flow, [id]), options, retryScope([id])),

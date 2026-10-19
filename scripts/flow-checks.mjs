@@ -414,6 +414,33 @@ check('partial failures block downstream; scoped retries preserve successful uni
   assert.equal(calls.length, 6)
 })
 
+check('model and writer adapters receive stable unit identities across failures', async () => {
+  const identities = []
+  const writes = []
+  const eng = createEngine({
+    run: async (model, options, identity) => {
+      identities.push(identity)
+      if (identities.length === 1) throw new Error('Lost reply')
+      return [{ url: 'mock://recovered' }]
+    },
+    writePrompt: async (options, identity) => {
+      writes.push(identity)
+      if (writes.length === 1) throw new Error('Writer lost reply')
+      return 'Reviewed prompt'
+    },
+  })
+  const flow = { nodes: [n('w', 'writer', { instructions: 'Describe it' }), n('m', 'model', { model: img })], edges: [e('w', 'm')] }
+  await eng.runNew(flow)
+  await eng.retryFailed(flow)
+  assert.deepEqual(writes[0], writes[1])
+  assert.equal(writes[0].stepId, 'w')
+  await eng.sendWriter(flow, 'w')
+  await eng.retryFailed(flow)
+  assert.deepEqual(identities[0], identities[1])
+  assert.equal(identities[0].stepId, 'm')
+  assert.equal(typeof identities[0].unitId, 'string')
+})
+
 let bad = 0
 for (const [name, fn] of checks) {
   try { await fn(); console.log('ok   ', name) } catch (err) { bad++; console.log('FAIL ', name, '\n     ', err.message) }

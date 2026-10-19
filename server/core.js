@@ -642,28 +642,64 @@ export function workflowNeeds(workflow) {
   return { files: needs.filter((n) => !n.runtime), runtimes: needs.filter((n) => n.runtime), minVramGb: minVramOf(needs), volumeGb: volumeFor(needs) }
 }
 
+const invalidRequirements = () => Object.assign(new Error('Supply up to 200 workflow objects with object vars.'), { status: 400 })
+const workflowMetadata = ({ workflow, needs }) => ({ workflow, notOnCloud: notOnCloud(needs), minVramGb: minVramOf(needs), arch: archOf(needs) })
+
+function workflowGraph(workflow, vars) {
+  const { file, template: source } = readWorkflow(workflow)
+  const template = dropOptional(source, vars)
+  const graph = fill(template, vars)
+  return { workflow, file, template, graph, needs: podNeedsOf(graph) }
+}
+
+// Both execution and preflight resolve alternates from the selected workflow, including image variants.
+function cloudGraphOf(workflow, vars) {
+  const name = cloudWorkflowOf(workflow)
+  if (!name) return null
+  const graph = workflowGraph(name, vars)
+  return !unsetInput(graph.template, vars) && !notOnCloud(graph.needs).length ? graph : null
+}
+
 // Read-only pipeline planning. No clients, uploads, leases or downloads are created.
 export function comfyRequirements(workflows = []) {
-  if (!Array.isArray(workflows) || workflows.length > 200) throw Object.assign(new Error('Supply up to 200 workflows.'), { status: 400 })
-  return workflows.map(({ workflow, vars = {} }) => {
-    const template = dropOptional(readWorkflow(workflow).template, vars)
-    const needs = podNeedsOf(fill(template, vars))
-    return { workflow, notOnCloud: notOnCloud(needs), minVramGb: minVramOf(needs), arch: archOf(needs) }
+  if (!Array.isArray(workflows) || workflows.length > 200) throw invalidRequirements()
+  return workflows.map((entry) => {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry) || typeof entry.workflow !== 'string' ||
+      ('vars' in entry && (!entry.vars || typeof entry.vars !== 'object' || Array.isArray(entry.vars)))) throw invalidRequirements()
+    const { workflow, vars = {} } = entry
+    return workflowMetadata(workflowGraph(workflow, vars))
   })
 }
 
-export function formatRequirements(workflows) {
+export async function formatRequirements(workflows = [], { run = runType(), phase = pod().status().phase, vramGb = pod().vramGb(), arch = pod().arch(), local = comfyMode() === 'local' } = {}) {
   const requirements = comfyRequirements(workflows)
   const connected = connections()
+  for (const [index, entry] of workflows.entries()) {
+    const requirement = requirements[index]
+    const vars = entry.vars || {}
+    const original = workflowGraph(entry.workflow, vars)
+    const cloud = cloudGraphOf(entry.workflow, vars)
+    requirement.cloud = workflowMetadata(cloud || original)
+    try {
+      const route = local ? { ...original, target: 'local' } : await resolveComfyRoute(original, vars, {
+        run, podPhase: () => phase, podVram: () => vramGb, podArch: () => arch,
+      })
+      requirement.target = route.target
+      requirement.selectedWorkflow = route.workflow
+    } catch (error) {
+      if (!['needs_pod', 'pod_too_small'].includes(error.code)) throw error
+      requirement.target = null
+      requirement.reason = { code: error.code, message: error.message, detail: error.reason }
+    }
+  }
   return {
     requirements,
     connections: Object.fromEntries(Object.entries(connected).map(([id, c]) => [id, { connected: c.connected }])),
-    // Keep the writer's connection contract explicit when another writer provider is added.
-    writerProviders: ['google'],
-    runType: runType(),
-    pod: { phase: pod().status().phase, vramGb: pod().vramGb(), arch: pod().arch() },
+    writerProviders: ['google', ...(config('comfy').key ? ['comfyRouter'] : [])],
+    runType: run,
+    pod: { phase, vramGb, arch },
     cloudConnected: Boolean(config('comfy').key),
-    local: comfyMode() === 'local',
+    local,
   }
 }
 
@@ -842,47 +878,44 @@ async function comfyTarget(files, podPhase, podVram, label, run = null, podArch 
   throw needs(why ? `${why}, so this run needs a Pod. Start one in ComfyField from the Pod chip in the top bar.` : 'You picked Session, so this run needs a Pod. Start one from the run type in the top bar.', 'needs_pod')
 }
 
-// Runs a bundled workflow on Comfy Cloud or the Pod, or in development on a local ComfyUI, and returns file URLs.
-export async function runComfy(workflow, vars = {}, { createClient = (key, baseUrl) => comfyClient(baseUrl, key), lease = (o) => pod().lease(o), podPhase = () => pod().phaseNow(), podVram = () => pod().vramGb(), podRoom = () => pod().room(), podArch = () => pod().arch(), run = runType() } = {}) {
-  let { file, template } = readWorkflow(workflow)
-  // Nodes for a file the run did not attach (a second garment, an optional reference) drop out first.
-  template = dropOptional(template, vars)
-  const unset = unsetInput(template, vars)
-  if (unset) throw new Error(`Workflow ${workflow} requires ${unset}.`)
-  let graph = fill(template, vars)
-  if (comfyMode() === 'cloud') {
-    let needs = podNeedsOf(graph)
-    // Instant workflow variants: resolve compatible files before the existing target policy.
-    // Session and a ready Pod that fits the original keep its graph and model files.
-    let targetPhase = podPhase
-    let targetRun = run
-    const cloudWorkflow = run !== 'session' && cloudWorkflowOf(workflow)
-    if (cloudWorkflow && config('comfy').key) {
-      const phase = await podPhase()
-      targetPhase = () => phase
-      const vram = podVram()
-      const arch = podArch()
-      const readyPod = phase === 'ready' && (vram == null || vram >= minVramOf(needs)) && (!archOf(needs) || !arch || arch === archOf(needs))
-      if (run === 'instant' || !readyPod) {
-        const alternate = readWorkflow(cloudWorkflow)
-        alternate.template = dropOptional(alternate.template, vars)
-        if (!unsetInput(alternate.template, vars)) {
-          const alternateGraph = fill(alternate.template, vars)
-          const alternateNeeds = podNeedsOf(alternateGraph)
-          if (!notOnCloud(alternateNeeds).length) {
-            ({ file, template } = alternate)
-            graph = alternateGraph
-            needs = alternateNeeds
-            // An original that cannot use this Pod must not send its smaller alternate there.
-            targetRun = 'instant'
-          }
-        }
+// Resolve graphs and target policy without uploads or generation, shared with pipeline planning.
+async function resolveComfyRoute(original, vars, { run, podPhase, podVram, podArch }) {
+  let selected = original
+  let targetPhase = podPhase
+  let targetRun = run
+  if (run !== 'session' && cloudWorkflowOf(original.workflow) && config('comfy').key) {
+    const phase = await podPhase()
+    targetPhase = () => phase
+    const vram = podVram()
+    const arch = podArch()
+    const readyPod = phase === 'ready' && (vram == null || vram >= minVramOf(original.needs)) &&
+      (!archOf(original.needs) || !arch || arch === archOf(original.needs))
+    if (run === 'instant' || !readyPod) {
+      const alternate = cloudGraphOf(original.workflow, vars)
+      if (alternate) {
+        selected = alternate
+        // An original that cannot use this Pod must not send its smaller alternate there.
+        targetRun = 'instant'
       }
     }
-    // End Instant workflow variants.
-    // Errors name the model as the picker shows it.
-    const label = modelOf(workflow)?.name
-    const target = await comfyTarget(needs, targetPhase, podVram, label, targetRun, podArch)
+  }
+  const target = await comfyTarget(selected.needs, targetPhase, podVram, modelOf(original.workflow)?.name, targetRun, podArch)
+  return { ...selected, target }
+}
+
+// Runs a bundled workflow on Comfy Cloud or the Pod, or in development on a local ComfyUI, and returns file URLs.
+export async function runComfy(workflow, vars = {}, { createClient = (key, baseUrl) => comfyClient(baseUrl, key), lease = (o) => pod().lease(o), podPhase = () => pod().phaseNow(), podVram = () => pod().vramGb(), podRoom = () => pod().room(), podArch = () => pod().arch(), run = runType() } = {}) {
+  const original = workflowGraph(workflow, vars)
+  let { file, template, graph } = original
+  const unset = unsetInput(template, vars)
+  if (unset) throw new Error(`Workflow ${workflow} requires ${unset}.`)
+  if (comfyMode() === 'cloud') {
+    const route = await resolveComfyRoute(original, vars, { run, podPhase, podVram, podArch })
+    file = route.file
+    template = route.template
+    graph = route.graph
+    let needs = route.needs
+    const target = route.target
     // A run that goes to a Pod big enough for the model's Pod graph runs that graph: H3 on FreeVideo.
     const alt = target === 'pod' && podWorkflowOf(workflow)
     if (alt) {

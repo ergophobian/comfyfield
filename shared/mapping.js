@@ -185,10 +185,15 @@ export function estimate(model, meta, o) {
   const takes = o.takes || 1
   let usd = null
   let approx = Boolean(price.estimate)
-  if (unit.includes('gpu-second')) return null
-  if (unit.includes('megapixel')) usd = price.amount * (w * h) / 1e6 * (o.count || 1)
+  if (/gpu[- _]?seconds?/.test(unit)) {
+    if (!Number.isFinite(o.executionSeconds) || o.executionSeconds <= 0) return null
+    usd = price.amount * o.executionSeconds
+  } else if (unit.includes('megapixel')) usd = price.amount * (w * h) / 1e6 * (o.count || 1)
   else if (unit.includes('image')) usd = price.amount * (o.count || 1)
-  else if (unit.includes('second')) usd = price.amount * (o.duration || 5)
+  else if (unit.includes('second')) {
+    usd = price.amount * (o.duration || 5)
+    if (!o.duration) approx = true
+  }
   else if (unit.includes('video') || unit.includes('request') || unit.includes('generation')) usd = price.amount
   else if (unit.includes('token') && model.kind === 'video') {
     const [vw, vh] = w >= h ? [1280, 720] : [720, 1280]

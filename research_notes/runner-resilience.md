@@ -1,59 +1,87 @@
 # Runner resilience
 
-The format runner retains one session across failure, approval and retry. Generation adapters still receive `(model, options, metadata)` and persist each result to the Library. The existing `flow`, `engine`, `results()`, `send(id)` and `sendWriter(id)` members remain available. Failed operations now resolve instead of throwing; read `session.error` or `session.reason` after awaiting them.
+The format runner retains one in-memory session across failures, approvals and retries. Generation adapters still receive `(model, options, metadata)` and persist results to the Library. The existing `flow`, `engine`, `results()`, `send(id)` and `sendWriter(id)` members and successful return shapes remain available. Failures reject with an Error carrying `error.session`; existing catch-based page handling continues to work.
 
 ## Session api
 
 ```js
-const session = await gens.generateFormat(format, values, {
-  onSession: setSession,
-  onChange: (_, session) => setError(session.error?.message || null),
-})
+let session
+try {
+  session = await gens.generateFormat(format, values, {
+    onSession: (current) => { session = current; setSession(current) },
+    onChange: (_, current) => setError(current.error?.message || null),
+  })
+} catch (error) {
+  session = error.session
+  setError(error.message)
+}
+// The same catch/error display applies to retry and Send operations.
 await session.retry(stepId)
 await session.retryFailed()
 ```
 
-- `retry(stepId)` retries failed units in that step, then downstream steps without output. `retryFailed()` does the same for all failed steps. Both keep successful takes, Library files and the original `formatRunId`. No failure means no generation requests. Neither operation opens an approval or writer gate.
-- A failed take retains `status: 'failed'`, `error` and any provider `code` and `reason` in `engine.state`. `session.failures` adds the step id to each failed item. `session.error` is an Error; `session.reason` is `{ code, stepId?, message, ...details }`. `session.ok` reflects the current error state.
-- `send` and `sendWriter` keep their previous result shapes (`ok`, `ran`, `reason`). A stored failure no longer throws before the gate can open. Retry downstream failures through the session; never create another format run to retry. `start()` fills gaps and can resume a session blocked before execution.
-- `busy` covers planning, queued requests, execution and Send/retry operations. `onSession` exposes the session before planning starts; `onChange(state, session)` lets a page repaint its live getters. Lock inputs and Run with `session?.busy`. Concurrent session actions resolve with a `busy` reason. `generateFormat` deduplicates calls for the same format while its session is busy, even if the edited values differ. The session captures input values at creation.
-- `session.preflight` contains all selected steps, requirements, reasons and cost. `session.cost.steps` contains `{ stepId, usd, approx }`; an unknown step has `usd: null`. `session.cost.total` is `{ usd, approx }` only when every step is known, otherwise null. No format totals are hardcoded. Approval fan-out assumes all images are sent, so choosing fewer can lower the cost. Writer costs remain unknown. The hook loads the existing public fal price metadata; catalog prices use the same shared estimate helper.
-- Library Retry calls the owning session's `retry(stepId)`, preserving completed takes and allowing dependent steps to continue. The ordinary single-generation retry path is unchanged.
+- `id` and `formatRunId` are aliases. Library metadata keeps that original `formatRunId` through retries, including #111's session reconciliation.
+- `retry(stepId)` retries failed units in that step, then downstream steps without output. `retryFailed()` does the same for all failed steps. Successful takes and Library files stay intact. With nothing failed, neither operation makes generation requests. Neither opens an approval or writer gate.
+- A failed take retains `status: 'failed'`, `error` and any provider `code` and `reason` in `engine.state`. `session.failures` adds the step id. `session.error` is an Error with `session` attached; `session.reason` is `{ code, stepId?, message, ...details }`. `session.ok` reflects current failures. Initial validation and preflight failures reject with the same retained-session contract.
+- `send` and `sendWriter` retain successful `ok`, `ran` and `reason` shapes, and reject on generation/preflight failures with `error.session`. A stored failure does not prevent the engine from opening a gate for available outputs. Retry downstream failures through the session. `start()` fills gaps and resumes a session blocked before execution.
+- `busy` covers planning, queued requests, execution and Send/retry operations. `onSession` exposes the session before planning; `onChange(state, session)` and the existing engine subscription let pages repaint live getters. The hook repaints automatically, and its `busy` includes preflight. Disable Run and editable inputs while the relevant session is busy. Overlapping actions on one session resolve with a `busy` reason.
+- Every `generateFormat` call creates its own session. Different per-shot calls with the same format id run independently, including Photodump's concurrent calls. Pages prevent duplicate clicks with the busy signal. The session captures values at creation; retry uses those original values.
+- Adapter options persist by engine step and unit across failures. Router batches retain completed internal calls and the original idempotency keys/body after ambiguous failures. Writer requests retain their key too, including through the hook. Explicit engine Rerun after success gets fresh adapter state. This extends #108's `routerBatch.js` contract rather than replacing it. In-memory retention does not promise recovery after reload/process loss or an unlimited provider idempotency retention window.
+- Library Retry routes through the owning session's `retry(stepId)`. Only the exact failed Library item being queued again is replaced. Another take starting in the same step does not remove failed siblings; successful Router files remain visible. Ordinary single-generation retry keeps its existing behavior and stable fourth `execute` item-id argument.
 
-## Preflight
+## Approval limitation
+
+Sending a partially successful upstream step freezes the gate's current selection. If another upstream take later recovers, it does not join that already-sent gate. The page must explicitly reopen the gate for re-review (`engine.clearGate(flow, gateId)`), let the user review the recovered takes, then Send again. Send still preserves downstream nodes that already have output; retry does not expand a partially completed downstream node. To include newly reviewed takes there, the user must explicitly Rerun that downstream step. Do not silently reopen gates, regenerate completed outputs or start a fresh whole-pipeline run as recovery.
+
+## Preflight and estimates
 
 ```js
 import { preflight } from '../lib/formats/runner.js'
-const plan = await preflight(format, values, { runType: 'instant', pod })
+const plan = await preflight(format, values, { runType: 'instant' })
 if (!plan.ok) setError(plan.reason.message)
 ```
 
-`preflight` compiles the same selected targets and input bindings as execution, including image workflows, steps behind gates, optional workflow nodes and any declared `cloudWorkflow` alternate. The read-only `POST /api/comfy/requirements` endpoint accepts `{ workflows: [{ workflow, vars }] }`; core reads the bundled graphs and derives `notOnCloud`, `minVramGb` and graphics card architecture using `shared/modelFiles.js`. Its response includes only connection booleans, current target selection and Pod memory/architecture. No model download, Pod start, upload or provider generation occurs.
+Preflight compiles every selected step, input binding, upstream image and step behind a gate before calling any writer or generation adapter. The read-only `POST /api/comfy/requirements` endpoint accepts `{ workflows: [{ workflow, vars }], runType? }`. Invalid/null entries or vars return 400. It returns connection booleans, writer providers, target context and requirements per workflow. No download, Pod start, upload or paid generation occurs.
 
-Planning checks every step before calling the writer or generation adapter. `needs_pod`, `pod_too_small` and `missing_key` identify the blocking step; all blockers are in `plan.reasons`. Pages can use “Run as a Session” for a Pod requirement. Starting or resizing the Session remains the existing explicit user action. Then call `session.start()` or `session.retryFailed()` to recheck and resume. Do not bypass `comfyTarget`; server execution still makes the final routing decision. Conditions can change after planning, so runtime failures still stay on the session.
+Core's requirements endpoint and `runComfy` share `resolveComfyRoute` and `cloudGraphOf`; the client does not select Cloud alternates or copy the target policy. That resolver includes #112's server `cloudWorkflows` map and catalog `cloudImageWorkflow`, so an inline `flux3_klein_t2i` can run instantly and Qwen with a reference keeps `qwen_edit_cloud` instead of becoming text-to-image. The adapter sends the original selected workflow to the server, which rechecks live routing at execution. Existing `comfyTarget` policy is unchanged. Router is an available writer whenever a Comfy key is set, alongside Google.
 
-Advanced/headless adapters can inject `requirements(workflows)` or an equivalent metadata object, and `prices` as a model-endpoint metadata map or async `(models) => map`. The offline checks inject real workflow metadata with fixture connection state; they never read provider keys. Operation methods accept planning overrides as their last argument. Resume checks exclude completed steps and unrelated retry branches from blockers; their stored outputs need no credentials or target. The cost quote describes the original pipeline, not a remaining-spend counter. `runFormat` also returns a session for input-validation or preflight failures; standalone `compileFormat` retains its throwing validation contract.
+Planning reports all blockers before spending. `needs_pod`, `pod_too_small` and `missing_key` identify the blocking step in `plan.reasons`. Starting/resizing a Session remains an explicit user action; then call `session.start()` or `session.retryFailed()` to recheck and resume. Changed live conditions can still fail at execution, preserving the session.
 
-## Page adoption
+`session.preflight` contains the steps, requirements, reasons and costs. `session.cost.steps` contains `{ stepId, usd, approx }`; unknown prices have `usd: null`. `total` is `{ usd, approx }` only when every step is known, otherwise null. Writer costs stay unknown. GPU-time rates remain unknown without measured `executionSeconds`; output duration is not execution time. Guessed durations and token estimates are approximate. Approval fan-out assumes all images are sent; choosing fewer can lower cost. The quote describes the original pipeline, not remaining spend.
 
-Keep the returned session in page state, use `onSession` to capture it immediately, and subscribe through `onChange` or the existing engine subscription. The hook itself repaints on changes. Each page's retry replacement is one line:
+Headless adapters can inject `requirements(workflows, { runType, pod })` or an equivalent metadata object, including each Comfy requirement's server-resolved `target`/`selectedWorkflow` or structured `reason`. Prices accept a model-endpoint metadata map or async `(models) => map`. Operation methods accept planning overrides as their last argument. Resume ignores blockers for completed steps and unrelated retry branches. Offline checks use workflow files and synthetic connection/target state without reading provider keys.
 
-| Branch/page | Replace a fresh format run on retry with |
+## Adoption by branch
+
+No studio page is edited by this shared-runner branch. Existing successful awaits, catch-based error messages and approval helpers remain compatible. Migrate only behavior that currently creates a new format run for recovery or needs live busy/retry controls; no wholesale page rewrite is required.
+
+| Branch | Required adoption where behavior changes |
 | --- | --- |
-| `issue-101-studio-wiring` (#107): `Upscale.jsx` | `await session.retryFailed()` |
-| `issue-101-studio-wiring` (#107): `EditVideo.jsx` | `await session.retryFailed()` |
-| `issue-101-studio-wiring` (#107): `AudioStudio.jsx` | `await session.retryFailed()` |
-| `issue-101-studio-wiring` (#107): `LipsyncStudio.jsx` | `await session.retryFailed()` |
-| `issue-101-studio-wiring` (#107): `MixedMedia.jsx` | `await session.retryFailed()` |
-| `router-breadth` (#108): formats using Router models | `await session.retryFailed()` |
-| `photodump-reframe` (#110): `Photodump.jsx` | `await session.retryFailed()` |
-| `photodump-reframe` (#110): `Reframe.jsx` image mode | `await session.retryFailed()` |
-| `story-studios`: story studio pipelines | `await session.retryFailed()` |
-| `ads-studios`: ad studio pipelines | `await session.retryFailed()` |
-| `ugc-influencer`: creator pipelines | `await session.retryFailed()` |
+| #107 `issue-101-studio-wiring` | Upscale, Edit video, Audio, Lipsync and Mixed media retain the session through `onSession` or `error.session`; replace fresh-run retry with `session.retryFailed()` and use its busy signal. Existing normal runs/catches stay as written. |
+| #110 `photodump-reframe` | Keep concurrent per-shot calls; each gets its own session. Store the failed shot's `error.session` and retry only that session. Reframe image mode retains its session instead of starting over. Existing per-shot progress and successful output reconciliation remain page-owned. |
+| #111 `ads-studios` | `useAdStudio` can keep comparing `formatRunId` because it aliases `id`. Preserve catch-based approval handling; retain `error.session` where a failed await previously lost the handle. Change only fresh-run retry paths and add busy controls where absent. |
+| #113 `story-studios` | Shorts, Faceless and Explainer keep their script/shot approval and stitching helpers. Retain each format session, retry its failed units instead of starting that format again, and keep the existing approved-script/shot selections. Page-owned stitching outside the runner keeps its own recovery. |
+| #114 `ugc-influencer` | Keep the requested rejection contract and capture `error.session` on failure. Retry failed creator/motion steps through that session; add `onSession` only where the page needs activity before completion. Existing successful awaits/catches need no migration. |
 
-For a per-step retry button, use `await session.retry(stepId)`. Replace catch-only error handling with `setError(session.error?.message || null)`, and disable editable controls with `disabled={session?.busy}`. Keep page-specific reconciliation for a provider's internal batch: the runner sees one adapter invocation as one unit. In particular, #108's `routerBatch.js` remains responsible for retaining completed requests inside a Router unit; this change neither replaces nor changes that contract. When #108 wires Router prompt writing, add `comfyRouter` to core's `writerProviders` response alongside Google so preflight recognizes that newly available writer connection. Main currently has an explicit Router-writer stub, so preflight correctly requires Google.
+#108's Router batch and writer changes and #112's Cloud alternates are stacked prerequisites. #109's automatic browser-check discovery is merged too. For per-step controls use `await session.retry(stepId)`. Subscribe via `onChange` or the engine and catch rejected operations to display errors. Recovered upstream takes sent earlier require the explicit re-review described above.
+
+## Merge resolutions
+
+- Rebase onto `origin/main`: already up to date.
+- `origin/router-breadth`: `src/lib/useGenerations.js` conflicted in imports, `execute` signature and retry closure. Kept price/session support and Router partial-batch retry behavior, with stable item id as the fourth argument and session retry as the fifth. Final integration preserves mutable Router adapter options across attempts.
+- `origin/instant-ports`: merged without conflicts. Kept the server alternate maps, image variants and routing guards; preflight now shares that resolver.
+- `origin/verify-browser-pattern`: `scripts/verify.mjs` conflicted between an explicit browser list and automatic discovery. Kept automatic discovery, which includes Router and all future browser checks, with sequential execution and existing timeout/cleanup handling.
 
 ## Validation
 
-Run the build and `scripts/verify.mjs` on Windows in a scratch clone. Focused checks cover exact request counts after a partial failure, independent failed branches, approval after failure, writer retry, retained metadata/outputs, busy exclusion, captured inputs, Cloud-only blockers, a 24 gigabyte Pod encountering a 32 gigabyte step, missing provider keys, Cloud alternates, derived per-step costs and the requirements endpoint. The engine regression verifies partial failures block automatic downstream work and retries preserve completed units and closed gates. All generation and connection results are fixtures; no paid calls are needed.
+All builds/checks run sequentially on `pi-windows` in `C:/Users/kylek1/comfyfield-runner-resilience-437c496c`, a scratch clone of the stacked branch. Git Bash is first in `Path`; bundled `ffmpeg-static` is installed. Provider environment fields are cleared before launching checks; fixtures supply synthetic configuration. No real keys or paid calls are used.
+
+Focused checks cover exact retry request counts, real Router-batch lost-response reconciliation, writer key reuse, fresh explicit Rerun keys, failed-item retention, captured values, the run-id alias, early session/busy signals, concurrent hook calls with different values, approval gates, null endpoint inputs, inline/image Cloud alternates, target-policy agreement and unknown GPU-time prices. Inventory assertions derive valid counts and unique ids from the loaded catalog instead of fixed 450/479 totals.
+
+Final Windows output on 2026-10-19:
+
+- `npx vite build`: 335 modules transformed, built in 2.08 seconds; bundle-size warning only.
+- `node scripts/verify.mjs`: `20/20 check scripts passed`, exit 0, including all four browser suites.
+- Focused output: 21 Router/core checks, 24 engine checks, 31 recipe cases, requirements regressions and 39 Cloud alternate pairs passed.
+- The first verifier runs exposed transferred macOS archive metadata and a stacked Router fixture missing offline requirements. Metadata was quarantined outside the scratch clone; the fixture now injects offline requirements. The final full run includes both corrections.
+- Runtime/check files matched the local worktree byte for byte before the final run. No direct studio or protected Pod-file edits were made in the fix; inherited Router studio changes remain in the required merge.

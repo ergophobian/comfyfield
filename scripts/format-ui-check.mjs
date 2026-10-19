@@ -25,7 +25,7 @@ const server = await preview({ configFile: false, envFile: false, plugins: [{
         return res.end(JSON.stringify({
           connections: { fal: { connected: true }, google: { connected: true }, comfyRouter: { connected: true } },
           cloudConnected: true, pod: { phase: 'none' },
-          requirements: JSON.parse(body).workflows.map(({ workflow }) => ({ workflow, notOnCloud: [], minVramGb: 0 })),
+          requirements: JSON.parse(body).workflows.map(({ workflow }) => ({ workflow, notOnCloud: [], minVramGb: 0, target: 'cloud', selectedWorkflow: workflow })),
         }))
       }
       if (url.pathname === '/api/stitch/exports') return res.end('[]')

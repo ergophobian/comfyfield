@@ -12,6 +12,7 @@ import { schemas } from '../src/lib/formats/schemas.js'
 import { validateFormat, routerInputErrors } from '../src/lib/formats/validate.js'
 import { runFormat } from '../src/lib/formats/runner.js'
 import { expectedInputs, prompt } from './fixtures/router-payloads.mjs'
+import { offlineRequirements } from './fixtures/format-planning.mjs'
 import { comfyRouterInput } from '../shared/mapping.js'
 
 // No inherited provider configuration can reach these mocked checks.
@@ -91,7 +92,7 @@ await test('Router chains reject unsupported upstream images before any generati
   const product = { ...base, inputs: [{ id: 'product', type: 'product', label: 'Product' }], steps: [{ id: 'last', model: 'comfy-router-flux' }] }
   assert.deepEqual(validateFormat(product), [])
   let mapped = false
-  await runFormat(product, { product: { name: 'Cup', images: ['https://example.test/cup.png'] } }, { run: async (model, opts) => {
+  await runFormat(product, { product: { name: 'Cup', images: ['https://example.test/cup.png'] } }, { requirements: offlineRequirements, run: async (model, opts) => {
     mapped = true
     assert.equal(comfyRouterInput(model.model, opts).input_image, 'https://example.test/cup.png')
     return [{ url: 'https://example.test/output.png', kind: 'image' }]

@@ -11,6 +11,9 @@ const requests = []
 let fakeKey = ''
 let partial = false
 let failedSecond = false
+let failedTakes = 0
+let planningDelay = 0
+const writerRequests = []
 const accepted = new Map()
 const reference = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aF1cAAAAASUVORK5CYII='
 const fixture = await build({ configFile: false, envFile: false, logLevel: 'warn', build: { write: false, minify: false, rollupOptions: { input: 'scripts/router-fixture.jsx', output: { inlineDynamicImports: true } } } })
@@ -40,6 +43,18 @@ const server = await preview({ configFile: false, envFile: false, plugins: [{
         return res.end(JSON.stringify({ comfy: { connected: Boolean(fakeKey) }, comfyRouter: { connected: Boolean(fakeKey) } }))
       }
       if (url.pathname === '/api/connections/test') return res.end('{"ok":true}')
+      if (url.pathname === '/api/comfy/requirements') {
+        if (planningDelay) await new Promise((resolve) => setTimeout(resolve, planningDelay))
+        return res.end(JSON.stringify({ connections: { comfyRouter: { connected: true } }, writerProviders: ['comfyRouter'], requirements: [] }))
+      }
+      if (url.pathname === '/api/prompt') {
+        writerRequests.push(body)
+        if (writerRequests.length === 1) {
+          res.statusCode = 503
+          return res.end(JSON.stringify({ error: 'Mock writer lost response' }))
+        }
+        return res.end(JSON.stringify({ text: 'Recovered writer prompt' }))
+      }
       if (url.pathname === '/api/stitch/exports') return res.end('[]')
       if (url.pathname === '/api/upload') return res.end(JSON.stringify({ url: reference }))
       if (url.pathname.startsWith('/api/library/')) return res.end(JSON.stringify(url.pathname.endsWith('/characters') ? Array.from({ length: 5 }, (_, i) => ({ id: `char-${i}`, name: `Character ${i}`, images: [`https://example.test/character-${i}.png`] })) : []))
@@ -49,6 +64,13 @@ const server = await preview({ configFile: false, envFile: false, plugins: [{
         assert(model)
         assert.match(body.idempotencyKey, /^[a-f0-9-]{36}$/)
         requests.push(body)
+        if (body.input.prompt === 'Library failure') {
+          if (failedTakes++ < 2) {
+            res.statusCode = 503
+            return res.end(JSON.stringify({ error: 'Mock take failed' }))
+          }
+          return res.end(JSON.stringify({ files: [{ url: `/take-${body.idempotencyKey}.png`, kind: 'image' }] }))
+        }
         if (partial) {
           if (!accepted.has(body.idempotencyKey)) accepted.set(body.idempotencyKey, [{ url: `/batch-${accepted.size + 1}.png`, kind: 'image' }])
           if (accepted.size === 2 && !failedSecond) {
@@ -222,8 +244,52 @@ try {
   await screenshot('partial-batch-recovered')
   await goto('/router-fixture')
   await wait('JSON.parse(document.querySelector("#items").textContent).filter((item) => item.url).length === 3')
+  // Same format id with different values must produce two independent requests/sessions.
+  partial = false
+  const beforeConcurrent = requests.length
+  planningDelay = 500
+  await evaluate('document.querySelector("#concurrent").click()')
+  await wait('document.querySelector("#busy").textContent === "true"')
+  assert.equal(requests.length, beforeConcurrent, 'Busy is visible during preflight, before any adapter requests')
+  assert.equal(await evaluate('JSON.parse(document.querySelector("#sessions").textContent).length'), 2, 'onSession fires for both shots before completion')
+  await wait('JSON.parse(document.querySelector("#sessions").textContent).length === 2 && JSON.parse(document.querySelector("#sessions").textContent).every((session) => !session.busy && session.files === 1)')
+  planningDelay = 0
+  assert.equal(requests.length - beforeConcurrent, 2)
+  assert.deepEqual(requests.slice(beforeConcurrent).map((call) => call.input.prompt).sort(), ['First concurrent shot', 'Second concurrent shot'])
+  assert.equal(await evaluate('new Set(JSON.parse(document.querySelector("#sessions").textContent).map((session) => session.id)).size'), 2)
+
+  // A later take must not erase either failed Library item for its step.
+  const beforeFailure = requests.length
+  await evaluate('document.querySelector("#format-failure").click()')
+  await wait('JSON.parse(document.querySelector("#session").textContent)?.failed === 2 && !JSON.parse(document.querySelector("#session").textContent).busy')
+  assert.equal(requests.length - beforeFailure, 3)
+  const libraryBefore = await evaluate('JSON.parse(document.querySelector("#items").textContent).filter((item) => item.formatRunId === JSON.parse(document.querySelector("#session").textContent).id)')
+  assert.equal(libraryBefore.filter((item) => item.failed).length, 2)
+  assert.equal(libraryBefore.filter((item) => item.url).length, 1)
+  await evaluate('document.querySelector("#format-retry").click()')
+  await wait('JSON.parse(document.querySelector("#session").textContent)?.failed === 0 && !JSON.parse(document.querySelector("#session").textContent).busy')
+  const takeCalls = requests.slice(beforeFailure)
+  assert.equal(takeCalls.length, 5)
+  assert.deepEqual(takeCalls[0], takeCalls[3], 'First take retry reuses its Router key')
+  assert.deepEqual(takeCalls[1], takeCalls[4], 'Second take retry reuses its Router key')
+  const libraryAfter = await evaluate('JSON.parse(document.querySelector("#items").textContent).filter((item) => item.formatRunId === JSON.parse(document.querySelector("#session").textContent).id)')
+  assert.equal(libraryAfter.filter((item) => item.failed || item.pending).length, 0)
+  assert.equal(libraryAfter.filter((item) => item.url).length, 3)
+  assert(libraryAfter.some((item) => item.id === libraryBefore.find((item) => item.url).id), 'Retain the successful take in the Library')
+  const beforeWriter = requests.length
+  await evaluate('document.querySelector("#writer-failure").click()')
+  await wait('JSON.parse(document.querySelector("#session").textContent)?.failed === 1 && !JSON.parse(document.querySelector("#session").textContent).busy')
+  await evaluate('document.querySelector("#format-retry").click()')
+  await wait('JSON.parse(document.querySelector("#session").textContent)?.failed === 0 && !JSON.parse(document.querySelector("#session").textContent).busy')
+  assert.equal(writerRequests.length, 2)
+  assert.deepEqual(writerRequests[0], writerRequests[1], 'The hook forwards the retained writer key and body')
+  assert.match(writerRequests[1].idempotencyKey, /^[a-f0-9-]{36}$/)
+  assert.equal(requests.length, beforeWriter, 'Writer retry keeps the review gate closed')
+  await evaluate('document.querySelector("#writer-send").click()')
+  await wait(`JSON.parse(document.querySelector("#items").textContent).some((item) => item.prompt === 'Recovered writer prompt' && item.url)`)
+  assert.equal(requests.length, beforeWriter + 1)
   assert.deepEqual(errors, [])
-  console.log(`Router UI checks passed: fake key gating, ${routerModels.length} picker selections and mocked generations, independent native payloads, combined reference limits, partial batch recovery with stable keys and Library persistence, desktop and 390px layouts. Eight mock screenshots saved.`)
+  console.log(`Router UI checks passed: fake key gating, ${routerModels.length} picker selections and mocked generations, independent native payloads, combined reference limits, partial batch recovery with stable keys and Library persistence, concurrent format shots, per-take Library failures and session retries, desktop and 390px layouts. Eight mock screenshots saved.`)
 } finally {
   await browser?.close()
   await server.close()
