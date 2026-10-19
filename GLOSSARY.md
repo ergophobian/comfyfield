@@ -37,3 +37,9 @@ _Avoid_: budget, limit (alone)
 **Flows engine**:
 The rules that decide which Flow nodes run and when: Approve gates, Send, Run and Regenerate all. Its nodes call the Generation engine for media.
 _Avoid_: engine (alone), workflow engine
+
+## Agents
+
+**Skill**:
+A named, multi-step job that an outside agent (Claude Code, Codex, Cursor) runs on ComfyField through the MCP server, such as a product review video from a brief. A skill chains formats; a format is one generation step.
+_Avoid_: preset, recipe, workflow
