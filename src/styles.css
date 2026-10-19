@@ -2694,3 +2694,8 @@ a.skill-chip:active { transform: scale(.96); }
 .story-pipeline { display: grid; gap: var(--agent-gap); min-width: 0; }
 .story-pipeline textarea { width: 100%; max-width: 100%; box-sizing: border-box; }
 .story-result { display: block; width: auto; max-width: 100%; max-height: var(--w-narrow); border-radius: var(--r-lg); }
+
+/* Story studios: locked draft settings and approval estimates. */
+.story-settings { border: none; padding: 0; margin: 0; min-width: 0; }
+.story-estimate { padding: var(--widget-space); border-radius: var(--r-md); background: var(--surface); }
+.story-voice audio { max-width: 100%; }

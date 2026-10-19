@@ -10,6 +10,7 @@ import { archOf } from '../shared/modelFiles.js'
 import { upload } from './upload.js'
 import { serveMedia } from './serveMedia.js'
 import { agentRoutes } from './agent-routes.js'
+import { planStory } from './story.js'
 
 export { providers } from './core.js'
 
@@ -264,6 +265,7 @@ function mount(server, harness) {
       if (url.pathname === '/api/pod/quote') return send(res, 200, await podQuote(url.searchParams.get('workflow')))
       if (url.pathname === '/api/pod/options' && req.method === 'GET') return send(res, 200, await core.podOptions())
       if (url.pathname.startsWith('/api/pod/') && req.method === 'POST') return send(res, 200, await podAction(url.pathname.slice('/api/pod/'.length), await body(req)))
+      if (url.pathname === '/api/story/plan' && req.method === 'POST') return send(res, 200, await planStory(await body(req)))
       if (await agents(req, res, url)) return
       if (url.pathname === '/api/connections' && req.method === 'GET') return send(res, 200, core.connections())
       if (url.pathname === '/api/connections' && req.method === 'POST') {

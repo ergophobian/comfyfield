@@ -1,8 +1,9 @@
+import VoiceSample from '../components/story/VoiceSample.jsx'
+import { readStoryDocuments } from '../lib/storyStudios.js'
 import StoryPipeline from '../components/story/StoryPipeline.jsx'
 import { useMemo, useRef, useState } from 'react'
 import Segmented from '../components/Segmented.jsx'
 import { Chip, Option } from '../components/Composer.jsx'
-import { Field } from '../components/formats/Fields.jsx'
 import { IconAspect, IconAudio, IconClip, IconClock, IconClose, IconLink, IconSpark } from '../components/Icons.jsx'
 import { Hero, Tiles, Empty, coverAt, stagger } from '../components/studiob/Kit.jsx'
 import { formatById } from '../lib/formats/index.js'
@@ -70,6 +71,9 @@ function outline(topic, seconds) {
 }
 
 export default function Explainer() {
+  const [locked, setLocked] = useState(false)
+  const [importing, setImporting] = useState(false)
+  const [fileError, setFileError] = useState('')
   const [mode, setMode] = useState('topic')
   const [text, setText] = useState('')
   const [files, setFiles] = useState([])
@@ -100,95 +104,105 @@ export default function Explainer() {
       <Hero badge="Explainer" title="Explain anything in one video"
         sub="Type a topic, paste a script, attach a file or a link. You get a script, scenes and narration in one visual style." />
 
-      <form className="composer glass sb-compose" onSubmit={(e) => e.preventDefault()}>
-        <div className="composer-inner">
-          <div className="composer-top">
-            <Segmented value={mode} onChange={switchMode} options={[{ value: 'topic', label: 'Topic' }, { value: 'script', label: 'Script' }]} />
-          </div>
-          <textarea rows={script ? 6 : 3} value={text} onChange={(e) => setText(e.target.value)} aria-label={script ? 'Script' : 'What should the video explain'}
-            placeholder={script ? 'Paste your narration. Each paragraph becomes a scene.' : 'What should the video explain? For example, how bees turn nectar into honey'} />
-          {showLink && (
-            <div className="import">
-              <IconLink />
-              <input value={link} onChange={(e) => setLink(e.target.value)} placeholder="A page to explain, such as an article or a docs page" aria-label="Link" />
+      <fieldset disabled={locked || importing} className="story-settings">
+        <form className="composer glass sb-compose" onSubmit={(e) => e.preventDefault()}>
+          <div className="composer-inner">
+            <div className="composer-top">
+              <Segmented value={mode} onChange={switchMode} options={[{ value: 'topic', label: 'Topic' }, { value: 'script', label: 'Script' }]} />
             </div>
-          )}
-          {files.length > 0 && (
-            <div className="refs">
-              {files.map((f) => (
-                <span className="ref" key={f.name}>{f.name}
-                  <button type="button" onClick={() => setFiles((x) => x.filter((n) => n !== f))} aria-label={`Remove ${f.name}`}><IconClose /></button>
-                </span>
+            <textarea rows={script ? 6 : 3} value={text} onChange={(e) => setText(e.target.value)} aria-label={script ? 'Script' : 'What should the video explain'}
+              placeholder={script ? 'Paste your narration. Each paragraph becomes a scene.' : 'What should the video explain? For example, how bees turn nectar into honey'} />
+            {showLink && (
+              <div className="import">
+                <IconLink />
+                <input value={link} onChange={(e) => setLink(e.target.value)} placeholder="A page to explain, such as an article or a docs page" aria-label="Link" />
+              </div>
+            )}
+            {files.length > 0 && (
+              <div className="refs">
+                {files.map((f) => (
+                  <span className="ref" key={f.name}>{f.name}
+                    <button type="button" onClick={() => setFiles((x) => x.filter((n) => n !== f))} aria-label={`Remove ${f.name}`}><IconClose /></button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="composer-foot">
+              <div className="chips">
+                <div className="chip"><button type="button" className={files.length ? 'lit' : ''} onClick={() => fileRef.current.click()}><IconClip />Attach files</button></div>
+                <input ref={fileRef} type="file" multiple hidden accept=".txt,.md,text/plain"
+                  onChange={async (e) => {
+                    const selected = [...e.target.files]
+                    e.target.value = ''
+                    setImporting(true)
+                    setFileError('')
+                    try { const result = await readStoryDocuments(selected, files); setFiles(result.documents) }
+                    catch (e) { setFileError(e.message) }
+                    finally { setImporting(false) }
+                  }} />
+                <div className="chip"><button type="button" className={showLink ? 'lit' : ''} aria-pressed={showLink} onClick={() => setShowLink((s) => !s)}><IconLink />Link</button></div>
+                <Chip icon={<IconSpark />} label={styleItem?.label} lit>
+                  {styles.map((s) => <Option key={s.id} label={s.label} note={s.note} on={style === s.id} onClick={() => setStyle(s.id)} />)}
+                </Chip>
+                <Chip icon={<IconAspect />} label={ratio}>
+                  {ratios.map((r) => <Option key={r.id} label={r.label} note={r.note} on={ratio === r.id} onClick={() => setRatio(r.id)} />)}
+                </Chip>
+                <Chip icon={<IconClock />} label={fit ? 'Fit to script' : d.label}>
+                  {durations.map((x) => <Option key={x.id} label={x.label} note={x.note} on={duration === x.id} disabled={x.id === 'fit' && !script} onClick={() => setDuration(x.id)} />)}
+                </Chip>
+                <Chip icon={<IconAudio />} label={voiceName}>
+                  <h6>Narrator</h6>
+                  {voices.map((v) => <Option key={v} label={v} on={!ownVoice && voice === v} onClick={() => { setVoice(v); setOwnVoice(null) }} />)}
+                  <div className="sb-chip-field">
+                    <VoiceSample value={ownVoice} onChange={setOwnVoice} onBusyChange={setImporting} />
+                  </div>
+                </Chip>
+              </div>
+              <span className="sheet-note">Review the script below</span>
+            </div>
+          </div>
+        </form>
+        <p className="sb-wire muted">
+          {fit ? clock(runtime) : d.label}, {ratio}, {styleItem?.label.toLowerCase()}, narrator tone: {voiceName}.
+          {' '}Text attachments are included in the writer context. Paste source text for links; link fetching and office document import are not available.
+        </p>
+
+      </fieldset>
+      <p className="sheet-note">Attach up to 5 .txt or .md files, at most 100 KB each and 200 KB total. The writer receives at most 50,000 attachment characters.</p>
+      {files.some((file) => file.truncated) && <p role="status">Attachments were truncated to 50,000 characters. Remove files to include other text.</p>}
+      {fileError && <p role="alert" className="error">{fileError}</p>}
+      <StoryPipeline onLockChange={setLocked} disabled={importing || (!text.trim() && !files.length)} values={{ studio: 'Explainer', topic: script ? '' : text, script: script ? text : '', documents: files, reference: link, style: styleItem?.label, ratio, duration: fit ? runtime : target, narrator: voice, voice: ownVoice, captions: true, animation: 'frames' }} />
+      <fieldset disabled={locked} className="story-settings">
+        <section className="sb-section">
+          <div className="studio-sub">
+            <h2>Style</h2>
+            <span className="muted">One look for every scene.</span>
+          </div>
+          <Tiles items={styles} value={style} onChange={setStyle} label="Style" />
+        </section>
+
+        <section className="sb-section">
+          <div className="studio-sub">
+            <h2>Scenes</h2>
+            <span className="muted">
+              {script ? `Split from your script, about ${clock(runtime)} of narration.` : `An outline for ${d.label}. The script for each scene is written when you generate.`}
+            </span>
+          </div>
+          {scenes.length ? (
+            <ol className="sb-board">
+              {scenes.map((s, i) => (
+                <li key={`${i}-${s.title}`} className="sb-scene glass rise" style={stagger(i)}>
+                  <span className="sb-scene-cover" style={{ background: styleItem?.cover }}><b>{i + 1}</b><em>{clock(s.seconds)}</em></span>
+                  <strong>{s.title}</strong>
+                  <p>{s.text}</p>
+                </li>
               ))}
-            </div>
+            </ol>
+          ) : (
+            <Empty title="No scenes yet">Paste a script above and it splits into scenes here.</Empty>
           )}
-          <div className="composer-foot">
-            <div className="chips">
-              <div className="chip"><button type="button" className={files.length ? 'lit' : ''} onClick={() => fileRef.current.click()}><IconClip />Attach files</button></div>
-              <input ref={fileRef} type="file" multiple hidden accept=".txt,.md,text/plain"
-                onChange={async (e) => {
-                  const selected = [...e.target.files]
-                  e.target.value = ''
-                  const documents = await Promise.all(selected.map(async (file) => ({ name: file.name, text: (await file.text()).slice(0, 50000) })))
-                  setFiles((previous) => [...previous, ...documents])
-                }} />
-              <div className="chip"><button type="button" className={showLink ? 'lit' : ''} aria-pressed={showLink} onClick={() => setShowLink((s) => !s)}><IconLink />Link</button></div>
-              <Chip icon={<IconSpark />} label={styleItem?.label} lit>
-                {styles.map((s) => <Option key={s.id} label={s.label} note={s.note} on={style === s.id} onClick={() => setStyle(s.id)} />)}
-              </Chip>
-              <Chip icon={<IconAspect />} label={ratio}>
-                {ratios.map((r) => <Option key={r.id} label={r.label} note={r.note} on={ratio === r.id} onClick={() => setRatio(r.id)} />)}
-              </Chip>
-              <Chip icon={<IconClock />} label={fit ? 'Fit to script' : d.label}>
-                {durations.map((x) => <Option key={x.id} label={x.label} note={x.note} on={duration === x.id} disabled={x.id === 'fit' && !script} onClick={() => setDuration(x.id)} />)}
-              </Chip>
-              <Chip icon={<IconAudio />} label={voiceName}>
-                <h6>Narrator</h6>
-                {voices.map((v) => <Option key={v} label={v} on={!ownVoice && voice === v} onClick={() => { setVoice(v); setOwnVoice(null) }} />)}
-                <div className="sb-chip-field">
-                  <Field input={{ id: 'own-voice', type: 'voice', label: 'Your own voice', optional: true }} value={ownVoice} onChange={setOwnVoice} />
-                </div>
-              </Chip>
-            </div>
-            <span className="sheet-note">Review the script below</span>
-          </div>
-        </div>
-      </form>
-      <p className="sb-wire muted">
-        {fit ? clock(runtime) : d.label}, {ratio}, {styleItem?.label.toLowerCase()}, narrator tone: {voiceName}.
-        {' '}Text attachments are included in the writer context. Paste source text for links; link fetching and office document import are not available.
-      </p>
-
-      <StoryPipeline disabled={!text.trim() && !files.length} values={{ studio: 'Explainer', topic: script ? '' : text, script: script ? text : '', documents: files, reference: link, style: styleItem?.label, ratio, duration: fit ? runtime : target, narrator: voice, voice: ownVoice, captions: true, animation: 'frames' }} />
-      <section className="sb-section">
-        <div className="studio-sub">
-          <h2>Style</h2>
-          <span className="muted">One look for every scene.</span>
-        </div>
-        <Tiles items={styles} value={style} onChange={setStyle} label="Style" />
-      </section>
-
-      <section className="sb-section">
-        <div className="studio-sub">
-          <h2>Scenes</h2>
-          <span className="muted">
-            {script ? `Split from your script, about ${clock(runtime)} of narration.` : `An outline for ${d.label}. The script for each scene is written when you generate.`}
-          </span>
-        </div>
-        {scenes.length ? (
-          <ol className="sb-board">
-            {scenes.map((s, i) => (
-              <li key={`${i}-${s.title}`} className="sb-scene glass rise" style={stagger(i)}>
-                <span className="sb-scene-cover" style={{ background: styleItem?.cover }}><b>{i + 1}</b><em>{clock(s.seconds)}</em></span>
-                <strong>{s.title}</strong>
-                <p>{s.text}</p>
-              </li>
-            ))}
-          </ol>
-        ) : (
-          <Empty title="No scenes yet">Paste a script above and it splits into scenes here.</Empty>
-        )}
-      </section>
+        </section>
+      </fieldset>
     </main>
   )
 }

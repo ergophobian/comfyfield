@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
 import { runFormat } from '../src/lib/formats/runner.js'
-import { allFormats, formats } from '../src/lib/formats/index.js'
+import { allFormats, formats, formatProblems } from '../src/lib/formats/index.js'
 import { effects } from '../src/lib/formats/effects.js'
 import { initialValues } from '../src/lib/recipes.js'
 import { schemas } from '../src/lib/formats/schemas.js'
@@ -18,9 +18,9 @@ import research from '../research_notes/effect-specs.json' with { type: 'json' }
 globalThis.fetch = () => { throw new Error('Network is forbidden in integration checks') }
 const photo = { url: '/media/photo.png', ratio: '9:16' }
 const valuesFor = (format) => ({ ...initialValues(format), ...Object.fromEntries(format.inputs.filter((i) => i.type === 'image').map((i) => [i.id, photo])) })
-assert.equal(effects.length, 45)
-assert.equal(formats.length, 450)
-assert.equal(allFormats.length, 479)
+assert.equal(effects.length, research.specs.length)
+assert.deepEqual(formats, allFormats.filter((format) => !formatProblems.get(format.id).length))
+assert.equal(new Set(allFormats.map((format) => format.id)).size, allFormats.length)
 for (const [i, format] of effects.entries()) {
   assert.equal(format.steps[0].instructions, research.specs[i].writer_instructions)
   assert.deepEqual(validateFormat(format), [])

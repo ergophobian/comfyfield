@@ -31,7 +31,7 @@ const mock = {
     })
   },
 }
-const vite = await createServer({ configFile: false, envFile: false, cacheDir: 'node_modules/.cache/widget-vite', plugins: [mock, react(), api()], server: { host: '127.0.0.1', port: 0, strictPort: true, watch: { ignored: ['**/outputs/**'] } } })
+const vite = await createServer({ configFile: false, envFile: false, cacheDir: 'node_modules/.cache/widget-vite', plugins: [mock, react(), api()], server: { host: '127.0.0.1', port: 0, strictPort: false, watch: { ignored: ['**/outputs/**'] } } })
 await vite.listen()
 const base = `http://127.0.0.1:${vite.httpServer.address().port}`
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms))

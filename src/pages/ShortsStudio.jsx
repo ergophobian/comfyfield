@@ -52,6 +52,7 @@ function PresetMaker({ onSave, onClose }) {
 }
 
 export default function ShortsStudio() {
+  const [locked, setLocked] = useState(false)
   const [tab, setTab] = useState('presets')
   const [query, setQuery] = useState('')
   const [own, setOwn] = useState([])
@@ -92,7 +93,7 @@ export default function ShortsStudio() {
         </select>
       </Box>
       <Toggle on={restyle} onChange={setRestyle}>Restyle footage</Toggle>
-      <p className="sheet-note">Restyling uses Bernini-R in shots up to 3 seconds long. Review the shot count before rendering.</p>
+      <p className="sheet-note">Restyling uses Bernini-R with at most 81 source frames per shot (1.35 seconds at 60 fps). The source frame rate is checked before drafting. Review the shot count before rendering.</p>
       <Box label="Captions" aside={<Toggle on={captions} onChange={setCaptions}>{captions ? 'On' : 'Off'}</Toggle>}>
         {captions && <Pills options={captionStyles} value={captionStyle} onChange={setCaptionStyle} label="Caption style" />}
       </Box>
@@ -104,37 +105,39 @@ export default function ShortsStudio() {
 
   return (
     <main className="sb-page">
-      <Split name="Shorts studio" panel={panel}
-        foot={<p className="sheet-note">{current?.label}, {ratio}, 720p. Review the story below before rendering.</p>}>
-        <div className="sb-bar">
-          <Segmented value={tab} onChange={setTab} options={[{ value: 'presets', label: 'Presets' }, { value: 'history', label: 'History' }, { value: 'how', label: 'How it works' }]} />
+      <fieldset disabled={locked} className="story-settings">
+        <Split name="Shorts studio" panel={panel}
+          foot={<p className="sheet-note">{current?.label}, {ratio}, 720p. Review the story below before rendering.</p>}>
+          <div className="sb-bar">
+            <Segmented value={tab} onChange={setTab} options={[{ value: 'presets', label: 'Presets' }, { value: 'history', label: 'History' }, { value: 'how', label: 'How it works' }]} />
+            {tab === 'presets' && (
+              <label className="rail-search sb-search">
+                <IconSearch />
+                <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search looks" aria-label="Search looks" />
+              </label>
+            )}
+          </div>
           {tab === 'presets' && (
-            <label className="rail-search sb-search">
-              <IconSearch />
-              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search looks" aria-label="Search looks" />
-            </label>
+            <Tiles tall items={shown} value={preset} onChange={setPreset} label="Looks"
+              lead={!q && (
+                <button type="button" className="sb-tile make" onClick={() => setMaking(true)}>
+                  <IconPlus />
+                  <span>Make a preset from references<small>Copy the look of shorts you like</small></span>
+                </button>
+              )} />
           )}
-        </div>
-        {tab === 'presets' && (
-          <Tiles tall items={shown} value={preset} onChange={setPreset} label="Looks"
-            lead={!q && (
-              <button type="button" className="sb-tile make" onClick={() => setMaking(true)}>
-                <IconPlus />
-                <span>Make a preset from references<small>Copy the look of shorts you like</small></span>
-              </button>
-            )} />
-        )}
-        {tab === 'presets' && !shown.length && <Empty title={`No looks match "${query}"`}>Try a mood, a color or a place.</Empty>}
-        {tab === 'history' && <div>{gens.items.filter((item) => item.storyStudio === 'Shorts studio').map((item) => <video className="story-result" key={item.id} src={item.url} controls aria-label="Saved short" />)}<p className="sheet-note">Finished shorts also appear in the Library.</p></div>}
-        {tab === 'how' && (
-          <Steps items={[
-            { title: 'Pick a look', text: 'Choose a look to guide cutaways and captions, or name your own from reference stills.' },
-            { title: 'Upload footage', text: 'Up to 2 minutes. Paste a transcript or describe what happens.' },
-            { title: 'Generate', text: 'Approve the narration and shot list. Pick vertical, horizontal or square at 720p.' },
-          ]} />
-        )}
-      </Split>
-      <StoryPipeline disabled={!video?.url || !Number.isFinite(video.duration) || video.duration > 120 || !description.trim()} values={{ studio: 'Shorts studio', topic: description, video, restyle, language, captions, captionStyle, ratio, style: current?.label, animation: 'frames', duration: video?.duration, presetReference: current?.image }} />
+          {tab === 'presets' && !shown.length && <Empty title={`No looks match "${query}"`}>Try a mood, a color or a place.</Empty>}
+          {tab === 'history' && <div>{gens.items.filter((item) => item.storyStudio === 'Shorts studio').map((item) => <video className="story-result" key={item.id} src={item.url} controls aria-label="Saved short" />)}<p className="sheet-note">Finished shorts also appear in the Library.</p></div>}
+          {tab === 'how' && (
+            <Steps items={[
+              { title: 'Pick a look', text: 'Choose a look to guide cutaways and captions, or name your own from reference stills.' },
+              { title: 'Upload footage', text: 'Up to 2 minutes. Paste a transcript or describe what happens.' },
+              { title: 'Generate', text: 'Approve the narration and shot list. Pick vertical, horizontal or square at 720p.' },
+            ]} />
+          )}
+        </Split>
+      </fieldset>
+      <StoryPipeline onLockChange={setLocked} disabled={!video?.url || !Number.isFinite(video.duration) || video.duration > 120 || !description.trim()} values={{ studio: 'Shorts studio', topic: description, video, restyle, language, captions, captionStyle, ratio, style: current?.label, animation: 'frames', duration: video?.duration, presetReference: current?.image }} />
       <p className="sheet-note">The selected look guides footage restyling, generated cutaways and captions. Automatic transcription and style extraction from reference stills are not available. Auto language uses English narration unless you choose a language.</p>
       {making && <PresetMaker onClose={() => setMaking(false)} onSave={(p) => { setOwn((x) => [p, ...x]); setPreset(p.id); setMaking(false) }} />}
     </main>

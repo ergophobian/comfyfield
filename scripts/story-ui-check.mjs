@@ -4,7 +4,8 @@ import path from 'node:path'
 import { preview } from 'vite'
 import { startBrowser, uiTimeout } from './browser.mjs'
 import { serveMedia } from '../server/serveMedia.js'
-import { ffmpeg, findFfmpeg, renderStitch } from '../server/stitch.js'
+import { planStory } from '../server/story.js'
+import { ffmpeg, findFfmpeg, renderStitch, inspectStoryFootage } from '../server/stitch.js'
 
 // Provider calls are fixtures. The production page, runner, ffmpeg and Library are real.
 const root = path.resolve('.comfyfield/story-ui-check')
@@ -32,8 +33,15 @@ const server = await preview({ configFile: false, envFile: false, plugins: [{ na
     if (url.pathname === '/api/stitch/exports') return reply(exports)
     if (url.pathname === '/api/connections') return reply({ comfy: { connected: true }, google: { connected: true } })
     if (url.pathname === '/api/upload' || url.pathname === '/api/stitch/upload') {
+      if (req.headers['content-type']?.startsWith('audio/')) {
+        const chunks = []
+        for await (const chunk of req) chunks.push(chunk)
+        const name = `upload-${Date.now()}.wav`
+        fs.writeFileSync(mediaPath(name), Buffer.concat(chunks))
+        return reply({ url: `/media/${name}` })
+      }
       req.resume()
-      return reply({ url: req.headers['content-type']?.startsWith('audio/') ? '/media/voice.wav' : '/media/footage.mp4' })
+      return reply({ url: '/media/footage.mp4' })
     }
     if (req.method !== 'POST') return reply({})
     let body = ''
@@ -41,6 +49,7 @@ const server = await preview({ configFile: false, envFile: false, plugins: [{ na
     const input = JSON.parse(body)
     requests.push({ path: url.pathname, input })
     try {
+      if (url.pathname === '/api/story/plan') return reply(await planStory(input, { connection: () => ({ run: 'session' }), status: () => ({ phase: 'ready', pod: { vramGb: 48, costPerHr: 1 } }), inspect: (url, range) => inspectStoryFootage(url, { mediaPath, binary, range }) }))
       if (url.pathname === '/api/prompt') {
         if (input.target === 'Shot list') {
           const footage = input.note.includes('Shorts studio')
@@ -140,6 +149,15 @@ try {
       await click('Next')
       await fill('input[placeholder="What should this episode be about"]', 'Why ice floats')
       await click('Next')
+      await evaluate(`(async () => {
+        const input = document.querySelector('.story-voice input[type=file]')
+        const blob = await fetch('/media/voice.wav').then((res) => res.blob())
+        const transfer = new DataTransfer()
+        transfer.items.add(new File([blob], 'my-voice.wav', { type: 'audio/wav' }))
+        input.files = transfer.files
+        input.dispatchEvent(new Event('change', { bubbles: true }))
+      })()`)
+      await wait('document.querySelector(".story-voice audio")')
     } else {
       await evaluate(`(() => {
         const input = document.querySelector('input[type=file][accept*="video"]')
@@ -161,9 +179,27 @@ try {
     await click('Write script')
     await wait('document.querySelector("textarea[aria-label=\\"Script for approval\\"]")')
     assert.equal(requests.filter((r) => r.path === '/api/comfy/run').length, before, 'No generation before script approval')
+    assert(await evaluate('[...document.querySelectorAll("fieldset.story-settings button, fieldset.story-settings input, fieldset.story-settings textarea, fieldset.story-settings select")].every((el) => el.matches(":disabled"))'), 'Page settings lock during review')
+    assert(await evaluate('document.querySelector(".story-pipeline").textContent.includes("Writer calls bill")'))
+    await click('Edit settings')
+    await wait('document.querySelector(".story-pipeline button").textContent === "Write script" || [...document.querySelectorAll(".story-pipeline button")].some((b) => b.textContent === "Write script")')
+    assert(await evaluate('[...document.querySelectorAll("fieldset.story-settings textarea")].every((el) => !el.matches(":disabled"))'))
+    await click('Write script')
+    await wait('document.querySelector("textarea[aria-label=\\"Script for approval\\"]")')
     await click('Approve script')
     await wait('document.querySelector("textarea[aria-label=\\"Shot list for approval\\"]")')
     assert.equal(requests.filter((r) => r.path === '/api/comfy/run').length, before, 'No generation before shot approval')
+    await wait('document.querySelector(".story-estimate")?.textContent.includes("Estimated render total")')
+    if (studio === 'faceless') {
+      const approved = await evaluate('document.querySelector("textarea[aria-label=\\"Shot list for approval\\"]").value')
+      const tooLong = JSON.parse(approved)
+      tooLong[0].seconds = 20
+      await fill('textarea[aria-label="Shot list for approval"]', JSON.stringify(tooLong))
+      await wait('document.querySelector(".story-estimate").textContent.includes("5 seconds")')
+      assert(await evaluate('[...document.querySelectorAll(".story-pipeline button")].find((button) => button.textContent === "Approve shots and render").disabled'))
+      await fill('textarea[aria-label="Shot list for approval"]', approved)
+      await wait('document.querySelector(".story-estimate").textContent.includes("Estimated render total")')
+    }
     await screenshot(`${studio}-review-desktop`)
     await click('Approve shots and render')
     await wait('document.querySelector("video[aria-label=\\"Finished story\\"]")')
@@ -186,7 +222,7 @@ try {
     assert.equal(stitch.clips[0].caption, narration)
     if (studio === 'explainer') {
       assert(writer.input.note.includes('Attachment fact: frozen water expands.'), 'Attachment contents reach the writer')
-      assert.equal(stitch.music.url, '/media/voice.wav', 'Uploaded music reaches Stitch')
+      assert.match(stitch.music.url, /^\/media\/upload-/, 'Uploaded music reaches Stitch')
       assert(requests.filter((r) => r.path === '/api/comfy/run' && r.input.workflow === 'image_flux').at(-1).input.vars.prompt.includes('Clay motion'))
     }
     if (studio === 'shorts') {
@@ -197,6 +233,10 @@ try {
       assert.equal(requests.filter((r) => r.path === '/api/comfy/run' && r.input.workflow === 'chatterbox_tts').at(-1).input.vars.language, 'Spanish (es)')
       assert.equal(restyle.input.vars.start, 0)
       assert.equal(restyle.input.vars.duration, 1)
+    }
+    if (studio === 'faceless') {
+      const speech = requests.filter((r) => r.path === '/api/comfy/run' && r.input.workflow === 'chatterbox_tts').at(-1)
+      assert.match(speech.input.vars.voice, /^\/media\/upload-/, 'Uploaded voice sample reaches speech model')
     }
     if (studio === 'faceless') assert.equal((await evaluate('JSON.parse(localStorage.getItem("comfyfield.story-channels"))[0]')).channel, 'Science stories for curious adults')
     await screenshot(`${studio}-desktop`)
