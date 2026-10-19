@@ -12,7 +12,7 @@ const fixtures = 'outputs/studio-ui'
 mkdirSync(dir, { recursive: true })
 mkdirSync(fixtures, { recursive: true })
 for (const [name, args] of [
-  ['clip.webm', ['-f', 'lavfi', '-i', 'color=c=skyblue:s=160x90:r=24', '-t', '4', '-c:v', 'libvpx', '-an']],
+  ['clip.webm', ['-f', 'lavfi', '-i', 'color=c=skyblue:s=1920x1080:r=24', '-t', '4', '-c:v', 'libvpx', '-an']],
   ['audio.wav', ['-f', 'lavfi', '-i', 'sine=frequency=220:sample_rate=16000', '-t', '2']],
 ]) {
   const result = spawnSync(ffmpeg, ['-hide_banner', '-loglevel', 'error', ...args, '-y', resolve(fixtures, name)], { encoding: 'utf8', windowsHide: true })
@@ -161,6 +161,8 @@ try {
   await upload('.app-main input[type=file]', 'video/webm')
   await click('4x')
   await generate('seedvr2_video', (vars) => assert.equal(vars.upscale_factor, 4))
+  assert((await evaluate('document.querySelector(".format-limit").textContent')).includes('3840 × 2160 (2x)'))
+  await pair('upscale-video')
 
   await goto('/video/edit')
   assert.equal(await evaluate('document.querySelectorAll("[aria-label=Edit] .opt").length'), 6)
@@ -253,6 +255,7 @@ try {
     await type('#provider-audio-prompt', 'A mock provider request')
     const count = requests.length
     await click('Generate audio')
+    for (const deadline = Date.now() + uiTimeout; requests.length === count && Date.now() < deadline;) await pause(100)
     await wait('!JSON.parse(localStorage.getItem("comfyfield.library") || "[]").some((g) => g.pending)')
     assert.equal(requests.length, count + 1)
     assert.equal(requests.at(-1).path, path)
@@ -266,6 +269,7 @@ try {
   await type('#provider-audio-prompt', 'A saved custom fal model')
   const providerCount = requests.length
   await click('Generate audio')
+  for (const deadline = Date.now() + uiTimeout; requests.length === providerCount && Date.now() < deadline;) await pause(100)
   await wait('!JSON.parse(localStorage.getItem("comfyfield.library") || "[]").some((g) => g.pending)')
   assert.equal(requests.length, providerCount + 1)
   assert.equal(requests.at(-1).model, 'mock/audio')

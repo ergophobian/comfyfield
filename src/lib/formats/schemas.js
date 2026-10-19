@@ -625,11 +625,11 @@ export const schemas = {
     ],
     "bernini_mixed": [
       "duration",
-      "stride",
       "prompt",
       "seed",
       "start",
       "strength",
+      "stride",
       "video"
     ],
     "bernini_recreate_ad": [
