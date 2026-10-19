@@ -1,9 +1,10 @@
 // Motion presets and effects from Higgsfield's Motion library and Effects hub that ComfyField did not have yet.
 // Camera presets use Higgsfield's generator groups; effects use Effects, New (badged on the hub) and Trending (the rest of the hub).
-import { open, photo, note, covers } from './parts.js'
+import { open, photo, note, covers, wanLora } from './parts.js'
+import { h3Sizes, ltx25Sizes } from '../catalog.js'
 
-const h3 = { runsOn: 'MiniMax H3', workflow: 'h3_i2v' }
-const ltx = { runsOn: 'LTX-2.5', workflow: 'ltx_i2v' }
+const h3 = { runsOn: 'MiniMax H3', workflow: 'h3_open_i2v', sizes: h3Sizes }
+const ltx = { runsOn: 'LTX-2.5', workflow: 'ltx25_i2v', sizes: ltx25Sizes }
 const moving = { aspect: 'auto', duration: 5 }
 
 const cam = (group, tail) => (slug, name, blurb, move, cover) => open({
@@ -20,8 +21,9 @@ const pulse = cam('Catch the pulse', steady)
 // A mix pairs a move with an effect, so it cannot promise plausible physics.
 const mix = cam('Mix', 'The subject and scene stay true to the photo.')
 
-const fx = (group, model = ltx) => (id, name, blurb, effect, cover) => open({
-  id, name, kind: 'video', category: 'effects', group, blurb, ...model,
+// `own` swaps the model for one effect, such as a trained effect LoRA.
+const fx = (group, model = ltx) => (id, name, blurb, effect, cover, own) => open({
+  id, name, kind: 'video', category: 'effects', group, blurb, ...model, ...own,
   inputs: [photo, note],
   prompt: `${effect} {note}`,
   settings: moving,
@@ -140,9 +142,9 @@ const vfxSingles = [
   vfx('bloom-mouth', 'Flower mouth', 'Petals and flowers spill from an open mouth.',
     'The subject opens their mouth and a stream of fresh petals and small blossoms spills out and tumbles through the air, more and more flowers pouring out in soft slow motion. Surreal and gentle.', covers.rose),
   vfx('building-explosion', 'Building explosion', 'A building blows up in the scene.',
-    'A building in the scene erupts in a huge fireball, the shockwave rippling outward, glass and debris flying and a rolling cloud of dust filling the street. A blockbuster effect with no one hurt.', covers.peach),
+    'A building in the scene erupts in a huge fireball, the shockwave rippling outward, glass and debris flying and a rolling cloud of dust filling the street. A blockbuster effect with no one hurt. EXPLOSION.', covers.peach, wanLora('wan22_i2v_explosion_redmond_high_noise')),
   vfx('car-explosion', 'Car explosion', 'A car bursts into flames and debris.',
-    'A parked car in the scene bursts into a fireball, the hood flipping up, debris spinning through the air and black smoke billowing upward. An action movie effect with no one hurt.', covers.night),
+    'A parked car in the scene bursts into a fireball, the hood flipping up, debris spinning through the air and black smoke billowing upward. An action movie effect with no one hurt. EXPLOSION.', covers.night, wanLora('wan22_i2v_explosion_redmond_high_noise')),
   vfx('clone-burst', 'Clone burst', 'You split into copies that burst outward.',
     'The subject splits into a burst of identical copies that fly outward in every direction in slow motion, each frozen in a slightly different pose, then spin and settle in a ring around the original.', covers.lilac),
   vfx('turn-to-diamond', 'Turn to diamond', 'Your body turns into faceted, sparkling diamond.',
@@ -176,13 +178,13 @@ const vfxSingles = [
   vfx('melting', 'Melting', 'You soften and drip as if in great heat.',
     'Heat shimmer rises and the subject slowly softens and melts, colors and shapes drooping and dripping downward like wax in a heat wave and pooling on the ground, while the background stays solid. Surreal, no gore.', covers.peach),
   vfx('morph-skin', 'Ripple morph', 'Your skin ripples as you morph into someone new.',
-    'Waves ripple across the subject\'s skin like water as their features and body smoothly reshape into an entirely new person, the change flowing outward from the face in one fluid morph.', covers.dusk),
+    'The subject morphs into a new person. Waves ripple across the subject\'s skin like water as their features and body smoothly reshape into an entirely new person, the change flowing outward from the face in one fluid morph. Skin morph.', covers.dusk, wanLora('wan22_i2v_skinmorph_redmond_high_noise')),
   vfx('paparazzi', 'Paparazzi', 'Camera flashes burst all around you.',
     'A crowd of photographers off camera fires flash after flash at the subject, bright white bursts strobing across them and the background, while they turn and pose like a star on a red carpet.', covers.night),
   vfx('sandstorm', 'Sandstorm', 'Sand blasts through and engulfs the scene.',
     'A wall of sand sweeps in from the side and engulfs the scene, grains blasting past the lens, the light turning orange and hazy, and the subject\'s clothes and hair whipping in the gale.', covers.sun),
   vfx('set-on-fire', 'Set on fire', 'You burst into stylized flames.',
-    'The subject bursts into roaring stylized flames like a stunt performer in a fire suit, fire licking up their body and embers swirling, while they stand calm and unharmed. A movie effect.', covers.peach),
+    'The subject bursts into roaring stylized flames like a stunt performer in a fire suit, fire licking up their body and embers swirling, while they stand calm and unharmed. A movie effect. Spontaneous Combustion.', covers.peach, wanLora('wan22_i2v_spontaneous_combustion_redmond_high_noise')),
   vfx('skin-surge', 'Under the skin', 'Shapes push out through the surface of your skin.',
     'Shapes press outward from beneath the subject\'s skin, small hands, flower buds and ripples pushing against the surface and stretching it like rubber before sinking back. Surreal and stylized, no gore.', covers.rose),
   vfx('spirit-leap', 'Spirit leap', 'Your spirit leaps out of your body.',
@@ -190,9 +192,9 @@ const vfxSingles = [
   vfx('tentacle-eyes', 'Tentacles', 'Tentacles writhe out of the eyes.',
     'Slick dark tentacles slowly curl out of the subject\'s eyes and writhe in the air, glistening in the light, while the subject stays calm. Stylized surreal fantasy, no gore.', covers.dusk),
   vfx('lightning-eyes', 'Lightning eyes', 'Your eyes glow as lightning crackles around you.',
-    'The subject\'s eyes ignite with a bright electric glow and forks of blue lightning crackle around their body and arc through the air, storm clouds darkening overhead and their hair lifting with static.', covers.indigo),
+    'The subject\'s eyes ignite with a bright electric glow and forks of blue lightning crackle around their body and arc through the air, storm clouds darkening overhead and their hair lifting with static. Thunder Hero.', covers.indigo, wanLora('wan22_i2v_thunderhero_redmond_high_noise')),
   vfx('turn-to-metal', 'Chrome body', 'Your skin turns into chrome, silver or gold.',
-    'Liquid metal spreads across the subject from one hand upward until they become a polished chrome statue, mirror reflections of the scene sliding across the surface as the camera slowly orbits.', covers.slate),
+    'Liquid metal spreads across the subject from one hand upward until they become a polished chrome statue, mirror reflections of the scene sliding across the surface as the camera slowly orbits. Metalcification.', covers.slate, wanLora('wan22_i2v_metalcification_redmond_high_noise')),
   vfx('wind-blast', 'Headwind', 'Fierce wind whips your hair and clothes.',
     'A fierce blast of wind hits the subject head on, whipping their hair back, rippling their clothes and making them squint and brace as leaves and dust fly past. Locked camera.', covers.mint),
   vfx('garden-bloom', 'Overgrown', 'Flowers and greenery grow all over you.',
@@ -260,7 +262,7 @@ const actions = [
 
 const hubEffects = [
   hub('burning-figure', 'Burning figure', 'Flames catch and spread until you glow like a living fire.',
-    'A small flame catches on the subject\'s sleeve and spreads slowly across them until they glow as a calm, upright figure of stylized fire against the dark night, unharmed and serene.', covers.peach),
+    'A small flame catches on the subject\'s sleeve and spreads slowly across them until they glow as a calm, upright figure of stylized fire against the dark night, unharmed and serene. Spontaneous Combustion.', covers.peach, wanLora('wan22_i2v_spontaneous_combustion_redmond_high_noise')),
   hub('scrapbook', 'Scrapbook page', 'Your photo becomes a cut and paste scrapbook page.',
     'The photo turns into a handmade scrapbook page: the subject is cut out with rough scissor edges and pasted onto patterned paper with tape, stickers, doodles and handwritten notes, the pieces fluttering into place one by one in stop motion.', covers.sun),
   fresh('pigeon-street', 'Pigeon street', 'An absurd crowd of pigeons takes over the street.',
@@ -307,10 +309,18 @@ const hubEffects = [
     'Split screen: the original photo below, and above, the subject painted as a brooding winged figure in a 19th century academic oil painting, reclining on clouds with dark feathered wings under a stormy sky, as the painted clouds drift.', covers.dusk),
   hub('fairytale-castle', 'Castle at twilight', 'Arrive at a fairytale castle at twilight.',
     'The scene transforms around the subject into a fairytale castle courtyard with tall spires and banners in the breeze, fireworks blooming in a twilight sky and sparkles drifting as the camera cranes up to reveal the castle.', covers.lilac),
-  hub('frozen-in-motion', 'Frozen moment', 'The moment freezes as the camera drifts through it.',
-    'The moment freezes mid action: the subject, dust, water and hair stop dead in the air while the camera alone drifts slowly through the frozen scene.', covers.sky),
+  open({
+    id: 'frozen-in-motion', name: 'Frozen moment', kind: 'video', category: 'effects', group: 'Trending', blurb: 'The moment freezes as the camera drifts through it.',
+    runsOn: 'MiniMax H3 with the 360 orbit LoRA', workflow: 'h3_lora_i2v',
+    params: { lora: 'minimax_h3_360_orbit_flf2v_lora_v1.safetensors', lora_strength: 1 },
+    bindings: { image2: 'image' },
+    inputs: [photo],
+    prompt: 'One frozen instant. Only the camera moves. In a continuous 360 orbit. Preserve every person and object in exactly the same world position, orientation, shape and pose throughout the shot. Airborne objects remain suspended at the captured height and angle: no wobbling, shaking, spinning, drifting, falling or continued action. Keep faces, hands, clothing, liquids and the background motionless while retaining their natural appearance. Camera parallax is the only source of apparent movement. No cuts, zoom, morphing or added objects.',
+    settings: { aspect: 'auto', duration: 3 },
+    cover: covers.sky,
+  }),
   hub('vanish', 'Puff of smoke', 'You disappear from the shot in a puff of smoke.',
-    'The subject flickers and vanishes from the shot in a puff of smoke and sparkles, leaving the scene empty behind them as the smoke curls away.', covers.slate),
+    'The subject flickers and vanishes from the shot in a puff of smoke and sparkles, leaving the scene empty behind them as the smoke curls away. Disappearing.', covers.slate, wanLora('wan22_i2v_disappearing_redmond_high_noise')),
   hub('stop-world', 'Everyone freezes', 'Time stops for everything but you.',
     'Time stops for everything except the subject: people, cars, birds and falling drops freeze in place while the subject walks through the frozen world, looking around in wonder.', covers.mint),
 ]

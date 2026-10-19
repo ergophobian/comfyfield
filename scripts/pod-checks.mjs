@@ -35,15 +35,28 @@ const listen = (handler) => new Promise((resolve) => {
 // Below Linux's ephemeral ports (32768 up): polling a port nobody listens on there can make a socket
 // connect to itself, which hangs the request and takes the port from the server.
 const freePort = () => 20000 + Math.floor(Math.random() * 12000)
-// Runs the status server and keeps its stderr. Requests wait until it has bound its port, and a check
-// that times out says what the server printed.
+// Runs the status server and keeps its stderr. Requests wait until it has bound its port. A check
+// that times out says which wait failed, how long it took, the last request error, the server's log
+// and its stderr.
 function startStatusd(env) {
   const proc = spawn(python[0], [...python.slice(1), statusd], { env: { ...process.env, ...env }, stdio: ['ignore', 'ignore', 'pipe'] })
   proc.err = ''
   proc.stderr.on('data', (d) => { proc.err += d })
-  const bound = () => fs.promises.readFile(path.join(env.CF_BASE, 'statusd.log'), 'utf8').then((t) => t.includes('status server on port')).catch(() => false)
-  proc.ready = (url, ok) => until(bound).then(() => until(ok))
-    .catch((e) => { throw new Error(`${e.message} for ${url}. The status server said: ${proc.err.slice(-1500) || 'nothing'}`) })
+  proc.on('exit', (code, signal) => { proc.ended = `exited (${signal || code})` })
+  const readLog = () => fs.promises.readFile(path.join(env.CF_BASE, 'statusd.log'), 'utf8').catch(() => '')
+  proc.ready = async (url, ok) => {
+    const t0 = Date.now()
+    let stage = 'bind its port'
+    let last = null
+    try {
+      await until(async () => (await readLog()).includes('status server on port'))
+      stage = `answer ${url}/status`
+      await until(async () => { try { return await ok() } catch (e) { last = e.cause?.code || e.cause?.message || e.message; return false } })
+    } catch {
+      throw new Error(`The status server did not ${stage} within ${Math.round((Date.now() - t0) / 100) / 10} s${last ? ` (last request: ${last})` : ''}; it ${proc.ended || 'is still running'}.`
+        + ` Its log: ${(await readLog()).trim().slice(-800) || 'empty'}. Its stderr: ${proc.err.trim().slice(-800) || 'empty'}`)
+    }
+  }
   return proc
 }
 const until = async (fn, ms = 8000) => {
@@ -82,6 +95,22 @@ await test('boot script: env carries the token and timers, the app guard fires f
   assert.equal(env.IDLE_AFTER, '780')
   assert.equal(env.HEARTBEAT_DEADLINE, '600')
   assert(!('RUNPOD_API_KEY' in env))
+})
+
+await test('status server: binds its port without a hostname lookup', { skip: !python && 'no Python 3.9+ found' }, () => {
+  // On macOS a hostname lookup in the bind stalled the status server for more than 8 s on CI.
+  const code = `
+import importlib.util, socket, sys
+spec = importlib.util.spec_from_file_location('statusd', sys.argv[1])
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+def no_lookup(*a): raise RuntimeError('hostname lookup')
+socket.getfqdn = no_lookup
+s = m.Server(('127.0.0.1', 0), m.Handler)
+print(s.server_address[1] > 0)
+s.server_close()`
+  const r = spawnSync(python[0], [...python.slice(1), '-c', code, statusd], { encoding: 'utf8' })
+  assert.equal(r.status, 0, r.stderr)
+  assert.equal(r.stdout.trim(), 'True')
 })
 
 await test('status server: watchdog rules', { skip: !python && 'no Python 3.9+ found' }, () => {
@@ -427,7 +456,7 @@ await test('lifecycle: a lease waits for a starting Pod, downloads missing files
   const l = await pod.lease({ files, onStage: (s) => stages.push(s) })
   assert.deepEqual([...new Set(stages)], ['waiting', 'downloading', 'running'])
   const dl = rp.calls.find((c) => c.path === '/download')
-  assert.deepEqual(dl.body.files, [{ repo: 'org/a', path: 'a.safetensors', dir: 'checkpoints', name: 'a.safetensors' }], 'only the missing file')
+  assert.deepEqual(dl.body.files, [{ repo: 'org/a', path: 'a.safetensors', dir: 'checkpoints', name: 'a.safetensors', bytes: 7e9 }], 'only the missing file, with its size for making room')
   assert.equal(l.baseUrl, 'https://pod1-8189.proxy.runpod.net')
   assert.equal(l.token.length, 48)
   l.release()
@@ -435,7 +464,7 @@ await test('lifecycle: a lease waits for a starting Pod, downloads missing files
   rp.statusd = readyStatus({ downloads: { 'checkpoints/b.safetensors': { state: 'failed', error: 'HTTP Error 404: Not Found' } } })
   await assert.rejects(pod.lease({ files: [{ repo: 'org/b', path: 'b.safetensors', dir: 'checkpoints', name: 'b.safetensors' }] }), /Could not download b\.safetensors to the Pod: HTTP Error 404/)
   rp.statusd = readyStatus({ downloads: { 'checkpoints/c.safetensors': { state: 'failed', error: 'disk full' } } })
-  await assert.rejects(pod.lease({ files: [{ repo: 'org/c', path: 'c.safetensors', dir: 'checkpoints', name: 'c.safetensors' }] }), /disk is full/)
+  await assert.rejects(pod.lease({ files: [{ repo: 'org/c', path: 'c.safetensors', dir: 'checkpoints', name: 'c.safetensors' }] }), /disk is too small for this run. Remove models on the Pods page, or start a Pod with a bigger disk/)
   assert.equal(pod.status().runs, 0, 'failed leases release themselves')
 })
 
@@ -563,6 +592,9 @@ await test('runs: Comfy Cloud + Pod is a saved choice, and the needs of a workfl
 // ---- review fixes ----------------------------------------------------------------------------------
 
 const hasBash = spawnSync('bash', ['-c', 'exit 0']).status === 0
+// Git Bash as a Windows path, for the status server: Windows' process search looks in System32
+// before PATH, so a plain 'bash' there can be the WSL launcher.
+const bashPath = process.platform === 'win32' && hasBash ? spawnSync('bash', ['-c', 'cygpath -w "$(command -v bash)"'], { encoding: 'utf8' }).stdout.trim() : ''
 await test('fixes: self-terminate succeeds only when RunPod clearly accepts it', { skip: !hasBash && 'no bash' }, () => {
   const script = podBootScript()
   const kill = script.slice(script.indexOf("<<'KILL'\n") + 9, script.indexOf('\nKILL\n'))
@@ -785,8 +817,8 @@ await test('models: every bundled workflow is a linked API graph that saves medi
       assert(node.inputs && !Array.isArray(node.inputs), w)
       visit(node.inputs)
     }
-    // FreeVideoGenerate saves its own mp4.
-    assert(Object.values(graph).some((n) => /^(Save(Image|Video|Animated(WEBP|PNG)|Audio\w*)|FreeVideoGenerate)$/.test(n.class_type)), `${w} saves nothing`)
+    // FreeVideoGenerate saves its own mp4; VideoHelperSuite saves a video that keeps its alpha.
+    assert(Object.values(graph).some((n) => /^(Save(Image|Video|GLB|Animated(WEBP|PNG)|Audio\w*)|FreeVideoGenerate|VHS_VideoCombine)$/.test(n.class_type)), `${w} saves nothing`)
     if (/i2v/.test(w)) assert(Object.values(graph).some((n) => n.class_type === 'LoadImage' && n.inputs.image === 'start.png'), `${w} takes no start image`)
   }
 })
@@ -939,6 +971,8 @@ await test('freevideo: the status server installs on request, reports it, counts
   const base = path.join(tmp, 'statusd-fv').replace(/\\/g, '/')
   const home = `${base}/freevideo`
   fs.mkdirSync(base, { recursive: true })
+  // The boot script marks when its own pip installs are done; installs wait for it.
+  fs.writeFileSync(`${base}/.base-ready`, '')
   // A fake installer: the first run fails the way FreeVideo's disk preflight does, the second writes machine.json.
   fs.writeFileSync(`${base}/fail-once`, '')
   fs.writeFileSync(`${base}/runtime-freevideo.sh`, [
@@ -946,7 +980,7 @@ await test('freevideo: the status server installs on request, reports it, counts
     `if [ -f "${base}/fail-once" ]; then rm "${base}/fail-once"; echo "Insufficient disk space: need 89.1 GiB"; echo "see the log"; exit 1; fi`,
     `mkdir -p "${home}" && echo '{"ready": true}' > "${home}/machine.json"`, ''].join('\n'))
   const proc = startStatusd({ POD_TOKEN: 'secret', CF_BASE: base, CF_MODELS: `${base}/models`, CF_STATUS_PORT: String(port), CF_FREEVIDEO_HOME: home,
-    CF_COMFY_URL: 'http://127.0.0.1:9', CF_PROXY_URL: 'http://127.0.0.1:9', CF_TICK: '0.2', CF_DRY_KILL: '1' })
+    CF_COMFY_URL: 'http://127.0.0.1:9', CF_PROXY_URL: 'http://127.0.0.1:9', CF_TICK: '0.2', CF_DRY_KILL: '1', ...(bashPath ? { CF_BASH: bashPath } : {}) })
   t.after(() => proc.kill())
   const url = `http://127.0.0.1:${port}`
   const auth = { Authorization: 'Bearer secret' }
@@ -1450,4 +1484,788 @@ await test('generation type: approving a Session switches the user to it, on the
   const plugin = await import('../server/plugin.js')
   await assert.rejects(plugin.podAction('start', { workflow: 'image_sdxl', tier: 'cheap' }), /The Session tier is budget, balanced, performance/)
   assert.equal(core.runType(), 'instant', 'a refused start changes nothing')
+})
+
+// ---- Every service on a Pod: node packs, early downloads, disk room, uploads ----------------------
+
+await test('node packs: a graph\'s node classes decide its packs, and a pack Comfy Cloud has keeps the graph on Cloud', async () => {
+  const { notOnCloud, RUNTIMES, NODE_PACKS } = await import('../shared/modelFiles.js')
+  const graph = { 1: { class_type: 'VHS_SelectEveryNthImage', inputs: {} }, 2: { class_type: 'ColorMatch', inputs: {} }, 3: { class_type: 'KSampler', inputs: {} } }
+  assert.deepEqual(runtimesOf(graph).map((r) => [r.runtime, r.pack, r.cloud]), [['vhs', true, true], ['kjnodes', true, true]])
+  assert.deepEqual(notOnCloud(podNeedsOf(graph)), [], 'Cloud preinstalls both packs')
+  RUNTIMES.testpack = { name: 'Test pack', pack: true, nodes: ['TestNode'], vramGb: 0, gb: 1, minutes: [1, 3], cloud: false }
+  try {
+    assert.deepEqual(notOnCloud(podNeedsOf({ 1: { class_type: 'TestNode', inputs: {} } })).map((r) => r.name), ['Test pack'], 'a pack Cloud lacks makes the graph Pod-only')
+  } finally { delete RUNTIMES.testpack }
+  for (const [id, p] of Object.entries(NODE_PACKS)) {
+    assert(/^[a-z0-9]+$/.test(id) && /^[0-9a-f]{40}$/.test(p.commit) && p.classes.length && /^\d{4}-\d{2}-\d{2}$/.test(p.date), `${id} is pinned by commit, with its date and classes`)
+  }
+  const { pod, rp } = setup()
+  await pod.start({ runtimes: ['vhs', 'kjnodes'] })
+  const body = rp.calls.find((c) => c.path === '/v1/pods' && c.method === 'POST').body
+  assert.equal(body.env.CF_RUNTIMES, 'vhs kjnodes')
+  assert.equal(body.gpuTypeIds[0], GPU_LADDER[0].gpuTypeId, 'a pack needs no bigger GPU')
+})
+
+await test('node packs: the boot script installs packs before ComfyUI starts, keeps them on the volume and whitelists them', async () => {
+  const script = podBootScript()
+  assert(script.includes('vhs\tComfyUI-VideoHelperSuite\tVHS_SelectEveryNthImage'), 'the status server learns each pack and the classes to look for')
+  assert(script.includes('  vhs) repo=https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git; commit=4d907bee61e92c2e65af3bd6383a4e4d356126d1; folder=ComfyUI-VideoHelperSuite; ;;'), 'each pack is pinned by commit')
+  const pack = script.slice(script.indexOf("<<'PACK'"), script.lastIndexOf('\nPACK\n'))
+  assert(pack.includes('P=/workspace/cf-nodes'), 'clones stay on the volume, so a paused Pod keeps them')
+  assert(pack.includes('-c /root/cf/constraints.txt') && pack.includes("grep -iE '^(torch|torchvision|torchaudio|numpy"), 'a pack\'s requirements never move the image\'s torch')
+  assert(pack.includes('PIP_CACHE_DIR=/workspace/.cache/pip'), 'a resumed Pod reinstalls from the cache')
+  assert(pack.includes('[ -L "$C/custom_nodes/$folder" ] || rm -rf "$C/custom_nodes/$folder"'), 'an older copy in the image gives way')
+  assert(/main\.py [^\n]*--whitelist-custom-nodes FreeVideo \$\(cat "\$CF\/nodes\.list" 2>\/dev\/null\)/.test(script), 'each ComfyUI start loads every installed pack')
+  assert(/echo \$! > "\$CF\/comfy\.pid"/.test(script), 'the status server can restart ComfyUI')
+  const at = (s) => script.indexOf(s)
+  assert(at('STAGE freevideo-clone') < at('touch "$CF/.base-ready"') && at('touch "$CF/.base-ready"') < at('STAGE packs') && at('STAGE packs') < at('STAGE comfy ') && at('STAGE comfy ') < at('main.py'),
+    'installs wait for the boot\'s own pip, and ComfyUI waits for the packs')
+  assert(/while IFS=\$'\\t' read -r id folder classes before; do \[ -d "\/workspace\/cf-nodes\/\$folder" \] && want="\$want \$id"/.test(script), 'a resumed Pod installs its packs again')
+  const { MODEL_DIRS, PACK_DIRS } = await import('../shared/modelFiles.js')
+  assert(script.includes(`CF_DIRS="${[...new Set([...MODEL_DIRS, ...PACK_DIRS])].join(' ')}" nohup`), 'the status server takes its folders from the loaders and the packs')
+  for (const d of MODEL_DIRS) assert(script.includes(`  ${d}: ${d}\n`), `ComfyUI finds ${d} on the volume`)
+  const proxy = script.slice(script.indexOf('STAGE proxy-install'), script.indexOf('STAGE comfy-update'))
+  assert(proxy.includes(`sed -i 's/^\\(    "files": "file",\\)$/\\1\\n    "3d": "file",/' "$PA"`), 'the proxy passes on 3D outputs')
+  assert(!/die "[^"]*3D/.test(proxy), 'a proxy that cannot be taught 3D still runs everything else')
+  assert.throws(() => podBootScript({ packs: { bad: { repo: 'x/y; rm -rf /', commit: 'a'.repeat(40), folder: 'F', classes: ['C'] } } }), /unsafe/)
+  assert.throws(() => podBootScript({ packs: { ok: { repo: 'x/y', commit: 'main', folder: 'F', classes: ['C'] } } }), /unsafe/, 'a branch name is no pin')
+  if (hasBash) {
+    const f = path.join(tmp, 'boot-packs.sh')
+    fs.writeFileSync(f, script)
+    const r = spawnSync('bash', ['-n', f], { encoding: 'utf8' })
+    assert.equal(r.status, 0, r.stderr)
+  }
+})
+
+await test('node packs: the status server installs a pack, restarts ComfyUI with an empty queue to load it, and says when it did not load', { skip: (!python || !hasBash) && 'needs Python 3.9+ and bash' }, async (t) => {
+  const port = freePort()
+  const base = path.join(tmp, 'statusd-packs').replace(/\\/g, '/')
+  fs.mkdirSync(base, { recursive: true })
+  fs.writeFileSync(`${base}/.base-ready`, '')
+  fs.writeFileSync(`${base}/packs.tsv`, 'vhs\tComfyUI-VideoHelperSuite\tVHS_SelectEveryNthImage\nkjnodes\tComfyUI-KJNodes\tColorMatch\n')
+  fs.writeFileSync(`${base}/runtime-pack.sh`, ['#!/bin/bash', `env > "${base}/env-$1.txt"`, 'echo "installing $1"', 'sleep 0.3', ''].join('\n'))
+  // A fake ComfyUI: it lists a pack's class once it has started again after the pack installed.
+  const comfy = { queue: 1, lists: new Set(), starts: 0 }
+  let dummy
+  const startDummy = () => {
+    dummy = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' })
+    fs.writeFileSync(`${base}/comfy.pid`, String(dummy.pid))
+    dummy.once('exit', () => { comfy.starts++; comfy.onRestart?.(); startDummy() })
+  }
+  startDummy()
+  t.after(() => { dummy.removeAllListeners('exit'); dummy.kill() })
+  const server = await listen((req, res) => {
+    const [, , cls] = req.url.split('/')
+    if (req.url === '/queue') return res.end(JSON.stringify({ queue_running: Array(comfy.queue).fill([]), queue_pending: [] }))
+    if (req.url.startsWith('/object_info/')) return res.end(JSON.stringify(comfy.lists.has(cls) ? { [cls]: {} } : {}))
+    res.end('{}')
+  })
+  t.after(() => server.close())
+  const proc = startStatusd({ POD_TOKEN: 'secret', RUNPOD_API_KEY: 'acct', CF_BASE: base, CF_MODELS: `${base}/models`, CF_STATUS_PORT: String(port),
+    CF_COMFY_URL: `http://127.0.0.1:${server.address().port}`, CF_PROXY_URL: 'http://127.0.0.1:9', CF_TICK: '0.2', CF_RESTART_GRACE: '0.5', CF_DRY_KILL: '1' })
+  t.after(() => proc.kill())
+  const url = `http://127.0.0.1:${port}`
+  const auth = { Authorization: 'Bearer secret' }
+  const status = async () => (await netFetch(`${url}/status`, { headers: auth })).json()
+  await proc.ready(url, async () => (await netFetch(`${url}/status`, { headers: auth })).ok)
+  assert.equal((await netFetch(`${url}/runtime/nopack`, { method: 'POST', headers: auth })).status, 404)
+  const asked = await (await netFetch(`${url}/runtime/vhs`, { method: 'POST', headers: auth })).json()
+  assert.deepEqual([asked.runtime.state, asked.runtime.pack], ['installing', true])
+  await until(async () => (await status()).runtimes.vhs.state === 'loading')
+  await new Promise((r) => setTimeout(r, 800))
+  assert.equal(comfy.starts, 0, 'a run in the queue holds the restart')
+  assert.equal((await status()).runtimes.vhs.state, 'loading', 'installed, not loaded yet')
+  comfy.onRestart = () => comfy.lists.add('VHS_SelectEveryNthImage')
+  comfy.queue = 0
+  const ready = await until(async () => { const e = (await status()).runtimes.vhs; return e.state === 'ready' && e })
+  assert.equal(ready.pack, true)
+  assert.equal(comfy.starts, 1, 'one restart loads it')
+  const env = fs.readFileSync(`${base}/env-vhs.txt`, 'utf8')
+  assert(!/POD_TOKEN|RUNPOD_API_KEY/.test(env), 'a pack installer gets neither the Pod token nor the RunPod key')
+
+  // A pack that does not import: ComfyUI starts again without its class, and the status says why.
+  comfy.onRestart = null
+  fs.writeFileSync(`${base}/comfy.log`, "Cannot import /root/h3/ComfyUI/custom_nodes/ComfyUI-KJNodes module for custom nodes: No module named 'color_matcher'\n")
+  await netFetch(`${url}/runtime/kjnodes`, { method: 'POST', headers: auth })
+  const failed = await until(async () => { const e = (await status()).runtimes.kjnodes; return e.state === 'failed' && e })
+  assert.match(failed.error, /ComfyUI-KJNodes module for custom nodes: No module named 'color_matcher'/)
+  assert.equal((await status()).runtimes.vhs.state, 'ready', 'the other pack stays loaded')
+})
+
+await test('disk: the status server makes room by removing the files used longest ago, never one a run needs', { skip: !python && 'no Python 3.9+ found' }, () => {
+  const models = path.join(tmp, 'evict-models').replace(/\\/g, '/')
+  for (const [d, n] of [['loras', 'old.safetensors'], ['loras', 'kept.safetensors'], ['vae', 'newer.safetensors']]) {
+    fs.mkdirSync(`${models}/${d}`, { recursive: true })
+    fs.writeFileSync(`${models}/${d}/${n}`, Buffer.alloc(3000))
+  }
+  const code = `
+import collections, importlib.util, json, os, sys
+os.environ['CF_MODELS'] = sys.argv[2]
+os.environ['CF_DISK_MARGIN_GB'] = '0'
+spec = importlib.util.spec_from_file_location('statusd', sys.argv[1])
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+U = collections.namedtuple('U', 'total used free')
+free = [1000]
+m.shutil.disk_usage = lambda p: U(10 ** 9, 0, free[0])
+m.USED.update({'loras/old.safetensors': 100, 'loras/kept.safetensors': 50, 'vae/newer.safetensors': 300})
+fits = m.make_room(500, set())
+short = m.make_room(4500, {'loras/kept.safetensors'})
+left = sorted('%s/%s' % (f['dir'], f['name']) for f in m.models())
+free[0] = 0
+stuck = m.make_room(10000, {'loras/kept.safetensors'})
+print(json.dumps({'fits': fits, 'short': short, 'left': left, 'evicted': [e['name'] for e in m.S['evicted']], 'stuck': stuck,
+  'used': json.load(open(os.path.join(sys.argv[2], '.cf-used.json')))}))`
+  const r = spawnSync(python[0], [...python.slice(1), '-c', code, statusd, models], { encoding: 'utf8' })
+  assert.equal(r.status, 0, r.stderr)
+  const out = JSON.parse(r.stdout)
+  assert.equal(out.fits, 0, 'a download that fits removes nothing')
+  assert.equal(out.short, 0)
+  assert.deepEqual(out.left, ['loras/kept.safetensors'], 'the oldest unkept files go first, until the download fits')
+  assert.deepEqual(out.evicted, ['old.safetensors', 'newer.safetensors'])
+  assert.equal(out.stuck, 10000, 'what is still missing, when only kept files are left')
+  assert.deepEqual(Object.keys(out.used), ['loras/kept.safetensors'], 'last-use times stay on the volume')
+})
+
+await test('lease: a run asks for its files while the Pod boots, keeps what other runs need, and says how much room it lacks', async () => {
+  const { pod, rp, opts } = setup()
+  await pod.start()
+  const booting = { stage: 'boot', ready: false, everReady: false, fatal: null, idleSec: 0, queue: null, models: [], downloads: {} }
+  rp.statusd = booting
+  let askedWhileBooting = null
+  const a = { repo: 'org/a', path: 'a.safetensors', dir: 'diffusion_models', name: 'a.safetensors', gb: 20 }
+  opts.onWait = () => {
+    const dl = rp.calls.find((c) => c.path === '/download')
+    if (dl && askedWhileBooting === null) {
+      askedWhileBooting = rp.statusd === booting
+      rp.statusd = { ...booting, downloads: { 'diffusion_models/a.safetensors': { state: 'done' } } }
+    } else if (dl) rp.statusd = readyStatus({ downloads: { 'diffusion_models/a.safetensors': { state: 'done' } } })
+  }
+  const stages = []
+  const first = await pod.lease({ files: [a], onStage: (s) => stages.push(s) })
+  assert.equal(askedWhileBooting, true, 'the files download while ComfyUI comes up')
+  assert.deepEqual([...new Set(stages)], ['downloading', 'waiting', 'running'])
+  opts.onWait = null
+  const b = { repo: 'org/b', path: 'b.safetensors', dir: 'loras', name: 'b.safetensors', gb: 1 }
+  rp.statusd = readyStatus({ models: [{ dir: 'diffusion_models', name: 'a.safetensors', bytes: 1 }], downloads: { 'loras/b.safetensors': { state: 'done' } } })
+  ;(await pod.lease({ files: [b] })).release()
+  assert.deepEqual(rp.calls.findLast((c) => c.path === '/download').body.keep, ['diffusion_models/a.safetensors'], 'making room spares a file another run holds')
+  first.release()
+  rp.statusd = readyStatus({ downloads: { 'loras/c.safetensors': { state: 'failed', error: 'disk full', shortGb: 11.2 } } })
+  await assert.rejects(pod.lease({ files: [{ repo: 'org/c', path: 'c.safetensors', dir: 'loras', name: 'c.safetensors', gb: 40 }] }), /disk is too small for this run\. It needs about 12 GB more\./)
+})
+
+await test('prepare: a Pod gets ready for services before their first run, at start or while it runs', async () => {
+  await assert.rejects(setup().pod.prepare({ files: [] }), /Start or resume a Pod first/)
+  const { pod, rp } = setup()
+  const a = { repo: 'org/a', path: 'a.safetensors', dir: 'checkpoints', name: 'a.safetensors', gb: 7 }
+  await pod.start({ prepare: { files: [a], runtimes: ['vhs'] } })
+  assert.equal(pod.status().preparing, true)
+  await pod.tick()
+  assert.equal(rp.count((c) => c.path === '/download'), 0, 'nothing to ask before the Pod answers')
+  rp.statusd = { stage: 'boot', ready: false, everReady: false, fatal: null, idleSec: 0, queue: null, models: [], downloads: {} }
+  await pod.tick()
+  assert.deepEqual(rp.calls.find((c) => c.path === '/download').body.files.map((f) => f.name), ['a.safetensors'], 'the start\'s services download as soon as the Pod answers')
+  assert.equal(rp.count((c) => c.path === '/runtime/vhs'), 1)
+  assert.equal(pod.status().preparing, false)
+  await pod.tick()
+  assert.equal(rp.count((c) => c.path === '/download'), 1, 'asked once')
+
+  rp.statusd = readyStatus()
+  await pod.prepare({ files: [{ ...a, name: 'b.safetensors', path: 'b.safetensors' }] })
+  assert.equal(rp.calls.findLast((c) => c.path === '/download').body.files[0].name, 'b.safetensors', 'a running Pod asks at once')
+  await assert.rejects(pod.prepare({ runtimes: ['freevideo'] }), /FreeVideo needs a 96 GB GPU; this Pod has 24 GB/)
+})
+
+await test('remove: the Pods page frees one model file; a file a run uses stays', async () => {
+  const { pod, rp, dir } = setup()
+  await assert.rejects(pod.remove({ dir: 'loras', name: 'x.safetensors' }), /The Pod is not running/)
+  await pod.start()
+  rp.statusd = readyStatus({ models: [{ dir: 'loras', name: 'x.safetensors', bytes: 1 }, { dir: 'loras', name: 'y.safetensors', bytes: 1 }] })
+  await pod.refresh()
+  await pod.remove({ dir: 'loras', name: 'x.safetensors' })
+  const del = rp.calls.find((c) => c.method === 'DELETE' && c.path.startsWith('/models/'))
+  const token = JSON.parse(fs.readFileSync(path.join(dir, 'pod.json'), 'utf8')).token
+  assert.deepEqual([del.path, del.auth], ['/models/loras/x.safetensors', `Bearer ${token}`], 'the Pod token, never the account key')
+  rp.statusd = readyStatus({ models: [{ dir: 'loras', name: 'y.safetensors', bytes: 1 }], downloads: { 'loras/y.safetensors': { state: 'done' } } })
+  const l = await pod.lease({ files: [{ repo: 'org/y', path: 'y.safetensors', dir: 'loras', name: 'y.safetensors' }] })
+  await assert.rejects(pod.remove({ dir: 'loras', name: 'y.safetensors' }), /A run is using y\.safetensors/)
+  l.release()
+  const { podAction } = await import('../server/plugin.js')
+  await assert.rejects(podAction('remove', {}), /Name the file to remove/)
+  await assert.rejects(podAction('prepare', {}), /Pick a service to get ready for/)
+  await assert.rejects(podAction('prepare', { services: 'flux' }), /Services are a list/)
+})
+
+await test('services: the Pods page offers each service once, with its files, size and GPU', async () => {
+  const list = await core.podServices()
+  const by = Object.fromEntries(list.map((s) => [s.id, s]))
+  assert.equal(new Set(list.map((s) => s.id)).size, list.length, 'ids are unique')
+  assert(by['flux-3-klein'].files.some((f) => f.name === 'flux3-image-klein-bf16.safetensors'))
+  assert.deepEqual([by['flux-3-klein'].vramGb, by['flux-3-klein'].gb], [24, 27])
+  assert(list.every((s) => s.files.length || s.runtimes.length), 'a partner node needs no files, so it is no service')
+  assert(!list.some((s) => s.name === 'MiniMax H3 image to video'))
+  const fv = by['minimax-h3-on-freevideo']
+  assert.deepEqual([fv.vramGb, fv.runtimes.map((r) => r.name)], [96, ['FreeVideo']])
+  assert(fv.gb >= 96, 'a runtime counts in the size')
+  const ready = await core.podPrepareFor(['flux-3-klein', 'sdxl'], 24)
+  assert.deepEqual([ready.minVramGb, ready.files.length], [24, 5])
+  await assert.rejects(core.podPrepareFor(['minimax-h3-on-freevideo'], 32), /MiniMax H3 on FreeVideo needs a 96 GB GPU; this Pod has 32 GB/)
+  await assert.rejects(core.podPrepareFor(['nope']), /Pick a service from the list/)
+  const o = await core.podOptions()
+  assert(o.services.find((s) => s.id === 'sdxl').keys.includes('checkpoints/sd_xl_base_1.0.safetensors'), 'the page knows which files each service needs')
+  assert(!o.runtimes.some((r) => r.id === 'vhs'), 'node packs install by themselves, so the page offers only FreeVideo at start')
+})
+
+await test('uploads: a graph takes more pictures, a mask and audio, and an optional node drops with its links', async () => {
+  const { dropOptional, comfyVars } = await import('../shared/mapping.js')
+  const graph = {
+    1: { class_type: 'LoadImage', inputs: { image: '{{image}}' } },
+    2: { class_type: 'LoadImage', inputs: { image: '{{image3}}' }, _meta: { title: 'Second garment', optional: 'image3' } },
+    3: { class_type: 'ImageScale', inputs: { image: ['2', 0] }, _meta: { optional: 'image3' } },
+    4: { class_type: 'TextEncodeQwenImageEditPlus', inputs: { image1: ['1', 0], image3: ['3', 0], prompt: '{{prompt}}' } },
+    5: { class_type: 'LoadImage', inputs: { image: '{{mask}}' } },
+    6: { class_type: 'LoadAudio', inputs: { audio: '{{audio}}' } },
+    7: { class_type: 'LoadAudio', inputs: { audio: '{{voice}}' } },
+    8: { class_type: 'LoadImage', inputs: { image: '{{image7}}' } },
+  }
+  const without = dropOptional(graph, { image: 'a' })
+  assert.deepEqual(Object.keys(without), ['1', '4', '5', '6', '7', '8'])
+  assert.deepEqual(without['4'].inputs, { image1: ['1', 0], prompt: '{{prompt}}' }, 'the input linked to the dropped node goes too')
+  assert.equal(dropOptional(graph, { image: 'a', image3: 'b' }), graph, 'with the file, nothing changes')
+  assert.deepEqual(core.uploadsOf(graph).map((u) => `${u.id}.${u.field}=${u.key}`), ['1.image=image', '2.image=image3', '5.image=mask', '6.audio=audio', '7.audio=voice'], 'only known slots upload')
+
+  const { fileSlots } = await import('../src/lib/recipes.js')
+  const tryOn = { inputs: [{ id: 'person', type: 'image' }, { id: 'garment', type: 'image' }, { id: 'garment2', type: 'image', optional: true }, { id: 'character', type: 'character' }, { id: 'track', type: 'audio' }] }
+  const slots = fileSlots(tryOn, { person: { url: '/p.png' }, garment: { url: '/g.png' }, garment2: null, character: { name: 'Mia', images: ['/mia.png'] }, track: { url: '/a.mp3' } })
+  assert.deepEqual(slots, { pictures: ['/p.png', '/g.png', null, '/mia.png'], audio: '/a.mp3', voice: null }, 'an empty optional input keeps its slot')
+  const v = comfyVars('image', { prompt: 'x', aspect: '1:1', slots, mask: '/m.png' })
+  assert.deepEqual([v.image, v.image2, v.image3, v.image4, v.audio, v.mask], ['/p.png', '/g.png', undefined, '/mia.png', '/a.mp3', '/m.png'])
+  assert.equal(fileSlots({ inputs: [{ id: 'prompt', type: 'text' }] }, {}), null, 'no slots without files')
+  const composer = comfyVars('image', { prompt: 'x', aspect: '1:1', images: ['/a.png', '/b.png'] })
+  assert.deepEqual([composer.image, composer.image2], ['/a.png', '/b.png'], 'the composer\'s attachments fill the slots in order')
+
+  const { open } = await import('../src/lib/formats/parts.js')
+  const { validateFormat } = await import('../src/lib/formats/validate.js')
+  const { schemas } = await import('../src/lib/formats/schemas.js')
+  const format = open({ id: 'slot-check', name: 'Slot check', kind: 'image', category: 'image-edit', blurb: 'Checks slots.', runsOn: 'Test', workflow: 'slot_check',
+    inputs: [{ id: 'person', type: 'image', label: 'Person' }, { id: 'garment', type: 'image', label: 'Garment' }, { id: 'track', type: 'audio', label: 'Track' }], prompt: 'Dress them.', cover: 'c' })
+  assert.deepEqual(validateFormat(format, { ...schemas, comfy: { ...schemas.comfy, slot_check: ['audio', 'image', 'image2', 'prompt'] } }), [], 'two pictures and audio map to image, image2 and audio')
+  assert(validateFormat(format, { ...schemas, comfy: { ...schemas.comfy, slot_check: ['image', 'image3', 'prompt'] } }).some((r) => /Unmapped workflow placeholder image3/.test(r)), 'a third slot needs a third picture')
+})
+
+await test('3D: a .glb a graph saves is kept as a 3D model', async () => {
+  podMode()
+  const client = {
+    assets: { fromBytes: () => ({}) },
+    workflows: { fromFile: async (f) => ({ file: f, json: null, setInput() {} }) },
+    run: async () => ({ outputs: [
+      { type: 'file', contentType: 'model/gltf-binary', name: 'mesh_00001_.glb', toBytes: async () => Buffer.from('glTF') },
+      { type: 'text', contentType: 'text/plain', name: 'log.txt', toBytes: async () => Buffer.from('x') },
+    ] }),
+  }
+  const files = await core.runComfy('image_sdxl', sdxl, { createClient: () => client, podPhase: async () => 'none', lease: async () => { throw new Error('no lease on Cloud') } })
+  assert.deepEqual(files.map((f) => [f.kind, path.extname(f.url)]), [['3d', '.glb']], 'text is no media')
+})
+
+await test('sandbox: packs install and load, a Pod gets ready for a service, makes room and removes a file', async () => {
+  const dir = fs.mkdtempSync(path.join(tmp, 'sandbox-svc-'))
+  const clock = { t: Date.now() }
+  const net = sandboxFetch({ file: () => path.join(dir, 'pod-sandbox.json'), now: () => clock.t, mode: '1' })
+  const pod = podManager({ fetch: net, now: () => clock.t, keys: () => ({ key: 'sandbox' }), dir: () => dir, sandbox: true, owner: true, wait: async () => { clock.t += 3000 } })
+  const big = (n) => ({ repo: 'org/m', path: `${n}.safetensors`, dir: 'diffusion_models', name: `${n}.safetensors`, gb: 60 })
+  await pod.start({ prepare: { files: [big('a')], runtimes: [] } })
+  clock.t += 5000
+  await pod.tick()
+  clock.t += 12000
+  await pod.tick()
+  assert.deepEqual(pod.status().downloads.map((d) => d.file), ['a.safetensors'], 'the start\'s service downloads as soon as the Pod answers')
+  const stages = []
+  ;(await pod.lease({ runtimes: ['vhs'], onStage: (s) => stages.push(s) })).release()
+  assert(stages.includes('installing') && stages.at(-1) === 'running', 'a pack installs, loads and is ready')
+  clock.t += 10000
+  await pod.tick()
+  assert.equal(pod.status().models.length, 1)
+  ;(await pod.lease({ files: [big('b')] })).release()
+  const s = await pod.tick()
+  assert.deepEqual(s.evicted.map((f) => f.name), ['a.safetensors'], 'a 120 GB disk holds one 60 GB model with room to spare, so the older one goes')
+  assert.deepEqual(s.models.map((f) => f.name), ['b.safetensors'])
+  assert.deepEqual(s.disk, { freeGb: 60, totalGb: 120 })
+  await pod.remove({ dir: 'diffusion_models', name: 'b.safetensors' })
+  assert.deepEqual(pod.status().models, [])
+  await pod.terminate({ now: true })
+})
+
+await test('downloads: a file whose path has brackets or spaces is fetched with an encoded URL', { skip: !python && 'no Python 3.9+ found' }, () => {
+  const code = `
+import importlib.util, json, sys
+spec = importlib.util.spec_from_file_location('statusd', sys.argv[1])
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+seen = []
+def fake(req, timeout=0):
+  seen.append(req.full_url)
+  raise RuntimeError('stop')
+m.urllib.request.urlopen = fake
+m.DOWNLOADS['loras/x.safetensors'] = {'state': 'queued', 'bytes': 0, 'total': None, 'error': None}
+try:
+  m.fetch({'repo': 'org/r', 'path': 'sub/[WAN2.2-I2V]My LoRA.safetensors', 'dir': 'loras', 'name': 'x.safetensors'}, 'loras/x.safetensors')
+except RuntimeError:
+  pass
+print(json.dumps(seen))`
+  const r = spawnSync(python[0], [...python.slice(1), '-c', code, statusd], { encoding: 'utf8', env: { ...process.env, CF_MODELS: path.join(tmp, 'quote-models') } })
+  assert.equal(r.status, 0, r.stderr)
+  assert.deepEqual(JSON.parse(r.stdout), ['https://huggingface.co/org/r/resolve/main/sub/%5BWAN2.2-I2V%5DMy%20LoRA.safetensors'])
+})
+
+// ---- Image services ---------------------------------------------------------------------------------
+
+// A value for each input as a user would give it, so a format's own options fill its graph.
+function sampleInputs(format) {
+  const picture = { url: '/media/in.png', ratio: '4:5', name: 'in.png' }
+  const values = {}
+  for (const i of format.inputs) {
+    if (i.type === 'choice') values[i.id] = i.default ?? i.options[0].id
+    else if (i.type === 'count') values[i.id] = i.default ?? i.options[0]
+    else if (i.type === 'text' || i.type === 'longtext') values[i.id] = 'Sample'
+    else if (['image', 'draw', 'crop', 'face'].includes(i.type)) values[i.id] = { ...picture, faceUrl: '/media/face.png', box: { x: 0, y: 0, width: 1, height: 1 }, aspect: '1:1', strokes: '/media/strokes.png' }
+    else if (i.type === 'mask') values[i.id] = { ...picture, maskUrl: '/media/mask.png' }
+    else if (i.type === 'video') values[i.id] = { url: '/media/clip.mp4', ratio: '16:9', duration: 6, trim: { start: 1, end: 4 } }
+    else if (i.type === 'audio') values[i.id] = { url: '/media/voice.mp3', name: 'voice.mp3' }
+    else if (i.type === 'voice') values[i.id] = { name: 'Narrator', sample: '/media/narrator.wav' }
+    else if (['character', 'product', 'brand'].includes(i.type)) values[i.id] = { type: i.type, name: 'Mia', images: ['/media/mia.png'] }
+  }
+  return values
+}
+
+await test('image services: every Comfy format that shows fills its graph with its own values and loads only listed files', async () => {
+  const { formats } = await import('../src/lib/formats/index.js')
+  const { stepOptions, stepModel, selectedStep } = await import('../src/lib/formats/options.js')
+  const { comfyVars, fill, dropOptional } = await import('../shared/mapping.js')
+  const { nearestAspect } = await import('../src/lib/formats/runner.js')
+  let n = 0
+  for (const f of formats) {
+    for (const raw of f.steps.filter((s) => !s.type && (s.provider === 'comfy' || s.targets))) {
+      for (const target of raw.targets ? Object.keys(raw.targets) : [null]) {
+        const values = { ...sampleInputs(f), ...(target ? { [raw.targetInput]: target } : {}) }
+        const step = selectedStep(f, raw, values)
+        const model = stepModel(f, step, values)
+        if (model?.provider !== 'comfy') continue
+        const o = stepOptions(f, step, values)
+        // A writer step writes the prompt when the format runs.
+        if (f.writer || f.steps.some((s) => s.type === 'writer')) o.prompt = 'Written prompt'
+        if (o.aspect === 'auto') o.aspect = nearestAspect(o.shape)
+        const vars = comfyVars(model.kind, o, model.sizes)
+        const w = vars.image && model.imageWorkflow ? model.imageWorkflow : model.workflow
+        const graph = dropOptional(readGraph(w), vars)
+        const unset = [...JSON.stringify(graph).matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1]).filter((k) => vars[k] == null || vars[k] === '')
+        assert.deepEqual(unset, [], `${f.id} leaves ${unset.join(', ')} empty in ${w}`)
+        modelFilesOf(fill(graph, vars))
+        n++
+      }
+    }
+  }
+  assert(n > 150, `checked ${n} format runs`)
+})
+
+await test('image services: a shape choice sets the canvas, and a character makes a look run its reference graph', async () => {
+  const { formats } = await import('../src/lib/formats/index.js')
+  const { stepOptions, stepModel } = await import('../src/lib/formats/options.js')
+  const { comfyVars, dropOptional } = await import('../shared/mapping.js')
+  const { nearestAspect } = await import('../src/lib/formats/runner.js')
+  const by = Object.fromEntries(formats.map((f) => [f.id, f]))
+  const run = (id, values) => {
+    const f = by[id]
+    const o = stepOptions(f, f.steps[0], { ...sampleInputs(f), ...values })
+    if (o.aspect === 'auto') o.aspect = nearestAspect(o.shape)
+    const model = stepModel(f, f.steps[0])
+    const vars = comfyVars(model.kind, o, model.sizes)
+    return { o, vars, workflow: vars.image && model.imageWorkflow ? model.imageWorkflow : model.workflow }
+  }
+  const wide = run('look-golden-hour', { shape: 'wide', character: null })
+  assert.deepEqual([wide.o.aspect, 'aspect' in wide.o.params, wide.vars.width, wide.vars.height, wide.workflow], ['16:9', false, 1280, 720, 'flux_look'])
+  const withMia = run('look-golden-hour', { shape: 'square' })
+  assert.deepEqual([withMia.workflow, withMia.vars.image, withMia.vars.width], ['flux_look_ref', '/media/mia.png', 1024], 'a picked character is the reference')
+  const qwen = run('look-cctv', { shape: 'wide', character: null })
+  assert.deepEqual([qwen.workflow, qwen.vars.width, qwen.vars.height], ['qwen_image21_t2i', 1664, 928], 'a Qwen look draws on its own canvas')
+  const tryOn = run('try-on', { garment2: null })
+  assert.deepEqual([tryOn.vars.image, tryOn.vars.image2, tryOn.vars.image3], ['/media/in.png', '/media/in.png', undefined])
+  assert(!JSON.stringify(dropOptional(readGraph('qwen_edit_try_on'), tryOn.vars)).includes('{{image3}}'), 'no second garment, no third loader')
+  assert.equal(run('influencer-post', {}).vars.count, 5, 'the posts count reaches the loop')
+  assert.equal(run('layers', { layers: 6 }).vars.layers, 6)
+  assert.equal(run('ad-variants', { variants: 8 }).vars.count, 8)
+})
+
+await test('image services: Cloud takes Edit 2511, Krea 2, Z-Image and HiDream at once; Qwen-Image 2.1 and Klein need a Pod that downloads their files and LoRAs', async () => {
+  podMode()
+  const client = {
+    assets: { fromBytes: (buf, o) => ({ asset: o.filename }) },
+    workflows: { fromFile: async (f) => ({ file: f, json: null, setInput() {} }) },
+    run: async () => ({ outputs: [{ type: 'image', contentType: 'image/png', name: 'out.png', toBytes: async () => Buffer.from('png') }] }),
+  }
+  const leases = []
+  const lease = async (o) => { leases.push(o); return { baseUrl: 'https://p-8189.proxy.runpod.net', token: 't', sandbox: false, signal: new AbortController().signal, reason: () => null, release() {} } }
+  const vars = { prompt: 'A fox', width: 1024, height: 1024, count: 1, seed: 1, image: 'data:image/png;base64,iVBORw0KGgo=', image2: 'data:image/png;base64,iVBORw0KGgo=', azimuth: 45, elevation: 0, zoom: 'medium', batch: 1, layers: 4 }
+  const run = (w, phase = 'none') => core.runComfy(w, vars, { createClient: () => client, lease, podPhase: async () => phase, podVram: () => 24, podRoom: () => ({}) })
+  for (const w of ['qwen2511_edit', 'qwen2511_relight', 'qwen_multiangle', 'qwen_image_layered', 'krea2_t2i', 'z_image', 'hidream']) {
+    assert.equal((await run(w))[0].kind, 'image', w)
+  }
+  assert.equal(leases.length, 0, 'Comfy Cloud has every file these load')
+  for (const w of ['qwen_edit', 'qwen_image_ref', 'qwen_image_logo', 'flux_look', 'flux_look_ref', 'klein_edit', 'klein_character_swap', 'storyboard']) {
+    await assert.rejects(run(w), (e) => e.code === 'needs_pod', `${w} needs a Pod`)
+  }
+  await run('qwen_multiangle', 'ready')
+  assert.deepEqual(leases.at(-1).files.filter((f) => f.dir === 'loras').map((f) => f.name).sort(),
+    ['Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors', 'qwen-image-edit-2511-multiple-angles-lora.safetensors'], 'a Pod downloads both LoRAs')
+  assert(leases.at(-1).files.every((f) => /^[0-9a-f]{64}$/.test(f.sha256)))
+  const { models } = await import('../src/lib/catalog.js')
+  for (const id of ['comfy-z-image-turbo', 'comfy-hidream-o1', 'comfy-qwen-image-edit-2511']) assert(!models.find((m) => m.id === id).pod, `${id} runs on Cloud`)
+  const { openModels } = await import('../src/lib/tools.js')
+  assert.deepEqual(['qwen-image-edit-2511', 'z-image-turbo', 'hidream-o1'].map((id) => openModels.find((m) => m.id === id).catalog), ['comfy-qwen-image-edit-2511', 'comfy-z-image-turbo', 'comfy-hidream-o1'])
+})
+
+// ---- Video services ---------------------------------------------------------------------------------
+
+await test('video services: no format runs on the paid partner node or on LTX Video 2B', async () => {
+  const { allFormats } = await import('../src/lib/formats/index.js')
+  const graphs = (f) => f.steps.flatMap((s) => [s.workflow, s.imageWorkflow, ...Object.values(s.targets || {}).flatMap((t) => [t.workflow, t.imageWorkflow])])
+  assert.deepEqual(allFormats.filter((f) => graphs(f).some((w) => w === 'h3_i2v' || w === 'ltx_i2v')).map((f) => f.id), [])
+})
+
+await test('video services: presets and the H3, LTX-2.5 and Wan 2.2 graphs go to Comfy Cloud at once', async () => {
+  podMode()
+  const sent = []
+  const client = {
+    assets: { fromBytes: (buf, o) => ({ asset: o.filename }) },
+    workflows: { fromFile: async (f) => ({ file: f, json: null, setInput() {} }) },
+    run: async (wf) => { sent.push(path.basename(wf.file)); return { outputs: [{ type: 'image', contentType: 'video/mp4', name: 'out.mp4', toBytes: async () => Buffer.from('mp4') }] } },
+  }
+  const leases = []
+  const lease = async (o) => { leases.push(o); return { baseUrl: 'https://p-8189.proxy.runpod.net', token: 't', sandbox: false, signal: new AbortController().signal, reason: () => null, release() {} } }
+  const png = 'data:image/png;base64,iVBORw0KGgo='
+  const vars = { prompt: 'Dolly in', width: 1344, height: 768, frames: 121, duration: 5, start: 0, seed: 1, image: png, image2: png, video: 'data:video/mp4;base64,AAAAIGZ0eXBpc29t', seconds: 5 }
+  for (const w of ['h3_open_i2v', 'h3_flf2v', 'h3_i2v_audio', 'h3_extend', 'h3_t2v', 'h3_ref2v', 'h3_product_ad', 'cinema_shot', 'ltx25_i2v', 'ltx25_multishot', 'wan22_i2v', 'wan22_t2v']) {
+    const files = await core.runComfy(w, vars, { createClient: () => client, lease, podPhase: async () => 'none', podVram: () => null, podRoom: () => ({}) })
+    assert.equal(files[0].kind, 'video', w)
+  }
+  assert.equal(leases.length, 0, 'Comfy Cloud has every file these load')
+  assert(readGraph('h3_open_i2v')['17'].inputs.crop === 'center', 'the start frame is cropped to the canvas, not stretched')
+})
+
+await test('video services: an effect LoRA and a chain need a Pod, which downloads that LoRA; first and last frame runs on FreeVideo on 96 GB', async () => {
+  podMode()
+  const { formats } = await import('../src/lib/formats/index.js')
+  const { stepOptions } = await import('../src/lib/formats/options.js')
+  const { comfyVars } = await import('../shared/mapping.js')
+  const sent = []
+  const client = {
+    assets: { fromBytes: (buf, o) => ({ asset: o.filename }) },
+    workflows: { fromFile: async (f) => ({ file: f, json: null, setInput() {} }) },
+    run: async (wf) => { sent.push(path.basename(wf.file)); return { outputs: [{ type: 'image', contentType: 'video/mp4', name: 'out.mp4', toBytes: async () => Buffer.from('mp4') }] } },
+  }
+  const leases = []
+  const lease = async (o) => { leases.push(o); return { baseUrl: 'https://p-8189.proxy.runpod.net', token: 't', sandbox: false, signal: new AbortController().signal, reason: () => null, release() {} } }
+  const png = 'data:image/png;base64,iVBORw0KGgo='
+  const boom = formats.find((f) => f.id === 'building-explosion')
+  const o = stepOptions(boom, boom.steps[0], { image: { url: png }, note: '' })
+  assert.match(o.prompt, /EXPLOSION\.$/, 'the trigger ends the prompt')
+  const vars = { ...comfyVars('video', { ...o, aspect: '16:9' }), seed: 1 }
+  const run = (w, v, phase, vram = 24, room = {}) => core.runComfy(w, v, { createClient: () => client, lease, podPhase: async () => phase, podVram: () => vram, podRoom: () => room })
+  await assert.rejects(run('wan22_lora_i2v', vars, 'none'), (e) => e.code === 'needs_pod', 'Comfy Cloud has no effect LoRA')
+  await run('wan22_lora_i2v', vars, 'ready')
+  assert.deepEqual(leases.at(-1).files.filter((f) => f.dir === 'loras' && /redmond/.test(f.name)).map((f) => f.name).sort(),
+    ['wan22_i2v_explosion_redmond_high_noise.safetensors', 'wan22_i2v_explosion_redmond_low_noise.safetensors'], 'the Pod downloads the effect the run names, for both experts')
+  const frozen = formats.find((f) => f.id === 'frozen-in-motion')
+  const fo = stepOptions(frozen, frozen.steps[0], { image: { url: png } })
+  assert.equal(fo.fields.image2, png, 'the orbit ends on the start photo')
+  for (const w of ['klein_ltx', 'qwen_h3', 'qwen_mockup_ltx']) await assert.rejects(run(w, { ...vars, motion: 'It moves.', width: 768, height: 1344 }, 'none'), (e) => e.code === 'needs_pod', `${w} needs a Pod`)
+  const flf = { prompt: 'A turn', duration: 5, seed: 1, image: png, image2: png, width: 1344, height: 768, frames: 121 }
+  await run('h3_flf2v', flf, 'ready', 96, {})
+  assert.equal(sent.at(-1), 'h3_freevideo_flf2v.json', 'a 96 GB Pod runs first and last frame on FreeVideo')
+  assert.deepEqual(leases.at(-1).runtimes, ['freevideo'])
+  await run('h3_flf2v', flf, 'ready', 32, {})
+  assert.equal(sent.at(-1), 'h3_flf2v.json', 'a 32 GB Pod runs stock H3')
+  assert.deepEqual(core.podNeedsFor('h3_flf2v').runtimes.map((r) => r.runtime), ['freevideo'], 'a Pod started for it gets the GPU FreeVideo runs on')
+})
+
+await test('video services: each video format draws on its model\'s canvas, a draft is smaller, and arrows, seconds and a brand reach their graphs', async () => {
+  const { formats } = await import('../src/lib/formats/index.js')
+  const { stepOptions, stepModel, selectedStep } = await import('../src/lib/formats/options.js')
+  const { comfyVars } = await import('../shared/mapping.js')
+  const { nearestAspect } = await import('../src/lib/formats/runner.js')
+  const by = Object.fromEntries(formats.map((f) => [f.id, f]))
+  const run = (id, values) => {
+    const f = by[id]
+    const all = { ...sampleInputs(f), ...values }
+    const step = selectedStep(f, f.steps[0], all)
+    const model = stepModel(f, step, all)
+    const o = stepOptions(f, step, all)
+    if (o.aspect === 'auto') o.aspect = nearestAspect(o.shape)
+    return { model, vars: comfyVars('video', o, model.sizes), workflow: comfyVars('video', o, model.sizes).image && model.imageWorkflow ? model.imageWorkflow : model.workflow }
+  }
+  const final = run('cinema-shot', { model: 'minimax', quality: 'final', image: null })
+  assert.deepEqual([final.workflow, final.vars.width, final.vars.height], ['h3_open_t2v', 1344, 768])
+  const draft = run('cinema-shot', { model: 'minimax', quality: 'draft' })
+  assert.deepEqual([draft.workflow, draft.vars.width, draft.vars.height], ['cinema_shot', 832, 448], 'a draft is 0.6x, in multiples of 64, from the start frame')
+  assert.deepEqual([run('cinema-shot', { model: 'ltx', quality: 'final', image: null }).workflow, run('cinema-shot', { model: 'wan', quality: 'final' }).workflow], ['ltx25_t2v', 'wan22_i2v'])
+  const cam = run('cam-dolly-left', {})
+  assert.equal(cam.workflow, 'h3_open_i2v')
+  assert.deepEqual([run('cam-orbit-360', {}).vars.width, run('cam-orbit-360', {}).vars.height], [768, 960], 'auto follows the 4:5 photo on H3\'s canvas')
+  assert.equal(run('draw-to-video', {}).vars.mask, '/media/strokes.png', 'the drawn arrows are the mask')
+  assert.equal(run('extend-video', { seconds: 8 }).vars.seconds, 8)
+  assert.equal(run('brand-video', {}).vars.image, '/media/mia.png', 'the brand\'s first picture is the reference')
+  assert.deepEqual([run('human-video', { character: null }).workflow, run('human-video', {}).workflow], ['h3_open_t2v', 'h3_t2v'])
+  assert.equal(run('transition', {}).vars.duration, 5)
+})
+
+// ---- Video edits and enhance tools ------------------------------------------------------------------
+
+await test('edits and enhance: Bernini-R, VOID, SCAIL-2, SeedVR2, RIFE and BiRefNet go to Comfy Cloud; reshoot installs WanVideoWrapper on a Pod; Qwen backgrounds need a Pod', async () => {
+  podMode()
+  const client = {
+    assets: { fromBytes: (buf, o) => ({ asset: o.filename }) },
+    workflows: { fromFile: async (f) => ({ file: f, json: null, setInput() {} }) },
+    run: async () => ({ outputs: [{ type: 'image', contentType: 'video/mp4', name: 'out.mp4', toBytes: async () => Buffer.from('mp4') }] }),
+  }
+  const leases = []
+  const lease = async (o) => { leases.push(o); return { baseUrl: 'https://p-8189.proxy.runpod.net', token: 't', sandbox: false, signal: new AbortController().signal, reason: () => null, release() {} } }
+  const png = 'data:image/png;base64,iVBORw0KGgo='
+  const vars = { prompt: 'A look', seed: 1, start: 0, duration: 3, video: 'data:video/mp4;base64,AAAAIGZ0eXBpc29t', image: png, image2: png, image3: png,
+    fps: 12, strength: 0.65, target: 'person', trajectory: 'arc_left', orbit: false, upscale_factor: 2, multiplier: 2, output: 'alpha', background: 'A beach', preset: 'natural', temperature: 0, grain: 0 }
+  const run = (w, phase = 'none', vram = 24) => core.runComfy(w, vars, { createClient: () => client, lease, podPhase: async () => phase, podVram: () => vram, podRoom: () => ({}) })
+  for (const w of ['bernini_mixed', 'bernini_grade', 'bernini_clone_edit', 'bernini_recreate_ad', 'void_inpaint', 'video_bg_change', 'scail2_character_swap', 'recammaster',
+    'seedvr2_image', 'seedvr2_video', 'image_upscale', 'image_upscale_esrgan', 'rife_interpolate', 'birefnet_image', 'birefnet_video_matte', 'birefnet_video_matte_alpha', 'image_grade']) {
+    await run(w)
+  }
+  assert.equal(leases.length, 0, 'Comfy Cloud has every file and pack these use')
+  for (const w of ['birefnet_qwen_background', 'birefnet_video_matte_scene']) await assert.rejects(run(w), (e) => e.code === 'needs_pod', `${w} needs a Pod`)
+  await run('recammaster', 'ready')
+  assert.deepEqual(leases.at(-1).runtimes, ['wanvideo'], 'a Pod installs WanVideoWrapper for a reshoot')
+  await run('birefnet_video_matte_alpha', 'ready')
+  assert.deepEqual(leases.at(-1).runtimes, ['vhs'], 'and VideoHelperSuite for a transparent matte')
+  assert(leases.at(-1).files.some((f) => f.dir === 'background_removal' && f.name === 'birefnet.safetensors'), 'BiRefNet downloads to its own folder')
+  assert(podBootScript().includes('  background_removal: background_removal\n') && podBootScript().includes('  frame_interpolation: frame_interpolation\n'), 'ComfyUI on the Pod finds those folders')
+})
+
+await test('edits and enhance: upscale and background removal pick their graph by choice; reshoot uses ReCamMaster names', async () => {
+  const { formats } = await import('../src/lib/formats/index.js')
+  const { stepOptions, stepModel, selectedStep } = await import('../src/lib/formats/options.js')
+  const by = Object.fromEntries(formats.map((f) => [f.id, f]))
+  const pick = (id, values) => {
+    const f = by[id]
+    const all = { ...sampleInputs(f), ...values }
+    const step = selectedStep(f, f.steps[0], all)
+    return { model: stepModel(f, step, all), o: stepOptions(f, step, all) }
+  }
+  assert.deepEqual([pick('image-upscale', { mode: 'faithful' }).model.workflow, pick('image-upscale', { mode: 'enhance' }).model.workflow], ['image_upscale_esrgan', 'image_upscale'])
+  assert.deepEqual(['transparent', 'green', 'new'].map((result) => pick('video-bg-remove', { result }).model.workflow), ['birefnet_video_matte_alpha', 'birefnet_video_matte', 'birefnet_video_matte_scene'])
+  assert.equal(pick('video-bg-remove', { result: 'new', background: 'A beach' }).o.fields.background, 'A beach')
+  const names = ['pan_right', 'pan_left', 'tilt_up', 'tilt_down', 'zoom_in', 'zoom_out', 'translate_up', 'translate_down', 'arc_left', 'arc_right']
+  for (const opt of by.reshoot.inputs.find((i) => i.id === 'angle').options) assert(names.includes(opt.params.trajectory) && typeof opt.params.orbit === 'boolean', opt.id)
+  assert.equal(pick('video-erase', { target: 'the red car' }).o.fields.target, 'the red car', 'SAM 3.1 gets the label as typed')
+  assert.deepEqual([pick('edit-video', {}).model.workflow, pick('edit-video', {}).model.imageWorkflow], ['bernini_swap_noref', 'bernini_swap'])
+  assert.deepEqual(['same', '2k', '4k'].map((size) => pick('unblur', { size }).o.params), [{ upscale_factor: 1, target: 0 }, { upscale_factor: 1, target: 2048 }, { upscale_factor: 1, target: 4096 }])
+})
+
+// ---- Audio, talking heads and 3D --------------------------------------------------------------------
+
+// FLAC headers as PyAV writes them (ComfyUI's SaveAudioAdvanced): one sample of 24 kHz stereo, and 2 s.
+const flacOneSample = Buffer.from('ZkxhQwAAACIJAAkAAAAPAAAPBdwC8AAAAAHx0/+EQyl3MoYt8h3E5XJi', 'base64')
+const flacTwoSeconds = Buffer.from('ZkxhQwAAACIJAAkAAAAOAAAQBdwC8AAAu4D+OE9mjaKCaUwpqE69M0gd', 'base64')
+
+await test('pack files: a pack\'s own files download with it, pinned, and the Pod links its folder from ComfyUI to the volume', () => {
+  const read = (n) => JSON.parse(fs.readFileSync(`public/workflows/${n}.json`, 'utf8'))
+  const key = (n) => n.runtime || `${n.dir}/${n.name}`
+  const tts = podNeedsOf(read('chatterbox_tts'))
+  const t3 = tts.find((n) => key(n) === 'chatterbox/chatterbox_multilingual/t3_mtl23ls_v2.safetensors')
+  assert.deepEqual([t3.repo, t3.path, t3.bytes, t3.sha256.length, t3.cloud], ['ResembleAI/chatterbox', 't3_mtl23ls_v2.safetensors', 2143989752, 64, true], 'pinned by sha256, with its exact size')
+  assert(tts.some((n) => n.runtime === 'chatterbox'), 'and the pack itself')
+  assert(!tts.some((n) => n.dir === 'chatterbox/chatterbox_vc'), 'speech takes only the files its node reads')
+  assert(!podNeedsOf(read('chatterbox_vc')).some((n) => n.dir === 'chatterbox/chatterbox_multilingual'), 'and voice change only its own')
+  const qwen = podNeedsOf(read('qwen3_tts'))
+  assert(qwen.some((n) => key(n) === 'qwen-tts/Qwen3-TTS-12Hz-1.7B-Base/speech_tokenizer/model.safetensors'), 'subfolders keep their place')
+  const both = podNeedsOf(read('infinitetalk_tts'))
+  assert.equal(new Set(both.map(key)).size, both.length, 'a file two needs share comes once')
+
+  const script = podBootScript()
+  assert(script.includes('for d in chatterbox hunyuan_foley qwen-tts; do') && script.includes('  ln -sfn "$M/$d" "$C/models/$d"'), 'each pack folder is linked to the volume')
+  assert(script.includes('  [ -L "$C/models/$d" ] || rm -rf "$C/models/$d"'))
+  const at = (s) => script.indexOf(s)
+  assert(at('STAGE comfy-update') < at('for d in chatterbox') && at('for d in chatterbox') < at('STAGE comfy '), 'after ComfyUI moves to its pin, before it starts')
+  assert(!script.includes('  chatterbox/chatterbox_vc:'), 'ComfyUI\'s own folder list never names a pack folder')
+  assert(script.includes('foley\tComfyUI-HunyuanVideo_Foley\tHunyuanFoleyModelLoader,LoadDACHunyuanVAE,HunyuanFoleySampler,DACHunyuanVAEDecode\thunyuan_foley/hunyuanvideo_foley.pth,vae/vae_128d_48k.pth\n'),
+    'the status server learns which files Foley waits for')
+  assert(script.includes('folder=ComfyUI_Fill-ChatterBox; pip="pykakasi==2.3.0 spacy-pkuseg==1.0.1"; ;;'), 'Chatterbox gets its Japanese and Mandarin text packages, pinned')
+  assert(script.includes('folder=ComfyUI-Qwen-TTS; skip="onnxruntime-openvino"; ;;'))
+  for (const d of ['wav2vec2', 'asr', 'hunyuan_foley']) assert(script.includes(`  ${d}: ${d}\n`), `ComfyUI finds ${d} on the volume`)
+  const ok = { repo: 'x/y', commit: 'a'.repeat(40), folder: 'F', classes: ['C'] }
+  assert.throws(() => podBootScript({ packs: { x: { ...ok, pip: ['evil; rm -rf /'] } } }), /unsafe/)
+  assert.throws(() => podBootScript({ packs: { x: { ...ok, pip: ['unpinned'] } } }), /unsafe/, 'an extra package is pinned')
+  assert.throws(() => podBootScript({ packs: { x: { ...ok, before: ['../etc/passwd'] } } }), /unsafe/)
+  if (hasBash) {
+    const req = path.join(tmp, 'qwen-requirements.txt')
+    fs.writeFileSync(req, 'torch\nonnxruntime-openvino\nonnxruntime-openvino>=1.18\n  onnxruntime-openvino ; sys_platform == "linux"\nonnxruntime\nsox\n')
+    const r = spawnSync('bash', ['-c', `skip="onnxruntime-openvino"; grep -viE "^[[:space:]]*($skip)([[:space:]<>=!~;[]|$)" "${req.replace(/\\/g, '/')}"`], { encoding: 'utf8' })
+    assert.deepEqual(r.stdout.trim().split('\n'), ['torch', 'onnxruntime', 'sox'], 'a skipped requirement goes in every spelling, and only it')
+  }
+})
+
+await test('pack files: the status server downloads into a pack\'s subfolder, lists and removes it, and loads Foley only after its files', { skip: (!python || !hasBash) && 'needs Python 3.9+ and bash' }, async (t) => {
+  const bytes = { 'conds.pt': Buffer.alloc(2048, 1), 'hunyuanvideo_foley.pth': Buffer.alloc(4096, 2), 'vae_128d_48k.pth': Buffer.alloc(1024, 3) }
+  const hold = { release: null }
+  const hf = await listen(async (req, res) => {
+    const name = req.url.split('/').pop()
+    if (!bytes[name]) return res.writeHead(404).end()
+    if (name === 'hunyuanvideo_foley.pth') await new Promise((r) => { hold.release = r })
+    res.writeHead(200, { 'Content-Length': bytes[name].length })
+    res.end(bytes[name])
+  })
+  t.after(() => hf.close())
+  const port = freePort()
+  const base = path.join(tmp, 'statusd-pack-files').replace(/\\/g, '/')
+  fs.mkdirSync(base, { recursive: true })
+  fs.writeFileSync(`${base}/.base-ready`, '')
+  fs.writeFileSync(`${base}/packs.tsv`, 'foley\tComfyUI-HunyuanVideo_Foley\tHunyuanFoleyModelLoader\thunyuan_foley/hunyuanvideo_foley.pth,vae/vae_128d_48k.pth\n')
+  fs.writeFileSync(`${base}/runtime-pack.sh`, ['#!/bin/bash', 'echo "installing $1"', ''].join('\n'))
+  // A fake ComfyUI that lists Foley's loader at once: the pack loads without its files, but then lists
+  // no models, so only a ComfyUI started after the files counts.
+  const comfy = { starts: 0 }
+  let dummy
+  const startDummy = () => {
+    dummy = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' })
+    fs.writeFileSync(`${base}/comfy.pid`, String(dummy.pid))
+    dummy.once('exit', () => { comfy.starts++; startDummy() })
+  }
+  startDummy()
+  t.after(() => { dummy.removeAllListeners('exit'); dummy.kill() })
+  const server = await listen((req, res) => {
+    if (req.url === '/queue') return res.end(JSON.stringify({ queue_running: [], queue_pending: [] }))
+    if (req.url.startsWith('/object_info/')) return res.end(JSON.stringify({ [req.url.split('/')[2]]: {} }))
+    res.end('{}')
+  })
+  t.after(() => server.close())
+  const proc = startStatusd({ POD_TOKEN: 'secret', CF_BASE: base, CF_MODELS: `${base}/models`, CF_STATUS_PORT: String(port), CF_DIRS: 'vae hunyuan_foley chatterbox/chatterbox_vc',
+    CF_HF_BASE: `http://127.0.0.1:${hf.address().port}`, CF_COMFY_URL: `http://127.0.0.1:${server.address().port}`, CF_PROXY_URL: 'http://127.0.0.1:9',
+    CF_TICK: '0.2', CF_RESTART_GRACE: '0.5', CF_DRY_KILL: '1' })
+  t.after(() => proc.kill())
+  const url = `http://127.0.0.1:${port}`
+  const auth = { Authorization: 'Bearer secret' }
+  const status = async () => (await netFetch(`${url}/status`, { headers: auth })).json()
+  const post = (files) => netFetch(`${url}/download`, { method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' }, body: JSON.stringify({ files }) })
+  const sha = (name) => createHash('sha256').update(bytes[name]).digest('hex')
+  await proc.ready(url, async () => (await netFetch(`${url}/status`, { headers: auth })).ok)
+  assert(!fs.existsSync(`${base}/models/chatterbox`), 'a pack folder is made only when a file goes in')
+
+  assert.equal((await post([{ repo: 'ResembleAI/chatterbox', path: 'conds.pt', dir: 'chatterbox/other', name: 'conds.pt' }])).status, 400, 'only the folders the boot script names')
+  assert.equal((await post([{ repo: 'ResembleAI/chatterbox', path: 'conds.pt', dir: 'chatterbox/chatterbox_vc', name: 'conds.pt', sha256: sha('conds.pt'), bytes: 2048 }])).status, 202)
+  const listed = await until(async () => { const s = await status(); return s.downloads['chatterbox/chatterbox_vc/conds.pt']?.state === 'done' && s })
+  assert.deepEqual(listed.models.map((f) => `${f.dir}/${f.name}`), ['chatterbox/chatterbox_vc/conds.pt'], 'listed under its subfolder')
+  assert.equal(fs.statSync(`${base}/models/chatterbox/chatterbox_vc/conds.pt`).size, 2048)
+  assert.equal((await netFetch(`${url}/models/chatterbox/chatterbox_vc/conds.pt`, { method: 'DELETE', headers: auth })).status, 204)
+  assert(!fs.existsSync(`${base}/models/chatterbox/chatterbox_vc/conds.pt`))
+  assert.equal((await netFetch(`${url}/models/chatterbox/other/conds.pt`, { method: 'DELETE', headers: auth })).status, 404)
+
+  await netFetch(`${url}/runtime/foley`, { method: 'POST', headers: auth })
+  await until(async () => (await status()).runtimes.foley?.state === 'loading')
+  assert.equal((await post([{ repo: 'tencent/HunyuanVideo-Foley', path: 'hunyuanvideo_foley.pth', dir: 'hunyuan_foley', name: 'hunyuanvideo_foley.pth', sha256: sha('hunyuanvideo_foley.pth') },
+    { repo: 'Comfy-Org/HunyuanVideo-Foley', path: 'vae_128d_48k.pth', dir: 'vae', name: 'vae_128d_48k.pth', sha256: sha('vae_128d_48k.pth') }])).status, 202)
+  await new Promise((r) => setTimeout(r, 1000))
+  assert.equal(comfy.starts, 0, 'no restart while its checkpoint downloads')
+  assert.equal((await status()).runtimes.foley.state, 'loading', 'listed by a ComfyUI that started without its files, so not ready')
+  hold.release()
+  const done = await until(async () => { const e = (await status()).runtimes.foley; return e.state === 'ready' && e }, 15000)
+  assert.equal(done.error, null)
+  assert.equal(comfy.starts, 1, 'one restart, once the files are in place')
+})
+
+await test('pack files: the Pods page lists and removes a pack\'s file by its subfolder, and a run sends each file\'s exact size', async () => {
+  const { pod, rp } = setup()
+  await pod.start()
+  const deep = 'qwen-tts/Qwen3-TTS-12Hz-1.7B-Base/speech_tokenizer'
+  rp.statusd = readyStatus({ models: [{ dir: deep, name: 'model.safetensors', bytes: 1 }], downloads: { [`${deep}/model.safetensors`]: { state: 'done' } } })
+  await pod.refresh()
+  assert.deepEqual(pod.status().downloads.map((d) => [d.dir, d.file]), [[deep, 'model.safetensors']])
+  await pod.remove({ dir: deep, name: 'model.safetensors' })
+  assert.equal(rp.calls.find((c) => c.method === 'DELETE').path, `/models/${deep}/model.safetensors`, 'each part of the folder travels as it is')
+  const read = (n) => JSON.parse(fs.readFileSync(`public/workflows/${n}.json`, 'utf8'))
+  const files = podNeedsOf(read('chatterbox_vc')).filter((n) => !n.runtime)
+  rp.statusd = readyStatus({ downloads: Object.fromEntries(files.map((f) => [`${f.dir}/${f.name}`, { state: 'done' }])), runtimes: { chatterbox: { state: 'ready' } } })
+  ;(await pod.lease({ files, runtimes: ['chatterbox'] })).release()
+  const sent = rp.calls.find((c) => c.path === '/download').body.files.find((f) => f.name === 's3gen.pt' && f.dir === 'chatterbox/chatterbox_vc')
+  assert.equal(sent.bytes, 1057165844, 'its size from the Hugging Face listing, not rounded from gigabytes')
+})
+
+await test('audio and 3D: Chatterbox, MiniMax Music 3 and Stable Audio 3 go to Comfy Cloud; Foley, InfiniteTalk, Drama 3, Qwen3-TTS and TRELLIS.2 need a Pod with their packs and files', async () => {
+  podMode()
+  let out = { type: 'audio', contentType: 'audio/flac', name: 'speech_00001_.flac', toBytes: async () => flacTwoSeconds }
+  const client = {
+    assets: { fromBytes: (buf, o) => ({ asset: o.filename }) },
+    workflows: { fromFile: async (f) => ({ file: f, json: null, setInput() {} }) },
+    run: async () => ({ outputs: [out] }),
+  }
+  const leases = []
+  const lease = async (o) => { leases.push(o); return { baseUrl: 'https://p-8189.proxy.runpod.net', token: 't', sandbox: false, signal: new AbortController().signal, reason: () => null, release() {} } }
+  const png = 'data:image/png;base64,iVBORw0KGgo='
+  const flac = `data:audio/flac;base64,${flacTwoSeconds.toString('base64')}`
+  const vars = { prompt: 'A line', script: 'Hello there', lyrics: '[Instrumental]', language: 'English (en)', exaggeration: 0.5, cfg_weight: 0.5, seed: 1, start: 0, duration: 5,
+    resolution: 1024, background: '#ffffff', image: png, audio: flac, voice: flac, video: 'data:video/mp4;base64,AAAAIGZ0eXBpc29t' }
+  const run = (w, phase = 'none') => core.runComfy(w, vars, { createClient: () => client, lease, podPhase: async () => phase, podVram: () => 24, podRoom: () => ({}) })
+  for (const w of ['chatterbox_tts', 'chatterbox_clone', 'chatterbox_vc', 'minimax_music3', 'stable_audio3']) {
+    const files = await run(w)
+    assert.deepEqual(files.map((f) => f.kind), ['audio'], `${w} keeps its speech`)
+  }
+  assert.equal(leases.length, 0, 'Comfy Cloud has these packs and files')
+  for (const w of ['hunyuan_foley', 'infinitetalk', 'infinitetalk_tts', 'infinitetalk_v2v', 'drama3_tts', 'qwen3_tts', 'trellis2_image', 'flux_trellis2', 'trellis2_character', 'trellis2_turntable']) {
+    await assert.rejects(run(w), (e) => e.code === 'needs_pod', `${w} needs a Pod`)
+  }
+  const key = (f) => `${f.dir}/${f.name}`
+  await run('hunyuan_foley', 'ready')
+  assert.deepEqual(leases.at(-1).runtimes, ['foley'])
+  for (const k of ['hunyuan_foley/hunyuanvideo_foley.pth', 'vae/vae_128d_48k.pth', 'hunyuan_foley/siglip2/model.safetensors', 'hunyuan_foley/clap/pytorch_model.bin']) {
+    assert(leases.at(-1).files.some((f) => key(f) === k), `Foley downloads ${k}`)
+  }
+  await run('infinitetalk_tts', 'ready')
+  assert.deepEqual(leases.at(-1).runtimes, ['chatterbox', 'wanvideo'], 'a typed script runs Chatterbox, then InfiniteTalk, in one graph')
+  assert(leases.at(-1).files.some((f) => key(f) === 'wav2vec2/wav2vec2-chinese-base_fp16.safetensors'))
+  await run('qwen3_tts', 'ready')
+  assert.deepEqual(leases.at(-1).runtimes, ['qwentts'], 'the Qwen-TTS pack that runs the open weights, not the Cloud one that calls a paid API')
+  await run('drama3_tts', 'ready')
+  assert(leases.at(-1).files.some((f) => key(f) === 'asr/qwen3_asr_0.6b_bf16.safetensors'))
+  out = { type: 'file', contentType: 'application/octet-stream', name: 'trellis2_00001_.glb', toBytes: async () => Buffer.from('glTF') }
+  assert.deepEqual((await run('trellis2_image', 'ready')).map((f) => f.kind), ['3d'])
+  assert.deepEqual(leases.at(-1).runtimes, [], 'TRELLIS.2 runs on core nodes')
+
+  // Chatterbox answers an error with one sample of silence.
+  out = { type: 'audio', contentType: 'audio/flac', name: 'speech_00001_.flac', toBytes: async () => flacOneSample }
+  await assert.rejects(run('chatterbox_tts'), /The voice model returned no sound/)
+  assert.deepEqual([core.flacSeconds(flacOneSample) < 0.001, core.flacSeconds(flacTwoSeconds), core.flacSeconds(Buffer.from('ID3 not flac at all, long enough'))], [true, 2, null])
+})
+
+await test('audio and 3D: formats send Chatterbox its own language labels, a script or a recording, lyrics or an instrumental, and TRELLIS.2 its values', async () => {
+  const { formats } = await import('../src/lib/formats/index.js')
+  const { stepOptions, stepModel, selectedStep } = await import('../src/lib/formats/options.js')
+  const by = Object.fromEntries(formats.map((f) => [f.id, f]))
+  const pick = (id, values) => {
+    const f = by[id]
+    const all = { ...sampleInputs(f), ...values }
+    const step = selectedStep(f, f.steps[0], all)
+    return { model: stepModel(f, step, all), o: stepOptions(f, step, all) }
+  }
+  const nodes = JSON.parse(fs.readFileSync('scripts/fixtures/comfy-nodes.json', 'utf8'))
+  const labels = nodes.packs.chatterbox.nodes.FL_ChatterboxMultilingualTTS.in.language[0]
+  for (const id of ['tts', 'talking-head']) {
+    for (const opt of by[id].inputs.find((i) => i.id === 'language').options) assert(labels.includes(opt.params.language), `${id} ${opt.id}: ${opt.params.language}`)
+  }
+  assert.equal(pick('tts', { language: 'zh' }).o.params.language, 'Chinese (zh)')
+  const typed = pick('talking-head', { source: 'script', script: 'Hi, welcome back.', language: 'es', emotion: 'warm' })
+  assert.deepEqual([typed.model.workflow, typed.o.fields.script, typed.o.params.language, typed.o.params.exaggeration], ['infinitetalk_tts', 'Hi, welcome back.', 'Spanish (es)', 0.6])
+  assert(!typed.o.prompt.includes('welcome back'), 'the video prompt describes the scene; Chatterbox speaks the script')
+  const recorded = pick('talking-head', { source: 'audio' })
+  assert.deepEqual([recorded.model.workflow, recorded.o.params], ['infinitetalk', {}], 'a recording sets no speech values')
+  assert(!by['talking-head'].inputs.some((i) => i.id === 'accent'), 'Chatterbox has no accent control')
+  assert.deepEqual(['', '   ', null, 'Verse one'].map((lyrics) => pick('music', { lyrics }).o.fields.lyrics), ['[Instrumental]', '[Instrumental]', '[Instrumental]', 'Verse one'])
+  assert.deepEqual(['draft', 'final'].map((detail) => pick('image-to-3d', { detail }).o.params.resolution), [1024, 1536])
+  const spin = pick('turntable', { background: 'dark' })
+  assert.deepEqual([spin.o.params.background, spin.o.prompt], ['#1c1c22', ''])
+  assert.equal(pick('voice-clone', { name: 'My narrator voice' }).o.prompt, 'Hello, this is My narrator voice. It is ready to read anything you write.')
+  assert.equal(pick('character-to-3d', {}).model.workflow, 'trellis2_character')
 })

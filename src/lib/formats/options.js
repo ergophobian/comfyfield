@@ -14,7 +14,7 @@ export function bindingValue(values, binding) {
 export function stepModel(format, step, values) {
   step = selectedStep(format, step, values)
   if (step.model) return models.find((m) => m.id === step.model)
-  return { id: `format:${format.id}:${step.id}`, provider: step.provider, model: step.endpoint, workflow: step.workflow, ...(step.imageWorkflow && { imageWorkflow: step.imageWorkflow }), kind: step.kind || format.kind, name: format.runsOn || format.name }
+  return { id: `format:${format.id}:${step.id}`, provider: step.provider, model: step.endpoint, workflow: step.workflow, ...(step.imageWorkflow && { imageWorkflow: step.imageWorkflow }), ...((step.sizes || format.sizes) && { sizes: step.sizes || format.sizes }), kind: step.kind || format.kind, name: format.runsOn || format.name }
 }
 
 export function stepOptions(format, step, values) {
@@ -22,7 +22,10 @@ export function stepOptions(format, step, values) {
   const opts = recipeOptions({ ...format, prompt: step.prompt ?? format.prompt ?? '', params: step.params || {}, settings: step.settings || format.settings || {} }, values)
   for (const [field, slot] of Object.entries(step.bindings || {})) {
     const value = bindingValue(values, slot)
-    if (value != null) opts.fields[field] = value?.url ?? value
+    // An empty optional field can stand for a value the model reads, such as MiniMax's [Instrumental].
+    const blank = typeof slot === 'string' ? format.inputs.find((i) => i.id === slot)?.blank : undefined
+    if (blank != null && (value == null || (typeof value === 'string' && !value.trim()))) opts.fields[field] = blank
+    else if (value != null) opts.fields[field] = value?.url ?? value
   }
   return opts
 }

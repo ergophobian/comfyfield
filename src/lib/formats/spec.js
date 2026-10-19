@@ -11,6 +11,8 @@ export function defineFormat(format) {
       prompt: format.prompt || '',
       params: format.params || {},
       settings: format.settings || {},
+      ...(format.bindings && { bindings: format.bindings }),
+      ...(format.sizes && { sizes: format.sizes }),
     }],
     outputs: format.outputs || [{ step: 'generate', kind: format.kind }],
   }

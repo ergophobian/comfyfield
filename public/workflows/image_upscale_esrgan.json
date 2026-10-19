@@ -1,0 +1,98 @@
+{
+  "1": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "{{image}}"
+    }
+  },
+  "2": {
+    "class_type": "GetImageSize",
+    "inputs": {
+      "image": [
+        "1",
+        0
+      ]
+    }
+  },
+  "3": {
+    "class_type": "PrimitiveFloat",
+    "inputs": {
+      "value": "{{upscale_factor}}"
+    }
+  },
+  "4": {
+    "class_type": "ComfyMathExpression",
+    "inputs": {
+      "expression": "max(1, min(c, 4096 / max(a, b))) / 4",
+      "values.a": [
+        "2",
+        0
+      ],
+      "values.b": [
+        "2",
+        1
+      ],
+      "values.c": [
+        "3",
+        0
+      ]
+    }
+  },
+  "5": {
+    "class_type": "UpscaleModelLoader",
+    "inputs": {
+      "model_name": "RealESRGAN_x4plus.safetensors"
+    }
+  },
+  "6": {
+    "class_type": "ImageUpscaleWithModel",
+    "inputs": {
+      "upscale_model": [
+        "5",
+        0
+      ],
+      "image": [
+        "1",
+        0
+      ]
+    }
+  },
+  "7": {
+    "class_type": "ResizeImageMaskNode",
+    "inputs": {
+      "input": [
+        "6",
+        0
+      ],
+      "resize_type": "scale by multiplier",
+      "resize_type.multiplier": [
+        "4",
+        0
+      ],
+      "scale_method": "area"
+    }
+  },
+  "8": {
+    "class_type": "JoinImageWithAlpha",
+    "inputs": {
+      "image": [
+        "7",
+        0
+      ],
+      "alpha": [
+        "1",
+        1
+      ]
+    }
+  },
+  "9": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": [
+        "8",
+        0
+      ],
+      "filename_prefix": "comfyfield/image_upscale_esrgan"
+    }
+  }
+}

@@ -598,9 +598,44 @@ export const schemas = {
     }
   },
   "comfy": {
+    "bernini_clone_edit": [
+      "duration",
+      "image",
+      "image2",
+      "image3",
+      "prompt",
+      "seed",
+      "start",
+      "video"
+    ],
+    "bernini_grade": [
+      "duration",
+      "prompt",
+      "seed",
+      "start",
+      "video"
+    ],
     "bernini_headswap": [
       "duration",
       "image",
+      "prompt",
+      "seed",
+      "start",
+      "video"
+    ],
+    "bernini_mixed": [
+      "duration",
+      "fps",
+      "prompt",
+      "seed",
+      "start",
+      "strength",
+      "video"
+    ],
+    "bernini_recreate_ad": [
+      "duration",
+      "image",
+      "image2",
       "prompt",
       "seed",
       "start",
@@ -635,12 +670,125 @@ export const schemas = {
       "start",
       "video"
     ],
+    "birefnet_image": [
+      "image",
+      "output"
+    ],
+    "birefnet_qwen_background": [
+      "image",
+      "prompt",
+      "seed"
+    ],
+    "birefnet_video_matte": [
+      "duration",
+      "start",
+      "video"
+    ],
+    "birefnet_video_matte_alpha": [
+      "duration",
+      "start",
+      "video"
+    ],
+    "birefnet_video_matte_scene": [
+      "background",
+      "duration",
+      "seed",
+      "start",
+      "video"
+    ],
+    "chatterbox_clone": [
+      "audio",
+      "prompt",
+      "seed"
+    ],
+    "chatterbox_tts": [
+      "cfg_weight",
+      "exaggeration",
+      "language",
+      "prompt",
+      "seed",
+      "voice"
+    ],
+    "chatterbox_vc": [
+      "audio",
+      "seed",
+      "voice"
+    ],
+    "cinema_shot": [
+      "duration",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "drama3_tts": [
+      "prompt",
+      "seed",
+      "voice"
+    ],
     "flux3_klein_t2i": [
       "count",
       "height",
       "prompt",
       "seed",
       "width"
+    ],
+    "flux_character_set": [
+      "count",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "flux_look": [
+      "count",
+      "height",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "flux_look_ref": [
+      "count",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "flux_trellis2": [
+      "prompt",
+      "seed"
+    ],
+    "h3_draw": [
+      "duration",
+      "image",
+      "mask",
+      "prompt",
+      "seed"
+    ],
+    "h3_extend": [
+      "duration",
+      "prompt",
+      "seconds",
+      "seed",
+      "start",
+      "video"
+    ],
+    "h3_flf2v": [
+      "duration",
+      "image",
+      "image2",
+      "prompt",
+      "seed"
+    ],
+    "h3_freevideo_flf2v": [
+      "duration",
+      "image",
+      "image2",
+      "prompt",
+      "seed"
     ],
     "h3_freevideo_i2v": [
       "duration",
@@ -663,6 +811,28 @@ export const schemas = {
       "prompt",
       "seed"
     ],
+    "h3_i2v_audio": [
+      "duration",
+      "image",
+      "prompt",
+      "seed"
+    ],
+    "h3_loop": [
+      "duration",
+      "height",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "h3_lora_i2v": [
+      "frames",
+      "image",
+      "image2",
+      "lora",
+      "lora_strength",
+      "prompt",
+      "seed"
+    ],
     "h3_open_i2v": [
       "frames",
       "height",
@@ -678,12 +848,64 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "h3_product_ad": [
+      "duration",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "h3_ref2v": [
+      "duration",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "h3_t2v": [
+      "duration",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "h3_truck_ad": [
+      "duration",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "hidream": [
+      "count",
+      "height",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "hunyuan_foley": [
+      "duration",
+      "prompt",
+      "seed",
+      "start",
+      "video"
+    ],
     "image_flux": [
       "count",
       "height",
       "prompt",
       "seed",
       "width"
+    ],
+    "image_grade": [
+      "grain",
+      "image",
+      "preset",
+      "temperature"
     ],
     "image_sdxl": [
       "count",
@@ -692,7 +914,119 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "image_upscale": [
+      "image",
+      "seed",
+      "upscale_factor"
+    ],
+    "image_upscale_esrgan": [
+      "image",
+      "upscale_factor"
+    ],
+    "infinitetalk": [
+      "audio",
+      "image",
+      "prompt",
+      "seed"
+    ],
+    "infinitetalk_tts": [
+      "cfg_weight",
+      "exaggeration",
+      "image",
+      "language",
+      "prompt",
+      "script",
+      "seed",
+      "voice"
+    ],
+    "infinitetalk_v2v": [
+      "audio",
+      "duration",
+      "prompt",
+      "seed",
+      "start",
+      "video"
+    ],
+    "klein_character": [
+      "count",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "klein_character_swap": [
+      "image",
+      "image2",
+      "prompt",
+      "seed"
+    ],
+    "klein_edit": [
+      "image",
+      "prompt",
+      "seed"
+    ],
+    "klein_edit_canvas": [
+      "count",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "klein_h3": [
+      "frames",
+      "image",
+      "motion",
+      "prompt",
+      "seed"
+    ],
+    "klein_headshot": [
+      "count",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "klein_ltx": [
+      "frames",
+      "image",
+      "motion",
+      "prompt",
+      "seed"
+    ],
+    "klein_moodboard": [
+      "count",
+      "height",
+      "image",
+      "image2",
+      "image3",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "klein_retouch": [
+      "image",
+      "prompt",
+      "seed"
+    ],
+    "krea2_t2i": [
+      "count",
+      "height",
+      "prompt",
+      "seed",
+      "width"
+    ],
     "ltx25_i2v": [
+      "frames",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "ltx25_multishot": [
       "frames",
       "height",
       "image",
@@ -715,6 +1049,95 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "minimax_music3": [
+      "duration",
+      "lyrics",
+      "prompt",
+      "seed"
+    ],
+    "qwen2511_edit": [
+      "image",
+      "image2",
+      "image3",
+      "prompt",
+      "seed"
+    ],
+    "qwen2511_relight": [
+      "image",
+      "prompt",
+      "seed"
+    ],
+    "qwen3_tts": [
+      "prompt",
+      "seed",
+      "voice"
+    ],
+    "qwen_character_sheet": [
+      "count",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "qwen_edit": [
+      "count",
+      "image",
+      "prompt",
+      "seed"
+    ],
+    "qwen_edit_mockup": [
+      "count",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "qwen_edit_outpaint": [
+      "count",
+      "image",
+      "pad",
+      "prompt",
+      "seed"
+    ],
+    "qwen_edit_place_product": [
+      "count",
+      "image",
+      "image2",
+      "prompt",
+      "seed"
+    ],
+    "qwen_edit_style_ref": [
+      "count",
+      "image",
+      "image2",
+      "prompt",
+      "seed"
+    ],
+    "qwen_edit_try_on": [
+      "count",
+      "image",
+      "image2",
+      "image3",
+      "prompt",
+      "seed"
+    ],
+    "qwen_edit_variants": [
+      "count",
+      "image",
+      "prompt",
+      "seed"
+    ],
+    "qwen_h3": [
+      "frames",
+      "height",
+      "image",
+      "motion",
+      "prompt",
+      "seed",
+      "width"
+    ],
     "qwen_image21_t2i": [
       "count",
       "height",
@@ -722,8 +1145,200 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "qwen_image_layered": [
+      "image",
+      "layers",
+      "seed"
+    ],
+    "qwen_image_logo": [
+      "count",
+      "height",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "qwen_image_ref": [
+      "count",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "qwen_ltx": [
+      "frames",
+      "image",
+      "motion",
+      "prompt",
+      "seed"
+    ],
+    "qwen_mockup_ltx": [
+      "frames",
+      "image",
+      "motion",
+      "prompt",
+      "seed"
+    ],
+    "qwen_multi_h3": [
+      "frames",
+      "image",
+      "image2",
+      "image3",
+      "image4",
+      "image5",
+      "motion",
+      "prompt",
+      "seed"
+    ],
+    "qwen_multiangle": [
+      "azimuth",
+      "batch",
+      "elevation",
+      "image",
+      "seed",
+      "zoom"
+    ],
+    "qwen_restore": [
+      "image",
+      "prompt",
+      "seed"
+    ],
+    "qwen_shots_grid": [
+      "image",
+      "seed"
+    ],
+    "qwen_try_on_h3": [
+      "frames",
+      "height",
+      "image",
+      "image2",
+      "image3",
+      "image4",
+      "motion",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "qwen_zoom_grid": [
+      "count",
+      "image",
+      "prompt",
+      "seed"
+    ],
+    "recammaster": [
+      "duration",
+      "orbit",
+      "prompt",
+      "seed",
+      "start",
+      "trajectory",
+      "video"
+    ],
+    "rife_interpolate": [
+      "duration",
+      "multiplier",
+      "start",
+      "video"
+    ],
+    "scail2_character_swap": [
+      "duration",
+      "image",
+      "prompt",
+      "seed",
+      "start",
+      "video"
+    ],
+    "seedvr2_image": [
+      "image",
+      "seed",
+      "target",
+      "upscale_factor"
+    ],
+    "seedvr2_video": [
+      "duration",
+      "seed",
+      "start",
+      "upscale_factor",
+      "video"
+    ],
+    "stable_audio3": [
+      "duration",
+      "prompt",
+      "seed"
+    ],
+    "storyboard": [
+      "count",
+      "height",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "storyboard_ref": [
+      "count",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "trellis2_character": [
+      "image",
+      "prompt",
+      "seed"
+    ],
+    "trellis2_image": [
+      "image",
+      "resolution",
+      "seed"
+    ],
+    "trellis2_turntable": [
+      "background",
+      "image",
+      "seed"
+    ],
+    "video_bg_change": [
+      "duration",
+      "prompt",
+      "seed",
+      "start",
+      "video"
+    ],
     "video_ltx": [
       "frames",
+      "height",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "void_inpaint": [
+      "duration",
+      "prompt",
+      "seed",
+      "start",
+      "target",
+      "video"
+    ],
+    "wan22_i2v": [
+      "duration",
+      "height",
+      "image",
+      "image2",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "wan22_lora_i2v": [
+      "duration",
+      "image",
+      "lora",
+      "lora_low",
+      "lora_low_strength",
+      "lora_strength",
+      "prompt",
+      "seed"
+    ],
+    "wan22_t2v": [
+      "duration",
       "height",
       "prompt",
       "seed",
@@ -736,6 +1351,65 @@ export const schemas = {
       "seed",
       "start",
       "video"
+    ],
+    "z_image": [
+      "count",
+      "height",
+      "prompt",
+      "seed",
+      "width"
+    ]
+  },
+  "comfyOptional": {
+    "bernini_clone_edit": [
+      "image2",
+      "image3"
+    ],
+    "bernini_recreate_ad": [
+      "image2"
+    ],
+    "chatterbox_tts": [
+      "voice"
+    ],
+    "drama3_tts": [
+      "voice"
+    ],
+    "h3_lora_i2v": [
+      "image2"
+    ],
+    "infinitetalk_tts": [
+      "voice"
+    ],
+    "klein_moodboard": [
+      "image2",
+      "image3"
+    ],
+    "ltx25_multishot": [
+      "image"
+    ],
+    "qwen2511_edit": [
+      "image2",
+      "image3"
+    ],
+    "qwen_edit_try_on": [
+      "image3"
+    ],
+    "qwen_h3": [
+      "image"
+    ],
+    "qwen_multi_h3": [
+      "image2",
+      "image3",
+      "image4",
+      "image5"
+    ],
+    "qwen_try_on_h3": [
+      "image2",
+      "image3",
+      "image4"
+    ],
+    "wan22_i2v": [
+      "image2"
     ]
   },
   "router": {

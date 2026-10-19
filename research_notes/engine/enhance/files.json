@@ -1,0 +1,62 @@
+{
+  "seedvr2_3b_int8_convrot.safetensors": {
+    "repo": "Comfy-Org/SeedVR2",
+    "path": "diffusion_models/seedvr2_3b_int8_convrot.safetensors",
+    "dir": "diffusion_models",
+    "gb": 3.46,
+    "vramGb": 24,
+    "cloud": true,
+    "sha256": "c3dec8bcc5916843a8a858572970597462e1f2dc598d6dfd818f6cd40f53a157",
+    "label": "SeedVR2 3B"
+  },
+  "seedvr2_ema_vae_fp16.safetensors": {
+    "repo": "Comfy-Org/SeedVR2",
+    "path": "vae/seedvr2_ema_vae_fp16.safetensors",
+    "dir": "vae",
+    "gb": 0.50,
+    "vramGb": 0,
+    "cloud": true,
+    "sha256": "20678548f420d98d26f11442d3528f8b8c94e57ee046ef93dbb7633da8612ca1",
+    "label": "The SeedVR2 VAE"
+  },
+  "RealESRGAN_x4plus.safetensors": {
+    "repo": "Comfy-Org/Real-ESRGAN_repackaged",
+    "path": "RealESRGAN_x4plus.safetensors",
+    "dir": "upscale_models",
+    "gb": 0.07,
+    "vramGb": 24,
+    "cloud": true,
+    "sha256": "37f9a931c215f040aa6d50f711f2cb115f713c46df1d0d6469a8bd7bfe9a60bb",
+    "label": "RealESRGAN"
+  },
+  "rife_v4.26.safetensors": {
+    "repo": "Comfy-Org/frame_interpolation",
+    "path": "frame_interpolation/rife_v4.26.safetensors",
+    "dir": "frame_interpolation",
+    "gb": 0.02,
+    "vramGb": 24,
+    "cloud": true,
+    "sha256": "151874592c877740e5db11522f4514df569eeafb0a0fcb2696f16e9e8d317c94",
+    "label": "RIFE 4.26"
+  },
+  "birefnet.safetensors": {
+    "repo": "Comfy-Org/BiRefNet",
+    "path": "background_removal/birefnet.safetensors",
+    "dir": "background_removal",
+    "gb": 0.44,
+    "vramGb": 0,
+    "cloud": true,
+    "sha256": "9ab37426bf4de0567af6b5d21b16151357149139362e6e8992021b8ce356a154",
+    "label": "BiRefNet"
+  },
+  "sam3.1_multiplex_fp16.safetensors": {
+    "repo": "Comfy-Org/sam3.1",
+    "path": "checkpoints/sam3.1_multiplex_fp16.safetensors",
+    "dir": "checkpoints",
+    "gb": 1.75,
+    "vramGb": 0,
+    "cloud": true,
+    "sha256": "9ba99c92703c2e8b4f47de2d34a539bb8e18923049e238b780d70dbe6368eb03",
+    "label": "SAM 3.1"
+  }
+}

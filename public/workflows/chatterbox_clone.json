@@ -1,0 +1,42 @@
+{
+  "1": {
+    "class_type": "LoadAudio",
+    "inputs": {
+      "audio": "{{audio}}"
+    },
+    "_meta": {
+      "title": "Voice sample"
+    }
+  },
+  "2": {
+    "class_type": "FL_ChatterboxMultilingualTTS",
+    "inputs": {
+      "text": "{{prompt}}",
+      "language": "English (en)",
+      "exaggeration": 0.5,
+      "cfg_weight": 0.5,
+      "temperature": 0.8,
+      "repetition_penalty": 2.0,
+      "min_p": 0.05,
+      "top_p": 1.0,
+      "seed": "{{seed}}",
+      "use_cpu": false,
+      "keep_model_loaded": false,
+      "audio_prompt": [
+        "1",
+        0
+      ]
+    }
+  },
+  "3": {
+    "class_type": "SaveAudioAdvanced",
+    "inputs": {
+      "audio": [
+        "2",
+        0
+      ],
+      "filename_prefix": "comfyfield/chatterbox_clone",
+      "format": "flac"
+    }
+  }
+}

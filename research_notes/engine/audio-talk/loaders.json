@@ -1,0 +1,35 @@
+{
+  "WanVideoModelLoader": {
+    "model": "diffusion_models"
+  },
+  "MultiTalkModelLoader": {
+    "model": "diffusion_models"
+  },
+  "WanVideoVAELoader": {
+    "model_name": "vae"
+  },
+  "WanVideoLoraSelect": {
+    "lora": "loras"
+  },
+  "WanVideoTextEncodeCached": {
+    "model_name": "text_encoders"
+  },
+  "Wav2VecModelLoader": {
+    "model": "wav2vec2"
+  },
+  "HunyuanFoleyModelLoader": {
+    "foley_checkpoint_name": "hunyuan_foley"
+  },
+  "LoadDACHunyuanVAE": {
+    "vae_name": "vae"
+  },
+  "Drama3Loader": {
+    "model_name": "diffusion_models"
+  },
+  "Drama3CodecLoader": {
+    "codec_name": "vae"
+  },
+  "Qwen3ASRLoader": {
+    "model_name": "asr"
+  }
+}

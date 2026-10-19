@@ -1,5 +1,6 @@
 // Just for fun: toys, stickers, cards and game styles made from a photo.
 import { open, photo, note, covers } from './parts.js'
+import { h3Sizes } from '../catalog.js'
 
 const qwen = { runsOn: 'Qwen-Image 2.1', workflow: 'qwen_edit' }
 const klein = { runsOn: 'FLUX 3 Image Klein', workflow: 'klein_edit' }
@@ -14,7 +15,7 @@ export const fun = [
     cover: covers.peach,
   }),
   open({
-    id: 'figure-box', name: 'Boxed figure', kind: 'image', category: 'fun', hub: 'games', ...qwen,
+    id: 'figure-box', name: 'Boxed figure', kind: 'image', category: 'fun', hub: 'games', ...qwen, workflow: 'qwen_edit_mockup',
     blurb: 'Make your photo a collectible figure in its box.',
     inputs: [
       photo,
@@ -30,7 +31,7 @@ export const fun = [
     cover: covers.sky,
   }),
   open({
-    id: 'sticker', name: 'Die-cut sticker', kind: 'image', category: 'fun', hub: 'enhance', ...klein,
+    id: 'sticker', name: 'Die-cut sticker', kind: 'image', category: 'fun', hub: 'enhance', ...klein, workflow: 'klein_edit_canvas',
     blurb: 'Turn your photo into a sticker with a white edge.',
     inputs: [
       photo,
@@ -58,7 +59,7 @@ export const fun = [
     cover: covers.sun,
   }),
   open({
-    id: 'game-style', name: 'Video game style', kind: 'image', category: 'fun', featured: true, hub: 'games', ...klein,
+    id: 'game-style', name: 'Video game style', kind: 'image', category: 'fun', featured: true, hub: 'games', ...klein, workflow: 'klein_edit_canvas',
     blurb: 'See your photo as a scene from a video game.',
     inputs: [
       photo,
@@ -101,7 +102,7 @@ export const fun = [
     cover: covers.rose,
   }),
   open({
-    id: 'behind-the-scenes', name: 'Behind the scenes', kind: 'image', category: 'fun', hub: 'professional', ...qwen,
+    id: 'behind-the-scenes', name: 'Behind the scenes', kind: 'image', category: 'fun', hub: 'professional', ...qwen, workflow: 'qwen_edit_mockup',
     blurb: 'Pull back to reveal your photo was shot on a film set.',
     inputs: [photo, note],
     prompt: 'Pull the camera back to reveal that this photo was a scene on a busy film set. The original moment stays exactly as it is in the middle, now surrounded by light stands, softboxes, a boom mic overhead, a camera on a dolly track, cables on the floor and a few crew members in black checking monitors and holding reflectors. A natural behind the scenes snapshot. {note}',
@@ -109,7 +110,7 @@ export const fun = [
     cover: covers.night,
   }),
   open({
-    id: 'life-sim', name: 'Life sim game', kind: 'image', category: 'fun', hub: 'games', ...qwen,
+    id: 'life-sim', name: 'Life sim game', kind: 'image', category: 'fun', hub: 'games', ...qwen, workflow: 'qwen_edit_mockup',
     blurb: 'Drop yourself into a cozy life simulation game.',
     inputs: [photo, note],
     prompt: 'Turn this photo into a screenshot from a cozy life simulation game. The subject becomes a stylized 3D game character inside a dollhouse cutaway of a home seen from a high isometric angle, a small glowing marker floating above their head, a needs panel with mood bars in the corner, a clock and speed controls at the top, bright cheerful colors. Keep their face, hair and outfit recognizable. {note}',
@@ -117,7 +118,7 @@ export const fun = [
     cover: covers.mint,
   }),
   open({
-    id: 'game-show', name: 'Game show contestant', kind: 'image', category: 'fun', hub: 'video-edit', ...qwen,
+    id: 'game-show', name: 'Game show contestant', kind: 'image', category: 'fun', hub: 'video-edit', ...qwen, workflow: 'qwen_edit_mockup',
     blurb: 'Put yourself behind a podium on a bright TV game show.',
     inputs: [photo, note],
     prompt: 'Place the person from this photo behind a contestant podium on a bright television game show set, smiling with a buzzer in front of them. A glossy stage floor, a wall of colored lights and a big prize wheel behind, a lit podium with a blank name card, confetti in the air, studio broadcast lighting. Keep their face, hair and outfit the same. {note}',
@@ -127,14 +128,14 @@ export const fun = [
   open({
     id: 'cloud-surfing', name: 'Cloud surfing', kind: 'video', category: 'fun', hub: 'trending',
     blurb: 'Surf across a sea of clouds high in the sky.',
-    runsOn: 'MiniMax H3', workflow: 'h3_i2v',
+    runsOn: 'MiniMax H3', workflow: 'h3_open_i2v', sizes: h3Sizes,
     inputs: [photo, note],
     prompt: 'The subject rides a surfboard across a rolling sea of sunlit clouds high above the earth, carving smooth turns as wisps of cloud spray off the board, hair and clothes blowing in the wind. The camera tracks alongside in golden light under a deep blue sky. Their face and outfit stay true to the photo. {note}',
     settings: { aspect: 'auto', duration: 5 },
     cover: covers.sky,
   }),
   open({
-    id: 'photocard', name: 'Idol photocard', kind: 'image', category: 'fun', ...qwen,
+    id: 'photocard', name: 'Idol photocard', kind: 'image', category: 'fun', ...qwen, workflow: 'qwen_edit_mockup',
     blurb: 'Turn a portrait into a glossy pop idol photocard.',
     inputs: [{ ...photo, label: 'Portrait' }, note],
     prompt: 'Turn this portrait into a pop idol photocard: a glossy trading card with rounded corners showing the person in a bright soft focus studio portrait with dewy skin and a sweet pose, a pastel gradient background, small star and heart stickers and a little doodled heart in the corner. The card is held between two fingers in front of a softly blurred bedroom. Keep their face and hair the same. {note}',
@@ -142,7 +143,7 @@ export const fun = [
     cover: covers.rose,
   }),
   open({
-    id: 'all-fine', name: 'Everything is fine', kind: 'image', category: 'fun', hub: 'trending', ...klein,
+    id: 'all-fine', name: 'Everything is fine', kind: 'image', category: 'fun', hub: 'trending', ...klein, workflow: 'klein_edit_canvas',
     blurb: 'Sip calmly while the room goes up in cartoon flames.',
     inputs: [photo, note],
     prompt: 'Redraw this photo as a simple flat cartoon. The subject sits calmly at a little table with a steaming mug and a relaxed smile while cartoon flames and puffs of smoke fill the room around them. Thick outlines, flat colors, a soft orange glow, a light and silly mood where nobody is hurt. Keep the subject recognizable. {note}',

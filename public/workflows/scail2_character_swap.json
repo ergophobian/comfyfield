@@ -1,0 +1,449 @@
+{
+  "1": {
+    "class_type": "LoadVideo",
+    "inputs": {
+      "file": "{{video}}"
+    }
+  },
+  "2": {
+    "class_type": "Video Slice",
+    "inputs": {
+      "video": [
+        "1",
+        0
+      ],
+      "start_time": "{{start}}",
+      "duration": "{{duration}}",
+      "strict_duration": false
+    }
+  },
+  "3": {
+    "class_type": "GetVideoComponents",
+    "inputs": {
+      "video": [
+        "2",
+        0
+      ]
+    }
+  },
+  "80": {
+    "class_type": "GetImageSize",
+    "inputs": {
+      "image": [
+        "3",
+        0
+      ]
+    }
+  },
+  "81": {
+    "class_type": "PrimitiveInt",
+    "inputs": {
+      "value": 81
+    }
+  },
+  "82": {
+    "class_type": "ComfyMathExpression",
+    "inputs": {
+      "expression": "min(4 * floor((a - 1) / 4) + 1, b)",
+      "values.a": [
+        "80",
+        2
+      ],
+      "values.b": [
+        "81",
+        0
+      ]
+    }
+  },
+  "83": {
+    "class_type": "ComfyMathExpression",
+    "inputs": {
+      "expression": "max(32, 32 * round(a * min(1, 896 / max(a, b)) / 32))",
+      "values.a": [
+        "80",
+        0
+      ],
+      "values.b": [
+        "80",
+        1
+      ]
+    }
+  },
+  "84": {
+    "class_type": "ComfyMathExpression",
+    "inputs": {
+      "expression": "max(32, 32 * round(b * min(1, 896 / max(a, b)) / 32))",
+      "values.a": [
+        "80",
+        0
+      ],
+      "values.b": [
+        "80",
+        1
+      ]
+    }
+  },
+  "4": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "{{image}}"
+    }
+  },
+  "5": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "wan2.1_14B_SCAIL_2_int8_convrot.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "6": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": {
+      "model": [
+        "5",
+        0
+      ],
+      "lora_name": "wan2.1_SCAIL_2_DPO_lora_bf16.safetensors",
+      "strength_model": 1.0
+    }
+  },
+  "7": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": {
+      "model": [
+        "6",
+        0
+      ],
+      "lora_name": "lightx2v_I2V_14B_480p_cfg_step_distill_rank64_bf16.safetensors",
+      "strength_model": 0.8
+    }
+  },
+  "8": {
+    "class_type": "ModelSamplingSD3",
+    "inputs": {
+      "model": [
+        "7",
+        0
+      ],
+      "shift": 5.0
+    }
+  },
+  "9": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+      "type": "wan",
+      "device": "default"
+    }
+  },
+  "10": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "Wan2_1_VAE_bf16.safetensors"
+    }
+  },
+  "11": {
+    "class_type": "CLIPVisionLoader",
+    "inputs": {
+      "clip_name": "clip_vision_h.safetensors"
+    }
+  },
+  "12": {
+    "class_type": "CLIPVisionEncode",
+    "inputs": {
+      "clip_vision": [
+        "11",
+        0
+      ],
+      "image": [
+        "4",
+        0
+      ],
+      "crop": "none"
+    }
+  },
+  "13": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "{{prompt}}",
+      "clip": [
+        "9",
+        0
+      ]
+    }
+  },
+  "14": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "",
+      "clip": [
+        "9",
+        0
+      ]
+    }
+  },
+  "15": {
+    "class_type": "ImageFromBatch",
+    "inputs": {
+      "image": [
+        "3",
+        0
+      ],
+      "batch_index": 0,
+      "length": [
+        "82",
+        1
+      ]
+    }
+  },
+  "16": {
+    "class_type": "ImageScale",
+    "inputs": {
+      "image": [
+        "15",
+        0
+      ],
+      "upscale_method": "area",
+      "width": [
+        "83",
+        1
+      ],
+      "height": [
+        "84",
+        1
+      ],
+      "crop": "center"
+    }
+  },
+  "17": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "sam3.1_multiplex_fp16.safetensors"
+    }
+  },
+  "18": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "human",
+      "clip": [
+        "17",
+        1
+      ]
+    }
+  },
+  "21": {
+    "class_type": "SAM3_VideoTrack",
+    "inputs": {
+      "images": [
+        "16",
+        0
+      ],
+      "model": [
+        "17",
+        0
+      ],
+      "conditioning": [
+        "18",
+        0
+      ],
+      "detection_threshold": 0.5,
+      "max_objects": 4,
+      "detect_interval": 1
+    }
+  },
+  "22": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "human",
+      "clip": [
+        "17",
+        1
+      ]
+    }
+  },
+  "23": {
+    "class_type": "SAM3_VideoTrack",
+    "inputs": {
+      "images": [
+        "4",
+        0
+      ],
+      "model": [
+        "17",
+        0
+      ],
+      "conditioning": [
+        "22",
+        0
+      ],
+      "detection_threshold": 0.5,
+      "max_objects": 4,
+      "detect_interval": 1
+    }
+  },
+  "24": {
+    "class_type": "SCAIL2ColoredMask",
+    "inputs": {
+      "driving_track_data": [
+        "21",
+        0
+      ],
+      "ref_track_data": [
+        "23",
+        0
+      ],
+      "object_indices": "0",
+      "sort_by": "area",
+      "replacement_mode": true
+    }
+  },
+  "25": {
+    "class_type": "WanSCAILToVideo",
+    "inputs": {
+      "positive": [
+        "13",
+        0
+      ],
+      "negative": [
+        "14",
+        0
+      ],
+      "vae": [
+        "10",
+        0
+      ],
+      "width": [
+        "83",
+        1
+      ],
+      "height": [
+        "84",
+        1
+      ],
+      "length": [
+        "82",
+        1
+      ],
+      "batch_size": 1,
+      "pose_video": [
+        "16",
+        0
+      ],
+      "pose_video_mask": [
+        "24",
+        0
+      ],
+      "replacement_mode": true,
+      "pose_strength": 1.0,
+      "pose_start": 0.0,
+      "pose_end": 1.0,
+      "reference_image": [
+        "4",
+        0
+      ],
+      "reference_image_mask": [
+        "24",
+        1
+      ],
+      "clip_vision_output": [
+        "12",
+        0
+      ],
+      "video_frame_offset": 0,
+      "previous_frame_count": 5
+    }
+  },
+  "26": {
+    "class_type": "KSamplerSelect",
+    "inputs": {
+      "sampler_name": "euler"
+    }
+  },
+  "27": {
+    "class_type": "BasicScheduler",
+    "inputs": {
+      "model": [
+        "7",
+        0
+      ],
+      "scheduler": "simple",
+      "steps": 6,
+      "denoise": 1.0
+    }
+  },
+  "28": {
+    "class_type": "SamplerCustom",
+    "inputs": {
+      "model": [
+        "8",
+        0
+      ],
+      "add_noise": true,
+      "noise_seed": "{{seed}}",
+      "cfg": 1.0,
+      "positive": [
+        "25",
+        0
+      ],
+      "negative": [
+        "25",
+        1
+      ],
+      "sampler": [
+        "26",
+        0
+      ],
+      "sigmas": [
+        "27",
+        0
+      ],
+      "latent_image": [
+        "25",
+        2
+      ]
+    }
+  },
+  "29": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "28",
+        1
+      ],
+      "vae": [
+        "10",
+        0
+      ]
+    }
+  },
+  "19": {
+    "class_type": "CreateVideo",
+    "inputs": {
+      "images": [
+        "29",
+        0
+      ],
+      "audio": [
+        "3",
+        1
+      ],
+      "fps": [
+        "3",
+        2
+      ]
+    }
+  },
+  "20": {
+    "class_type": "SaveVideo",
+    "inputs": {
+      "video": [
+        "19",
+        0
+      ],
+      "filename_prefix": "comfyfield/scail2_character_swap",
+      "format": "mp4",
+      "codec": "h264",
+      "format.codec": "h264"
+    }
+  }
+}

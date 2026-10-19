@@ -12,5 +12,5 @@
       "watermark": false
     }
   },
-  "3": { "class_type": "SaveVideo", "inputs": { "video": ["2", 0], "filename_prefix": "comfyfield/h3", "format": "mp4", "codec": "h264" } }
+  "3": { "class_type": "SaveVideo", "inputs": { "video": ["2", 0], "filename_prefix": "comfyfield/h3", "format": "mp4", "codec": "h264", "format.codec": "h264" } }
 }

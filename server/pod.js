@@ -255,13 +255,14 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
   }
 
   function downloads() {
-    return Object.entries(m.status?.downloads || {}).map(([k, v]) => ({ file: k.split('/').pop(), dir: k.split('/')[0], ...v }))
+    return Object.entries(m.status?.downloads || {}).map(([k, v]) => ({ file: k.slice(k.lastIndexOf('/') + 1), dir: k.slice(0, k.lastIndexOf('/')), ...v }))
   }
   const runtimeName = (id) => RUNTIMES[id]?.name || id
   function runtimes() {
     return Object.entries(m.status?.runtimes || {}).map(([id, v]) => ({ runtime: id, name: runtimeName(id), minutes: RUNTIMES[id]?.minutes || null, ...v }))
   }
-  const installing = () => runtimes().some((e) => e.state === 'installing')
+  // A node pack that is installed but not yet loaded by ComfyUI is still installing.
+  const installing = () => runtimes().some((e) => e.state === 'installing' || e.state === 'loading')
 
   function status() {
     const rec = record()
@@ -276,6 +277,9 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
       },
       spend: { today: spentToday(), cap: cap() },
       runs: m.leases.size, queue: m.status?.queue ?? null, downloads: downloads(), runtimes: runtimes(),
+      // What is on the Pod's disk, for the Pods page. Known only while the Pod runs.
+      models: m.status?.models || [], disk: m.status ? { freeGb: m.status.diskFreeGb ?? null, totalGb: m.status.diskTotalGb ?? null } : null,
+      evicted: m.status?.evicted || [], preparing: Boolean(rec?.prepare),
       ending: m.ending?.then || null, event: m.event, connected: Boolean(key()),
     }
   }
@@ -307,6 +311,7 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
     if (!rec) return status()
     charge()
     await heartbeat(rec)
+    await flushPrepare().catch(() => null)
     const reason = guard()
     if (reason) await end('terminate', reason)
     else if (m.ending && m.leases.size === 0 && !(m.status?.queue > 0)) await end(m.ending.then, m.ending.then === 'pause' ? 'Paused after the queue finished.' : 'Terminated after the queue finished.')
@@ -337,8 +342,9 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
 
   // `runtimes` start installing as soon as the Pod boots, for a run that waits on them. A `gpu` picked
   // by hand ({ gpuTypeId, cloudType } from the ladder) is the only one tried. A Session tier's `order`
-  // lists the GPUs to try in its order instead of the ladder's.
-  async function start({ minVramGb = 0, volumeGb = 60, runtimes: want = [], gpu = null, order = null, tier = null } = {}) {
+  // lists the GPUs to try in its order instead of the ladder's. `prepare` ({ files, runtimes }) gets the
+  // Pod ready for services before their first run, as soon as it answers.
+  async function start({ minVramGb = 0, volumeGb = 60, runtimes: want = [], gpu = null, order = null, tier = null, prepare: ready = null } = {}) {
     if (!key()) throw fail('Add your RunPod key in Connections first.', 400)
     await adopt({ force: true }).catch(() => null)
     if (record() || m.placing) throw fail('A Pod already exists. ComfyField runs one Pod at a time.', 409)
@@ -383,7 +389,8 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
           const t = now()
           // `fellBack`: the tier's first GPU had no machine free, so the Pod runs on a later one.
           save({ id: r.data.id, name, token, gpuTypeId: rung.gpuTypeId, gpu: rung.name, vramGb: rung.vramGb, cloudType: rung.cloudType, arch: rung.arch || null, costPerHr: r.data.costPerHr || 0, volumeGb: volume, idleMin, createdAt: t, startedAt: t, pausedAt: null,
-            tier: tier || null, fellBack: Boolean(order && refused > 0) })
+            tier: tier || null, fellBack: Boolean(order && refused > 0),
+            ...(ready && (ready.files?.length || ready.runtimes?.length) ? { prepare: { files: ready.files || [], runtimes: ready.runtimes || [] } } : {}) })
           charge(t)
           m.placing = false
           kick()
@@ -472,14 +479,86 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
 
   // ---- leases ------------------------------------------------------------------------------------
 
+  // Files other runs on the Pod still need, which making room must not remove.
+  const kept = (except) => [...new Set([...m.leases].filter((x) => x !== except).flatMap((x) => x.files).map((f) => `${f.dir}/${f.name}`))]
+  const wire = (files) => files.map(({ repo, path: p, dir, name, sha256, gb, bytes }) => ({ repo, path: p, dir, name, ...(sha256 ? { sha256 } : {}),
+    ...(Number.isInteger(bytes) ? { bytes } : gb ? { bytes: Math.round(gb * 1e9) } : {}) }))
+
+  // Asks the Pod for files and runtimes it lacks. A failed install starts again on this request.
+  async function ask(rec, files, need, except) {
+    const have = new Set((m.status?.models || []).map((f) => `${f.dir}/${f.name}`))
+    const missing = files.filter((f) => !have.has(`${f.dir}/${f.name}`))
+    const pending = need.filter((e) => m.status?.runtimes?.[e]?.state !== 'ready')
+    if (missing.length) {
+      const r = await call(`${statusUrl(rec.id)}/download`, { method: 'POST', token: rec.token, body: { files: wire(missing), keep: kept(except) } })
+      if (!r.ok) throw fail(`The Pod refused the model download: ${errorText(r.data) || `HTTP ${r.status}`}`, 502)
+      if (r.data?.downloads && m.status) m.status = { ...m.status, downloads: { ...m.status.downloads, ...r.data.downloads } }
+    }
+    for (const e of pending) {
+      const r = await call(`${statusUrl(rec.id)}/runtime/${e}`, { method: 'POST', token: rec.token })
+      if (!r.ok) throw fail(`The Pod could not start installing ${runtimeName(e)}: ${errorText(r.data) || `HTTP ${r.status}`}`, 502)
+      if (r.data?.runtime && m.status) m.status = { ...m.status, runtimes: { ...m.status.runtimes, [e]: r.data.runtime } }
+    }
+    return { missing, pending }
+  }
+
+  function downloadError(f, d) {
+    if (d.error !== 'disk full') return `Could not download ${f.name} to the Pod: ${d.error || 'unknown error'}`
+    const more = d.shortGb ? ` It needs about ${Math.ceil(d.shortGb)} GB more.` : ''
+    return `The Pod's disk is too small for this run.${more} Remove models on the Pods page, or start a Pod with a bigger disk.`
+  }
+
+  // Services the Pods page gets ready ahead of their first run. A Pod that has not answered yet keeps
+  // the list on its record until it does, so a start can carry it.
+  async function flushPrepare() {
+    const rec = record()
+    if (!rec?.prepare || rec.pausedAt || !m.status) return
+    await ask(rec, rec.prepare.files || [], rec.prepare.runtimes || [], null)
+    const cur = record()
+    if (cur?.id === rec.id) save({ ...cur, prepare: null })
+  }
+  async function prepare({ files = [], runtimes: need = [] } = {}) {
+    const rec = record()
+    if (!rec || rec.pausedAt) throw fail('Start or resume a Pod first.', 409)
+    for (const id of need) {
+      if (!RUNTIMES[id]) throw fail('Unknown runtime.', 400)
+      if ((rec.vramGb ?? Infinity) < RUNTIMES[id].vramGb) throw fail(`${RUNTIMES[id].name} needs a ${RUNTIMES[id].vramGb} GB GPU; this Pod has ${rec.vramGb} GB.`, 400)
+    }
+    const old = rec.prepare || { files: [], runtimes: [] }
+    const byKey = new Map([...old.files, ...files].map((f) => [`${f.dir}/${f.name}`, f]))
+    save({ ...rec, prepare: { files: [...byKey.values()], runtimes: [...new Set([...old.runtimes, ...need])] } })
+    await flushPrepare()
+    kick()
+    return status()
+  }
+
+  // Removes one model file from the Pod's disk. A file a run is using stays.
+  async function remove({ dir, name } = {}) {
+    const rec = record()
+    if (!rec || rec.pausedAt || !m.status) throw fail('The Pod is not running.', 409)
+    if (kept(null).includes(`${dir}/${name}`)) throw fail(`A run is using ${name}.`, 409)
+    // A pack's own files sit in subfolders: each part of the folder travels encoded on its own.
+    const at = `${dir.split('/').map(encodeURIComponent).join('/')}/${encodeURIComponent(name)}`
+    const r = await call(`${statusUrl(rec.id)}/models/${at}`, { method: 'DELETE', token: rec.token })
+    if (!r.ok && r.status !== 404) throw fail(`The Pod could not remove ${name}: ${errorText(r.data) || `HTTP ${r.status}`}`, r.status === 409 ? 409 : 502)
+    await refresh().catch(() => null)
+    return status()
+  }
+
   // A run holds a lease while it uses the Pod: it waits for a starting Pod, gets its missing model
-  // files and runtimes, and keeps the Pod beaten. It never starts or resumes one.
+  // files and runtimes, and keeps the Pod beaten. It never starts or resumes one. It asks for its files
+  // as soon as the Pod's status server answers, so they download while ComfyUI is still coming up.
   async function lease({ files = [], runtimes: need = [], signal, onStage = () => {}, pollMs = 3000 } = {}) {
     const ctl = new AbortController()
-    const l = { signal: ctl.signal, reason: null, end: (why) => { l.reason = why; ctl.abort(new Error(why)) } }
+    const l = { files, signal: ctl.signal, reason: null, end: (why) => { l.reason = why; ctl.abort(new Error(why)) } }
     const stop = () => l.end('Cancelled.')
     signal?.addEventListener('abort', stop)
     const check = () => { if (l.reason) throw fail(l.reason, 409) }
+    const alive = (rec) => {
+      if (!rec && !m.placing) throw fail(m.event && now() - m.event.at < 10 * MIN ? `${m.event.text} ${NO_POD}` : NO_POD, 409, { code: 'no_pod' })
+      if (rec?.pausedAt) throw fail(NO_POD, 409, { code: 'paused' })
+      if (m.ending) throw fail('The Pod is ending after its queue. Keep it from the Pod chip in the top bar.', 409, { code: 'ending' })
+    }
     m.leases.add(l)
     const beat = setInterval(() => heartbeat(), 20_000)
     beat.unref?.()
@@ -489,46 +568,27 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
         check()
         await adopt().catch(() => null)
         const rec = m.placing ? null : await refresh().catch(() => record())
-        if (!rec && !m.placing) throw fail(m.event && now() - m.event.at < 10 * MIN ? `${m.event.text} ${NO_POD}` : NO_POD, 409, { code: 'no_pod' })
-        if (rec?.pausedAt) throw fail(NO_POD, 409, { code: 'paused' })
-        if (m.ending) throw fail('The Pod is ending after its queue. Keep it from the Pod chip in the top bar.', 409, { code: 'ending' })
-        if (rec && m.status?.ready) break
+        alive(rec)
+        if (rec && m.status) break
         onStage('waiting')
         await wait(pollMs)
       }
-      const have = new Set((m.status.models || []).map((f) => `${f.dir}/${f.name}`))
-      const missing = files.filter((f) => !have.has(`${f.dir}/${f.name}`))
-      const pending = need.filter((e) => m.status.runtimes?.[e]?.state !== 'ready')
-      if (missing.length || pending.length) {
-        onStage(pending.length ? 'installing' : 'downloading')
-        const rec = record()
-        if (missing.length) {
-          const r = await call(`${statusUrl(rec.id)}/download`, { method: 'POST', token: rec.token, body: { files: missing.map(({ repo, path: p, dir, name, sha256 }) => ({ repo, path: p, dir, name, ...(sha256 ? { sha256 } : {}) })) } })
-          if (!r.ok) throw fail(`The Pod refused the model download: ${errorText(r.data) || `HTTP ${r.status}`}`, 502)
-        }
-        for (const e of pending) {
-          // A failed install starts again on this request; the reply says so before the next refresh.
-          const r = await call(`${statusUrl(rec.id)}/runtime/${e}`, { method: 'POST', token: rec.token })
-          if (!r.ok) throw fail(`The Pod could not start installing ${runtimeName(e)}: ${errorText(r.data) || `HTTP ${r.status}`}`, 502)
-          if (r.data?.runtime && m.status) m.status = { ...m.status, runtimes: { ...m.status.runtimes, [e]: r.data.runtime } }
-        }
-        for (;;) {
-          check()
-          await wait(pollMs)
-          await refresh().catch(() => null)
-          check()
-          if (!record()) throw fail(m.event?.text || NO_POD, 409)
-          const d = m.status?.downloads || {}
-          const failed = missing.find((f) => d[`${f.dir}/${f.name}`]?.state === 'failed')
-          if (failed) {
-            const err = d[`${failed.dir}/${failed.name}`].error || 'unknown error'
-            throw fail(err === 'disk full' ? 'The Pod\'s disk is full. Terminate it and start a new one.' : `Could not download ${failed.name} to the Pod: ${err}`, 502)
-          }
-          const en = m.status?.runtimes || {}
-          const broke = pending.find((e) => en[e]?.state === 'failed')
-          if (broke) throw fail(`${runtimeName(broke)} could not install on the Pod: ${en[broke].error || 'unknown error'}`, 502)
-          if (missing.every((f) => d[`${f.dir}/${f.name}`]?.state === 'done') && pending.every((e) => en[e]?.state === 'ready')) break
-        }
+      const { missing, pending } = await ask(record(), files, need, l)
+      for (;;) {
+        check()
+        const d = m.status?.downloads || {}
+        const failed = missing.find((f) => d[`${f.dir}/${f.name}`]?.state === 'failed')
+        if (failed) throw fail(downloadError(failed, d[`${failed.dir}/${failed.name}`]), 502)
+        const en = m.status?.runtimes || {}
+        const broke = pending.find((e) => en[e]?.state === 'failed')
+        if (broke) throw fail(`${runtimeName(broke)} could not install on the Pod: ${en[broke].error || 'unknown error'}`, 502)
+        const placed = missing.every((f) => d[`${f.dir}/${f.name}`]?.state === 'done') && pending.every((e) => en[e]?.state === 'ready')
+        if (m.status?.ready && placed) break
+        onStage(!m.status?.ready && placed ? 'waiting' : pending.some((e) => en[e]?.state !== 'ready') ? 'installing' : missing.length ? 'downloading' : 'waiting')
+        await wait(pollMs)
+        await refresh().catch(() => null)
+        check()
+        alive(record())
       }
       check()
       const rec = record()
@@ -580,11 +640,13 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
   const arch = () => (record() ? record().arch || 'blackwell' : null)
   // What the Pod has room for: its free disk and its runtimes, for picking a run's graph.
   const room = () => ({ diskFreeGb: m.status?.diskFreeGb ?? null, runtimes: Object.fromEntries(runtimes().map((e) => [e.runtime, e.state])) })
+  // Model files on the Pod, for the Pods page and for a run that picks its graph.
+  const models = () => m.status?.models || []
 
   async function test() {
     if (!key()) return false
     return gql('query { myself { id } }').then((d) => Boolean(d?.myself?.id)).catch(() => false)
   }
 
-  return { status, quote, start, pause, resume, terminate, keep, lease, tick, refresh, phaseNow, vramGb, arch, room, startMonitor, stopMonitor, test, guard, spentToday }
+  return { status, quote, start, pause, resume, terminate, keep, lease, prepare, remove, tick, refresh, phaseNow, vramGb, arch, room, models, startMonitor, stopMonitor, test, guard, spentToday }
 }

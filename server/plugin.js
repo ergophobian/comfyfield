@@ -194,11 +194,13 @@ async function podQuote(workflow) {
 }
 
 // A start names a workflow (sized for it, on a Session tier's GPUs), or comes from the Pods page: a size,
-// or a GPU picked by hand, a disk size and runtimes to install. The Pod manager checks the GPU and the
-// runtimes. Starting, resuming or keeping a Pod is choosing a Session, so later runs use the Pod.
-export async function podAction(action, { workflow, now, minVramGb, gpu, volumeGb, runtimes, tier } = {}) {
+// or a GPU picked by hand, a disk size, runtimes to install and services to get ready for. The Pod manager
+// checks the GPU and the runtimes. `prepare` gets a running Pod ready for services; `remove` frees one
+// model file. Starting, resuming or keeping a Pod is choosing a Session, so later runs use the Pod.
+export async function podAction(action, { workflow, now, minVramGb, gpu, volumeGb, runtimes, services, dir, name, tier } = {}) {
   const p = core.pod()
   const session = (out) => { core.saveConnection('comfy', { run: 'session' }); return out }
+  if (services != null && (!Array.isArray(services) || !services.every((s) => typeof s === 'string'))) throw Object.assign(new Error('Services are a list.'), { status: 400 })
   if (action === 'start' && workflow) {
     if (tier != null && !TIER_IDS.includes(tier)) throw Object.assign(new Error(`The Session tier is ${TIER_IDS.join(', ')}.`), { status: 400 })
     const id = tier || core.podTier()
@@ -211,8 +213,17 @@ export async function podAction(action, { workflow, now, minVramGb, gpu, volumeG
   if (action === 'start') {
     if (volumeGb != null && !POD_VOLUMES.includes(Number(volumeGb))) throw Object.assign(new Error(`Pick a disk of ${POD_VOLUMES.join(', ')} GB.`), { status: 400 })
     if (runtimes != null && !Array.isArray(runtimes)) throw Object.assign(new Error('Runtimes are a list.'), { status: 400 })
-    return session(await p.start({ minVramGb: Math.max(0, Number(minVramGb) || 0), volumeGb: Number(volumeGb) || POD_VOLUMES[0], runtimes: (runtimes || []).map(String),
-      gpu: gpu ? { gpuTypeId: String(gpu.gpuTypeId), cloudType: String(gpu.cloudType) } : null }))
+    const ready = services?.length ? await core.podPrepareFor(services) : null
+    return session(await p.start({ minVramGb: Math.max(0, Number(minVramGb) || 0, ready?.minVramGb || 0), volumeGb: Math.max(Number(volumeGb) || POD_VOLUMES[0], ready?.volumeGb || 0),
+      runtimes: (runtimes || []).map(String), gpu: gpu ? { gpuTypeId: String(gpu.gpuTypeId), cloudType: String(gpu.cloudType) } : null, prepare: ready }))
+  }
+  if (action === 'prepare') {
+    if (!services?.length) throw Object.assign(new Error('Pick a service to get ready for.'), { status: 400 })
+    return p.prepare(await core.podPrepareFor(services, p.vramGb()))
+  }
+  if (action === 'remove') {
+    if (typeof dir !== 'string' || typeof name !== 'string') throw Object.assign(new Error('Name the file to remove.'), { status: 400 })
+    return p.remove({ dir, name })
   }
   if (action === 'pause') return p.pause({ now: Boolean(now) })
   if (action === 'resume') return session(await p.resume())
@@ -245,7 +256,7 @@ function mount(server, harness) {
       if (url.pathname === '/api/pod' && req.method === 'GET') {
         const { mode, key } = core.config('comfy')
         // instant: Comfy Cloud can take runs at once.
-        const status = core.pod().status()
+        const status = await core.podStatus()
         const suggest = mode === 'cloud' && status.phase === 'none' && status.connected ? await core.podSuggestion() : null
         // run: the generation type the user picked (null until they pick); tier: their Session tier.
         return send(res, 200, { ...status, mode, instant: Boolean(key), auto: core.podAutoStart(), suggest, run: core.runType(), tier: core.podTier() })

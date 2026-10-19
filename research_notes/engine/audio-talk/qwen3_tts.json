@@ -1,0 +1,48 @@
+{
+  "1": {
+    "class_type": "LoadAudio",
+    "inputs": {
+      "audio": "{{voice}}"
+    },
+    "_meta": {
+      "title": "Saved voice"
+    }
+  },
+  "2": {
+    "class_type": "FB_Qwen3TTSVoiceClone",
+    "inputs": {
+      "target_text": "{{prompt}}",
+      "model_choice": "1.7B",
+      "device": "auto",
+      "precision": "bf16",
+      "language": "Auto",
+      "ref_audio": [
+        "1",
+        0
+      ],
+      "ref_text": "",
+      "seed": "{{seed}}",
+      "max_new_tokens": 2048,
+      "top_p": 1.0,
+      "top_k": 50,
+      "temperature": 0.9,
+      "repetition_penalty": 1.05,
+      "x_vector_only": true,
+      "instruct": "",
+      "attention": "auto",
+      "unload_model_after_generate": true,
+      "custom_model_path": ""
+    }
+  },
+  "3": {
+    "class_type": "SaveAudioAdvanced",
+    "inputs": {
+      "audio": [
+        "2",
+        0
+      ],
+      "filename_prefix": "comfyfield/qwen3_tts",
+      "format": "flac"
+    }
+  }
+}

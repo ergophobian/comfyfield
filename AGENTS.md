@@ -28,13 +28,16 @@ Keys go in Connections (saved to `.comfyfield/keys.json`, gitignored) or `.env` 
 - `server/plugin.js`: HTTP routes inside the Vite dev server
 - `server/mcp.js`, `bin/comfyfield.js`: MCP server and CLI
 - `shared/mapping.js`: maps composer settings onto each model's inputs, and cost estimates
-- `server/pod.js`, `shared/modelFiles.js`, `shared/gpuTiers.js`: the RunPod Pod (GPU ladder and catalog), the files a Pod downloads, and the Session tiers (Budget, Balanced, Performance) with their GPU speed table
 - `src/lib/tools.js`: every tool page (name, nav menu, route, badge) and the open-weight models per kind. The top nav and Explore read from it
 - `src/App.jsx`: route table, and the shared format sheet via `useApp().openFormat` (`src/lib/appContext.js`)
 - `src/pages/`: one page per tool (generators, studios, apps), plus Flows (Canvas), Library (Assets), Models and Connections
 - `src/lib/flowEngine.js`: Flows execution rules (see below)
 - `src/lib/formats/`: formats as data (apps, presets, effects, looks, jobs). `index.js` holds categories, app hubs and helpers. `src/lib/recipes.js` keeps the teammate's fal recipes
-- `public/workflows/`: ComfyUI workflows in API format with `{{placeholders}}`
+- `src/lib/skills.js`: the skill library on /skills (agent jobs, their prompts and the formats they run) and the agent setup snippets. Plain JS so `server/mcp.js` can import it
+- `public/workflows/`: ComfyUI workflows in API format with `{{placeholders}}`. Uploads: `{{image}}` to `{{image5}}`, `{{mask}}`, `{{video}}`, `{{audio}}`, `{{voice}}`; a node with `"_meta": { "optional": "<key>" }` drops out, with its links, when the run has no such file. `node scripts/graph-check.mjs` checks every graph against `scripts/fixtures/comfy-nodes.json` (rebuild it with `scripts/node-schema.mjs` after moving the ComfyUI pin or adding a pack; a pack the Comfy registry has no node scan for takes a hand schema from `scripts/fixtures/pack-nodes.json`)
+- `shared/modelFiles.js`: every model file and LoRA a Pod can download (pinned by sha256), the loaders that name them, and the node packs a Pod installs (pinned by commit), with the files a pack reads from its own folder. A graph's loaders and node classes decide what a Pod gets
+- `server/pod.js`, `server/podBoot.js`, `server/pod-statusd.py`: the Pod manager, its boot script and the status server that runs on the Pod
+- `shared/gpuTiers.js`: the Session tiers (Budget, Balanced, Performance) and the GPU speed table they estimate cost and time per job from
 
 ## How we work
 

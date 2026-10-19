@@ -1,0 +1,14 @@
+[
+  {
+    "id": "vhs",
+    "name": "VideoHelperSuite",
+    "repo": "Kosinkadink/ComfyUI-VideoHelperSuite",
+    "commit": "4d907bee61e92c2e65af3bd6383a4e4d356126d1",
+    "date": "2026-09-02",
+    "nodes": ["VHS_VideoCombine"],
+    "requirements": ["opencv-python", "imageio-ffmpeg"],
+    "cloud": true,
+    "models": "none",
+    "notes": "Already in NODE_PACKS at this commit; add VHS_VideoCombine to its classes. Only birefnet_video_matte_alpha uses it: core SaveVideo writes rgb24 frames only, so it cannot keep an alpha channel. VHS pipes rgba frames to ffmpeg (system ffmpeg, else the imageio-ffmpeg binary) and writes WebM VP9 with pix_fmt yuva420p. Its UI output key is 'gifs', not 'images' or 'videos'."
+  }
+]
