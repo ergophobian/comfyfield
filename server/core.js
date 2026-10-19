@@ -1,6 +1,7 @@
 // Provider logic for ComfyField, independent of Vite. Used by the dev server, the CLI and the MCP server.
-// Keys live in .comfyfield/keys.json under COMFYFIELD_HOME (default: the current directory).
+// Keys live in the per-user data folder, or .comfyfield under COMFYFIELD_HOME.
 import fs from 'node:fs'
+import { dataDirectory } from './startup-paths.js'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { randomUUID } from 'node:crypto'
@@ -27,7 +28,7 @@ export const providers = {
   runpod: { env: ['RUNPOD_API_KEY', 'RUNPOD_DAILY_CAP', 'RUNPOD_AUTO_START', 'RUNPOD_IDLE_MIN', 'RUNPOD_TIER'], fields: ['key', 'cap', 'auto', 'idle', 'tier'] },
 }
 
-export const home = () => path.resolve(process.env.COMFYFIELD_HOME || '.', '.comfyfield')
+export const home = () => dataDirectory()
 const mediaDir = () => path.join(home(), 'media')
 
 export function readKeys() {

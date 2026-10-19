@@ -1,15 +1,16 @@
 #!/usr/bin/env node
 import path from 'node:path'
-import { spawn } from 'node:child_process'
-import { fileURLToPath } from 'node:url'
+import { nodeProblem } from '../server/startup-checks.js'
 import { parseArgs } from 'node:util'
 import fs from 'node:fs'
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+const versionProblem = nodeProblem(process.versions.node)
+if (versionProblem) { console.error(versionProblem); process.exit(1) }
 
 const help = `ComfyField: generate with your own keys from the terminal or any agent.
 
 Usage
+  comfyfield [start] [--port 5173] [--no-open]  Start the app and open the browser
   comfyfield models [--kind image|video|audio] [--search <text>]
   comfyfield generate "<prompt>" --model <id> [--ratio 16:9] [--duration 5] [--count 1] [--image <url|file>] [--out ./dir]
   comfyfield connect <comfy|fal|google|elevenlabs|runpod> --key <key>
@@ -17,9 +18,9 @@ Usage
   comfyfield stitch <clip> [<clip> ...] [--ratio 16:9] [--music <file>] [--volume 0.25] [--fade 1] [--out ./dir]
   comfyfield stitch --spec <stitch.json> [--preview] [--out ./dir]
   comfyfield mcp      Start the MCP server on stdio
-  comfyfield dev      Start the app
+  comfyfield dev      Start the development server
 
-Keys are read from .comfyfield/keys.json in the current directory (or COMFYFIELD_HOME), then from
+Keys use the per-user data folder (or .comfyfield under COMFYFIELD_HOME), then fall back to
 FAL_KEY, GEMINI_API_KEY, ELEVENLABS_API_KEY, COMFY_API_KEY and RUNPOD_API_KEY.
 ComfyUI runs use a ready Pod, else Comfy Cloud; the CLI never starts a Pod.`
 
@@ -36,17 +37,12 @@ function die(msg) {
   process.exit(1)
 }
 
-// Starts the app. Extra flags (--port 5300, --host) go straight to Vite.
-function dev(extra) {
-  // Run Vite's JS entry through node so this works on Windows, where .bin/vite is a shell shim.
-  const vite = path.join(ROOT, 'node_modules', 'vite', 'bin', 'vite.js')
-  const child = spawn(process.execPath, [vite, ROOT, '--config', path.join(ROOT, 'vite.config.js'), ...extra],
-    { stdio: 'inherit', env: { ...process.env, COMFYFIELD_HOME: process.env.COMFYFIELD_HOME || process.cwd() } })
-  child.on('exit', (code) => process.exit(code ?? 0))
-}
-
 async function main() {
-  if (process.argv[2] === 'dev') return dev(process.argv.slice(3))
+  const command = process.argv[2]
+  if (!command || ['start', 'dev'].includes(command) || command.startsWith('--port') || command === '--no-open') {
+    const { start } = await import('../server/start.js')
+    return start(process.argv.slice(['start', 'dev'].includes(command) ? 3 : 2), { dev: command === 'dev' })
+  }
   const { values: v, positionals: [cmd, ...rest] } = parseArgs({ options, allowPositionals: true })
   if (!cmd || v.help || cmd === 'help') return console.log(help)
 
