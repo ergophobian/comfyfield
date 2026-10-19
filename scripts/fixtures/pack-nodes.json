@@ -1,0 +1,400 @@
+{
+ "about": "Node schemas of packs the Comfy registry does not list, read by hand from each pack's source at its pinned commit (research_notes/engine/audio-talk/check.md). Combo lists hold the values that source allows; file lists are empty, as in comfy-nodes.json.",
+ "packs": {
+  "foley": {
+   "source": "BobRandomNumber/ComfyUI-HunyuanVideo_Foley@b94f7aca877ff2be5bc264b057abee3dac682c1b hunyuan_foley.py (the registry has 0.4.2 without a node scan)",
+   "nodes": {
+    "DACHunyuanVAEDecode": {
+     "in": {
+      "samples": [
+       "LATENT",
+       1
+      ],
+      "unload_models_after_use": [
+       "BOOLEAN",
+       0
+      ],
+      "vae": [
+       "VAE",
+       1
+      ]
+     },
+     "out": [
+      "AUDIO"
+     ]
+    },
+    "HunyuanFoleyModelLoader": {
+     "in": {
+      "foley_checkpoint_name": [
+       [],
+       1
+      ],
+      "model_path_name": [
+       [
+        "hunyuan_foley"
+       ],
+       1
+      ]
+     },
+     "out": [
+      "FOLEY_MODEL"
+     ]
+    },
+    "HunyuanFoleySampler": {
+     "in": {
+      "foley_model": [
+       "FOLEY_MODEL",
+       1
+      ],
+      "fps": [
+       "FLOAT",
+       1
+      ],
+      "guidance_scale": [
+       "FLOAT",
+       1
+      ],
+      "negative_prompt": [
+       "STRING",
+       1
+      ],
+      "prompt": [
+       "STRING",
+       1
+      ],
+      "seed": [
+       "INT",
+       1
+      ],
+      "steps": [
+       "INT",
+       1
+      ],
+      "video_frames": [
+       "IMAGE",
+       1
+      ]
+     },
+     "out": [
+      "LATENT"
+     ]
+    },
+    "LoadDACHunyuanVAE": {
+     "in": {
+      "vae_name": [
+       [],
+       1
+      ]
+     },
+     "out": [
+      "VAE"
+     ]
+    }
+   }
+  },
+  "drama3": {
+   "source": "PedroMarinhoDev/ComfyUI-Drama3@67a733a96890637dc27b1914974ad00c569405fb nodes.py",
+   "nodes": {
+    "Drama3CodecLoader": {
+     "in": {
+      "codec_name": [
+       [],
+       1
+      ]
+     },
+     "out": [
+      "DRAMA3_CODEC"
+     ]
+    },
+    "Drama3Decode": {
+     "in": {
+      "codec": [
+       "DRAMA3_CODEC",
+       1
+      ],
+      "codes": [
+       "DRAMA3_CODES",
+       1
+      ],
+      "shorten_long_pauses": [
+       "BOOLEAN",
+       1
+      ]
+     },
+     "out": [
+      "AUDIO"
+     ]
+    },
+    "Drama3EncodeVoice": {
+     "in": {
+      "audio": [
+       "AUDIO",
+       1
+      ],
+      "codec": [
+       "DRAMA3_CODEC",
+       1
+      ],
+      "transcript": [
+       "STRING",
+       1
+      ]
+     },
+     "out": [
+      "DRAMA3_VOICE"
+     ]
+    },
+    "Drama3Generate": {
+     "in": {
+      "max_frames": [
+       "INT",
+       1
+      ],
+      "model": [
+       "DRAMA3_MODEL",
+       1
+      ],
+      "seed": [
+       "INT",
+       1
+      ],
+      "speakers": [
+       [
+        "one take per line",
+        "one take per line, hearing the line before",
+        "one take per speaker",
+        "together"
+       ],
+       1
+      ],
+      "split_long_text": [
+       "BOOLEAN",
+       1
+      ],
+      "temperature": [
+       "FLOAT",
+       1
+      ],
+      "text": [
+       "STRING",
+       1
+      ],
+      "top_k": [
+       "INT",
+       1
+      ],
+      "top_p": [
+       "FLOAT",
+       1
+      ],
+      "voices": [
+       "COMFY_AUTOGROW_V3",
+       0,
+       {
+        "names": [],
+        "voice": [
+         "DRAMA3_VOICE",
+         0
+        ]
+       }
+      ]
+     },
+     "out": [
+      "DRAMA3_CODES"
+     ]
+    },
+    "Drama3Loader": {
+     "in": {
+      "expert_cache_gb": [
+       "FLOAT",
+       1
+      ],
+      "experts": [
+       [
+        "in RAM",
+        "in VRAM"
+       ],
+       1
+      ],
+      "model_name": [
+       [],
+       1
+      ],
+      "second_gpu": [
+       [
+        "none"
+       ],
+       1
+      ],
+      "split_layer": [
+       "INT",
+       1
+      ]
+     },
+     "out": [
+      "DRAMA3_MODEL"
+     ]
+    },
+    "Qwen3ASRLoader": {
+     "in": {
+      "model_name": [
+       [],
+       1
+      ]
+     },
+     "out": [
+      "QWEN3_ASR"
+     ]
+    },
+    "Qwen3ASRTranscribe": {
+     "in": {
+      "audio": [
+       "AUDIO",
+       1
+      ],
+      "context": [
+       "STRING",
+       1
+      ],
+      "language": [
+       [
+        "auto"
+       ],
+       1
+      ],
+      "max_new_tokens": [
+       "INT",
+       1
+      ],
+      "model": [
+       "QWEN3_ASR",
+       1
+      ]
+     },
+     "out": [
+      "STRING",
+      "STRING"
+     ]
+    }
+   }
+  },
+  "qwentts": {
+   "source": "flybirdxx/ComfyUI-Qwen-TTS@a1328c8a731eff82cf4c205b31bdfb7f29d817f4 nodes.py, __init__.py",
+   "nodes": {
+    "FB_Qwen3TTSVoiceClone": {
+     "in": {
+      "attention": [
+       [
+        "auto",
+        "sage_attn",
+        "flash_attn",
+        "sdpa",
+        "eager"
+       ],
+       0
+      ],
+      "custom_model_path": [
+       "STRING",
+       0
+      ],
+      "device": [
+       [
+        "auto",
+        "cuda",
+        "xpu",
+        "mps",
+        "cpu"
+       ],
+       1
+      ],
+      "instruct": [
+       "STRING",
+       0
+      ],
+      "language": [
+       [
+        "Auto",
+        "Chinese",
+        "English",
+        "Japanese",
+        "Korean",
+        "French",
+        "German",
+        "Spanish",
+        "Portuguese",
+        "Russian",
+        "Italian"
+       ],
+       1
+      ],
+      "max_new_tokens": [
+       "INT",
+       0
+      ],
+      "model_choice": [
+       [
+        "0.6B",
+        "1.7B"
+       ],
+       1
+      ],
+      "precision": [
+       [
+        "bf16",
+        "fp32"
+       ],
+       1
+      ],
+      "ref_audio": [
+       "AUDIO",
+       0
+      ],
+      "ref_text": [
+       "STRING",
+       0
+      ],
+      "repetition_penalty": [
+       "FLOAT",
+       0
+      ],
+      "seed": [
+       "INT",
+       0
+      ],
+      "target_text": [
+       "STRING",
+       1
+      ],
+      "temperature": [
+       "FLOAT",
+       0
+      ],
+      "top_k": [
+       "INT",
+       0
+      ],
+      "top_p": [
+       "FLOAT",
+       0
+      ],
+      "unload_model_after_generate": [
+       "BOOLEAN",
+       0
+      ],
+      "voice_clone_prompt": [
+       "VOICE_CLONE_PROMPT",
+       0
+      ],
+      "x_vector_only": [
+       "BOOLEAN",
+       0
+      ]
+     },
+     "out": [
+      "AUDIO"
+     ]
+    }
+   }
+  }
+ }
+}

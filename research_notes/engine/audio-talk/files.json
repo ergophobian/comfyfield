@@ -1,0 +1,156 @@
+{
+  "minimax_music3_dit_fp16.safetensors": {
+    "repo": "Comfy-Org/MiniMax-Music-3",
+    "path": "diffusion_models/minimax_music3_dit_fp16.safetensors",
+    "dir": "diffusion_models",
+    "gb": 4.91,
+    "vramGb": 24,
+    "cloud": true,
+    "sha256": "45494a2b6b69af115902ff28eaf54118d19067aa54da01000f3e3efce7ba0e34",
+    "label": "MiniMax Music 3"
+  },
+  "minimax_music3_text_encoder_pruned_int8_convrot.safetensors": {
+    "repo": "Comfy-Org/MiniMax-Music-3",
+    "path": "text_encoders/minimax_music3_text_encoder_pruned_int8_convrot.safetensors",
+    "dir": "text_encoders",
+    "gb": 9.2,
+    "vramGb": 0,
+    "cloud": true,
+    "sha256": "010b7416d2336a08c711bc22ee65849c9623069ddb7d89bec011a75699e52014"
+  },
+  "minimax_music3_dav.safetensors": {
+    "repo": "Comfy-Org/MiniMax-Music-3",
+    "path": "vae/minimax_music3_dav.safetensors",
+    "dir": "vae",
+    "gb": 0.22,
+    "vramGb": 0,
+    "cloud": true,
+    "sha256": "2a32155b769be01445fcc2a8663b910fc9e1751e18dc1c3ec528064512d9ef0c"
+  },
+  "stable_audio_3_medium.safetensors": {
+    "repo": "Comfy-Org/stable-audio-3",
+    "path": "checkpoints/stable_audio_3_medium.safetensors",
+    "dir": "checkpoints",
+    "gb": 9.22,
+    "vramGb": 24,
+    "cloud": true,
+    "sha256": "48d9c65e290e7bcd5194e0633bfc2424a59ee9683f5c2d58762d997b7d8ce0b5",
+    "label": "Stable Audio 3 Medium"
+  },
+  "t5gemma_b_b_ul2.safetensors": {
+    "repo": "Comfy-Org/stable-audio-3",
+    "path": "text_encoders/t5gemma_b_b_ul2.safetensors",
+    "dir": "text_encoders",
+    "gb": 1.19,
+    "vramGb": 0,
+    "cloud": true,
+    "sha256": "1e1eba25be8872edb0d3c6335c6658fd6388e7b14b60da6e454e404cfcd8150e"
+  },
+  "qwen3.5_2b_bf16.safetensors": {
+    "repo": "Comfy-Org/Qwen3.5",
+    "path": "text_encoders/qwen3.5_2b_bf16.safetensors",
+    "dir": "text_encoders",
+    "gb": 4.55,
+    "vramGb": 0,
+    "cloud": true,
+    "sha256": "aa33250c4fc64891ddfaba3a314fd9542ea371843c387178b425fbcc5ed680b1"
+  },
+  "Wan2_1-I2V-14B-480p_fp8_e4m3fn_scaled_KJ.safetensors": {
+    "repo": "Kijai/WanVideo_comfy_fp8_scaled",
+    "path": "I2V/Wan2_1-I2V-14B-480p_fp8_e4m3fn_scaled_KJ.safetensors",
+    "dir": "diffusion_models",
+    "gb": 16.64,
+    "vramGb": 24,
+    "cloud": true,
+    "sha256": "2ff922282cd84589702e6e8c26e083d1160bfc2b217dd44e1ae2688441dc495d",
+    "label": "InfiniteTalk"
+  },
+  "Wan2_1-InfiniTetalk-Single_fp16.safetensors": {
+    "repo": "Kijai/WanVideo_comfy",
+    "path": "InfiniteTalk/Wan2_1-InfiniTetalk-Single_fp16.safetensors",
+    "dir": "diffusion_models",
+    "gb": 5.13,
+    "vramGb": 0,
+    "cloud": true,
+    "sha256": "bf212c5c647eaf1c019b2158d2edf4a360d97e38b746c4bac994fee485e09fc3",
+    "label": "InfiniteTalk"
+  },
+  "umt5-xxl-enc-bf16.safetensors": {
+    "repo": "Kijai/WanVideo_comfy",
+    "path": "umt5-xxl-enc-bf16.safetensors",
+    "dir": "text_encoders",
+    "gb": 11.36,
+    "vramGb": 0,
+    "cloud": true,
+    "sha256": "4fa971faf306cad919033d5bbe192e571dc08452f800cbf2ec3c73977c01b2cc"
+  },
+  "lightx2v_I2V_14B_480p_cfg_step_distill_rank64_bf16.safetensors": {
+    "repo": "Comfy-Org/Wan-Animate-2",
+    "path": "loras/lightx2v_I2V_14B_480p_cfg_step_distill_rank64_bf16.safetensors",
+    "dir": "loras",
+    "gb": 0.74,
+    "vramGb": 0,
+    "cloud": true,
+    "sha256": "85c4a61c30e0497aa44b91d93a893b624708461a56fe5485183b28fa07e2dfb3"
+  },
+  "wav2vec2-chinese-base_fp16.safetensors": {
+    "repo": "Kijai/wav2vec2_safetensors",
+    "path": "wav2vec2-chinese-base_fp16.safetensors",
+    "dir": "wav2vec2",
+    "gb": 0.19,
+    "vramGb": 0,
+    "cloud": false,
+    "sha256": "000813e441020f18cff844c969d2d5d4adc2a5ce46b2db1f23950b05d88805b4",
+    "label": "The wav2vec2 audio encoder"
+  },
+  "hunyuanvideo_foley.pth": {
+    "repo": "tencent/HunyuanVideo-Foley",
+    "path": "hunyuanvideo_foley.pth",
+    "dir": "hunyuan_foley",
+    "gb": 10.3,
+    "vramGb": 24,
+    "cloud": false,
+    "sha256": "2900021f8ee562a8175b2f1a3fafb06b9e9e848f11f4c6d4d5d72e126f7c0475",
+    "label": "HunyuanVideo-Foley"
+  },
+  "vae_128d_48k.pth": {
+    "repo": "tencent/HunyuanVideo-Foley",
+    "path": "vae_128d_48k.pth",
+    "dir": "vae",
+    "gb": 1.49,
+    "vramGb": 0,
+    "cloud": false,
+    "sha256": "07e6139ff33bd21ba8a7a7f40ed24aab13ac0d100cd686f8a9f3e03dc5251cb1",
+    "label": "HunyuanVideo-Foley"
+  },
+  "drama3_fp8experts_bf16.safetensors": {
+    "repo": "PedroMarinhoDev/Drama-3-ComfyUI",
+    "path": "drama3_fp8experts_bf16.safetensors",
+    "dir": "diffusion_models",
+    "gb": 38.58,
+    "vramGb": 24,
+    "cloud": false,
+    "sha256": "5d053a200cf0f77faa13c087c78ef200c3b53f288451a6b9e7a8fa421c03a67b",
+    "label": "Fish Audio Drama 3"
+  },
+  "drama3_codec.safetensors": {
+    "repo": "PedroMarinhoDev/Drama-3-ComfyUI",
+    "path": "drama3_codec.safetensors",
+    "dir": "vae",
+    "gb": 1.57,
+    "vramGb": 0,
+    "cloud": false,
+    "sha256": "4fecf102907a48414230da9a74d72d07c3a92368eab53fab655797837bddf5ae",
+    "label": "Fish Audio Drama 3"
+  },
+  "qwen3_asr_0.6b_bf16.safetensors": {
+    "repo": "PedroMarinhoDev/Qwen3-ASR-ComfyUI",
+    "path": "qwen3_asr_0.6b_bf16.safetensors",
+    "dir": "asr",
+    "gb": 1.56,
+    "vramGb": 0,
+    "cloud": false,
+    "sha256": "eb350ce7510a538eb136d8320db470a0761713c47de6e12b0fca090d4fc15ecf",
+    "label": "Qwen3-ASR"
+  }
+}

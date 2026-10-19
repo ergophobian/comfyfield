@@ -1,5 +1,5 @@
-import { initialValues, visibleInputs } from '../recipes.js'
-import { falInput, comfyRouterInput } from '../../../shared/mapping.js'
+import { initialValues, visibleInputs, pictureTypes } from '../recipes.js'
+import { falInput, comfyRouterInput, PICTURE_SLOTS } from '../../../shared/mapping.js'
 import { schemas as savedSchemas } from './schemas.js'
 import { stepModel, stepOptions, selectedStep } from './options.js'
 import { widgetTypes } from '../../../shared/widgetInputs.js'
@@ -8,6 +8,8 @@ import { topoOrder } from '../flowEngine.js'
 const types = new Set(['text', 'longtext', 'choice', 'count', 'image', 'video', 'audio', 'draw', 'character', 'product', 'brand', 'voice', ...widgetTypes])
 const media = new Set(['image', 'video', 'audio', 'draw', ...widgetTypes])
 const imageFields = ['image_url', 'start_image_url', 'first_frame_url', 'input_image_url', 'image', 'image_urls', 'input_image_urls', 'reference_image_urls']
+// Choice params that set the run itself (canvas, length, draft scale), not a model input.
+const RUN_SETTINGS = ['aspect', 'duration', 'scale']
 const variables = (text) => [...String(text || '').matchAll(/\{(\w+)\}/g)].map((m) => m[1])
 
 function sampleValues(format) {
@@ -142,9 +144,22 @@ export function validateFormat(format, schemas = savedSchemas) {
         const imageSchema = model.imageWorkflow ? schemas.comfy[model.imageWorkflow] : null
         if (model.imageWorkflow && !imageSchema) bad(`${label} Missing Comfy workflow ${model.imageWorkflow}`)
         const hasVideo = format.inputs.some((i) => i.type === 'video')
-        const supplied = new Set(['prompt', 'width', 'height', 'count', 'frames', 'duration', 'start', 'seed', ...(hasVideo ? ['video'] : []), ...(stepOptions(format, step, values).images.length || upstream.length ? ['image'] : []), ...Object.keys(step.params || {}), ...Object.keys(step.bindings || {})])
-        for (const field of schema) if (!supplied.has(field)) bad(`${label} Unmapped workflow placeholder ${field}`)
-        for (const field of imageSchema || []) if (!supplied.has(field) && field !== 'image') bad(`${label} Unmapped workflow placeholder ${field}`)
+        // Each picture-like input fills one slot in order, so a format with three gives image to image3.
+        const pictures = format.inputs.filter((i) => pictureTypes.includes(i.type)).length
+        const files = [...PICTURE_SLOTS.slice(1, pictures), ...(format.inputs.some((i) => i.type === 'mask' || i.type === 'draw') ? ['mask'] : []),
+          ...(format.inputs.some((i) => i.type === 'audio') ? ['audio'] : []), ...(format.inputs.some((i) => i.type === 'voice') ? ['voice'] : [])]
+        const supplied = new Set(['prompt', 'width', 'height', 'count', 'frames', 'duration', 'start', 'seed', ...(hasVideo ? ['video'] : []), ...(stepOptions(format, step, values).images.length || upstream.length || pictures ? ['image'] : []), ...files, ...Object.keys(step.params || {}), ...Object.keys(step.bindings || {})])
+        // A choice that always shows (or shows whenever this target runs), and whose every option sets a
+        // param, supplies it.
+        for (const input of format.inputs) {
+          const withTarget = input.when && target && input.when[0] === raw.targetInput && input.when[1] === target
+          if (input.type !== 'choice' || (input.when && !withTarget)) continue
+          for (const field of new Set(input.options.flatMap((o) => Object.keys(o.params || {})))) if (input.options.every((o) => field in (o.params || {}))) supplied.add(field)
+        }
+        // A placeholder only on nodes that drop without their file may stay empty.
+        const optional = (w) => new Set(schemas.comfyOptional?.[w] || [])
+        for (const field of schema) if (!supplied.has(field) && !optional(model.workflow).has(field)) bad(`${label} Unmapped workflow placeholder ${field}`)
+        for (const field of imageSchema || []) if (!supplied.has(field) && !optional(model.imageWorkflow).has(field) && field !== 'image') bad(`${label} Unmapped workflow placeholder ${field}`)
         if (imageSchema && !imageSchema.includes('image')) bad(`${label} Image workflow ${model.imageWorkflow} takes no image`)
         const all = [...new Set([...schema, ...(imageSchema || [])])]
         if ((step.prompt || format.prompt || format.writer) && !schema.includes('prompt')) bad(`${label} Workflow has no prompt placeholder`)
@@ -153,11 +168,14 @@ export function validateFormat(format, schemas = savedSchemas) {
           for (const field of [...Object.keys(opts.params), ...Object.keys(opts.fields)]) if (!schema.includes(field)) bad(`${label} Unknown workflow placeholder ${field}`)
         }
         for (const input of format.inputs) {
-          if (input.type === 'choice' && input.options.every((o) => Object.keys(o.params || {}).length && Object.keys(o.params).every((field) => schema.includes(field)))) used.add(input.id)
+          // A shape, length or quality choice sets the run's canvas or length, so it maps without a placeholder.
+          if (input.type === 'choice' && input.options.every((o) => Object.keys(o.params || {}).length && Object.keys(o.params).every((field) => RUN_SETTINGS.includes(field) || all.includes(field)))) used.add(input.id)
         }
-        // A saved character gives its first image.
-        if (all.includes('image')) for (const input of format.inputs) if (['image', 'face', 'mask', 'crop', 'draw', 'character'].includes(input.type)) used.add(input.id)
+        // A saved character or product gives its first image.
+        if (PICTURE_SLOTS.some((k) => all.includes(k))) for (const input of format.inputs) if (pictureTypes.includes(input.type)) used.add(input.id)
         if (all.includes('video')) for (const input of format.inputs) if (input.type === 'video') used.add(input.id)
+        if (all.includes('audio')) for (const input of format.inputs) if (input.type === 'audio') used.add(input.id)
+        if (all.includes('voice')) for (const input of format.inputs) if (input.type === 'voice') used.add(input.id)
       } else if (model.provider === 'comfyRouter' && model.model === 'byteplus/dreamina-seedance-2-5-260628') {
         for (const variant of variants) {
           const mapped = comfyRouterInput(model.model, optionsFor(step, variant))

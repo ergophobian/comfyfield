@@ -1,0 +1,209 @@
+{
+  "wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors": {
+    "repo": "Comfy-Org/Wan_2.2_ComfyUI_Repackaged",
+    "path": "split_files/diffusion_models/wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors",
+    "dir": "diffusion_models",
+    "gb": 14.29,
+    "vramGb": 24,
+    "cloud": true,
+    "sha256": "6122e79d55e0f235698d11d657f3b196c5273c830da00b2b013c5a048d5e6a42",
+    "label": "Wan 2.2 image to video"
+  },
+  "wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors": {
+    "repo": "Comfy-Org/Wan_2.2_ComfyUI_Repackaged",
+    "path": "split_files/diffusion_models/wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors",
+    "dir": "diffusion_models",
+    "gb": 14.29,
+    "vramGb": 24,
+    "cloud": true,
+    "sha256": "5471a457b6ac404202a5fbe6c11595a3d5641fc766b00f38763f72303fffc21e",
+    "label": "Wan 2.2 image to video"
+  },
+  "wan2.2_i2v_lightx2v_4steps_lora_v1_high_noise.safetensors": {
+    "repo": "Comfy-Org/Wan_2.2_ComfyUI_Repackaged",
+    "path": "split_files/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_high_noise.safetensors",
+    "dir": "loras",
+    "gb": 1.23,
+    "vramGb": 0,
+    "cloud": true,
+    "sha256": "d176c808d6fc461999b68e321efcb7501b20b8c3797523ed0df14f7d1deff11e"
+  },
+  "wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors": {
+    "repo": "Comfy-Org/Wan_2.2_ComfyUI_Repackaged",
+    "path": "split_files/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors",
+    "dir": "loras",
+    "gb": 1.23,
+    "vramGb": 0,
+    "cloud": true,
+    "sha256": "024f21de095bc8fad9809ded3e9e49a2e170dcf27075da8145ba7d60d8aab7f9"
+  },
+  "wan_2.1_vae.safetensors": {
+    "repo": "Comfy-Org/Wan_2.2_ComfyUI_Repackaged",
+    "path": "split_files/vae/wan_2.1_vae.safetensors",
+    "dir": "vae",
+    "gb": 0.25,
+    "vramGb": 0,
+    "cloud": true,
+    "sha256": "2fc39d31359a4b0a64f55876d8ff7fa8d780956ae2cb13463b0223e15148976b"
+  },
+  "wan22_i2v_explosion_redmond_high_noise.safetensors": {
+    "repo": "artificialguybr/Explosion-Redmond-WAN2-I2V-14B",
+    "path": "[WAN2.2-I2V]EXPLOSION_REDMOND_high_noise.safetensors",
+    "dir": "loras",
+    "gb": 0.08,
+    "vramGb": 0,
+    "cloud": false,
+    "sha256": "51b20f2b4f713d1021c1da78c5bdcebc273efa9a2c7c18992d93e3cebabba604",
+    "label": "The explosion LoRA"
+  },
+  "wan22_i2v_explosion_redmond_low_noise.safetensors": {
+    "repo": "artificialguybr/Explosion-Redmond-WAN2-I2V-14B",
+    "path": "[WAN2.2-I2V]EXPLOSION_REDMOND_low_noise.safetensors",
+    "dir": "loras",
+    "gb": 0.08,
+    "vramGb": 0,
+    "cloud": false,
+    "sha256": "9630953d9830ea072f7698e6fc13d943f7f8da7f2d75edf5266a784255152774",
+    "label": "The explosion LoRA"
+  },
+  "wan22_i2v_spontaneous_combustion_redmond_high_noise.safetensors": {
+    "repo": "artificialguybr/Spontaneous-Combustion-Redmond-WAN2-I2V-14B",
+    "path": "[WAN2.2]Spontaneous_Combustion_Redmond_high_noise.safetensors",
+    "dir": "loras",
+    "gb": 0.08,
+    "vramGb": 0,
+    "cloud": false,
+    "sha256": "ce3608af487c769d66b9efb654c5645c72dbdfeb3809472b9bc0cacaa0e53193",
+    "label": "The fire LoRA"
+  },
+  "wan22_i2v_spontaneous_combustion_redmond_low_noise.safetensors": {
+    "repo": "artificialguybr/Spontaneous-Combustion-Redmond-WAN2-I2V-14B",
+    "path": "[WAN2.2]Spontaneous_Combustion_Redmond_low_noise.safetensors",
+    "dir": "loras",
+    "gb": 0.08,
+    "vramGb": 0,
+    "cloud": false,
+    "sha256": "d74c4061ff0d736d17df987c1120a8017499c9ec4cfb2c95d83cd1cf6a97b459",
+    "label": "The fire LoRA"
+  },
+  "wan22_i2v_disintegration_redmond_high_noise.safetensors": {
+    "repo": "artificialguybr/Disintegration-Redmond-WAN2-I2V-14B",
+    "path": "[Wan2.2]Disintegration_Redmond_high_noise.safetensors",
+    "dir": "loras",
+    "gb": 0.08,
+    "vramGb": 0,
+    "cloud": false,
+    "sha256": "555d2d39913a829820d844a9c9082fbaeaa8ca4d963087ad0cbf67f09d0fa606",
+    "label": "The disintegration LoRA"
+  },
+  "wan22_i2v_disintegration_redmond_low_noise.safetensors": {
+    "repo": "artificialguybr/Disintegration-Redmond-WAN2-I2V-14B",
+    "path": "[Wan2.2]Disintegration_Redmond_low_noise.safetensors",
+    "dir": "loras",
+    "gb": 0.08,
+    "vramGb": 0,
+    "cloud": false,
+    "sha256": "c71b0aabae6c73fee423f35f5ed088e082196ca41cddb9265424af5c6a3608a8",
+    "label": "The disintegration LoRA"
+  },
+  "wan22_i2v_metalcification_redmond_high_noise.safetensors": {
+    "repo": "artificialguybr/Metalcification-Redmond-WAN2-I2V-14B",
+    "path": "[WAN2.2]Metalcification_Redmond_high_noise.safetensors",
+    "dir": "loras",
+    "gb": 0.15,
+    "vramGb": 0,
+    "cloud": false,
+    "sha256": "3cc5fcf17722c0e709a432c05b2041e54109651d50766e44a4083388b8766971",
+    "label": "The metal skin LoRA"
+  },
+  "wan22_i2v_metalcification_redmond_low_noise.safetensors": {
+    "repo": "artificialguybr/Metalcification-Redmond-WAN2-I2V-14B",
+    "path": "[WAN2.2]Metalcification_Redmond_low_noise.safetensors",
+    "dir": "loras",
+    "gb": 0.15,
+    "vramGb": 0,
+    "cloud": false,
+    "sha256": "9956951204e347a4c5636189eed2961d686c2a8665bb0ef4847c881dc5520128",
+    "label": "The metal skin LoRA"
+  },
+  "wan22_i2v_thunderhero_redmond_high_noise.safetensors": {
+    "repo": "artificialguybr/ThunderHero-Redmond-WAN2-I2V-14B",
+    "path": "[WAN2.2]ThunderHero_Redmond_high_noise.safetensors",
+    "dir": "loras",
+    "gb": 0.15,
+    "vramGb": 0,
+    "cloud": false,
+    "sha256": "8a7066ecdec71e3639596fd7adbffdfe1d19519c564601b730f834658b7ce458",
+    "label": "The lightning LoRA"
+  },
+  "wan22_i2v_thunderhero_redmond_low_noise.safetensors": {
+    "repo": "artificialguybr/ThunderHero-Redmond-WAN2-I2V-14B",
+    "path": "[WAN2.2]ThunderHero_Redmond_low_noise.safetensors",
+    "dir": "loras",
+    "gb": 0.15,
+    "vramGb": 0,
+    "cloud": false,
+    "sha256": "f7c6b47ae93f1f4c2722345c47d9cafa3a69ff3ca442982ecdd0a767e6843b45",
+    "label": "The lightning LoRA"
+  },
+  "wan22_i2v_skinmorph_redmond_high_noise.safetensors": {
+    "repo": "artificialguybr/SkinMorph-Redmond-WAN2-I2V-14B",
+    "path": "[WAN2.2]SkinMorph_Redmond_high_noise.safetensors",
+    "dir": "loras",
+    "gb": 0.15,
+    "vramGb": 0,
+    "cloud": false,
+    "sha256": "10659116ab688105b704ac0fefec3aca12f5e52f2189f49ff9d581f064fb1563",
+    "label": "The skin morph LoRA"
+  },
+  "wan22_i2v_skinmorph_redmond_low_noise.safetensors": {
+    "repo": "artificialguybr/SkinMorph-Redmond-WAN2-I2V-14B",
+    "path": "[WAN2.2]SkinMorph_Redmond_low_noise.safetensors",
+    "dir": "loras",
+    "gb": 0.15,
+    "vramGb": 0,
+    "cloud": false,
+    "sha256": "5f4a808e68428ff4db002853f4c02e625042a0f9ea28084245b59368e4f604f9",
+    "label": "The skin morph LoRA"
+  },
+  "wan22_i2v_disappearing_redmond_high_noise.safetensors": {
+    "repo": "artificialguybr/Disappearing-Redmond-WAN2-I2V-14B",
+    "path": "[Wan2.2]Disappearing_Redmond_high_noise.safetensors",
+    "dir": "loras",
+    "gb": 0.15,
+    "vramGb": 0,
+    "cloud": false,
+    "sha256": "3b3277144099e161ad4ec409363141d5507fb5bded919e49790f3b9a0c9e55ce",
+    "label": "The vanish LoRA"
+  },
+  "wan22_i2v_disappearing_redmond_low_noise.safetensors": {
+    "repo": "artificialguybr/Disappearing-Redmond-WAN2-I2V-14B",
+    "path": "[Wan2.2]Disappearing_Redmond_low_noise.safetensors",
+    "dir": "loras",
+    "gb": 0.15,
+    "vramGb": 0,
+    "cloud": false,
+    "sha256": "92ac4a839e7fdc6ec73e1bba7481adc75c10091202d0425aef42166ebd3b6ab2",
+    "label": "The vanish LoRA"
+  },
+  "wan_22_high_noise_pupil_transition.safetensors": {
+    "repo": "p4ss3r2/wan22_Pupil_Transition_LoRa",
+    "path": "wan_22_high_noise_pupil_transition.safetensors",
+    "dir": "loras",
+    "gb": 0.31,
+    "vramGb": 0,
+    "cloud": false,
+    "sha256": "a1601f2f36e3dec7908cabe865fed710f9fe2e9a87a33bcecef28d928b7a6c36",
+    "label": "The pupil transition LoRA"
+  },
+  "minimax_h3_360_orbit_flf2v_lora_v1.safetensors": {
+    "repo": "pablodawson/MiniMax-H3-360-Orbit-LoRA",
+    "path": "minimax_h3_flf2v_lora_v1.safetensors",
+    "dir": "loras",
+    "gb": 0.16,
+    "vramGb": 0,
+    "cloud": false,
+    "sha256": "14f13e3effaf3e729fdc0c97680344aa63f473be0c55963f963d718b3db2a4d4",
+    "label": "The 360 orbit LoRA"
+  }
+}

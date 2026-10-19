@@ -1,6 +1,7 @@
 // One-purpose apps that match Higgsfield's /apps catalogue, one format per app.
 // Each sets `hub`, so it lists on /apps under that hub and opens at /apps/:id.
 import { open, photo, clip, note, covers } from './parts.js'
+import { h3Sizes, ltx25Sizes } from '../catalog.js'
 
 const product = { id: 'image', type: 'image', label: 'Product photo' }
 const still = { aspect: 'auto' }
@@ -8,11 +9,12 @@ const moving = { aspect: 'auto', duration: 5 }
 
 const qwen = { runsOn: 'Qwen-Image 2.1', workflow: 'qwen_edit' }
 const klein = { runsOn: 'FLUX 3 Image Klein', workflow: 'klein_edit' }
-const ltx = { runsOn: 'LTX-2.5', workflow: 'ltx_i2v' }
-const h3 = { runsOn: 'MiniMax H3', workflow: 'h3_i2v' }
+const ltx = { runsOn: 'LTX-2.5', workflow: 'ltx25_i2v', sizes: ltx25Sizes }
+const h3 = { runsOn: 'MiniMax H3', workflow: 'h3_open_i2v', sizes: h3Sizes }
 // Product effects keep the product exact by passing it to H3 as a reference.
-const productAd = { runsOn: 'MiniMax H3', workflow: 'h3_product_ad' }
-const bulletTime = { runsOn: 'MiniMax H3', workflow: 'h3_bullet_time' }
+const productAd = { runsOn: 'MiniMax H3', workflow: 'h3_product_ad', sizes: h3Sizes }
+// Bullet time is a product reference with the format's prompt, the same graph as the product ads.
+const bulletTime = { runsOn: 'MiniMax H3', workflow: 'h3_product_ad', sizes: h3Sizes }
 // Templates that restyle the still first, then animate it.
 const kleinLtx = { runsOn: 'FLUX 3 Image Klein and LTX-2.5', workflow: 'klein_ltx' }
 const qwenLtx = { runsOn: 'Qwen-Image 2.1 and LTX-2.5', workflow: 'qwen_ltx' }
@@ -30,8 +32,8 @@ const template = ({ id, name, hub = 'trending', category = 'effects', blurb, pro
 })
 
 // A one-product ad beat: one product photo, a fixed commercial moment.
-const adBeat = ({ id, name, blurb, prompt, model = productAd, cover }) => open({
-  id, name, kind: 'video', category: 'ads', hub: 'ads', blurb, ...model,
+const adBeat = ({ id, name, blurb, prompt, model = productAd, cover, params }) => open({
+  id, name, kind: 'video', category: 'ads', hub: 'ads', blurb, ...model, ...(params && { params }),
   inputs: [product, note],
   prompt: `${prompt} The product keeps its exact shape, label and colors in every frame. {note}`,
   settings: moving,
@@ -69,7 +71,8 @@ const professional = [
         { id: 'twelve', label: '12 best angles', note: 'A full contact sheet', params: { batch: 12 } },
       ] },
     ],
-    prompt: 'Re-render this exact scene with the camera {turn}, {tilt}, {zoom}. Keep the same subject, outfit, materials, lighting and background, and fill in anything that was hidden from the original view with believable detail.',
+    // The graph writes the Multiple-Angles LoRA's own prompt from the turn, tilt and zoom.
+    prompt: '',
     output: 'One new angle, or a sheet of 12',
     settings: still,
     cover: covers.indigo,
@@ -98,7 +101,8 @@ const professional = [
     blurb: 'Nine cinematic angles of one scene on a single sheet.',
     runsOn: 'Qwen-Image Edit 2511 with Multiple-Angles', workflow: 'qwen_shots_grid',
     inputs: [photo],
-    prompt: 'A 3x3 contact sheet of nine film shots of this exact scene: an establishing wide, a full shot, a medium, a medium close up, a close up, an extreme close up on a telling detail, a low angle, a high angle and an over the shoulder. The same people, outfits, set and lighting in every frame, with thin white gutters between frames.',
+    // Nine renders with the Multiple-Angles LoRA, each with its own fixed prompt, joined 3x3 with white gutters.
+    prompt: '',
     output: 'A 3x3 sheet of shots to pick from and upscale',
     settings: still,
     cover: covers.sky,
@@ -152,7 +156,7 @@ const enhanceAndStyle = [
   open({
     id: 'ai-stylist', name: 'Virtual stylist', kind: 'image', category: 'image-edit', hub: 'enhance', layout: 'wide',
     blurb: 'Dress yourself in a full look or piece by piece, then set the pose and backdrop.',
-    ...qwen, workflow: 'qwen_edit_try_on',
+    ...qwen,
     inputs: [
       { id: 'image', type: 'image', label: 'Your photo', half: true },
       { id: 'look', type: 'choice', label: 'Outfit', half: true, default: 'smart', options: [
@@ -191,7 +195,8 @@ const enhanceAndStyle = [
   open({
     id: 'relight-photo', name: 'Move the light', kind: 'image', category: 'image-edit', hub: 'enhance',
     blurb: 'Move a light around your photo and redraw the shadows.',
-    runsOn: 'Qwen-Image Edit 2511 with a relight LoRA', workflow: 'qwen2511_relight',
+    // Relight is built into Edit 2511, so no relight LoRA.
+    runsOn: 'Qwen-Image Edit 2511', workflow: 'qwen2511_relight',
     inputs: [
       photo,
       { id: 'from', type: 'choice', label: 'Light from', half: true, default: 'left', options: [
@@ -207,9 +212,9 @@ const enhanceAndStyle = [
         { id: 'hard', label: 'Hard', text: 'a hard, direct light with crisp shadow edges' },
       ] },
       { id: 'brightness', type: 'choice', label: 'Brightness', half: true, default: 'medium', options: [
-        { id: 'low', label: 'Dim', text: 'dim and moody', params: { brightness: 25 } },
-        { id: 'medium', label: 'Medium', text: 'balanced', params: { brightness: 50 } },
-        { id: 'high', label: 'Bright', text: 'bright and punchy', params: { brightness: 85 } },
+        { id: 'low', label: 'Dim', text: 'dim and moody' },
+        { id: 'medium', label: 'Medium', text: 'balanced' },
+        { id: 'high', label: 'Bright', text: 'bright and punchy' },
       ] },
       { id: 'color', type: 'text', label: 'Light color', optional: true, half: true, placeholder: 'Warm white, or #ffb070' },
     ],
@@ -247,7 +252,7 @@ const enhanceAndStyle = [
   open({
     id: 'outfit-vending', name: 'Vending machine outfit', kind: 'image', category: 'fun', hub: 'enhance',
     blurb: 'Every piece you wear on display in a glowing vending machine.',
-    ...qwen,
+    ...qwen, workflow: 'qwen_edit_mockup',
     inputs: [photo, note],
     prompt: 'Lay out each piece this person is wearing, from the hat to the shoes and every accessory, as separate items behind the glass of a brightly lit vending machine, one item per coil slot with a small price tag and a keypad code under each. The person stands beside the machine in the same outfit. A street at night, the machine glowing, crisp product detail. {note}',
     settings: { aspect: '4:5' },
@@ -262,8 +267,8 @@ const enhanceAndStyle = [
       { id: 'garment2', type: 'image', label: 'Second garment', optional: true, half: true },
       { id: 'garment3', type: 'image', label: 'Third garment', optional: true, half: true },
       { id: 'model', type: 'choice', label: 'Model', half: true, default: 'new', options: [
-        { id: 'new', label: 'A new model', text: 'a professional fashion model' },
-        { id: 'character', label: 'Saved character', text: 'the saved character' },
+        { id: 'new', label: 'A new model', text: 'a professional fashion model wearing the garments shown in the images' },
+        { id: 'character', label: 'Saved character', text: 'the person in the first image, with the same face, hair and body, wearing the garments shown in the other images' },
       ] },
       { id: 'character', type: 'character', label: 'Character', when: ['model', 'character'] },
       { id: 'set', type: 'choice', label: 'Set', default: 'studio', options: [
@@ -273,7 +278,8 @@ const enhanceAndStyle = [
         { id: 'beach', label: 'Beach', text: 'on a beach at golden hour with a light breeze' },
       ] },
     ],
-    prompt: 'A short fashion photoshoot clip of {model} wearing the garments from the images together as one outfit, {set}. Match each garment\'s fabric, color, print and cut exactly, with natural movement as the model turns, walks a step and poses for the camera.',
+    prompt: 'A vertical full-length fashion photo of {model}. Combine the garments into one outfit and match each garment\'s fabric, color, print and cut exactly. The shoot is {set}.',
+    params: { motion: 'The video opens exactly on <Picture 1>. The model turns, takes a step toward the camera and poses, and the fabric moves naturally with each step while the camera moves smoothly with them. The outfit, face and setting stay the same. Audio: a light fashion beat.' },
     settings: { aspect: '9:16', duration: 5 },
     cover: covers.peach,
   }),
@@ -283,7 +289,7 @@ const faceAndIdentity = [
   open({
     id: 'video-character-swap', name: 'Video character swap', kind: 'video', category: 'video-edit', hub: 'face', layout: 'wide',
     blurb: 'Replace the person in a video with your character, same moves and timing.',
-    runsOn: 'SCAIL-2, with Chatterbox for a new voice', workflow: 'scail2_character_swap',
+    runsOn: 'SCAIL-2', workflow: 'scail2_character_swap',
     inputs: [
       clip,
       { id: 'source', type: 'choice', label: 'New character', half: true, default: 'photo', options: [
@@ -292,15 +298,8 @@ const faceAndIdentity = [
       ] },
       { id: 'face', type: 'image', label: 'Character photo', half: true, when: ['source', 'photo'] },
       { id: 'character', type: 'character', label: 'Saved character', half: true, when: ['source', 'character'] },
-      { id: 'voice', type: 'voice', label: 'New voice', optional: true, half: true },
-      { id: 'background', type: 'choice', label: 'Background', half: true, default: 'keep', options: [
-        { id: 'keep', label: 'Keep it', text: 'keep the original background' },
-        { id: 'green', label: 'Green screen', text: 'replace the background with flat chroma green' },
-        { id: 'new', label: 'New scene', text: 'replace the background with this scene:' },
-      ] },
-      { id: 'scene', type: 'text', label: 'New scene', when: ['background', 'new'], placeholder: 'A rooftop at sunset over the city' },
     ],
-    prompt: 'Replace the main person in the video with the character from the reference, head to toe: face, hair, body and outfit. Keep every movement, gesture, expression, lip movement, camera move and cut from the original, and match the scene light on the new character. Then {background} {scene}',
+    prompt: 'The character from the reference image, with their own face, hair, body and outfit, performing the movements of the original video in the original scene.',
     settings: still,
     cover: covers.dusk,
   }),
@@ -443,7 +442,8 @@ const adsAndProducts = [
   open({
     id: 'poster', name: 'Promo poster', kind: 'video', category: 'ads', hub: 'ads',
     blurb: 'Recast your product as a bold promo poster that comes alive.',
-    ...qwenLtx,
+    // qwen_h3 draws on the format's 9:16 canvas; qwen_ltx would keep the photo's shape.
+    runsOn: 'Qwen-Image 2.1 and MiniMax H3', workflow: 'qwen_h3',
     inputs: [
       product,
       { id: 'headline', type: 'text', label: 'Headline', placeholder: 'Summer, bottled' },
@@ -454,7 +454,8 @@ const adsAndProducts = [
         { id: 'festival', label: 'Festival', text: 'a loud festival poster with stickers, stars and layered type' },
       ] },
     ],
-    prompt: 'Design a vertical promo poster around the product in this photo: {style}, with the product large and exactly as it is, and the headline "{headline}" in big clean type, spelled exactly. Then bring the poster to life with a subtle push in, light sweeping across the type and small graphic shapes drifting.',
+    prompt: 'Design a vertical promo poster around the product in this photo: {style}, with the product large and exactly as it is, and the headline "{headline}" in big clean type, spelled exactly.',
+    params: { motion: 'The video opens exactly on <Picture 1>. The poster comes to life with a subtle push in, light sweeping across the type and small graphic shapes drifting. The product and the headline stay sharp and unchanged. Audio: a short upbeat music sting.' },
     settings: { aspect: '9:16', duration: 5 },
     cover: covers.sun,
   }),
@@ -473,7 +474,8 @@ const adsAndProducts = [
   open({
     id: 'asmr-host', name: 'ASMR studio host', kind: 'video', category: 'ads', hub: 'ads',
     blurb: 'Turn a photo into a host whispering to camera in an ASMR studio.',
-    runsOn: 'MiniMax H3 with native audio', workflow: 'h3_i2v_audio',
+    // The photo is who hosts, not the first frame: a new set around the same person.
+    runsOn: 'MiniMax H3 with native audio', workflow: 'h3_t2v', sizes: h3Sizes,
     inputs: [photo, note],
     prompt: 'The person in the photo becomes an ASMR host in a cozy studio with foam panels, a fairy light glow and a pair of ear shaped binaural microphones in front of them. They lean in and whisper a soft welcome, tap lightly on the microphones and brush them with a soft brush, close stereo sound and no music. Keep their face and outfit. {note}',
     settings: { aspect: '9:16', duration: 8 },
@@ -506,7 +508,9 @@ const adsAndProducts = [
   adBeat({
     id: 'graffiti-ad', name: 'Graffiti wall', model: { runsOn: 'Qwen-Image 2.1 and LTX-2.5', workflow: 'qwen_mockup_ltx' },
     blurb: 'Your product sprayed onto a city wall as graffiti.',
-    prompt: 'Paint the product from the photo as a large, colorful graffiti piece on a brick wall in a city alley, true to its shape and colors, with spray drips and bold outlines. Then show a time lapse of the mural being sprayed on, ending on the finished wall in afternoon light as people walk past.',
+    prompt: 'Paint the product from the photo as a large, colorful graffiti piece on a brick wall in a city alley, true to its shape, label and colors, with spray drips and bold outlines, in afternoon light with a few people walking past.',
+    // The chain paints the mural, then the bare wall, and LTX-2.5 runs from one to the other.
+    params: { motion: 'Use the provided start image as the first frame and the provided end image as the final frame anchor. Time lapse: a street artist sprays the mural onto the bare brick wall, outlines first, then the color fills, highlights and drips, until it matches the finished piece, while the afternoon light shifts and people walk past. Spray can hiss and street sounds.' },
     cover: covers.sun,
   }),
   adBeat({
@@ -561,7 +565,8 @@ const gamesAndCharacters = [
       { id: 'person5', type: 'image', label: 'Person', optional: true, half: true },
       { ...note, half: true },
     ],
-    prompt: 'Turn the people in these photos into a tactical team game squad in matching armor, helmets and gear, each keeping their own face. The squad walks toward the camera in slow motion across a dusty arena while a burst of colored smoke goes off behind them. A game cinematic look with no gore. {note}',
+    prompt: 'Turn the people in these photos into a tactical team game squad in matching armor, helmets and gear, each keeping their own face, standing together in a dusty arena. A game cinematic look with no gore. {note}',
+    params: { motion: 'The video opens exactly on <Picture 1>. The squad walks toward the camera in slow motion across the dusty arena while a burst of colored smoke goes off behind them. Audio: heavy footsteps, rattling gear and a deep boom.' },
     settings: moving,
     cover: covers.slate,
   }),
@@ -570,7 +575,8 @@ const gamesAndCharacters = [
     blurb: 'See yourself as the hero of an open world city game.',
     ...kleinH3,
     inputs: [photo, note],
-    prompt: 'Redraw the person in this photo as the hero of an open world city game: a painted loading screen illustration with bold outlines, saturated sunset color and palm lined streets behind. Then animate it: they turn to the camera with a confident look as a sports car rolls up beside them. Keep their face recognizable. {note}',
+    prompt: 'Redraw the person in this photo as the hero of an open world city game: a painted loading screen illustration with bold outlines, saturated sunset color and palm lined streets behind. Keep their face recognizable. {note}',
+    params: { motion: 'The video opens exactly on <Picture 1>. The hero turns to the camera with a confident look as a sports car rolls up beside them. The painted illustration style holds in every frame. Audio: an engine rumble and a short synth sting.' },
     settings: moving,
     cover: covers.sun,
   }),
@@ -579,7 +585,8 @@ const gamesAndCharacters = [
     blurb: 'Render your photo as a 3D object inside a modeling scene.',
     ...kleinLtx,
     inputs: [photo, note],
-    prompt: 'Turn the main subject of this photo into a clean 3D model with smooth stylized materials, shown inside a 3D modeling viewport with a gray grid floor, a soft studio light rig and a move gizmo beside it. The model turns slowly as the render resolves from wireframe to full shading. Keep its shape, colors and character. {note}',
+    prompt: 'Turn the main subject of this photo into a clean 3D model with smooth stylized materials, shown inside a 3D modeling viewport with a gray grid floor, a soft studio light rig and a move gizmo beside it. Keep its shape, colors and character. {note}',
+    params: { motion: 'Use the provided start image as the first frame. The 3D model turns slowly on the grid while a thin wireframe overlay sweeps across it and fades, and the viewport camera eases around it a little. The interface stays still. Soft interface clicks.' },
     settings: moving,
     cover: covers.indigo,
   }),
@@ -588,7 +595,8 @@ const gamesAndCharacters = [
     blurb: 'Your character runs through a retro 8-bit world.',
     ...kleinLtx,
     inputs: [photo, note],
-    prompt: 'Turn the person in this photo into an 8-bit pixel art character with chunky pixels and a tiny palette, keeping their hair and outfit colors. They run and jump through a side scrolling level, bouncing on blocks, grabbing coins and hopping over a little enemy as the level scrolls past. A retro console look. {note}',
+    prompt: 'Turn the person in this photo into an 8-bit pixel art character with chunky pixels and a tiny palette, keeping their hair and outfit colors, standing at the start of a side scrolling level with blocks, coins and a little enemy. A retro console look. {note}',
+    params: { motion: 'Use the provided start image as the first frame. The pixel character runs and jumps through the side scrolling level, bouncing on blocks, grabbing coins and hopping over the little enemy as the level scrolls past. The pixel art look stays the same. Chiptune music and coin sounds.' },
     settings: moving,
     cover: covers.mint,
   }),
@@ -598,7 +606,7 @@ const extras = [
   open({
     id: 'paint-app', name: 'Retro paint program', kind: 'image', category: 'fun', hub: 'extras',
     blurb: 'Frame your photo inside an old paint program on a CRT.',
-    ...qwen,
+    ...qwen, workflow: 'qwen_edit_mockup',
     inputs: [photo, note],
     prompt: 'Show this photo as the open canvas in a 1990s desktop paint program on a bulky CRT monitor: a gray window frame with a title bar, a tool palette of pencils, buckets and spray cans down the left, a row of color swatches along the bottom, a few rough brush strokes painted over the photo and a pixel cursor. The monitor sits on a desk beside a beige keyboard, with slight screen curve, scan lines and glare. {note}',
     settings: { aspect: '4:3' },
@@ -670,25 +678,29 @@ const trending = [
   template({
     id: 'glossy-vinyl', name: 'Glossy vinyl', category: 'fun', model: kleinLtx,
     blurb: 'Restyle your look in sleek, glossy black vinyl.',
-    prompt: 'Restyle the person in this photo in a sleek high fashion outfit of glossy black vinyl, a fitted jacket with a high collar and matching wide trousers, with mirror shine highlights and tasteful runway styling. Then they turn slowly toward the camera as studio light glides across the gloss. Keep their face and hair.',
+    prompt: 'Restyle the person in this photo in a sleek high fashion outfit of glossy black vinyl, a fitted jacket with a high collar and matching wide trousers, with mirror shine highlights and tasteful runway styling, in a clean studio. Keep their face and hair.',
+    params: { motion: 'Use the provided start image as the first frame. They turn slowly toward the camera as studio light glides across the glossy vinyl and the highlights slide over the folds. Their face, hair and outfit stay the same. Soft studio ambience.' },
     cover: covers.night,
   }),
   template({
     id: 'tokyo-cover', name: 'Tokyo magazine', category: 'fun', model: qwenLtx,
     blurb: 'Put yourself on the cover of a Japanese street fashion magazine.',
-    prompt: 'Turn this photo into the cover of a Japanese street fashion magazine: the person styled in layered street fashion, a bold invented masthead, stacked vertical cover lines, small badges and a barcode, bright pastel color and a crisp studio look. Then the cover comes alive with a small pose change, a wink and a slow push in. Keep their face.',
+    prompt: 'Turn this photo into the cover of a Japanese street fashion magazine: the person styled in layered street fashion, a bold invented masthead, stacked vertical cover lines, small badges and a barcode, bright pastel color and a crisp studio look. Keep their face.',
+    params: { motion: 'Use the provided start image as the first frame. The cover comes alive: the person makes a small pose change and a wink while the camera pushes in slowly. Every piece of text and graphics stays sharp and unchanged. Upbeat city pop.' },
     cover: covers.rose,
   }),
   template({
     id: 'cafe-60s', name: '1960s coffee shop', category: 'fun', model: kleinLtx,
     blurb: 'Step into a 1960s coffee shop.',
-    prompt: 'Place the person from this photo in a 1960s coffee shop with a chrome counter, red vinyl stools, a glowing jukebox in the corner, a checkered floor and a cup of coffee in front of them, in period hair and clothes, with warm faded film color and soft grain. Then they sip the coffee and glance out the window as a waitress passes behind. Keep their face.',
+    prompt: 'Place the person from this photo in a 1960s coffee shop with a chrome counter, red vinyl stools, a glowing jukebox in the corner, a checkered floor and a cup of coffee in front of them, in period hair and clothes, with warm faded film color and soft grain. Keep their face.',
+    params: { motion: 'Use the provided start image as the first frame. They lift the cup, sip the coffee and glance out the window as a waitress passes behind them. Warm faded film look throughout. Jukebox music and quiet cafe chatter.' },
     cover: covers.peach,
   }),
   template({
     id: 'victory-card', name: 'Winning card', category: 'fun', model: qwenLtx,
     blurb: 'Print yourself on the winning card of a poker hand.',
-    prompt: 'Turn the person in this photo into the face of a royal playing card, their portrait mirrored top and bottom with ornate gold borders and corner letters. The card is the winning card in a hand on green felt among stacks of chips, and it flips over in slow motion as the chips scatter. Keep their face recognizable.',
+    prompt: 'Turn the person in this photo into the face of a royal playing card, their portrait mirrored top and bottom with ornate gold borders and corner letters. The card lies face up on green felt among stacks of poker chips as the winning card of a hand. Keep their face recognizable.',
+    params: { motion: 'Use the provided start image as the first frame. The card lifts off the felt, spins once in slow motion and lands face up again as the chips scatter. The card art stays the same. Chips clatter.' },
     cover: covers.mint,
   }),
   template({
@@ -706,13 +718,15 @@ const trending = [
   template({
     id: 'japanese-poster', name: 'Japanese poster', category: 'fun', model: qwenLtx,
     blurb: 'Turn your photo into a Japanese style poster with bold type.',
-    prompt: 'Design a Japanese style poster around the person in this photo: a striking cutout of them over flat color blocks, big vertical Japanese headline type, small English captions, halftone textures and a bold red circle. Then it comes alive with a slow drift as the type slides into place and the colors pulse gently. Keep their face.',
+    prompt: 'Design a Japanese style poster around the person in this photo: a striking cutout of them over flat color blocks, big vertical Japanese headline type, small English captions, halftone textures and a bold red circle. Keep their face.',
+    params: { motion: 'Use the provided start image as the first frame. The poster comes alive with a slow drift: the color blocks and the red circle pulse gently and the halftone shimmers, while all the type stays sharp and unchanged. A soft synth pad.' },
     cover: covers.rose,
   }),
   template({
     id: 'mascot', name: 'Team mascot', category: 'fun', model: kleinLtx,
     blurb: 'Become the mascot of a made-up sports team.',
-    prompt: 'Turn the person in this photo into a big furry sports mascot costume with an oversized head that looks like a cartoon version of them, in invented team colors with a made-up crest. The mascot dances and pumps up the crowd on the sidelines of a stadium as fans cheer in the stands behind.',
+    prompt: 'Turn the person in this photo into a big furry sports mascot costume with an oversized head that looks like a cartoon version of them, in invented team colors with a made-up crest, on the sidelines of a stadium with fans in the stands behind.',
+    params: { motion: 'Use the provided start image as the first frame. The mascot dances and pumps up the crowd, waving its arms, while the fans cheer and wave in the stands. Stadium crowd noise and a drum beat.' },
     cover: covers.sun,
   }),
   template({
@@ -735,7 +749,8 @@ const trending = [
       photo,
       { id: 'plot', type: 'text', label: 'What happens', optional: true, placeholder: 'Saving a cat from a tree' },
     ],
-    prompt: 'Turn the person in this photo into the hero of a short comic book story told in four panels, with bold ink lines, halftone shading, caption boxes and speech bubbles with short exclamations spelled correctly. The story: {plot} Then the camera glides from panel to panel as each one comes to life. Keep their face recognizable.',
+    prompt: 'Turn the person in this photo into the hero of a short comic book page told in four panels, with bold ink lines, halftone shading, caption boxes and speech bubbles with short exclamations spelled correctly. The story: {plot} Keep their face recognizable.',
+    params: { motion: 'Use the provided start image as the first frame. The camera glides from panel to panel across the comic page, and each panel comes to life with small movements as the camera passes. The ink lines, panel borders and lettering stay the same. Page turn and comic sound effects.' },
     settings: moving,
     cover: covers.sun,
   }),
@@ -760,7 +775,8 @@ const trending = [
   template({
     id: 'renaissance', name: 'Gallery masterpiece', category: 'fun', model: kleinLtx,
     blurb: 'Hang as a classical painting in a busy gallery.',
-    prompt: 'Turn the person in this photo into a Renaissance oil portrait in an ornate gold frame, with soft hazy light, a rich dark background, period clothing and fine cracks in the varnish. The painting hangs in a crowded museum gallery, visitors gather, point and take photos, and the painted figure subtly blinks and smiles.',
+    prompt: 'Turn the person in this photo into a Renaissance oil portrait in an ornate gold frame, with soft hazy light, a rich dark background, period clothing and fine cracks in the varnish. The painting hangs in a crowded museum gallery with visitors in front of it.',
+    params: { motion: 'Use the provided start image as the first frame. Visitors gather in front of the painting, point and take photos with their phones, and the painted figure subtly blinks and smiles. The frame and the painting stay in place. Quiet gallery murmur.' },
     cover: covers.dusk,
   }),
   open({
@@ -785,13 +801,15 @@ const trending = [
   template({
     id: 'open-world', name: 'Open world run', category: 'fun', model: kleinH3,
     blurb: 'Run, jump and drive through an open world game as yourself.',
-    prompt: 'Turn the person in this photo into the player character of a third person open world game, seen from over the shoulder with a minimap and a health bar on screen. They sprint down a sunny city street, vault a low wall and hop into an open top car that drives off. Game engine graphics, their face, hair and outfit recognizable.',
+    prompt: 'Turn the person in this photo into the player character of a third person open world game on a sunny city street, seen from over the shoulder with a minimap and a health bar on screen. Game engine graphics, their face, hair and outfit recognizable.',
+    params: { motion: 'The video opens exactly on <Picture 1>. The character sprints down the street, vaults a low wall and hops into an open top car that drives off, the camera following over the shoulder. The minimap and health bar stay fixed on screen. Audio: footsteps, an engine and city sounds.' },
     cover: covers.sky,
   }),
   template({
     id: 'booking-photo', name: 'Booking photo', category: 'fun', model: qwenLtx,
     blurb: 'A tongue-in-cheek police booking photo, height chart and all.',
-    prompt: 'Turn this photo into a playful police booking photo: the person stands against a height chart holding a placard with a made-up number and today\'s date under flat, harsh light. Then they turn to the side for the profile shot and back to the camera with a cheeky smile as the flash pops. Lighthearted, with nothing incriminating written.',
+    prompt: 'Turn this photo into a playful police booking photo: the person stands against a height chart holding a placard with a made-up number and today\'s date, under flat, harsh light. Lighthearted, with nothing incriminating written.',
+    params: { motion: 'Use the provided start image as the first frame. They turn to the side for the profile shot and back to the camera with a cheeky smile as the flash pops. The placard text stays the same. Camera shutter and flash sounds.' },
     cover: covers.slate,
   }),
   template({
@@ -803,13 +821,15 @@ const trending = [
   template({
     id: 'social-icons', name: 'Notification swarm', category: 'fun', model: qwenLtx,
     blurb: 'Surround your photo with floating app-style icons.',
-    prompt: 'Surround the person in this photo with glossy 3D icons of hearts, thumbs up, chat bubbles, play buttons, bells and stars, all generic with no real logos. The icons float and orbit around them, pop with little bursts and stack up like notifications as counters tick upward. Bright, clean and playful.',
+    prompt: 'Surround the person in this photo with glossy 3D icons of hearts, thumbs up, chat bubbles, play buttons, bells and stars, all generic with no real logos, floating around them with small notification counters.',
+    params: { motion: 'Use the provided start image as the first frame. The icons float and orbit around the person, pop with little bursts and stack up like notifications as the counters tick upward. Bright pops and chimes.' },
     cover: covers.lilac,
   }),
   template({
     id: 'idol-stage', name: 'Idol stage', category: 'fun', model: kleinH3,
     blurb: 'Take the stage as a pop idol.',
-    prompt: 'Restyle the person in this photo as a pop idol in a sparkling stage outfit, then show them performing on a big concert stage: they hit a pose, dance a short routine and wave to a sea of light sticks while spotlights sweep, confetti falls and a crane camera glides past. Keep their face.',
+    prompt: 'Restyle the person in this photo as a pop idol in a sparkling stage outfit, standing on a big concert stage under spotlights with a sea of light sticks in the crowd. Keep their face.',
+    params: { motion: 'The video opens exactly on <Picture 1>. They hit a pose, dance a short routine and wave to the crowd while spotlights sweep, confetti falls and a crane camera glides past. Audio: an upbeat pop track and a cheering crowd.' },
     cover: covers.rose,
   }),
   template({

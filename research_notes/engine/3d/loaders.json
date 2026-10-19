@@ -1,0 +1,5 @@
+{
+  "LoadBackgroundRemovalModel": {
+    "bg_removal_name": "background_removal"
+  }
+}

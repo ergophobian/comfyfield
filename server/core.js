@@ -5,8 +5,8 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { randomUUID } from 'node:crypto'
 import { Comfy } from '@comfyorg/sdk'
-import { models as pinned, falCategories } from '../src/lib/catalog.js'
-import { comfyVars, comfyRouterInput, falInput, estimate, fill, falEndpointFor } from '../shared/mapping.js'
+import { models as pinned, falCategories, podWorkflows } from '../src/lib/catalog.js'
+import { comfyVars, comfyRouterInput, falInput, estimate, fill, falEndpointFor, dropOptional } from '../shared/mapping.js'
 import { renderStitch } from './stitch.js'
 import { minVramOf, notOnCloud, podNeedsOf, volumeFor, RUNTIMES } from '../shared/modelFiles.js'
 
@@ -332,7 +332,7 @@ export async function runGoogle({ model, mode, prompt, aspect, count = 1, durati
   return files
 }
 
-export const mediaTypes = { mp3: 'audio/mpeg', wav: 'audio/wav', mp4: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime', m4a: 'audio/mp4', ogg: 'audio/ogg', flac: 'audio/flac', png: 'image/png', jpeg: 'image/jpeg', jpg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif', svg: 'image/svg+xml', ico: 'image/x-icon' }
+export const mediaTypes = { mp3: 'audio/mpeg', wav: 'audio/wav', mp4: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime', m4a: 'audio/mp4', ogg: 'audio/ogg', flac: 'audio/flac', glb: 'model/gltf-binary', png: 'image/png', jpeg: 'image/jpeg', jpg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif', svg: 'image/svg+xml', ico: 'image/x-icon' }
 
 // Thumbnails and prices for specific fal endpoints. Prices need a fal key; thumbnails do not.
 export async function falMeta(ids) {
@@ -596,7 +596,7 @@ export function workflowNeeds(workflow) {
 const modelOf = (workflow) => pinned.find((m) => m.workflow === workflow || m.imageWorkflow === workflow)
 function podWorkflowOf(workflow) {
   const m = modelOf(workflow)
-  return (m && (workflow === m.imageWorkflow ? m.podImageWorkflow : m.podWorkflow)) || null
+  return (m && (workflow === m.imageWorkflow ? m.podImageWorkflow : m.podWorkflow)) || podWorkflows[workflow] || null
 }
 
 // A Pod started for a workflow is sized for its Pod graph, so H3 gets the GPU FreeVideo runs on.
@@ -626,24 +626,106 @@ export async function podOptions() {
   }))
   return {
     ...q, tiers, volumes: POD_VOLUMES, idleChoices: IDLE_CHOICES, diskUsdPerGbMonth: STOPPED_DISK_USD_GB_MONTH,
-    // diskGb: the smallest disk a Pod that installs the runtime gets.
-    runtimes: Object.entries(RUNTIMES).map(([id, r]) => ({ id, name: r.name, gb: r.gb, vramGb: r.vramGb, minutes: r.minutes, diskGb: Math.ceil(volumeFor([r]) / 10) * 10 })),
+    // diskGb: the smallest disk a Pod that installs the runtime gets. Node packs install by themselves.
+    runtimes: Object.entries(RUNTIMES).filter(([, r]) => !r.pack).map(([id, r]) => ({ id, name: r.name, gb: r.gb, vramGb: r.vramGb, minutes: r.minutes, diskGb: Math.ceil(volumeFor([r]) / 10) * 10 })),
+    services: (await podServices()).map(({ id, name, also, gb, vramGb, runtimes, files }) => ({ id, name, also, gb, vramGb, runtimes: runtimes.map((r) => r.name), keys: files.map((f) => `${f.dir}/${f.name}`) })),
   }
+}
+
+// Services a Pod can get ready for before their first run: each catalog model, and each group of formats
+// that runs on the same model, with the files and runtimes their graphs need on a Pod. Services that
+// need the same files are one entry. A partner node needs no files, so it is no service here.
+let services = null
+const sizeOf = (needs) => Math.round(needs.reduce((n, f) => n + f.gb, 0) * 10) / 10
+export async function podServices() {
+  if (services && Date.now() - services.at < 30_000) return services.list
+  const { formats } = await import('../src/lib/formats/index.js')
+  const groups = new Map()
+  const add = (name, workflows) => {
+    const g = groups.get(name) || new Set()
+    for (const w of workflows) if (w) g.add(w)
+    groups.set(name, g)
+  }
+  for (const m of pinned) if (m.provider === 'comfy') add(m.name, [m.workflow, m.imageWorkflow])
+  for (const f of formats) {
+    for (const s of f.steps || []) {
+      if (s.provider !== 'comfy') continue
+      for (const t of s.targets ? Object.values(s.targets).map((x) => ({ ...s, ...x })) : [s]) add(f.runsOn || f.name, [t.workflow, t.imageWorkflow])
+    }
+  }
+  const bySet = new Map()
+  for (const [name, set] of groups) {
+    const needs = []
+    for (const w of set) { try { needs.push(...podNeedsOf(readWorkflow(w).template)) } catch {} }
+    const files = [...new Map(needs.filter((n) => !n.runtime).map((n) => [`${n.dir}/${n.name}`, n])).values()]
+    const runtimes = [...new Map(needs.filter((n) => n.runtime).map((n) => [n.runtime, n])).values()]
+    if (!files.length) continue
+    const sig = [...files.map((f) => `${f.dir}/${f.name}`), ...runtimes.map((r) => r.runtime)].sort().join('|')
+    const hit = bySet.get(sig)
+    if (hit) { hit.also.push(name); continue }
+    bySet.set(sig, { id: name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''), name, also: [], files, runtimes,
+      gb: sizeOf([...files, ...runtimes]), vramGb: minVramOf([...files, ...runtimes]) })
+  }
+  // The Pod graph a big enough Pod runs instead (H3 on FreeVideo) is a service of its own.
+  for (const m of pinned) {
+    for (const w of [m.podWorkflow, m.podImageWorkflow].filter(Boolean)) {
+      const needs = podNeedsOf(readWorkflow(w).template)
+      const name = `${m.name.split(' (')[0]} on ${needs.filter((n) => n.runtime).map((n) => n.name).join(', ')}`
+      if ([...bySet.values()].some((s) => s.name === name)) continue
+      const files = needs.filter((n) => !n.runtime)
+      const runtimes = needs.filter((n) => n.runtime)
+      bySet.set(`pod:${w}`, { id: name.toLowerCase().replace(/[^a-z0-9]+/g, '-'), name, also: [], files, runtimes,
+        gb: sizeOf([...files, ...runtimes]), vramGb: minVramOf(needs) })
+    }
+  }
+  services = { at: Date.now(), list: [...bySet.values()] }
+  return services.list
+}
+
+// The files and runtimes for services picked on the Pods page, checked against the Pod's GPU.
+export async function podPrepareFor(ids, vramGb = null) {
+  const list = await podServices()
+  const picked = ids.map((id) => list.find((s) => s.id === id))
+  if (!picked.length || picked.some((s) => !s)) throw Object.assign(new Error('Pick a service from the list.'), { status: 400 })
+  const big = picked.find((s) => vramGb != null && s.vramGb > vramGb)
+  if (big) throw Object.assign(new Error(`${big.name} needs a ${big.vramGb} GB GPU; this Pod has ${vramGb} GB.`), { status: 400 })
+  const files = [...new Map(picked.flatMap((s) => s.files).map((f) => [`${f.dir}/${f.name}`, f])).values()]
+  const runtimes = [...new Set(picked.flatMap((s) => s.runtimes.map((r) => r.runtime)))]
+  return { files, runtimes, minVramGb: Math.max(0, ...picked.map((s) => s.vramGb)), volumeGb: volumeFor([...files, ...runtimes.map((r) => RUNTIMES[r])]) }
+}
+
+// The Pod's status for the app, with the services that use each model file on its disk.
+export async function podStatus() {
+  const s = pod().status()
+  if (!s.models.length) return s
+  const used = new Map()
+  for (const svc of await podServices().catch(() => [])) {
+    for (const f of svc.files) used.set(`${f.dir}/${f.name}`, [...(used.get(`${f.dir}/${f.name}`) || []), svc.name])
+  }
+  return { ...s, models: s.models.map((f) => ({ ...f, usedBy: used.get(`${f.dir}/${f.name}`) || [] })) }
 }
 
 // A Pod can take a graph when its GPU is big enough and its disk has room for the runtimes it has not
 // installed. Unknown disk counts as room: a Pod started for the graph was sized for it.
 function podHasRoom(needs, vram, room = {}) {
   if (vram == null || vram < minVramOf(needs)) return false
-  return needs.filter((n) => n.runtime && !['ready', 'installing'].includes(room.runtimes?.[n.runtime]))
+  return needs.filter((n) => n.runtime && !['ready', 'installing', 'loading'].includes(room.runtimes?.[n.runtime]))
     .every((n) => room.diskFreeGb == null || room.diskFreeGb >= n.gb)
 }
 
 const unsetInput = (template, vars) => [...JSON.stringify(template).matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1]).find((k) => vars[k] == null || vars[k] === '')
-// The loader inputs a run uploads its own files to: an attached image, and a video edit's clip.
-const UPLOADS = [['LoadImage', 'image', 'image'], ['LoadVideo', 'file', 'video']]
-const uploadsOf = (template) => Object.entries(template).flatMap(([id, node]) => UPLOADS
-  .filter(([type, field, key]) => node.class_type === type && node.inputs[field] === `{{${key}}}`).map(([, field, key]) => ({ id, field, key })))
+// The loader inputs a run uploads its own files to, by placeholder: attached images and a mask, a video
+// edit's clip, and audio (a recording, or a saved voice's sample).
+export const UPLOAD_KEYS = {
+  LoadImage: ['image', ['image', 'image2', 'image3', 'image4', 'image5', 'mask']],
+  LoadVideo: ['file', ['video']],
+  LoadAudio: ['audio', ['audio', 'voice']],
+}
+export const uploadsOf = (template) => Object.entries(template).flatMap(([id, node]) => {
+  const [field, keys] = UPLOAD_KEYS[node.class_type] || []
+  const key = field && /^\{\{(\w+)\}\}$/.exec(node.inputs?.[field] || '')?.[1]
+  return key && keys.includes(key) ? [{ id, field, key }] : []
+})
 async function readUploads(uploads, vars) {
   const out = {}
   for (const { key } of uploads) out[key] ??= await comfyMedia(vars[key])
@@ -674,6 +756,8 @@ async function comfyTarget(files, podPhase, podVram, label) {
 // Runs a bundled workflow on Comfy Cloud or the Pod, or in development on a local ComfyUI, and returns file URLs.
 export async function runComfy(workflow, vars = {}, { createClient = (key, baseUrl) => comfyClient(baseUrl, key), lease = (o) => pod().lease(o), podPhase = () => pod().phaseNow(), podVram = () => pod().vramGb(), podRoom = () => pod().room() } = {}) {
   let { file, template } = readWorkflow(workflow)
+  // Nodes for a file the run did not attach (a second garment, an optional reference) drop out first.
+  template = dropOptional(template, vars)
   const unset = unsetInput(template, vars)
   if (unset) throw new Error(`Workflow ${workflow} requires ${unset}.`)
   let graph = fill(template, vars)
@@ -686,6 +770,7 @@ export async function runComfy(workflow, vars = {}, { createClient = (key, baseU
     const alt = target === 'pod' && podWorkflowOf(workflow)
     if (alt) {
       const w = readWorkflow(alt)
+      w.template = dropOptional(w.template, vars)
       const g = unsetInput(w.template, vars) ? null : fill(w.template, vars)
       const n = g && podNeedsOf(g)
       if (n && podHasRoom(n, podVram(), podRoom())) {
@@ -724,10 +809,14 @@ export async function runComfy(workflow, vars = {}, { createClient = (key, baseU
       }
       const files = []
       for (const output of job.outputs) {
-        // ComfyUI lists a saved video under `images`, so the content type decides the kind.
-        const kind = /^(image|video|audio)\//.exec(output.contentType || '')?.[1] || output.type
-        if (!['image', 'video', 'audio'].includes(kind)) continue
-        files.push({ ...saveMedia(Buffer.from(await output.toBytes()), mimeExt(output.contentType)), kind, name: output.name })
+        const kind = outputKind(output.contentType, output.name, output.type)
+        if (!kind) continue
+        const buf = Buffer.from(await output.toBytes())
+        // Chatterbox answers an error with one sample of silence, which ComfyUI counts as a success.
+        if (kind === 'audio' && flacSeconds(buf) != null && flacSeconds(buf) < 0.1) {
+          throw new Error('The voice model returned no sound. Try a shorter script or another voice sample.')
+        }
+        files.push({ ...saveMedia(buf, outputExt(output.contentType, output.name)), kind, name: output.name })
       }
       if (!files.length) throw new Error(`${where} finished but returned no media.`)
       return files
@@ -775,12 +864,38 @@ export async function runComfy(workflow, vars = {}, { createClient = (key, baseU
   throw new Error('ComfyUI took too long.')
 }
 
+// ComfyUI lists a saved video under `images`, and a 3D model as a plain file, so the content type and
+// the file name decide the kind. Anything else (text, latents) is not media.
+const MODEL_3D = /\.(glb|gltf)$/i
+function outputKind(contentType = '', name = '', type = '') {
+  const kind = /^(image|video|audio)\//.exec(contentType)?.[1]
+  if (kind) return kind
+  if (/^model\//.test(contentType) || MODEL_3D.test(name)) return '3d'
+  if (/\.(mp4|webm|mov)$/i.test(name)) return 'video'
+  if (/\.(wav|mp3|flac|ogg|m4a|opus)$/i.test(name)) return 'audio'
+  return ['image', 'video', 'audio'].includes(type) ? type : null
+}
+// The length of a FLAC file in seconds, from its STREAMINFO block (a 20-bit sample rate, then a 36-bit
+// sample count). Null for another format, or when the encoder left the count out.
+export function flacSeconds(buf) {
+  if (buf.length < 26 || buf.toString('latin1', 0, 4) !== 'fLaC' || (buf[4] & 0x7f) !== 0) return null
+  const rate = (buf[18] << 12) | (buf[19] << 4) | (buf[20] >> 4)
+  const samples = (buf[21] & 0x0f) * 2 ** 32 + buf.readUInt32BE(22)
+  return rate && samples ? samples / rate : null
+}
+const outputExt = (contentType, name) => {
+  const ext = /\.(\w{2,5})$/.exec(name || '')?.[1]?.toLowerCase()
+  return ext && mediaTypes[ext] ? ext : mimeExt(contentType)
+}
+
 function collectComfy(base, outputs) {
   const files = []
   for (const out of Object.values(outputs)) {
-    for (const f of [...(out.images || []), ...(out.gifs || []), ...(out.videos || [])]) {
+    for (const f of Object.values(out).filter(Array.isArray).flat()) {
+      if (!f?.filename) continue
+      const kind = outputKind('', f.filename) || 'image'
       const q = new URLSearchParams({ filename: f.filename, subfolder: f.subfolder || '', type: f.type || 'output' })
-      files.push({ url: `${base}/view?${q}`, kind: /\.(mp4|webm|mov)$/i.test(f.filename) ? 'video' : 'image', name: f.filename })
+      files.push({ url: `${base}/view?${q}`, kind, name: f.filename })
     }
   }
   return files

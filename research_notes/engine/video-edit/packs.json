@@ -1,0 +1,36 @@
+[
+  {
+    "id": "wanvideo",
+    "name": "ComfyUI-WanVideoWrapper",
+    "repo": "kijai/ComfyUI-WanVideoWrapper",
+    "commit": "088128b224242e110d3906c6750e9a3a348a659b",
+    "date": "2026-05-24",
+    "nodes": [
+      "WanVideoModelLoader",
+      "WanVideoVAELoader",
+      "WanVideoEncode",
+      "WanVideoDecode",
+      "WanVideoTextEmbedBridge",
+      "WanVideoReCamMasterDefaultCamera",
+      "WanVideoReCamMasterGenerateOrbitCamera",
+      "WanVideoReCamMasterCameraEmbed",
+      "WanVideoSampler"
+    ],
+    "requirements": [
+      "ftfy",
+      "accelerate>=1.2.1",
+      "einops",
+      "diffusers>=0.33.0",
+      "peft>=0.17.0",
+      "sentencepiece>=0.2.0",
+      "protobuf",
+      "pyloudnorm",
+      "gguf>=0.17.1",
+      "opencv-python",
+      "scipy"
+    ],
+    "cloud": true,
+    "models": "Nothing for these nodes: ReCamMaster's ten preset trajectories ship in the repo (recammaster/recam_extrinsics.json). The model, VAE and text encoder come from the graph's loaders.",
+    "notes": "Newest commit on main (no tags). Install folder ComfyUI-WanVideoWrapper. Only recammaster uses it. Comfy Cloud lists all nine classes; its pinned commit is not published. The pack's last commit predates ComfyUI v0.41.1 by five months, so test it on a Pod before shipping."
+  }
+]

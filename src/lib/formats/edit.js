@@ -66,7 +66,8 @@ const imageEdits = [
       photo,
       { id: 'layers', type: 'count', label: 'Layers', options: [3, 4, 6, 8], default: 4, unit: 'layers' },
     ],
-    prompt: 'Split this image into {layers} transparent layers: one for each main object and one for the background, with clean edges and the hidden parts of the background filled in.',
+    // Qwen-Image-Layered takes no instruction: the count of layers is what it reads.
+    bindings: { layers: 'layers' },
     output: 'Separate layers for each object and the background',
     settings: { aspect: 'auto' },
     cover: covers.indigo,
@@ -86,7 +87,7 @@ const imageEdits = [
         { id: 'tailored', label: 'Tailored', text: 'tailored close to the body' },
       ] },
     ],
-    prompt: 'Dress the person from the first image in the clothing shown in the other images, {fit}. Match each garment\'s fabric, color, pattern, print and details with natural folds and lighting, and keep the person\'s face, hair, body, pose and the background exactly the same.',
+    prompt: 'Dress the person in <image1> in the clothing from <image2> and any further reference image, {fit}. Match each garment\'s fabric, color, pattern, print and details with natural folds and lighting, and keep the face, hair, body, pose and background of <image1> exactly the same.',
     settings: { aspect: 'auto' },
     cover: covers.rose,
   }),
@@ -118,7 +119,7 @@ const imageEdits = [
       { id: 'style', type: 'image', label: 'Style reference' },
       note,
     ],
-    prompt: 'Redraw the first image in the visual style of the second image: its medium, palette, brushwork or texture, lighting and mood. Keep the composition, subjects, poses and layout of the first image, and do not copy any objects from the style reference. {note}',
+    prompt: 'Redraw <image1> in the visual style of <image2>: its medium, palette, brushwork or texture, lighting and mood. Keep the composition, subjects, poses and layout of <image1>, and do not copy any objects from <image2>. {note}',
     settings: { aspect: 'auto' },
     cover: covers.night,
   }),
@@ -174,7 +175,7 @@ const imageEdits = [
         { id: 'billboard', label: 'On a billboard', text: 'printed large on a billboard in the scene' },
       ] },
     ],
-    prompt: 'Place {product} into the scene photo, {placement}. Match the scene\'s lighting, perspective, scale, shadows and reflections so it looks photographed there, keep the product shape, label and colors exactly the same, and leave the rest of the scene unchanged.',
+    prompt: 'Place the product from <image2> ({product}) into the scene in <image1>, {placement}. Match the scene\'s lighting, perspective, scale, shadows and reflections so it looks photographed there, keep the product shape, label and colors exactly the same, and leave the rest of the scene unchanged.',
     settings: { aspect: 'auto' },
     cover: covers.sun,
   }),
@@ -289,7 +290,7 @@ const videoEdits = [
   open({
     id: 'color-grade', name: 'Color grade', kind: 'video', category: 'video-edit',
     blurb: 'Give a video a film look in one click.',
-    runsOn: 'KJNodes color match and Bernini-R', workflow: 'bernini_grade',
+    runsOn: 'Bernini-R', workflow: 'bernini_grade',
     inputs: [
       clip,
       { id: 'grade', type: 'choice', label: 'Grade', default: 'teal-orange', options: [
@@ -318,7 +319,7 @@ const videoEdits = [
   open({
     id: 'clone-edit', name: 'Clone an edit', kind: 'video', category: 'video-edit', layout: 'wide',
     blurb: 'Copy the cuts and pacing of any edit with your own cast.',
-    runsOn: 'Bernini-R and MiniMax H3', workflow: 'bernini_clone_edit',
+    runsOn: 'Bernini-R', workflow: 'bernini_clone_edit',
     inputs: [
       { id: 'reference', type: 'video', label: 'Reference edit' },
       { id: 'cast1', type: 'image', label: 'Your character, product or outfit', half: true },
@@ -326,7 +327,7 @@ const videoEdits = [
       { id: 'cast3', type: 'image', label: 'Your character, product or outfit', optional: true, half: true },
       { ...note, half: true },
     ],
-    prompt: 'Recreate the reference edit shot for shot, starring the subjects from the cast images in place of the originals. Keep the cuts, pacing, length, frame rate, camera moves and transitions exactly the same, and keep each cast subject consistent in every shot. {note}',
+    prompt: 'Recreate the reference edit shot for shot, starring the subjects from image 0, image 1 and image 2 in place of the originals. Keep the cuts, pacing, length, frame rate, camera moves and transitions exactly the same, and keep each cast subject consistent in every shot. {note}',
     settings: { aspect: 'auto' },
     cover: covers.sky,
   }),
@@ -337,11 +338,11 @@ const videoEdits = [
     inputs: [
       clip,
       { id: 'angle', type: 'choice', label: 'New angle', default: 'left', options: [
-        { id: 'left', label: 'From the left', text: 'from a camera on the left side', params: { trajectory: 'arc_left' } },
-        { id: 'right', label: 'From the right', text: 'from a camera on the right side', params: { trajectory: 'arc_right' } },
-        { id: 'above', label: 'From above', text: 'from a high camera looking down', params: { trajectory: 'rise' } },
-        { id: 'low', label: 'Low angle', text: 'from a low camera looking up', params: { trajectory: 'lower' } },
-        { id: 'orbit', label: 'Orbit around', text: 'with the camera orbiting around the action', params: { trajectory: 'orbit' } },
+        { id: 'left', label: 'From the left', text: 'from a camera on the left side', params: { trajectory: 'arc_left', orbit: false } },
+        { id: 'right', label: 'From the right', text: 'from a camera on the right side', params: { trajectory: 'arc_right', orbit: false } },
+        { id: 'above', label: 'From above', text: 'from a high camera looking down', params: { trajectory: 'translate_up', orbit: false } },
+        { id: 'low', label: 'Low angle', text: 'from a low camera looking up', params: { trajectory: 'translate_down', orbit: false } },
+        { id: 'orbit', label: 'Orbit around', text: 'with the camera orbiting around the action', params: { trajectory: 'arc_right', orbit: true } },
       ] },
     ],
     prompt: 'Re-film the same scene {angle}, keeping the action, timing, subjects and lighting identical.',
@@ -358,6 +359,8 @@ const videoEdits = [
       { id: 'next', type: 'text', label: 'What happens next', optional: true, placeholder: 'The door swings open and light floods in' },
     ],
     prompt: 'Continue the video seamlessly from its last frame for {seconds} more seconds with the same subjects, camera, lighting and pace. {next}',
+    // The graph makes this many new seconds after the clip.
+    bindings: { seconds: 'seconds' },
     settings: { aspect: 'auto' },
     cover: covers.indigo,
   }),
@@ -396,19 +399,23 @@ const enhance = [
   open({
     id: 'video-bg-remove', name: 'Video background remove', kind: 'video', category: 'enhance', hub: 'video-edit',
     blurb: 'Cut the subject out of every frame of a video.',
-    runsOn: 'SAM 3.1 and BiRefNet', workflow: 'birefnet_video_matte',
+    runsOn: 'SAM 3.1 and BiRefNet, with Qwen-Image 2.1 for a new background',
     inputs: [
       clip,
       { id: 'result', type: 'choice', label: 'Result', default: 'transparent', options: [
-        { id: 'transparent', label: 'Transparent', note: 'For editing apps', text: 'a fully transparent background', params: { output: 'alpha' } },
-        { id: 'green', label: 'Green screen', note: 'Solid chroma green', text: 'a flat chroma key green background', params: { output: 'green' } },
-        { id: 'new', label: 'New background', note: 'Describe a scene', text: 'this new scene:', params: { output: 'composite' } },
+        { id: 'transparent', label: 'Transparent', note: 'For editing apps' },
+        { id: 'green', label: 'Green screen', note: 'Solid chroma green' },
+        { id: 'new', label: 'New background', note: 'Describe a scene' },
       ] },
       { id: 'background', type: 'text', label: 'New background', when: ['result', 'new'], placeholder: 'A sunny beach boardwalk, softly out of focus' },
     ],
-    prompt: 'Keep the main subject in every frame with clean, stable edges around hair and fast motion, and replace the background with {result} {background}',
     output: 'A video with an alpha channel when you pick transparent',
     settings: { aspect: 'auto' },
+    steps: [{ id: 'generate', provider: 'comfy', kind: 'video', targetInput: 'result', settings: { aspect: 'auto' }, targets: {
+      transparent: { workflow: 'birefnet_video_matte_alpha' },
+      green: { workflow: 'birefnet_video_matte' },
+      new: { workflow: 'birefnet_video_matte_scene', bindings: { background: 'background' } },
+    } }],
     cover: covers.slate,
   }),
   open({

@@ -1,5 +1,6 @@
 // Product videos, UGC and ad variants.
 import { open, note, covers } from './parts.js'
+import { h3Sizes } from '../catalog.js'
 
 export const ads = [
   open({
@@ -16,7 +17,7 @@ export const ads = [
         { id: 'bold', label: 'Bold text', text: 'the product pops in against a bold solid color background with fast punchy camera moves and open space for large headline text' },
       ] },
     ],
-    prompt: 'A vertical product ad for {product}: {style}. Keep the product shape, label and colors exactly the same in every frame, crisp commercial lighting.',
+    prompt: 'A vertical product ad for {product}: {style}. Keep the product shape, label and colors exactly the same in every frame, crisp commercial lighting. In the colors of the brand {brand}, if one is named.',
     settings: { aspect: '9:16', duration: 5 },
     cover: covers.sun,
   }),
@@ -62,7 +63,8 @@ export const ads = [
         { id: 'everything', label: 'Everything', text: 'try a fresh layout, background, palette and headline while the product stays recognizable' },
       ] },
     ],
-    prompt: 'Make {variants} variants of this ad. In each one, {change}. Keep the product exactly as it is and all text legible.',
+    prompt: 'Make a new variant of this ad: {change}. Keep the product exactly as it is and all text legible.',
+    bindings: { count: 'variants' },
     settings: { aspect: 'auto' },
     cover: covers.indigo,
   }),
@@ -87,7 +89,7 @@ export const ads = [
   open({
     id: 'recreate-ad', name: 'Recreate an ad', kind: 'video', category: 'ads', layout: 'wide',
     blurb: 'Remake an ad shot for shot with your own product.',
-    runsOn: 'Bernini-R and MiniMax H3', workflow: 'bernini_recreate_ad',
+    runsOn: 'Bernini-R', workflow: 'bernini_recreate_ad',
     inputs: [
       { id: 'reference', type: 'video', label: 'Ad to recreate' },
       { id: 'product', type: 'product', label: 'Product', half: true },
@@ -95,14 +97,14 @@ export const ads = [
       { id: 'character', type: 'character', label: 'Character', optional: true, half: true },
       { ...note, half: true },
     ],
-    prompt: 'Recreate the reference ad shot for shot with {product} in place of the original product. Keep the cuts, pacing, camera moves, length and structure, replace any presenter with the saved character when one is given, and keep the product shape, label and colors exact in every frame. {note}',
+    prompt: 'Recreate the reference ad shot for shot with the product in image 0 ({product}) in place of the original product, in the colors of the brand {brand} if one is named. Keep the cuts, pacing, camera moves, length and structure, replace any presenter with the person in image 1 when one is given, and keep the product shape, label and colors exact in every frame. {note}',
     settings: { aspect: 'auto' },
     cover: covers.dusk,
   }),
   open({
     id: 'product-spin', name: 'Product spin', kind: 'video', category: 'ads',
     blurb: 'A smooth 360 degree turn of your product.',
-    runsOn: 'MiniMax H3', workflow: 'h3_i2v',
+    runsOn: 'MiniMax H3', workflow: 'h3_open_i2v', sizes: h3Sizes,
     inputs: [
       { id: 'image', type: 'image', label: 'Product photo' },
       { id: 'background', type: 'choice', label: 'Background', default: 'white', options: [
@@ -120,7 +122,7 @@ export const ads = [
   open({
     id: 'packshot', name: 'Bullet time packshot', kind: 'video', category: 'ads', hub: 'ads',
     blurb: 'Freeze time and sweep the camera around your product.',
-    runsOn: 'MiniMax H3', workflow: 'h3_bullet_time',
+    runsOn: 'MiniMax H3', workflow: 'h3_product_ad', sizes: h3Sizes,
     inputs: [
       { id: 'image', type: 'image', label: 'Product photo' },
       { id: 'background', type: 'choice', label: 'Background', default: 'white', options: [

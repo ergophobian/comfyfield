@@ -1,0 +1,52 @@
+{
+  "trellis_2_int8_convrot.safetensors": {
+    "repo": "Comfy-Org/TRELLIS.2",
+    "path": "diffusion_models/trellis_2_int8_convrot.safetensors",
+    "dir": "diffusion_models",
+    "gb": 5.25,
+    "vramGb": 24,
+    "cloud": false,
+    "sha256": "d01952ad137213f6a868f86b6b877026276f84af5eec23069217475a0bad3a31",
+    "label": "TRELLIS.2"
+  },
+  "trellis_2_shape_vae_bf16.safetensors": {
+    "repo": "Comfy-Org/TRELLIS.2",
+    "path": "vae/trellis_2_shape_vae_bf16.safetensors",
+    "dir": "vae",
+    "gb": 1.1,
+    "vramGb": 0,
+    "cloud": false,
+    "sha256": "de0cb4949a76c59ee5c091a995a69bcc8c51d5aeda939f0c641a50d2a72341f4",
+    "label": "TRELLIS.2"
+  },
+  "trellis_2_texture_vae_bf16.safetensors": {
+    "repo": "Comfy-Org/TRELLIS.2",
+    "path": "vae/trellis_2_texture_vae_bf16.safetensors",
+    "dir": "vae",
+    "gb": 0.95,
+    "vramGb": 0,
+    "cloud": false,
+    "sha256": "714e5ebf094a610e12a8e3b5175c18a62f37f6ea4218acb6073644456b73ab0e",
+    "label": "TRELLIS.2"
+  },
+  "dino_v3_vit_l.safetensors": {
+    "repo": "Comfy-Org/TRELLIS.2",
+    "path": "clip_vision/dino_v3_vit_l.safetensors",
+    "dir": "clip_vision",
+    "gb": 1.21,
+    "vramGb": 0,
+    "cloud": false,
+    "sha256": "5cb785e458de7c460579082418af81f5c62380c181599344bdc60898c63468ee",
+    "label": "TRELLIS.2"
+  },
+  "birefnet.safetensors": {
+    "repo": "Comfy-Org/BiRefNet",
+    "path": "background_removal/birefnet.safetensors",
+    "dir": "background_removal",
+    "gb": 0.44,
+    "vramGb": 0,
+    "cloud": true,
+    "sha256": "9ab37426bf4de0567af6b5d21b16151357149139362e6e8992021b8ce356a154",
+    "label": "BiRefNet"
+  }
+}

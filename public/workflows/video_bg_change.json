@@ -1,0 +1,471 @@
+{
+  "1": {
+    "class_type": "LoadVideo",
+    "inputs": {
+      "file": "{{video}}"
+    }
+  },
+  "2": {
+    "class_type": "Video Slice",
+    "inputs": {
+      "video": [
+        "1",
+        0
+      ],
+      "start_time": "{{start}}",
+      "duration": "{{duration}}",
+      "strict_duration": false
+    }
+  },
+  "3": {
+    "class_type": "GetVideoComponents",
+    "inputs": {
+      "video": [
+        "2",
+        0
+      ]
+    }
+  },
+  "80": {
+    "class_type": "GetImageSize",
+    "inputs": {
+      "image": [
+        "3",
+        0
+      ]
+    }
+  },
+  "81": {
+    "class_type": "PrimitiveInt",
+    "inputs": {
+      "value": 81
+    }
+  },
+  "82": {
+    "class_type": "ComfyMathExpression",
+    "inputs": {
+      "expression": "min(4 * floor((a - 1) / 4) + 1, b)",
+      "values.a": [
+        "80",
+        2
+      ],
+      "values.b": [
+        "81",
+        0
+      ]
+    }
+  },
+  "83": {
+    "class_type": "ComfyMathExpression",
+    "inputs": {
+      "expression": "max(16, 16 * round(a * min(1, 848 / max(a, b)) / 16))",
+      "values.a": [
+        "80",
+        0
+      ],
+      "values.b": [
+        "80",
+        1
+      ]
+    }
+  },
+  "84": {
+    "class_type": "ComfyMathExpression",
+    "inputs": {
+      "expression": "max(16, 16 * round(b * min(1, 848 / max(a, b)) / 16))",
+      "values.a": [
+        "80",
+        0
+      ],
+      "values.b": [
+        "80",
+        1
+      ]
+    }
+  },
+  "4": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+      "type": "wan",
+      "device": "default"
+    }
+  },
+  "5": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "Wan2_1_VAE_bf16.safetensors"
+    }
+  },
+  "6": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "wan2.2_bernini_r_high_noise_fp8_scaled.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "7": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "wan2.2_bernini_r_low_noise_fp8_scaled.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "8": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": {
+      "model": [
+        "6",
+        0
+      ],
+      "lora_name": "lightx2v_T2V_14B_cfg_step_distill_v2_lora_rank64_bf16.safetensors",
+      "strength_model": 3.0
+    }
+  },
+  "9": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": {
+      "model": [
+        "7",
+        0
+      ],
+      "lora_name": "lightx2v_T2V_14B_cfg_step_distill_v2_lora_rank64_bf16.safetensors",
+      "strength_model": 1.5
+    }
+  },
+  "10": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "You are a helpful assistant specialized in video editing.{{prompt}}",
+      "clip": [
+        "4",
+        0
+      ]
+    }
+  },
+  "11": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走",
+      "clip": [
+        "4",
+        0
+      ]
+    }
+  },
+  "12": {
+    "class_type": "BerniniConditioning",
+    "inputs": {
+      "positive": [
+        "10",
+        0
+      ],
+      "negative": [
+        "11",
+        0
+      ],
+      "vae": [
+        "5",
+        0
+      ],
+      "width": [
+        "83",
+        1
+      ],
+      "height": [
+        "84",
+        1
+      ],
+      "length": [
+        "82",
+        1
+      ],
+      "batch_size": 1,
+      "source_video": [
+        "3",
+        0
+      ],
+      "ref_max_size": 848
+    }
+  },
+  "13": {
+    "class_type": "KSamplerSelect",
+    "inputs": {
+      "sampler_name": "res_multistep"
+    }
+  },
+  "14": {
+    "class_type": "BasicScheduler",
+    "inputs": {
+      "model": [
+        "7",
+        0
+      ],
+      "scheduler": "simple",
+      "steps": 6,
+      "denoise": 1.0
+    }
+  },
+  "15": {
+    "class_type": "SplitSigmas",
+    "inputs": {
+      "sigmas": [
+        "14",
+        0
+      ],
+      "step": 3
+    }
+  },
+  "16": {
+    "class_type": "SamplerCustom",
+    "inputs": {
+      "model": [
+        "8",
+        0
+      ],
+      "add_noise": true,
+      "noise_seed": "{{seed}}",
+      "cfg": 1.0,
+      "positive": [
+        "12",
+        0
+      ],
+      "negative": [
+        "12",
+        1
+      ],
+      "sampler": [
+        "13",
+        0
+      ],
+      "sigmas": [
+        "15",
+        0
+      ],
+      "latent_image": [
+        "12",
+        2
+      ]
+    }
+  },
+  "17": {
+    "class_type": "SamplerCustom",
+    "inputs": {
+      "model": [
+        "9",
+        0
+      ],
+      "add_noise": false,
+      "noise_seed": 0,
+      "cfg": 1.0,
+      "positive": [
+        "12",
+        0
+      ],
+      "negative": [
+        "12",
+        1
+      ],
+      "sampler": [
+        "13",
+        0
+      ],
+      "sigmas": [
+        "15",
+        1
+      ],
+      "latent_image": [
+        "16",
+        0
+      ]
+    }
+  },
+  "18": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "17",
+        0
+      ],
+      "vae": [
+        "5",
+        0
+      ]
+    }
+  },
+  "90": {
+    "class_type": "ImageFromBatch",
+    "inputs": {
+      "image": [
+        "3",
+        0
+      ],
+      "batch_index": 0,
+      "length": [
+        "82",
+        1
+      ]
+    }
+  },
+  "91": {
+    "class_type": "ImageScale",
+    "inputs": {
+      "image": [
+        "90",
+        0
+      ],
+      "upscale_method": "area",
+      "width": [
+        "83",
+        1
+      ],
+      "height": [
+        "84",
+        1
+      ],
+      "crop": "center"
+    }
+  },
+  "92": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "sam3.1_multiplex_fp16.safetensors"
+    }
+  },
+  "93": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "person",
+      "clip": [
+        "92",
+        1
+      ]
+    }
+  },
+  "94": {
+    "class_type": "SAM3_VideoTrack",
+    "inputs": {
+      "images": [
+        "91",
+        0
+      ],
+      "model": [
+        "92",
+        0
+      ],
+      "conditioning": [
+        "93",
+        0
+      ],
+      "detection_threshold": 0.5,
+      "max_objects": 4,
+      "detect_interval": 1
+    }
+  },
+  "95": {
+    "class_type": "SAM3_TrackToMask",
+    "inputs": {
+      "track_data": [
+        "94",
+        0
+      ],
+      "object_indices": ""
+    }
+  },
+  "96": {
+    "class_type": "GrowMask",
+    "inputs": {
+      "mask": [
+        "95",
+        0
+      ],
+      "expand": 16,
+      "tapered_corners": true
+    }
+  },
+  "97": {
+    "class_type": "LoadBackgroundRemovalModel",
+    "inputs": {
+      "bg_removal_name": "birefnet.safetensors"
+    }
+  },
+  "98": {
+    "class_type": "RemoveBackground",
+    "inputs": {
+      "bg_removal_model": [
+        "97",
+        0
+      ],
+      "image": [
+        "91",
+        0
+      ]
+    }
+  },
+  "99": {
+    "class_type": "MaskComposite",
+    "inputs": {
+      "destination": [
+        "98",
+        0
+      ],
+      "source": [
+        "96",
+        0
+      ],
+      "x": 0,
+      "y": 0,
+      "operation": "multiply"
+    }
+  },
+  "100": {
+    "class_type": "ImageCompositeMasked",
+    "inputs": {
+      "destination": [
+        "18",
+        0
+      ],
+      "source": [
+        "91",
+        0
+      ],
+      "x": 0,
+      "y": 0,
+      "resize_source": false,
+      "mask": [
+        "99",
+        0
+      ]
+    }
+  },
+  "19": {
+    "class_type": "CreateVideo",
+    "inputs": {
+      "images": [
+        "100",
+        0
+      ],
+      "audio": [
+        "3",
+        1
+      ],
+      "fps": [
+        "3",
+        2
+      ]
+    }
+  },
+  "20": {
+    "class_type": "SaveVideo",
+    "inputs": {
+      "video": [
+        "19",
+        0
+      ],
+      "filename_prefix": "comfyfield/video_bg_change",
+      "format": "mp4",
+      "codec": "h264",
+      "format.codec": "h264"
+    }
+  }
+}

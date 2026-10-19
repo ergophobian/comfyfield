@@ -25,8 +25,20 @@ Delete a Pod and its disk. All charges for it end. Every automatic guard termina
 _Avoid_: stop, kill, end
 
 **Pod runtime**:
-Software a Pod installs for nodes that need more than model files, such as FreeVideo, which runs MiniMax H3. Comfy Cloud has none, so a run that needs one goes to a Pod.
+Software a Pod installs for nodes that need more than model files: a node pack, or FreeVideo, which runs MiniMax H3 in its own Python env. Comfy Cloud has no FreeVideo, so a run that needs it goes to a Pod.
 _Avoid_: engine, add-on, plugin
+
+**Node pack**:
+A set of ComfyUI custom nodes from one repository, pinned by commit, that a Pod installs when a graph uses one of its nodes. Comfy Cloud preinstalls many packs; a graph that needs a pack Cloud lacks runs on a Pod.
+_Avoid_: custom node (for the whole set), extension, plugin
+
+**Pack file**:
+A model file a node pack reads from its own folder under `ComfyUI/models` instead of through a loader, such as Chatterbox's weights. It is pinned by sha256 like any model file, downloads with its pack, and keeps its subfolder (`chatterbox/chatterbox_vc/s3gen.pt`). On a Pod the pack's folder is a link to the volume.
+_Avoid_: pack model, bundled weights
+
+**Service**:
+Something a user generates with, as the Pods page groups it: a model in the picker, or the formats that run on the same model. A Pod gets ready for a service by downloading its files and installing its packs.
+_Avoid_: tool (that is a page), provider
 
 **Daily cap**:
 The most the user lets Pods spend in one day. When today's spend reaches it, no new Pod starts; a running Pod is not touched.

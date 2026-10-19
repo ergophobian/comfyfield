@@ -1,0 +1,1331 @@
+{
+  "1": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "qwen_image_edit_2511_int8_convrot.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "2": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": {
+      "model": [
+        "1",
+        0
+      ],
+      "lora_name": "qwen-image-edit-2511-multiple-angles-lora.safetensors",
+      "strength_model": 1.0
+    }
+  },
+  "3": {
+    "class_type": "ModelSamplingAuraFlow",
+    "inputs": {
+      "model": [
+        "2",
+        0
+      ],
+      "shift": 3.1,
+      "sampling": "flow"
+    }
+  },
+  "4": {
+    "class_type": "CFGNorm",
+    "inputs": {
+      "model": [
+        "3",
+        0
+      ],
+      "strength": 1,
+      "pre_cfg": false
+    }
+  },
+  "5": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": {
+      "model": [
+        "4",
+        0
+      ],
+      "lora_name": "Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors",
+      "strength_model": 1.0
+    }
+  },
+  "6": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+      "type": "qwen_image",
+      "device": "default"
+    }
+  },
+  "7": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "qwen_image_vae.safetensors"
+    }
+  },
+  "8": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "{{image}}"
+    }
+  },
+  "9": {
+    "class_type": "FluxKontextImageScale",
+    "inputs": {
+      "image": [
+        "8",
+        0
+      ]
+    }
+  },
+  "10": {
+    "class_type": "VAEEncode",
+    "inputs": {
+      "pixels": [
+        "9",
+        0
+      ],
+      "vae": [
+        "7",
+        0
+      ]
+    }
+  },
+  "11": {
+    "class_type": "TextEncodeQwenImageEditPlus",
+    "inputs": {
+      "clip": [
+        "6",
+        0
+      ],
+      "prompt": "",
+      "vae": [
+        "7",
+        0
+      ],
+      "image1": [
+        "9",
+        0
+      ]
+    }
+  },
+  "12": {
+    "class_type": "FluxKontextMultiReferenceLatentMethod",
+    "inputs": {
+      "conditioning": [
+        "11",
+        0
+      ],
+      "reference_latents_method": "index_timestep_zero"
+    }
+  },
+  "13": {
+    "class_type": "PrimitiveInt",
+    "inputs": {
+      "value": "{{azimuth}}"
+    }
+  },
+  "14": {
+    "class_type": "PrimitiveInt",
+    "inputs": {
+      "value": "{{elevation}}"
+    }
+  },
+  "15": {
+    "class_type": "PrimitiveFloat",
+    "inputs": {
+      "value": "{{zoom}}"
+    }
+  },
+  "16": {
+    "class_type": "PrimitiveInt",
+    "inputs": {
+      "value": "{{batch}}"
+    }
+  },
+  "17": {
+    "class_type": "ComfyMathExpression",
+    "inputs": {
+      "expression": "a % 360",
+      "values.a": [
+        "13",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Azimuth to 0..359"
+    }
+  },
+  "18": {
+    "class_type": "ComfyMathExpression",
+    "inputs": {
+      "expression": "max(-30, min(60, a))",
+      "values.a": [
+        "14",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Elevation to the LoRA range -30..60"
+    }
+  },
+  "19": {
+    "class_type": "ComfyMathExpression",
+    "inputs": {
+      "expression": "max(0, min(10, 10 * (a - 0.7) / 0.8))",
+      "values.a": [
+        "15",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Distance factor to CameraAngle zoom 0..10"
+    }
+  },
+  "20": {
+    "class_type": "CameraAngle",
+    "inputs": {
+      "horizontal_angle": [
+        "17",
+        1
+      ],
+      "vertical_angle": [
+        "18",
+        1
+      ],
+      "zoom": [
+        "19",
+        0
+      ]
+    }
+  },
+  "21": {
+    "class_type": "StringConcatenate",
+    "inputs": {
+      "string_a": "<sks>",
+      "string_b": [
+        "20",
+        1
+      ],
+      "delimiter": " "
+    },
+    "_meta": {
+      "title": "LoRA prompt"
+    }
+  },
+  "22": {
+    "class_type": "TextEncodeQwenImageEditPlus",
+    "inputs": {
+      "clip": [
+        "6",
+        0
+      ],
+      "prompt": [
+        "21",
+        0
+      ],
+      "vae": [
+        "7",
+        0
+      ],
+      "image1": [
+        "9",
+        0
+      ]
+    }
+  },
+  "23": {
+    "class_type": "FluxKontextMultiReferenceLatentMethod",
+    "inputs": {
+      "conditioning": [
+        "22",
+        0
+      ],
+      "reference_latents_method": "index_timestep_zero"
+    }
+  },
+  "24": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "5",
+        0
+      ],
+      "seed": "{{seed}}",
+      "steps": 4,
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "positive": [
+        "23",
+        0
+      ],
+      "negative": [
+        "12",
+        0
+      ],
+      "latent_image": [
+        "10",
+        0
+      ],
+      "denoise": 1
+    }
+  },
+  "25": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "24",
+        0
+      ],
+      "vae": [
+        "7",
+        0
+      ]
+    }
+  },
+  "26": {
+    "class_type": "TextEncodeQwenImageEditPlus",
+    "inputs": {
+      "clip": [
+        "6",
+        0
+      ],
+      "prompt": "<sks> front view eye-level shot medium shot",
+      "vae": [
+        "7",
+        0
+      ],
+      "image1": [
+        "9",
+        0
+      ]
+    }
+  },
+  "27": {
+    "class_type": "FluxKontextMultiReferenceLatentMethod",
+    "inputs": {
+      "conditioning": [
+        "26",
+        0
+      ],
+      "reference_latents_method": "index_timestep_zero"
+    }
+  },
+  "28": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "5",
+        0
+      ],
+      "seed": "{{seed}}",
+      "steps": 4,
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "positive": [
+        "27",
+        0
+      ],
+      "negative": [
+        "12",
+        0
+      ],
+      "latent_image": [
+        "10",
+        0
+      ],
+      "denoise": 1
+    }
+  },
+  "29": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "28",
+        0
+      ],
+      "vae": [
+        "7",
+        0
+      ]
+    }
+  },
+  "30": {
+    "class_type": "TextEncodeQwenImageEditPlus",
+    "inputs": {
+      "clip": [
+        "6",
+        0
+      ],
+      "prompt": "<sks> front-right quarter view eye-level shot medium shot",
+      "vae": [
+        "7",
+        0
+      ],
+      "image1": [
+        "9",
+        0
+      ]
+    }
+  },
+  "31": {
+    "class_type": "FluxKontextMultiReferenceLatentMethod",
+    "inputs": {
+      "conditioning": [
+        "30",
+        0
+      ],
+      "reference_latents_method": "index_timestep_zero"
+    }
+  },
+  "32": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "5",
+        0
+      ],
+      "seed": "{{seed}}",
+      "steps": 4,
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "positive": [
+        "31",
+        0
+      ],
+      "negative": [
+        "12",
+        0
+      ],
+      "latent_image": [
+        "10",
+        0
+      ],
+      "denoise": 1
+    }
+  },
+  "33": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "32",
+        0
+      ],
+      "vae": [
+        "7",
+        0
+      ]
+    }
+  },
+  "34": {
+    "class_type": "TextEncodeQwenImageEditPlus",
+    "inputs": {
+      "clip": [
+        "6",
+        0
+      ],
+      "prompt": "<sks> right side view eye-level shot medium shot",
+      "vae": [
+        "7",
+        0
+      ],
+      "image1": [
+        "9",
+        0
+      ]
+    }
+  },
+  "35": {
+    "class_type": "FluxKontextMultiReferenceLatentMethod",
+    "inputs": {
+      "conditioning": [
+        "34",
+        0
+      ],
+      "reference_latents_method": "index_timestep_zero"
+    }
+  },
+  "36": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "5",
+        0
+      ],
+      "seed": "{{seed}}",
+      "steps": 4,
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "positive": [
+        "35",
+        0
+      ],
+      "negative": [
+        "12",
+        0
+      ],
+      "latent_image": [
+        "10",
+        0
+      ],
+      "denoise": 1
+    }
+  },
+  "37": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "36",
+        0
+      ],
+      "vae": [
+        "7",
+        0
+      ]
+    }
+  },
+  "38": {
+    "class_type": "TextEncodeQwenImageEditPlus",
+    "inputs": {
+      "clip": [
+        "6",
+        0
+      ],
+      "prompt": "<sks> back-right quarter view eye-level shot medium shot",
+      "vae": [
+        "7",
+        0
+      ],
+      "image1": [
+        "9",
+        0
+      ]
+    }
+  },
+  "39": {
+    "class_type": "FluxKontextMultiReferenceLatentMethod",
+    "inputs": {
+      "conditioning": [
+        "38",
+        0
+      ],
+      "reference_latents_method": "index_timestep_zero"
+    }
+  },
+  "40": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "5",
+        0
+      ],
+      "seed": "{{seed}}",
+      "steps": 4,
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "positive": [
+        "39",
+        0
+      ],
+      "negative": [
+        "12",
+        0
+      ],
+      "latent_image": [
+        "10",
+        0
+      ],
+      "denoise": 1
+    }
+  },
+  "41": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "40",
+        0
+      ],
+      "vae": [
+        "7",
+        0
+      ]
+    }
+  },
+  "42": {
+    "class_type": "TextEncodeQwenImageEditPlus",
+    "inputs": {
+      "clip": [
+        "6",
+        0
+      ],
+      "prompt": "<sks> back view eye-level shot medium shot",
+      "vae": [
+        "7",
+        0
+      ],
+      "image1": [
+        "9",
+        0
+      ]
+    }
+  },
+  "43": {
+    "class_type": "FluxKontextMultiReferenceLatentMethod",
+    "inputs": {
+      "conditioning": [
+        "42",
+        0
+      ],
+      "reference_latents_method": "index_timestep_zero"
+    }
+  },
+  "44": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "5",
+        0
+      ],
+      "seed": "{{seed}}",
+      "steps": 4,
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "positive": [
+        "43",
+        0
+      ],
+      "negative": [
+        "12",
+        0
+      ],
+      "latent_image": [
+        "10",
+        0
+      ],
+      "denoise": 1
+    }
+  },
+  "45": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "44",
+        0
+      ],
+      "vae": [
+        "7",
+        0
+      ]
+    }
+  },
+  "46": {
+    "class_type": "TextEncodeQwenImageEditPlus",
+    "inputs": {
+      "clip": [
+        "6",
+        0
+      ],
+      "prompt": "<sks> back-left quarter view eye-level shot medium shot",
+      "vae": [
+        "7",
+        0
+      ],
+      "image1": [
+        "9",
+        0
+      ]
+    }
+  },
+  "47": {
+    "class_type": "FluxKontextMultiReferenceLatentMethod",
+    "inputs": {
+      "conditioning": [
+        "46",
+        0
+      ],
+      "reference_latents_method": "index_timestep_zero"
+    }
+  },
+  "48": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "5",
+        0
+      ],
+      "seed": "{{seed}}",
+      "steps": 4,
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "positive": [
+        "47",
+        0
+      ],
+      "negative": [
+        "12",
+        0
+      ],
+      "latent_image": [
+        "10",
+        0
+      ],
+      "denoise": 1
+    }
+  },
+  "49": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "48",
+        0
+      ],
+      "vae": [
+        "7",
+        0
+      ]
+    }
+  },
+  "50": {
+    "class_type": "TextEncodeQwenImageEditPlus",
+    "inputs": {
+      "clip": [
+        "6",
+        0
+      ],
+      "prompt": "<sks> left side view eye-level shot medium shot",
+      "vae": [
+        "7",
+        0
+      ],
+      "image1": [
+        "9",
+        0
+      ]
+    }
+  },
+  "51": {
+    "class_type": "FluxKontextMultiReferenceLatentMethod",
+    "inputs": {
+      "conditioning": [
+        "50",
+        0
+      ],
+      "reference_latents_method": "index_timestep_zero"
+    }
+  },
+  "52": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "5",
+        0
+      ],
+      "seed": "{{seed}}",
+      "steps": 4,
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "positive": [
+        "51",
+        0
+      ],
+      "negative": [
+        "12",
+        0
+      ],
+      "latent_image": [
+        "10",
+        0
+      ],
+      "denoise": 1
+    }
+  },
+  "53": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "52",
+        0
+      ],
+      "vae": [
+        "7",
+        0
+      ]
+    }
+  },
+  "54": {
+    "class_type": "TextEncodeQwenImageEditPlus",
+    "inputs": {
+      "clip": [
+        "6",
+        0
+      ],
+      "prompt": "<sks> front-left quarter view eye-level shot medium shot",
+      "vae": [
+        "7",
+        0
+      ],
+      "image1": [
+        "9",
+        0
+      ]
+    }
+  },
+  "55": {
+    "class_type": "FluxKontextMultiReferenceLatentMethod",
+    "inputs": {
+      "conditioning": [
+        "54",
+        0
+      ],
+      "reference_latents_method": "index_timestep_zero"
+    }
+  },
+  "56": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "5",
+        0
+      ],
+      "seed": "{{seed}}",
+      "steps": 4,
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "positive": [
+        "55",
+        0
+      ],
+      "negative": [
+        "12",
+        0
+      ],
+      "latent_image": [
+        "10",
+        0
+      ],
+      "denoise": 1
+    }
+  },
+  "57": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "56",
+        0
+      ],
+      "vae": [
+        "7",
+        0
+      ]
+    }
+  },
+  "58": {
+    "class_type": "TextEncodeQwenImageEditPlus",
+    "inputs": {
+      "clip": [
+        "6",
+        0
+      ],
+      "prompt": "<sks> front view low-angle shot medium shot",
+      "vae": [
+        "7",
+        0
+      ],
+      "image1": [
+        "9",
+        0
+      ]
+    }
+  },
+  "59": {
+    "class_type": "FluxKontextMultiReferenceLatentMethod",
+    "inputs": {
+      "conditioning": [
+        "58",
+        0
+      ],
+      "reference_latents_method": "index_timestep_zero"
+    }
+  },
+  "60": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "5",
+        0
+      ],
+      "seed": "{{seed}}",
+      "steps": 4,
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "positive": [
+        "59",
+        0
+      ],
+      "negative": [
+        "12",
+        0
+      ],
+      "latent_image": [
+        "10",
+        0
+      ],
+      "denoise": 1
+    }
+  },
+  "61": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "60",
+        0
+      ],
+      "vae": [
+        "7",
+        0
+      ]
+    }
+  },
+  "62": {
+    "class_type": "TextEncodeQwenImageEditPlus",
+    "inputs": {
+      "clip": [
+        "6",
+        0
+      ],
+      "prompt": "<sks> front-right quarter view elevated shot medium shot",
+      "vae": [
+        "7",
+        0
+      ],
+      "image1": [
+        "9",
+        0
+      ]
+    }
+  },
+  "63": {
+    "class_type": "FluxKontextMultiReferenceLatentMethod",
+    "inputs": {
+      "conditioning": [
+        "62",
+        0
+      ],
+      "reference_latents_method": "index_timestep_zero"
+    }
+  },
+  "64": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "5",
+        0
+      ],
+      "seed": "{{seed}}",
+      "steps": 4,
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "positive": [
+        "63",
+        0
+      ],
+      "negative": [
+        "12",
+        0
+      ],
+      "latent_image": [
+        "10",
+        0
+      ],
+      "denoise": 1
+    }
+  },
+  "65": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "64",
+        0
+      ],
+      "vae": [
+        "7",
+        0
+      ]
+    }
+  },
+  "66": {
+    "class_type": "TextEncodeQwenImageEditPlus",
+    "inputs": {
+      "clip": [
+        "6",
+        0
+      ],
+      "prompt": "<sks> front view high-angle shot wide shot",
+      "vae": [
+        "7",
+        0
+      ],
+      "image1": [
+        "9",
+        0
+      ]
+    }
+  },
+  "67": {
+    "class_type": "FluxKontextMultiReferenceLatentMethod",
+    "inputs": {
+      "conditioning": [
+        "66",
+        0
+      ],
+      "reference_latents_method": "index_timestep_zero"
+    }
+  },
+  "68": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "5",
+        0
+      ],
+      "seed": "{{seed}}",
+      "steps": 4,
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "positive": [
+        "67",
+        0
+      ],
+      "negative": [
+        "12",
+        0
+      ],
+      "latent_image": [
+        "10",
+        0
+      ],
+      "denoise": 1
+    }
+  },
+  "69": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "68",
+        0
+      ],
+      "vae": [
+        "7",
+        0
+      ]
+    }
+  },
+  "70": {
+    "class_type": "TextEncodeQwenImageEditPlus",
+    "inputs": {
+      "clip": [
+        "6",
+        0
+      ],
+      "prompt": "<sks> front view eye-level shot close-up",
+      "vae": [
+        "7",
+        0
+      ],
+      "image1": [
+        "9",
+        0
+      ]
+    }
+  },
+  "71": {
+    "class_type": "FluxKontextMultiReferenceLatentMethod",
+    "inputs": {
+      "conditioning": [
+        "70",
+        0
+      ],
+      "reference_latents_method": "index_timestep_zero"
+    }
+  },
+  "72": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "5",
+        0
+      ],
+      "seed": "{{seed}}",
+      "steps": 4,
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "positive": [
+        "71",
+        0
+      ],
+      "negative": [
+        "12",
+        0
+      ],
+      "latent_image": [
+        "10",
+        0
+      ],
+      "denoise": 1
+    }
+  },
+  "73": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "72",
+        0
+      ],
+      "vae": [
+        "7",
+        0
+      ]
+    }
+  },
+  "74": {
+    "class_type": "ImageStitch",
+    "inputs": {
+      "image1": [
+        "29",
+        0
+      ],
+      "direction": "right",
+      "match_image_size": true,
+      "spacing_width": 16,
+      "spacing_color": "white",
+      "image2": [
+        "33",
+        0
+      ]
+    }
+  },
+  "75": {
+    "class_type": "ImageStitch",
+    "inputs": {
+      "image1": [
+        "74",
+        0
+      ],
+      "direction": "right",
+      "match_image_size": true,
+      "spacing_width": 16,
+      "spacing_color": "white",
+      "image2": [
+        "37",
+        0
+      ]
+    }
+  },
+  "76": {
+    "class_type": "ImageStitch",
+    "inputs": {
+      "image1": [
+        "75",
+        0
+      ],
+      "direction": "right",
+      "match_image_size": true,
+      "spacing_width": 16,
+      "spacing_color": "white",
+      "image2": [
+        "41",
+        0
+      ]
+    }
+  },
+  "77": {
+    "class_type": "ImageStitch",
+    "inputs": {
+      "image1": [
+        "45",
+        0
+      ],
+      "direction": "right",
+      "match_image_size": true,
+      "spacing_width": 16,
+      "spacing_color": "white",
+      "image2": [
+        "49",
+        0
+      ]
+    }
+  },
+  "78": {
+    "class_type": "ImageStitch",
+    "inputs": {
+      "image1": [
+        "77",
+        0
+      ],
+      "direction": "right",
+      "match_image_size": true,
+      "spacing_width": 16,
+      "spacing_color": "white",
+      "image2": [
+        "53",
+        0
+      ]
+    }
+  },
+  "79": {
+    "class_type": "ImageStitch",
+    "inputs": {
+      "image1": [
+        "78",
+        0
+      ],
+      "direction": "right",
+      "match_image_size": true,
+      "spacing_width": 16,
+      "spacing_color": "white",
+      "image2": [
+        "57",
+        0
+      ]
+    }
+  },
+  "80": {
+    "class_type": "ImageStitch",
+    "inputs": {
+      "image1": [
+        "61",
+        0
+      ],
+      "direction": "right",
+      "match_image_size": true,
+      "spacing_width": 16,
+      "spacing_color": "white",
+      "image2": [
+        "65",
+        0
+      ]
+    }
+  },
+  "81": {
+    "class_type": "ImageStitch",
+    "inputs": {
+      "image1": [
+        "80",
+        0
+      ],
+      "direction": "right",
+      "match_image_size": true,
+      "spacing_width": 16,
+      "spacing_color": "white",
+      "image2": [
+        "69",
+        0
+      ]
+    }
+  },
+  "82": {
+    "class_type": "ImageStitch",
+    "inputs": {
+      "image1": [
+        "81",
+        0
+      ],
+      "direction": "right",
+      "match_image_size": true,
+      "spacing_width": 16,
+      "spacing_color": "white",
+      "image2": [
+        "73",
+        0
+      ]
+    }
+  },
+  "83": {
+    "class_type": "ImageStitch",
+    "inputs": {
+      "image1": [
+        "76",
+        0
+      ],
+      "direction": "down",
+      "match_image_size": true,
+      "spacing_width": 16,
+      "spacing_color": "white",
+      "image2": [
+        "79",
+        0
+      ]
+    }
+  },
+  "84": {
+    "class_type": "ImageStitch",
+    "inputs": {
+      "image1": [
+        "83",
+        0
+      ],
+      "direction": "down",
+      "match_image_size": true,
+      "spacing_width": 16,
+      "spacing_color": "white",
+      "image2": [
+        "82",
+        0
+      ]
+    }
+  },
+  "85": {
+    "class_type": "ComfyMathExpression",
+    "inputs": {
+      "expression": "a > 1",
+      "values.a": [
+        "16",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Sheet of 12?"
+    }
+  },
+  "86": {
+    "class_type": "ComfySwitchNode",
+    "inputs": {
+      "switch": [
+        "85",
+        2
+      ],
+      "on_false": [
+        "25",
+        0
+      ],
+      "on_true": [
+        "84",
+        0
+      ]
+    }
+  },
+  "87": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "filename_prefix": "comfyfield/qwen_multiangle",
+      "images": [
+        "86",
+        0
+      ]
+    }
+  }
+}

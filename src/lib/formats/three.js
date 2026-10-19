@@ -10,9 +10,10 @@ const models = [
     runsOn: 'TRELLIS.2', workflow: 'trellis2_image',
     inputs: [
       photo,
+      // TRELLIS.2's cascades: 1024 is its default, 1536 its finest. The upsample stage takes no less.
       { id: 'detail', type: 'choice', label: 'Detail', default: 'draft', options: [
-        { id: 'draft', label: 'Draft', note: 'Quick shape and texture', params: { resolution: 512 } },
-        { id: 'final', label: 'Final', note: 'Full detail, takes longer', params: { resolution: 1024 } },
+        { id: 'draft', label: 'Draft', note: 'Quick shape and texture', params: { resolution: 1024 } },
+        { id: 'final', label: 'Final', note: 'Full detail, takes longer', params: { resolution: 1536 } },
       ] },
     ],
     output: glb,
@@ -38,7 +39,7 @@ const models = [
   open({
     id: 'character-to-3d', name: 'Character figure', kind: '3d', category: 'models3d',
     blurb: 'Turn a saved character into a 3D figure.',
-    runsOn: 'TRELLIS.2', workflow: 'trellis2_character',
+    runsOn: 'FLUX 3 Image Klein and TRELLIS.2', workflow: 'trellis2_character',
     inputs: [
       { id: 'character', type: 'character', label: 'Character' },
       { id: 'pose', type: 'choice', label: 'Pose', default: 'standing', options: [
@@ -48,24 +49,28 @@ const models = [
         { id: 'sitting', label: 'Sitting', text: 'sitting cross-legged on the ground' },
       ] },
     ],
-    prompt: 'A full body figure of {character} {pose}, keeping their face, hair, outfit and colors, the whole figure in view on a plain white background, soft even light.',
+    // Klein draws the figure from the character's first picture, which it cannot tie to a name, and
+    // TRELLIS.2 lifts that drawing into a mesh.
+    prompt: 'Turn the character in the first image into a full body figure {pose}. Keep their face, hair, outfit and colors. Show the whole figure centered on a plain white background, in soft even light.',
     output: 'A .glb figure you can spin and download',
     cover: covers.rose,
   }),
   open({
     id: 'turntable', name: '3D turntable video', kind: '3d', category: 'models3d', hub: 'trending',
     blurb: 'Spin a product or object a full turn in 3D.',
-    runsOn: 'TRELLIS.2 and Blender', workflow: 'trellis2_turntable',
+    runsOn: 'TRELLIS.2', workflow: 'trellis2_turntable',
     inputs: [
       { id: 'image', type: 'image', label: 'Product or object photo' },
+      // ComfyUI's mesh renderer draws the model's base color on a flat backdrop, with no lights.
       { id: 'background', type: 'choice', label: 'Background', default: 'white', options: [
-        { id: 'white', label: 'White studio', text: 'a seamless white studio', params: { background: 'white' } },
-        { id: 'dark', label: 'Dark studio', text: 'a dark studio with a soft rim light', params: { background: 'dark' } },
-        { id: 'gradient', label: 'Soft color', text: 'a soft color gradient', params: { background: 'gradient' } },
+        { id: 'white', label: 'White', params: { background: '#ffffff' } },
+        { id: 'dark', label: 'Dark', params: { background: '#1c1c22' } },
+        { id: 'soft', label: 'Soft blue', params: { background: '#e6e9f5' } },
       ] },
     ],
-    prompt: 'Build a 3D model of the object in the photo and render one smooth 360 degree turn on a turntable against {background}, even studio light, the camera fixed at a slightly high angle.',
-    output: 'A turntable video of the model',
+    // The graph takes no text: TRELLIS.2 builds the model from the photo and the camera orbits it.
+    prompt: '',
+    output: 'A 4 second turntable video of the model',
     cover: covers.slate,
   }),
 ]

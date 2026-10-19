@@ -1,11 +1,12 @@
 // Camera moves, effects, cinema, storyboards and explainers.
-import { open, photo, note, covers } from './parts.js'
+import { open, photo, note, covers, wanLora } from './parts.js'
+import { h3Sizes, ltx25Sizes, wanSizes } from '../catalog.js'
 
 // Every camera move is the same image to video job, only the move changes.
 // Each move sets its own pace, so a shaky move is not told to be smooth.
 const cam = (slug, name, blurb, move, cover) => open({
   id: `cam-${slug}`, name, kind: 'video', category: 'camera', blurb,
-  runsOn: 'MiniMax H3', workflow: 'h3_i2v',
+  runsOn: 'MiniMax H3', workflow: 'h3_open_i2v', sizes: h3Sizes,
   inputs: [photo, note],
   prompt: `${move} The subject, scene and lighting stay true to the photo, with cinematic, physically plausible motion. {note}`,
   settings: { aspect: 'auto', duration: 5 },
@@ -14,9 +15,10 @@ const cam = (slug, name, blurb, move, cover) => open({
 
 const inGroup = (group, list) => list.map((f) => ({ ...f, group }))
 
-const effect = (id, name, blurb, prompt, cover) => open({
+// `own` swaps the model for one effect, such as a trained effect LoRA.
+const effect = (id, name, blurb, prompt, cover, own) => open({
   id, name, kind: 'video', category: 'effects', blurb,
-  runsOn: 'LTX-2.5', workflow: 'ltx_i2v',
+  runsOn: 'LTX-2.5', workflow: 'ltx25_i2v', sizes: ltx25Sizes, ...own,
   inputs: [photo, note],
   prompt,
   settings: { aspect: 'auto', duration: 5 },
@@ -119,7 +121,7 @@ const mixMoves = [
 const camMix = open({
   id: 'cam-mix', name: 'Mix two moves', kind: 'video', category: 'camera', group: 'Mix',
   blurb: 'Chain two camera moves into one continuous shot.',
-  runsOn: 'MiniMax H3', workflow: 'h3_i2v',
+  runsOn: 'MiniMax H3', workflow: 'h3_open_i2v', sizes: h3Sizes,
   inputs: [
     photo,
     { id: 'first', type: 'choice', label: 'First move', default: 'dolly-in', options: mixMoves },
@@ -139,7 +141,7 @@ const grouped = (list) => list.map((f) => ({ ...f, group: hubEffects.has(f.id) ?
 
 const effects = grouped([
   effect('turn-to-sand', 'Turn to sand', 'Your subject crumbles into drifting sand.',
-    'The subject slowly turns to fine golden sand and crumbles away from the edges, grains pouring down and blowing off in the wind while the background stays still, locked camera. {note}', covers.sun),
+    'The subject slowly turns to fine sand and crumbles away from the edges, grains pouring down and blowing off in the wind while the background stays still, locked camera. Disintegration. {note}', covers.sun, wanLora('wan22_i2v_disintegration_redmond_high_noise')),
   effect('origami-fold', 'Origami fold', 'The scene folds itself into paper origami.',
     'The whole scene transforms into folded paper origami: every surface creases along crisp lines and folds into clean paper shapes, soft matte paper texture, locked camera. {note}', covers.slate),
   effect('snow-globe', 'Snow globe', 'The scene shrinks into a snow globe.',
@@ -157,7 +159,7 @@ const effects = grouped([
   effect('studio-slide', 'Studio slide', 'The background slides away to reveal a photo studio.',
     'The background behind the subject slides sideways out of frame like a stage set on rails, revealing a bright photo studio with a seamless white backdrop and softbox lights, the subject stays in place and is now lit like a studio portrait. {note}', covers.slate),
   effect('eyes-in', 'Eyes in', 'The camera dives into an eye and out into another world.',
-    'The camera pushes steadily in toward the subject\'s face, closer and closer into one eye until the iris fills the frame in extreme macro detail, then flies through the pupil into a vast glowing galaxy of stars and color, one continuous move. {note}', covers.lilac),
+    'skyrimprey pupil transition, the camera zooms in to complete a pupil transition, shifting the scene to a vast glowing galaxy of stars and color, one continuous move. {note}', covers.lilac, wanLora('wan_22_high_noise_pupil_transition', 1, 'wan_22_high_noise_pupil_transition', 0)),
   effect('street-giant', 'Street giant', 'Your subject towers over a busy street.',
     'The camera pulls back and tilts up to reveal the subject grown to giant size, towering over a busy city street, cars and tiny pedestrians moving around their feet, the buildings reaching only to their waist, realistic scale, shadows and lighting. {note}', covers.dusk),
   effect('world-morph', 'World morph', 'The world around your subject changes again and again.',
@@ -185,7 +187,7 @@ const effects = grouped([
 const cinemaShot = open({
   id: 'cinema-shot', name: 'Cinema shot', kind: 'video', category: 'cinema', layout: 'wide', featured: true,
   blurb: 'Pick the camera, lens and move, then describe the scene.',
-  runsOn: 'MiniMax H3, LTX-2.5 or Wan 2.2', workflow: 'cinema_shot',
+  runsOn: 'MiniMax H3, LTX-2.5 or Wan 2.2',
   inputs: [
     { id: 'image', type: 'image', label: 'Start frame', optional: true },
     { id: 'scene', type: 'longtext', label: 'Scene', placeholder: 'A lighthouse keeper climbs the spiral stairs at dusk while rain streaks the windows' },
@@ -247,17 +249,23 @@ const cinemaShot = open({
       { id: 'commercial', label: 'Commercial', text: 'polished commercial look, bright clean lighting, glossy highlights, crisp color' },
     ] },
     { id: 'model', type: 'choice', label: 'Model', half: true, default: 'minimax', options: [
-      { id: 'minimax', label: 'MiniMax H3', note: 'Highest quality, with sound', params: { model: 'minimax_h3' } },
-      { id: 'ltx', label: 'LTX-2.5', note: 'Fastest drafts', params: { model: 'ltx25' } },
-      { id: 'wan', label: 'Wan 2.2', note: 'Runs on smaller GPUs', params: { model: 'wan22' } },
+      { id: 'minimax', label: 'MiniMax H3', note: 'Highest quality, with sound' },
+      { id: 'ltx', label: 'LTX-2.5', note: 'Fastest drafts' },
+      { id: 'wan', label: 'Wan 2.2', note: 'Runs on smaller GPUs' },
     ] },
     { id: 'quality', type: 'choice', label: 'Quality', half: true, default: 'draft', options: [
-      { id: 'draft', label: 'Draft', note: 'Low resolution and cheap, for picking a take', params: { quality: 'draft' } },
-      { id: 'final', label: 'Final', note: 'Full resolution, same seed and settings', params: { quality: 'final' } },
+      { id: 'draft', label: 'Draft', note: 'Low resolution and cheap, for picking a take', params: { scale: 0.6 } },
+      { id: 'final', label: 'Final', note: 'Full resolution', params: { scale: 1 } },
     ] },
   ],
   prompt: '{shot}. {scene}. {movement}. Shot on {camera}, {lens}, {focal}, {aperture}, {look}.',
   settings: { aspect: '16:9', duration: 5 },
+  // The model choice picks the graph, and each model draws on its own canvas. A start frame runs the image graph.
+  steps: [{ id: 'generate', provider: 'comfy', kind: 'video', targetInput: 'model', settings: { aspect: '16:9', duration: 5 }, targets: {
+    minimax: { workflow: 'h3_open_t2v', imageWorkflow: 'cinema_shot', sizes: h3Sizes },
+    ltx: { workflow: 'ltx25_t2v', imageWorkflow: 'ltx25_i2v', sizes: ltx25Sizes },
+    wan: { workflow: 'wan22_t2v', imageWorkflow: 'wan22_i2v', sizes: wanSizes },
+  } }],
   cover: covers.night,
 })
 
@@ -311,7 +319,8 @@ const multiShot = open({
 const storyboard = open({
   id: 'storyboard', name: 'Storyboard', kind: 'image', category: 'story', featured: true, layout: 'wide',
   blurb: 'Turn a story idea into a set of consistent shots.',
-  runsOn: 'FLUX 3 Image Klein', workflow: 'storyboard',
+  runsOn: 'FLUX 3 Image Klein', workflow: 'storyboard', imageWorkflow: 'storyboard_ref',
+  bindings: { count: 'shots' },
   inputs: [
     { id: 'idea', type: 'longtext', label: 'Story idea', placeholder: 'A small delivery robot gets lost in a night market and finds its way home' },
     { id: 'shots', type: 'count', label: 'Shots', options: [4, 6, 8], default: 6, unit: 'shots', half: true },
@@ -349,7 +358,8 @@ const transition = open({
     ] },
   ],
   prompt: 'Transition from the first frame to the last frame using {style}. Both images stay faithful to the originals at the start and end.',
-  settings: { aspect: 'auto', duration: 3 },
+  // H3 is trained on about 5 to 15 s; 3 s falls short of it.
+  settings: { aspect: 'auto', duration: 5 },
   cover: covers.mint,
 })
 
