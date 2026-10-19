@@ -1,5 +1,5 @@
 import { createEngine } from '../flowEngine.js'
-import { initialValues, missingInputs, visibleInputs } from '../recipes.js'
+import { initialValues, missingInputs, visibleInputs, pictureTypes } from '../recipes.js'
 import { stepModel, stepOptions } from './options.js'
 import { validateFormat } from './validate.js'
 import { aspectSize } from '../catalog.js'
@@ -37,7 +37,7 @@ export function compileFormat(format, userInputs = {}) {
   for (const [index, step] of steps.entries()) {
     const from = step.from ?? (index ? [steps[index - 1].id] : [])
     if (step.type === 'writer') {
-      const media = visibleInputs(format, values).flatMap((input) => {
+      const media = visibleInputs(format, values).filter((input) => pictureTypes.includes(input.type)).flatMap((input) => {
         const value = values[input.id]
         return value?.url ? [value.faceUrl || value.url] : value?.images || []
       })

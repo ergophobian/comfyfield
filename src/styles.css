@@ -501,6 +501,8 @@ code { font-size: .92em; }
 .page-head:has(.seg) p { margin-bottom: 16px; }
 .page-head .seg { margin-bottom: 24px; }
 /* backwards, not both: a filled transform would trap the fixed editors and viewer inside this box */
+.library-page .page-head > .seg { max-width: 100%; overflow-x: auto; }
+.library-page .page-head > .seg button { flex-shrink: 0; }
 .lib-body { animation: rise var(--dur-rise) var(--spring) backwards; }
 .lib-filters { display: flex; justify-content: flex-start; margin-bottom: 16px; }
 .lib-filters .seg { margin: 0; }

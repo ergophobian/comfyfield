@@ -8,6 +8,7 @@ import { Comfy } from '@comfyorg/sdk'
 import { models as pinned, falCategories, podWorkflows } from '../src/lib/catalog.js'
 import { comfyVars, comfyRouterInput, falInput, estimate, fill, falEndpointFor, dropOptional } from '../shared/mapping.js'
 import { renderStitch } from './stitch.js'
+import { publicGet, extractBusinessPage } from './publicPage.js'
 import { archOf, minVramOf, notOnCloud, podNeedsOf, volumeFor, RUNTIMES } from '../shared/modelFiles.js'
 import { DEFAULT_TIER, TIER_IDS } from '../shared/gpuTiers.js'
 
@@ -1004,4 +1005,27 @@ export async function saveFiles(files, dir) {
     saved.push(dest)
   }
   return saved
+}
+
+// Public metadata only. Images use the same guarded transport and become local Library media.
+export async function importBusinessPage({ url }, { get = publicGet, save = saveMedia } = {}) {
+  const page = await get(url)
+  if (!/^text\/html\b|^application\/xhtml\+xml\b/i.test(page.headers['content-type'] || '')) throw Object.assign(new Error('Use an HTML product page, not a file or feed.'), { status: 415 })
+  const result = extractBusinessPage(page.body.toString('utf8'), page.url)
+  const warnings = []
+  const image = async (src) => {
+    try {
+      const file = await get(src, { limit: 8_000_000, accept: 'image/png,image/jpeg,image/webp' })
+      const ext = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' }[(file.headers['content-type'] || '').split(';')[0]]
+      const bytes = file.body
+      const valid = ext === 'png' ? bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])) : ext === 'jpg' ? bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255 : ext === 'webp' && bytes.toString('ascii', 0, 4) === 'RIFF' && bytes.toString('ascii', 8, 12) === 'WEBP'
+      if (!valid) return null
+      return save(bytes, ext).url
+    } catch { warnings.push('One image could not be imported. You can upload a replacement.'); return null }
+  }
+  // Bound simultaneous connections and total response bytes; never crawl linked pages or stylesheets.
+  const images = []
+  for (const src of result.product.images) { const local = await image(src); if (local) images.push(local) }
+  const logo = result.brand.logo ? await image(result.brand.logo) : null
+  return { ...result, brand: { ...result.brand, logo: logo ? [logo] : [] }, product: { ...result.product, images }, warnings: [...new Set(warnings)] }
 }

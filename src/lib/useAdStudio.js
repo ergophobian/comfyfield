@@ -1,0 +1,65 @@
+import { useRef, useState } from 'react'
+import { useApp } from './appContext.js'
+import { adFormat, adValues, conceptText, approveAd } from './adStudio.js'
+
+export function useAdStudio(id) {
+  const { gens } = useApp()
+  const [session, setSession] = useState(null)
+  const [script, setScript] = useState('')
+  const [snapshot, setSnapshot] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [rendered, setRendered] = useState(false)
+  const locked = useRef(false)
+  const act = async (work) => {
+    if (locked.current) return
+    locked.current = true
+    setBusy(true)
+    setError('')
+    try { return await work() } catch (e) { setError(e.message) }
+    finally { locked.current = false; setBusy(false) }
+  }
+  const readPage = (url, apply) => act(async () => {
+    const res = await fetch('/api/ads/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'Could not read that page.')
+    apply(data)
+    setSession(null)
+    setScript('')
+    if (data.warnings?.length) setError(data.warnings.join(' '))
+  })
+  const draft = (config) => act(async () => {
+    setSession(null)
+    setScript('')
+    setRendered(false)
+    if (config.voiceover?.uploading) throw new Error('Wait for the voiceover upload to finish.')
+    const values = adValues(config)
+    const format = adFormat({ id, ...config })
+    const next = await gens.generateFormat(format, values)
+    next.format = format
+    setSession(next)
+    setScript(conceptText(next))
+    setSnapshot(JSON.stringify(config))
+  })
+  const approve = (config) => act(async () => {
+    if (JSON.stringify(config) !== snapshot) throw new Error('Your inputs changed. Draft concepts again before approving.')
+    if (rendered) return
+    if (!session) throw new Error('Draft concepts first.')
+    await approveAd(session, script)
+    if (config.voiceover?.url && config.kind === 'video') {
+      session.mixed ||= new Set()
+      for (const file of session.results()) {
+        if (session.mixed.has(file.url)) continue
+        const res = await fetch('/api/stitch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clips: [{ url: file.url }], aspect: config.aspects[0], music: { url: config.voiceover.url, volume: 1, fade: 0 } }) })
+        const item = await res.json()
+        if (!res.ok) throw new Error(item.error || 'Could not add the voiceover. The original ad is in the Library.')
+        gens.add([{ ...item, formatId: id, caption: 'Ad with voiceover' }])
+        session.mixed.add(file.url)
+      }
+    }
+    setRendered(true)
+  })
+  return { id, gens, session, script, setScript, busy, error, rendered, draft, approve, readPage,
+    current: (config) => JSON.stringify(config) === snapshot,
+    items: gens.items.filter((item) => item.formatId === id) }
+}

@@ -864,6 +864,16 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "h3_studio_ad": [
+      "duration",
+      "height",
+      "image",
+      "image2",
+      "image3",
+      "prompt",
+      "seed",
+      "width"
+    ],
     "h3_t2v": [
       "duration",
       "height",
@@ -1054,6 +1064,15 @@ export const schemas = {
       "lyrics",
       "prompt",
       "seed"
+    ],
+    "qwen2511_ad": [
+      "height",
+      "image",
+      "image2",
+      "image3",
+      "prompt",
+      "seed",
+      "width"
     ],
     "qwen2511_edit": [
       "image",
@@ -1377,6 +1396,10 @@ export const schemas = {
     "h3_lora_i2v": [
       "image2"
     ],
+    "h3_studio_ad": [
+      "image2",
+      "image3"
+    ],
     "infinitetalk_tts": [
       "voice"
     ],
@@ -1386,6 +1409,10 @@ export const schemas = {
     ],
     "ltx25_multishot": [
       "image"
+    ],
+    "qwen2511_ad": [
+      "image2",
+      "image3"
     ],
     "qwen2511_edit": [
       "image2",
