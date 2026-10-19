@@ -7,7 +7,7 @@ import { randomUUID } from 'node:crypto'
 import { Comfy } from '@comfyorg/sdk'
 import { models as pinned, falCategories, podWorkflows } from '../src/lib/catalog.js'
 import { comfyVars, comfyRouterInput, falInput, estimate, fill, falEndpointFor, dropOptional } from '../shared/mapping.js'
-import { renderStitch } from './stitch.js'
+import { renderStitch, findFfmpeg } from './stitch.js'
 import { archOf, minVramOf, notOnCloud, podNeedsOf, volumeFor, RUNTIMES } from '../shared/modelFiles.js'
 import { DEFAULT_TIER, TIER_IDS } from '../shared/gpuTiers.js'
 
@@ -1004,4 +1004,11 @@ export async function saveFiles(files, dir) {
     saved.push(dest)
   }
   return saved
+}
+
+export async function stitchStatus() {
+  try {
+    await findFfmpeg()
+    return { available: true }
+  } catch (e) { return { available: false, error: e.message } }
 }

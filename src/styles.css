@@ -2690,3 +2690,7 @@ a.skill-chip:active { transform: scale(.96); }
   .skill-steps > li { grid-template-columns: 28px minmax(0, 1fr); padding: 16px; }
   .skill-steps > li > .copy-btn { grid-column: 2; justify-self: start; }
 }
+
+.story-pipeline { display: grid; gap: var(--agent-gap); min-width: 0; }
+.story-pipeline textarea { width: 100%; max-width: 100%; box-sizing: border-box; }
+.story-result { display: block; width: auto; max-width: 100%; max-height: var(--w-narrow); border-radius: var(--r-lg); }

@@ -1,7 +1,9 @@
+import { readStoryChannels } from '../lib/storyStudios.js'
+import StoryPipeline from '../components/story/StoryPipeline.jsx'
 import { useRef, useState } from 'react'
 import { Field } from '../components/formats/Fields.jsx'
 import { IconClose, IconLink, IconUpload } from '../components/Icons.jsx'
-import { Hero, Box, Cards, Pills, Tiles, Toggle, NotWired, Empty, IconRefresh, coverAt, stagger } from '../components/studiob/Kit.jsx'
+import { Hero, Box, Cards, Pills, Tiles, Toggle, IconRefresh, coverAt, stagger } from '../components/studiob/Kit.jsx'
 import { formatById } from '../lib/formats/index.js'
 
 const faceless = formatById('faceless')
@@ -38,6 +40,7 @@ const formats = optionsOf('format').map((o) => ({ id: o.id, label: o.label, note
 const steps = ['Channel', 'Episode topic', 'Episode']
 
 export default function FacelessStudio() {
+  const [channels, setChannels] = useState(readStoryChannels)
   const [step, setStep] = useState(0)
   const [category, setCategory] = useState('education')
   const [about, setAbout] = useState('')
@@ -67,7 +70,6 @@ export default function FacelessStudio() {
   }
   const canNext = step === 0 ? about.trim() || script : step === 1 ? topic.trim() : true
   const styleName = styles.find((s) => s.id === style)?.label
-  const ratio = formats.find((f) => f.id === format)?.label
 
   return (
     <main className="sb-page">
@@ -118,7 +120,7 @@ export default function FacelessStudio() {
           <div className="sb-step-body rise">
             <Box label={`Ideas for a ${cat.label.toLowerCase()} channel`}
               aside={<button type="button" className="link-btn sb-icon-link" onClick={() => setPage((n) => n + 1)}><IconRefresh />More ideas</button>}>
-              <p className="sheet-note">Starter ideas for this category. Ideas written from your channel description come once the engine is connected.</p>
+              <p className="sheet-note">Starter ideas for this category. Choose a starter or type a topic. The script uses your channel description.</p>
               <div className="opt-grid sb-ideas" role="group" aria-label="Episode ideas">
                 {ideas.map((idea, i) => (
                   <button key={`${page}-${idea}`} type="button" aria-pressed={topic === idea} className={`opt rise${topic === idea ? ' on' : ''}`} style={stagger(i)} onClick={() => setTopic(idea)}>
@@ -161,19 +163,40 @@ export default function FacelessStudio() {
                   <Pills options={[['daily', 'Daily'], ['twice', 'Twice a week'], ['weekly', 'Weekly']].map(([id, label]) => ({ id, label }))} value={cadence} onChange={setCadence} label="New episode" />
                 </div>
               </div>
-              <p className="sheet-note">Later episodes reuse this channel's style, narrator and characters.</p>
+              <p className="sheet-note">Channel settings are saved after rendering. Character continuity is prompt based.</p>
             </Box>
             <div className="sb-nav">
               <button type="button" className="btn-soft" onClick={() => setStep(1)}>Back</button>
             </div>
-            <NotWired label="Generate episode" runsOn={faceless?.runsOn}
-              summary={`${minutes} min, ${ratio?.toLowerCase()}, ${styleName}, ${voice?.name || narrators.find((n) => n.id === narrator)?.label}${captions ? ', captions on' : ''}. Series of ${episodes}${episodes > 1 ? `, ${cadence === 'twice' ? 'twice a week' : cadence}` : ''}.`} />
+            <StoryPipeline values={{ studio: 'Faceless studio', topic, channel: about, category: cat.label, reference, script: script?.text, ratio: format === 'vertical' ? '9:16' : '16:9', duration: minutes * 60, animation, style: styleName, narrator, emotion: narrator === 'bright' ? 'excited' : narrator === 'storyteller' ? 'warm' : 'calm', voice, captions, episodes, cadence }} onComplete={(file, settings) => {
+              const key = 'comfyfield.story-channels'
+              const saved = [{ ...settings, id: file.id, url: file.url }, ...readStoryChannels()].slice(0, 30)
+              setChannels(saved)
+              localStorage.setItem(key, JSON.stringify(saved))
+            }} />
+            <p className="sheet-note">One episode renders at a time. Series size and cadence are saved as planning notes; automatic scheduling is not available. Narrator cards guide script tone and delivery. A saved voice supplies the actual voice identity.</p>
           </div>
         )}
 
         <section className="sb-section">
           <div className="studio-sub"><h2>My channels</h2></div>
-          <Empty title="No channels yet">A channel shows up here after its first episode is made.</Empty>
+          <p className="sheet-note">Select a saved channel to reuse its settings.</p>
+          {channels.map((channel) => <button type="button" className="btn-soft" key={channel.id} onClick={() => {
+            setAbout(channel.channel || '')
+            setCategory(channel.category?.toLowerCase() || 'education')
+            setFormat(channel.ratio === '9:16' ? 'vertical' : 'horizontal')
+            setMinutes(channel.duration / 60)
+            setAnimation(channel.animation)
+            setStyle(styles.find((s) => s.label === channel.style)?.id || styles[0].id)
+            setNarrator(channel.narrator)
+            setVoice(channel.voice)
+            setCaptions(channel.captions)
+            setReference(channel.reference || '')
+            setEpisodes(channel.episodes || 1)
+            setCadence(channel.cadence || 'weekly')
+            setTopic('')
+            setStep(1)
+          }}>{channel.channel || channel.topic}</button>)}
         </section>
       </div>
     </main>

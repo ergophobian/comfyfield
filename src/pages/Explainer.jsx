@@ -1,3 +1,4 @@
+import StoryPipeline from '../components/story/StoryPipeline.jsx'
 import { useMemo, useRef, useState } from 'react'
 import Segmented from '../components/Segmented.jsx'
 import { Chip, Option } from '../components/Composer.jsx'
@@ -115,8 +116,8 @@ export default function Explainer() {
           {files.length > 0 && (
             <div className="refs">
               {files.map((f) => (
-                <span className="ref" key={f}>{f}
-                  <button type="button" onClick={() => setFiles((x) => x.filter((n) => n !== f))} aria-label={`Remove ${f}`}><IconClose /></button>
+                <span className="ref" key={f.name}>{f.name}
+                  <button type="button" onClick={() => setFiles((x) => x.filter((n) => n !== f))} aria-label={`Remove ${f.name}`}><IconClose /></button>
                 </span>
               ))}
             </div>
@@ -124,8 +125,13 @@ export default function Explainer() {
           <div className="composer-foot">
             <div className="chips">
               <div className="chip"><button type="button" className={files.length ? 'lit' : ''} onClick={() => fileRef.current.click()}><IconClip />Attach files</button></div>
-              <input ref={fileRef} type="file" multiple hidden accept=".pdf,.txt,.md,.doc,.docx,.ppt,.pptx"
-                onChange={(e) => { setFiles((x) => [...new Set([...x, ...[...e.target.files].map((f) => f.name)])]); e.target.value = '' }} />
+              <input ref={fileRef} type="file" multiple hidden accept=".txt,.md,text/plain"
+                onChange={async (e) => {
+                  const selected = [...e.target.files]
+                  e.target.value = ''
+                  const documents = await Promise.all(selected.map(async (file) => ({ name: file.name, text: (await file.text()).slice(0, 50000) })))
+                  setFiles((previous) => [...previous, ...documents])
+                }} />
               <div className="chip"><button type="button" className={showLink ? 'lit' : ''} aria-pressed={showLink} onClick={() => setShowLink((s) => !s)}><IconLink />Link</button></div>
               <Chip icon={<IconSpark />} label={styleItem?.label} lit>
                 {styles.map((s) => <Option key={s.id} label={s.label} note={s.note} on={style === s.id} onClick={() => setStyle(s.id)} />)}
@@ -144,16 +150,16 @@ export default function Explainer() {
                 </div>
               </Chip>
             </div>
-            <button type="button" className="btn-blue" disabled>Generate</button>
+            <span className="sheet-note">Review the script below</span>
           </div>
         </div>
       </form>
       <p className="sb-wire muted">
-        {fit ? clock(runtime) : d.label}, {ratio}, {styleItem?.label.toLowerCase()}, read by {voiceName}.
-        {files.length > 0 && ' Attached files are read once the engine is connected.'}
-        {' '}Not wired yet. Runs on {explainer?.runsOn || 'open weights'} once the engine is connected.
+        {fit ? clock(runtime) : d.label}, {ratio}, {styleItem?.label.toLowerCase()}, narrator tone: {voiceName}.
+        {' '}Text attachments are included in the writer context. Paste source text for links; link fetching and office document import are not available.
       </p>
 
+      <StoryPipeline disabled={!text.trim() && !files.length} values={{ studio: 'Explainer', topic: script ? '' : text, script: script ? text : '', documents: files, reference: link, style: styleItem?.label, ratio, duration: fit ? runtime : target, narrator: voice, voice: ownVoice, captions: true, animation: 'frames' }} />
       <section className="sb-section">
         <div className="studio-sub">
           <h2>Style</h2>

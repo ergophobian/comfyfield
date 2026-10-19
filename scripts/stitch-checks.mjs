@@ -115,6 +115,7 @@ console.log('check HTTP routes')
 await vite.listen()
 const base = `http://127.0.0.1:${vite.httpServer.address().port}`
 try {
+  assert.equal((await (await fetch(`${base}/api/stitch/status`)).json()).available, true)
   const uploaded = await (await fetch(`${base}/api/stitch/upload`, { method: 'POST', headers: { 'Content-Type': 'video/mp4' }, body: fs.readFileSync(blue) })).json()
   assert.ok(uploaded.url)
   const res = await fetch(`${base}/api/stitch`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clips: [{ url: uploaded.url, end: 0.2 }], preview: true }) })
@@ -132,3 +133,18 @@ try {
 } finally { await vite.close(); global.fetch = originalFetch }
 console.log('ok    HTTP upload, preview, media playback and Library export')
 console.log(`All Stitch checks passed. Synthetic fixtures retained at ${dir}`)
+
+console.log('check story stills and per-shot narration')
+const still = path.join(dir, 'story.png')
+await run(['-f', 'lavfi', '-i', 'color=c=green:s=160x90', '-frames:v', '1', still])
+const narrated = await renderStitch({ clips: [
+  { url: still, kind: 'image', duration: 1, caption: 'A narrated still', narration: { url: music } },
+  { url: blue, start: 0.1, end: 0.3, narration: { url: music } },
+], aspect: '1:1', captionStyle: 'boxed', music: { url: music, volume: 0.1 } }, { home: core.home, mediaPath: core.mediaPath, binary, timeout: 30000 })
+assert.equal(narrated.duration, 0.6, 'Per-shot audio determines final duration')
+assert.ok(rms(narrated.path, 0.1) > 0.02, 'Still shot includes narration')
+assert.ok(rms(narrated.path, 0.4) > 0.02, 'Video shot includes narration')
+assert.equal(frame(narrated.path, 0.4).length, 720 * 720 * 3)
+assert.throws(() => stitchOptions({ clips: [{ url: still, kind: 'image' }] }), /duration/)
+assert.throws(() => stitchOptions({ clips: [blue], captionStyle: 'word-by-word' }), /caption style/)
+console.log('ok    story stills, narration, frozen video tails and boxed captions')

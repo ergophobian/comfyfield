@@ -299,6 +299,7 @@ function mount(server, harness) {
         return send(res, 200, { files: await core.runGoogle(await body(req)) })
       }
       if (url.pathname === '/api/upload' && req.method === 'POST') return send(res, 200, await upload(req, core.saveMedia))
+      if (url.pathname === '/api/stitch/status' && req.method === 'GET') return send(res, 200, await core.stitchStatus())
       if (url.pathname === '/api/stitch' && req.method === 'POST') return send(res, 200, await core.stitch(await body(req)))
       if (url.pathname === '/api/stitch/exports' && req.method === 'GET') return send(res, 200, core.stitchedExports())
       if (url.pathname === '/api/stitch/export' && req.method === 'POST') return send(res, 200, core.exportStitch((await body(req)).url))
