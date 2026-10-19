@@ -1,6 +1,7 @@
 import { generate as runComfy } from './comfy.js'
 import { askPod, autoPod, refreshPod } from './usePod.js'
-import { comfyVars, comfyRouterInput, falInput, durationsFromProps, hasImageInput, falEndpointFor } from '../../shared/mapping.js'
+import { comfyVars, falInput, durationsFromProps, hasImageInput, falEndpointFor } from '../../shared/mapping.js'
+import { createRouterBatch, runRouterBatch } from './routerBatch.js'
 
 const schemas = new Map()
 export async function falSchema(endpoint) {
@@ -15,7 +16,7 @@ const num = (v) => parseFloat(String(v))
 
 export function acceptsImage(model, props) {
   if (model.provider === 'comfy') return Boolean(model.imageWorkflow) || ['ltx_i2v', 'h3_i2v'].includes(model.workflow)
-  if (model.provider === 'comfyRouter') return model.kind === 'video'
+  if (model.provider === 'comfyRouter') return Boolean(model.maxImages)
   if (model.provider === 'google') return true
   if (model.provider === 'fal') return hasImageInput(props || {})
   return false
@@ -49,18 +50,15 @@ export async function durationsFor(model) {
 async function post(url, payload) {
   const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
   const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`)
+  if (!res.ok) throw Object.assign(new Error(data.error || `Request failed (${res.status})`), { requestId: data.requestId, idempotencyKey: data.idempotencyKey })
   return data
 }
 
 // hooks.onPod: the run is waiting for a Pod, after the start sheet.
 export async function run(model, opts, hooks = {}) {
   if (model.provider === 'comfyRouter') {
-    const files = []
-    for (let i = 0; i < (model.kind === 'image' ? opts.count || 1 : 1); i++) {
-      files.push(...(await post('/api/comfy/router', { model: model.model, input: comfyRouterInput(model.model, opts) })).files)
-    }
-    return files
+    const batch = opts.routerBatch ||= createRouterBatch(model, opts)
+    return runRouterBatch(batch, async (payload) => (await post('/api/comfy/router', payload)).files, hooks.onFiles)
   }
   if (model.provider === 'comfy') {
     // Comfy Cloud takes the run at once. When it cannot, the server says needs_pod. With auto-start on,
@@ -100,6 +98,7 @@ export async function getConnections() {
 }
 
 export async function writePrompt(input) {
+  input.idempotencyKey ||= crypto.randomUUID()
   return (await post('/api/prompt', input)).text
 }
 

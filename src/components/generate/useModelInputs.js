@@ -41,7 +41,7 @@ export function useModelInputs(model, framed) {
   }
 
   if (model.provider !== 'fal') {
-    return { ready: true, ratios: aspects, qualities: null, resolutions: null,
+    return { ready: true, ratios: model.aspects || aspects, qualities: null, resolutions: null,
       // Veo renders sound on its own; there is no switch for it on the Google route.
       sound: model.provider === 'google' && model.kind === 'video' ? { fixed: true, default: true } : null,
       endFrame: false, numImages: true }

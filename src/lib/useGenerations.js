@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { run, writePrompt } from './providers.js'
 import { modelPrices } from './cost.js'
+import { createRouterBatch } from './routerBatch.js'
 import { runFormat } from './formats/runner.js'
 
 const KEY = 'comfyfield.library'
@@ -39,8 +40,7 @@ export function useGenerations() {
   }
 
   // meta can carry batch, row and prompt so the board can group results.
-  function execute(model, opts, meta = {}, retryStep) {
-    const id = crypto.randomUUID()
+  async function execute(model, opts, meta = {}, id = crypto.randomUUID(), retryStep) {
     const base = { aspect: opts.shape || opts.aspect, caption: opts.caption, model: model.name, kind: model.kind, provider: model.provider, ...meta }
     setError(null)
     setRetryLast(null)
@@ -49,14 +49,24 @@ export function useGenerations() {
       waiting.current.push(async () => {
         setItems((xs) => xs.map((x) => (x.id === id ? { ...x, started: true } : x)))
         try {
-          const files = await run(model, opts, { onPod: () => setItems((xs) => xs.map((x) => (x.id === id ? { ...x, pod: true } : x))) })
-          setItems((xs) => xs.flatMap((x) => (x.id === id
+          if (model.provider === 'comfyRouter' && !opts.routerBatch) opts = { ...opts, routerBatch: createRouterBatch(model, opts) }
+          const files = await run(model, opts, {
+            onFiles: (files, index) => setItems((xs) => [...files.map((f, i) => ({ ...base, ...f, id: `${id}-${index}-${i}`, created: Date.now() })), ...xs]),
+            onPod: () => setItems((xs) => xs.map((x) => (x.id === id ? { ...x, pod: true } : x))),
+          })
+          setItems((xs) => model.provider === 'comfyRouter' ? xs.filter((x) => x.id !== id) : xs.flatMap((x) => (x.id === id
             ? files.map((f, i) => ({ id: `${id}-${i}`, ...base, ...f, created: Date.now() }))
             : [x])))
           resolve(files)
         } catch (e) {
-          // Retry queues the same run again in place of the failed take.
-          const retry = retryStep || (() => { setItems((xs) => xs.filter((x) => x.id !== id)); generate(model, opts, meta) })
+          // Keep completed files and resume the original outstanding Router calls.
+          let retried = false
+          const retry = retryStep || (() => {
+            if (retried) return
+            retried = true
+            setItems((xs) => xs.filter((x) => x.id !== id))
+            execute(model, opts, meta, id).catch(() => {})
+          })
           setError(e.message)
           setRetryLast(() => retry)
           setItems((xs) => xs.map((x) => (x.id === id ? { ...base, id, failed: e.message, retry } : x)))
@@ -79,7 +89,7 @@ export function useGenerations() {
       run: (model, opts, meta) => {
         // A successful retry replaces the failed Library take for the same session step.
         setItems((xs) => xs.filter((x) => !(x.failed && x.formatRunId === meta.formatRunId && x.stepId === meta.stepId)))
-        return execute(model, opts, meta, () => record.session.retry(meta.stepId))
+        return execute(model, opts, meta, undefined, () => record.session.retry(meta.stepId))
       },
       writePrompt: ({ instructions, note, images, target }) => writePrompt({ instructions, note, images, target }),
       onSession: (session) => { record.session = session; options.onSession?.(session) },
