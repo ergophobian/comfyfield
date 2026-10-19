@@ -52,6 +52,7 @@ export function VoiceEditor({ item, onClose }) {
     setPreview(null)
     setSourceDuration(0)
     setStart(0)
+    setConsent(false)
     if (!picked) return
     if (!recorded && !/\.(wav|mp3|flac|m4a)$/i.test(picked.name)) { setError('Choose a wav, mp3, flac or m4a sample.'); return }
     if (picked.size > voiceLimits.bytes) { setError('Sample must be 11 MB or smaller.'); return }
@@ -101,15 +102,15 @@ export function VoiceEditor({ item, onClose }) {
       finally { await context.close() }
       if (!mounted.current) return
     }
-    if (!Number.isFinite(length) || length < 3 || length > 60) {
+    if (!Number.isFinite(length) || length < voiceLimits.minSeconds || length > 60) {
       // Some recorder containers have no duration header; the server validates their decoded length.
-      if (recordedDuration.current >= 3 && file?.name.startsWith('Recording.') && !Number.isFinite(length)) {
+      if (recordedDuration.current >= voiceLimits.minSeconds && file?.name.startsWith('Recording.') && !Number.isFinite(length)) {
         const recorded = Math.floor((recordedDuration.current - 0.2) * 10) / 10
         setSourceDuration(recorded)
         setDuration(Math.min(10, recorded))
         return
       }
-      setError('Use a recording between 3 and 60 seconds.')
+      setError('Use a recording between 6 and 60 seconds.')
       setSourceDuration(0)
       return
     }
@@ -142,7 +143,7 @@ export function VoiceEditor({ item, onClose }) {
         <h3>{item ? 'Edit voice' : 'Add a voice'}</h3>
         <div className="field"><label htmlFor="voice-name">Name</label><input id="voice-name" required maxLength={120} value={name} placeholder="My narrator" onChange={(e) => setName(e.target.value)} /></div>
         {!item && <>
-          <p className="form-note">Use one speaker, without music or background noise. Upload up to 11 MB and 60 seconds, then keep 3 to 10 seconds of clear speech.</p>
+          <p className="form-note">Use one speaker, without music or background noise. Upload up to 11 MB and 60 seconds, then keep 6 to 10 seconds of clear speech.</p>
           <div className="voice-library-upload">
             <button type="button" className="btn-soft" disabled={busy || recording || requesting} onClick={() => uploadInput.current.click()}>Upload a sample</button>
             <input ref={uploadInput} aria-label="Voice sample" type="file" accept={voiceAccept} hidden onChange={(e) => { take(e.target.files[0]); e.target.value = '' }} />
@@ -153,8 +154,8 @@ export function VoiceEditor({ item, onClose }) {
             <span>{file.name}</span>
             <audio ref={audio} src={preview} controls onLoadedMetadata={metadata} onError={() => setError('Could not preview this audio. Try another file.')} onTimeUpdate={() => { if (audio.current.currentTime >= start + duration) audio.current.pause() }} onPlay={() => { if (audio.current.currentTime < start || audio.current.currentTime >= start + duration) audio.current.currentTime = start }} />
             <div className="voice-library-trim">
-              <label>Start, seconds<input aria-label="Sample start" type="number" min="0" max={Math.max(0, sourceDuration - 3)} step="0.1" value={start} onChange={(e) => setStart(Number(e.target.value))} /></label>
-              <label>Length, seconds<input aria-label="Sample length" type="number" min="3" max="10" step="0.01" value={duration} onChange={(e) => setDuration(Number(e.target.value))} /></label>
+              <label>Start, seconds<input aria-label="Sample start" type="number" min="0" max={Math.max(0, sourceDuration - voiceLimits.minSeconds)} step="0.1" value={start} onChange={(e) => setStart(Number(e.target.value))} /></label>
+              <label>Length, seconds<input aria-label="Sample length" type="number" min={voiceLimits.minSeconds} max="10" step="0.01" value={duration} onChange={(e) => setDuration(Number(e.target.value))} /></label>
             </div>
             <p className="form-note">Saved as a mono wav. Preview plays your selected segment.</p>
           </div>}
@@ -162,7 +163,7 @@ export function VoiceEditor({ item, onClose }) {
         </>}
         <div className="field"><label htmlFor="voice-notes">Notes</label><textarea id="voice-notes" rows={2} maxLength={2000} value={notes} placeholder="Accent, pace, mood" onChange={(e) => setNotes(e.target.value)} /></div>
         {error && <p className="voice-library-error" role="alert">{error}</p>}
-        <div className="form-sheet-foot"><span className="grow" /><button type="button" className="btn-soft" disabled={busy} onClick={onClose}>Cancel</button><button className="btn-blue sm" disabled={busy || !name.trim() || (!item && (!file || !consent || recording || requesting || !sourceDuration || duration < 3 || duration > 10 || start < 0 || start + duration > sourceDuration + 0.02))}>{busy ? 'Saving' : 'Save voice'}</button></div>
+        <div className="form-sheet-foot"><span className="grow" /><button type="button" className="btn-soft" disabled={busy} onClick={onClose}>Cancel</button><button className="btn-blue sm" disabled={busy || !name.trim() || (!item && (!file || !consent || recording || requesting || !sourceDuration || duration < voiceLimits.minSeconds || duration > 10 || start < 0 || start + duration > sourceDuration + 0.02))}>{busy ? 'Saving' : 'Save voice'}</button></div>
       </form>
     </div>
   )
@@ -189,7 +190,7 @@ export default function Voices() {
       <div className="voice-library-grid">{voices.map((item) => <article className="glass voice-library-card" key={item.id}>
         <h3>{item.name}</h3><p className="muted">{Math.round(item.duration * 10) / 10} seconds{item.notes ? ` · ${item.notes}` : ''}</p>
         <audio controls preload="metadata" src={item.sample} aria-label={`Preview ${item.name}`} />
-        <div className="voice-library-actions">{deleting === item.id ? <><span>Delete this voice?</span><button className="link-btn" disabled={!!busy} onClick={() => erase(item)}>{busy === item.id ? 'Deleting' : 'Delete voice'}</button><button className="link-btn" disabled={!!busy} onClick={() => setDeleting(null)}>Keep voice</button></> : <><button className="btn-soft" onClick={() => setEditing(item)}>Rename</button><button className="link-btn" onClick={() => setDeleting(item.id)}>Delete</button></>}</div>
+        <div className="voice-library-actions">{deleting === item.id ? <><span>Delete this voice? The sample file stays available to existing flows.</span><button className="link-btn" disabled={!!busy} onClick={() => erase(item)}>{busy === item.id ? 'Deleting' : 'Delete voice'}</button><button className="link-btn" disabled={!!busy} onClick={() => setDeleting(null)}>Keep voice</button></> : <><button className="btn-soft" onClick={() => setEditing(item)}>Rename</button><button className="link-btn" onClick={() => setDeleting(item.id)}>Delete</button></>}</div>
       </article>)}</div>
     </>}
     {error && <p className="voice-library-error" role="alert">{error}</p>}

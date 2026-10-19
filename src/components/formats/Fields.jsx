@@ -250,14 +250,14 @@ export function Field({ input, value, onChange, setError = () => {} }) {
   const { type } = input
   const props = { input, value, onChange, labelId }
   let body
-  if (widgetTypes.includes(type) || (type === 'draw' && input.mode !== 'motion')) body = <InputWidget type={type === 'draw' ? 'mask' : type} {...props} setError={setError} />
+  if (type === 'voice' || input.voiceSample) body = <VoicePicker value={value} onChange={onChange} title={input.label} optional={!!input.optional} />
+  else if (widgetTypes.includes(type) || (type === 'draw' && input.mode !== 'motion')) body = <InputWidget type={type === 'draw' ? 'mask' : type} {...props} setError={setError} />
   else if (media[type]) body = <MediaField {...props} setError={setError} />
   else if (type === 'draw') body = <DrawField {...props} setError={setError} />
   else if (type === 'text') body = <input id={id} value={value ?? ''} onChange={(e) => onChange(e.target.value)} placeholder={input.placeholder} />
   else if (type === 'longtext') body = <textarea id={id} rows={input.rows || 3} value={value ?? ''} onChange={(e) => onChange(e.target.value)} placeholder={input.placeholder} />
   else if (type === 'choice') body = <Choice {...props} />
   else if (type === 'count') body = <Count {...props} />
-  else if (type === 'voice') body = <VoicePicker value={value} onChange={onChange} title={input.label} optional={!!input.optional} />
   else if (picks[type]) body = <LibraryPick {...props} />
   else return null
   return (

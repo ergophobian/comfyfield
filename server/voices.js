@@ -4,6 +4,7 @@ import crypto from 'node:crypto'
 import { spawn } from 'node:child_process'
 import ffmpeg from 'ffmpeg-static'
 import { voiceLimits as limits } from '../shared/voices.js'
+import { libraryStore } from './library.js'
 
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), { status }) }
 const rateBytes = limits.rate * 2
@@ -20,7 +21,7 @@ async function body(req) {
   catch { fail('Invalid voice data.') }
 }
 
-function decode(file) {
+export function decodeVoice(file) {
   return new Promise((resolve, reject) => {
     // M4a often needs backward seeks. Only audio containers are allowed, never playlists or network URLs.
     const child = spawn(ffmpeg, ['-hide_banner', '-loglevel', 'error', '-nostdin', '-protocol_whitelist', 'file,pipe', '-format_whitelist', 'wav,mp3,flac,mov,matroska,webm,ogg', '-i', file, '-vn', '-t', String(limits.sourceSeconds + 1), '-ac', '1', '-ar', String(limits.rate), '-f', 's16le', 'pipe:1'], { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] })
@@ -51,16 +52,7 @@ function wav(pcm) {
   return Buffer.concat([h, pcm])
 }
 
-export function voiceRoutes({ home, saveMedia }) {
-  const read = () => {
-    const file = path.join(home(), 'library.json')
-    if (!fs.existsSync(file)) return {}
-    return JSON.parse(fs.readFileSync(file, 'utf8'))
-  }
-  const write = (lib) => {
-    fs.mkdirSync(home(), { recursive: true })
-    fs.writeFileSync(path.join(home(), 'library.json'), JSON.stringify(lib, null, 2))
-  }
+export function voiceRoutes({ home, saveMedia, library = libraryStore(home) }) {
   const send = (res, status, data) => {
     res.statusCode = status
     res.setHeader('Content-Type', 'application/json')
@@ -72,7 +64,7 @@ export function voiceRoutes({ home, saveMedia }) {
     if (!match) return false
     try {
       const id = match[1]
-      if (req.method === 'GET' && !id) return send(res, 200, read().voices || [])
+      if (req.method === 'GET' && !id) return send(res, 200, library.read().voices || [])
       if (req.method === 'POST' && !id) {
         const data = await body(req)
         const name = String(data.name || '').trim().slice(0, 120)
@@ -89,42 +81,42 @@ export function voiceRoutes({ home, saveMedia }) {
         let pcm
         try {
           fs.writeFileSync(temporary, source, { flag: 'wx' })
-          pcm = await decode(temporary)
+          pcm = await decodeVoice(temporary)
         } finally {
           if (fs.existsSync(temporary)) fs.unlinkSync(temporary)
         }
         const sourceDuration = pcm.length / rateBytes
-        if (sourceDuration < limits.minSeconds || sourceDuration > limits.sourceSeconds) fail('Use a recording between 3 and 60 seconds.')
+        if (sourceDuration < limits.minSeconds || sourceDuration > limits.sourceSeconds) fail('Use a recording between 6 and 60 seconds.')
         const start = Number(data.start ?? 0)
         const duration = Number(data.duration ?? Math.min(sourceDuration, limits.sampleSeconds))
-        if (!Number.isFinite(start) || start < 0 || !Number.isFinite(duration) || duration < limits.minSeconds || duration > limits.sampleSeconds || start + duration > sourceDuration + 0.02) fail('Select 3 to 10 seconds within the recording.')
+        if (!Number.isFinite(start) || start < 0 || !Number.isFinite(duration) || duration < limits.minSeconds || duration > limits.sampleSeconds || start + duration > sourceDuration + 0.02) fail('Select 6 to 10 seconds within the recording.')
         const trimmed = pcm.subarray(Math.round(start * limits.rate) * 2, Math.round((start + duration) * limits.rate) * 2)
+        if (trimmed.length < limits.minSeconds * rateBytes || trimmed.length > limits.sampleSeconds * rateBytes) fail('Select 6 to 10 seconds within the recording.')
         const sample = saveMedia(wav(trimmed), 'wav').url
         const item = { id: crypto.randomUUID(), name, notes: String(data.notes || '').slice(0, 2000), sample, duration: trimmed.length / rateBytes, consent: true, consentAt: Date.now(), created: Date.now() }
-        // Read after decoding so another Library save made during conversion is preserved.
-        const lib = read()
-        write({ ...lib, voices: [item, ...(lib.voices || [])] })
+        await library.update((lib) => { lib.voices = [item, ...(lib.voices || [])] })
         return send(res, 200, item)
       }
       const patch = req.method === 'PATCH' ? await body(req) : null
-      const lib = read()
-      const list = lib.voices || []
-      const item = list.find((v) => v.id === id)
-      if (!item) return send(res, 404, { error: 'Voice not found.' })
-      if (req.method === 'PATCH') {
-        const data = patch
-        const name = String(data.name ?? item.name).trim().slice(0, 120)
-        if (!name) fail('Give the voice a name.')
-        const next = { ...item, name, notes: String(data.notes ?? item.notes).slice(0, 2000) }
-        write({ ...lib, voices: list.map((v) => v.id === id ? next : v) })
-        return send(res, 200, next)
-      }
-      if (req.method === 'DELETE') {
-        // Keep media, like other Library assets: saved flows may still reference the sample.
-        write({ ...lib, voices: list.filter((v) => v.id !== id) })
-        return send(res, 200, { ok: true })
-      }
-      return send(res, 405, { error: 'Method not supported.' })
+      const result = await library.update((lib) => {
+        const list = lib.voices || []
+        const item = list.find((v) => v.id === id)
+        if (!item) return { status: 404, data: { error: 'Voice not found.' } }
+        if (req.method === 'PATCH') {
+          const name = String(patch.name ?? item.name).trim().slice(0, 120)
+          if (!name) fail('Give the voice a name.')
+          const next = { ...item, name, notes: String(patch.notes ?? item.notes).slice(0, 2000) }
+          lib.voices = list.map((v) => v.id === id ? next : v)
+          return { status: 200, data: next }
+        }
+        if (req.method === 'DELETE') {
+          // The confirmation explains that existing flows keep the sample file.
+          lib.voices = list.filter((v) => v.id !== id)
+          return { status: 200, data: { ok: true } }
+        }
+        return { status: 405, data: { error: 'Method not supported.' } }
+      })
+      return send(res, result.status, result.data)
     } catch (e) { return send(res, e.status || 500, { error: e.status ? e.message : 'Could not save the voice. Try again.' }) }
   }
 }

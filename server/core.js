@@ -8,6 +8,7 @@ import { Comfy } from '@comfyorg/sdk'
 import { models as pinned, falCategories, podWorkflows } from '../src/lib/catalog.js'
 import { comfyVars, comfyRouterInput, falInput, estimate, fill, falEndpointFor, dropOptional } from '../shared/mapping.js'
 import { renderStitch } from './stitch.js'
+import { validateWorkflowVoices } from './voiceConsent.js'
 import { archOf, minVramOf, notOnCloud, podNeedsOf, volumeFor, RUNTIMES } from '../shared/modelFiles.js'
 import { DEFAULT_TIER, TIER_IDS } from '../shared/gpuTiers.js'
 
@@ -773,8 +774,11 @@ async function comfyTarget(files, podPhase, podVram, label, run = null, podArch 
 }
 
 // Runs a bundled workflow on Comfy Cloud or the Pod, or in development on a local ComfyUI, and returns file URLs.
-export async function runComfy(workflow, vars = {}, { createClient = (key, baseUrl) => comfyClient(baseUrl, key), lease = (o) => pod().lease(o), podPhase = () => pod().phaseNow(), podVram = () => pod().vramGb(), podRoom = () => pod().room(), podArch = () => pod().arch(), run = runType() } = {}) {
+export async function runComfy(workflow, vars = {}, { createClient = (key, baseUrl) => comfyClient(baseUrl, key), lease = (o) => pod().lease(o), podPhase = () => pod().phaseNow(), podVram = () => pod().vramGb(), podRoom = () => pod().room(), podArch = () => pod().arch(), run } = {}) {
   let { file, template } = readWorkflow(workflow)
+  vars = { ...vars }
+  await validateWorkflowVoices(workflow, template, vars, home)
+  if (run === undefined) run = runType()
   // Nodes for a file the run did not attach (a second garment, an optional reference) drop out first.
   template = dropOptional(template, vars)
   const unset = unsetInput(template, vars)

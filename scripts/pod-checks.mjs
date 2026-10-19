@@ -1,5 +1,6 @@
 // Pod checks: the boot script, the status server, the lifecycle and Pod runs. No call leaves this machine.
 import assert from 'node:assert/strict'
+import { voiceTone } from './voice-fixture.mjs'
 import fs from 'node:fs'
 import http from 'node:http'
 import path from 'node:path'
@@ -2206,9 +2207,11 @@ await test('audio and 3D: Chatterbox, MiniMax Music 3 and Stable Audio 3 go to C
   const lease = async (o) => { leases.push(o); return { baseUrl: 'https://p-8189.proxy.runpod.net', token: 't', sandbox: false, signal: new AbortController().signal, reason: () => null, release() {} } }
   const png = 'data:image/png;base64,iVBORw0KGgo='
   const flac = `data:audio/flac;base64,${flacTwoSeconds.toString('base64')}`
+  const voice = core.saveMedia(voiceTone(6), 'wav').url
+  fs.writeFileSync(path.join(core.home(), 'library.json'), JSON.stringify({ voices: [{ id: 'test-voice', sample: voice, consent: true, duration: 6 }] }))
   const vars = { prompt: 'A line', script: 'Hello there', lyrics: '[Instrumental]', language: 'English (en)', exaggeration: 0.5, cfg_weight: 0.5, seed: 1, start: 0, duration: 5,
-    resolution: 1024, background: '#ffffff', image: png, audio: flac, voice: flac, video: 'data:video/mp4;base64,AAAAIGZ0eXBpc29t' }
-  const run = (w, phase = 'none') => core.runComfy(w, vars, { createClient: () => client, lease, podPhase: async () => phase, podVram: () => 24, podRoom: () => ({}) })
+    resolution: 1024, background: '#ffffff', image: png, audio: flac, voice, video: 'data:video/mp4;base64,AAAAIGZ0eXBpc29t' }
+  const run = (w, phase = 'none') => core.runComfy(w, { ...vars, ...(w === 'chatterbox_clone' ? { audio: voice } : {}) }, { createClient: () => client, lease, podPhase: async () => phase, podVram: () => 24, podRoom: () => ({}) })
   for (const w of ['chatterbox_tts', 'chatterbox_clone', 'chatterbox_vc', 'minimax_music3', 'stable_audio3']) {
     const files = await run(w)
     assert.deepEqual(files.map((f) => f.kind), ['audio'], `${w} keeps its speech`)
