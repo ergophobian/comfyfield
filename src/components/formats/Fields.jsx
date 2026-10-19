@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom'
 import { IconUpload } from '../Icons.jsx'
 import { uploadImage } from '../../lib/providers.js'
 import { useLibrary, toRef } from '../../lib/useLibrary.js'
+import VoicePicker from '../generate/Voices.jsx'
 
 const media = {
   image: { accept: 'image/png,image/jpeg,image/webp,image/gif', hint: 'Drop an image or click to choose', noun: 'an image' },
@@ -12,7 +13,7 @@ const media = {
   audio: { accept: 'audio/*', hint: 'Drop an audio file or click to choose', noun: 'an audio file' },
 }
 
-// Library list and tab behind each pick. There is no voices list yet, so voice picks stay empty.
+// Library list and tab behind each pick.
 const picks = {
   character: { list: 'characters', noun: 'characters' },
   product: { list: 'products', noun: 'products' },
@@ -256,6 +257,7 @@ export function Field({ input, value, onChange, setError = () => {} }) {
   else if (type === 'longtext') body = <textarea id={id} rows={input.rows || 3} value={value ?? ''} onChange={(e) => onChange(e.target.value)} placeholder={input.placeholder} />
   else if (type === 'choice') body = <Choice {...props} />
   else if (type === 'count') body = <Count {...props} />
+  else if (type === 'voice') body = <VoicePicker value={value} onChange={onChange} title={input.label} optional={!!input.optional} />
   else if (picks[type]) body = <LibraryPick {...props} />
   else return null
   return (

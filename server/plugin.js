@@ -10,6 +10,7 @@ import { archOf } from '../shared/modelFiles.js'
 import { upload } from './upload.js'
 import { serveMedia } from './serveMedia.js'
 import { agentRoutes } from './agent-routes.js'
+import { voiceRoutes } from './voices.js'
 
 export { providers } from './core.js'
 
@@ -26,6 +27,7 @@ function send(res, status, data) {
 }
 
 const libFile = () => path.join(core.home(), 'library.json')
+const voiceRoute = voiceRoutes({ home: core.home, saveMedia: core.saveMedia })
 const shape = {
   characters: { name: 's', notes: 's', images: ['a', 6] },
   products: { name: 's', description: 's', price: 's', url: 's', images: ['a', 8] },
@@ -310,6 +312,7 @@ function mount(server, harness) {
         return send(res, 200, await upload(req, core.saveMedia))
       }
       if (url.pathname === '/api/library/import' && req.method === 'POST') return send(res, 200, await importUrl(await body(req)))
+      if (url.pathname.startsWith('/api/library/') && await voiceRoute(req, res, url)) return
       if (url.pathname.startsWith('/api/library/') && await libraryRoute(req, res, url)) return
       if (url.pathname.startsWith('/media/')) {
         const file = core.mediaPath(url.pathname)
