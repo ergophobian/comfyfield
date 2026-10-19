@@ -1,46 +1,46 @@
 # Ads studios validation
 
-Validated on October 19, 2026, in the isolated Windows checkout `C:\Users\User\comfyfield-ads-studios-1019`, with Node 24.11.1. Dependency installation, builds, checks, ffmpeg fixtures and headless Chrome ran on Windows, one heavy command at a time. No provider calls or live credentials were used by the new fixtures.
+Validated on October 19, 2026 in the Windows scratch clone `C:/comfyfield-ads-fixes-8a38a3d5`, with Node 24.11.1. The source is the `ads-studios` worktree based on `515dbb9`, after fetching and rebasing onto `origin/main` (`7ee3b1c`; already an ancestor). The Mac main checkout was not used. Installation, builds, checks, ffmpeg fixtures and headless Chrome ran on Windows, one heavy command at a time. Git Bash was first in the check process path for shell fixtures. No keys or paid generations were used.
 
 Commands and output:
 
 ```text
 npm ci --no-audit --no-fund
-added 199 packages
-
-node scripts/format-schemas.mjs --comfy
-Saved 9 public fal schemas and 110 workflows
+added 199 packages in 8s
 
 npx vite build
-337 modules transformed
-built in 2.56s
+338 modules transformed
+built in 2.34s
 
 node scripts/verify.mjs
 18/18 check scripts passed
 ```
 
-The build retains Vite's warning about chunks larger than 500 kB. It does not fail the build.
+Vite retains its advisory about chunks larger than 500 kB; the build passed.
 
-The first verification run passed 17/18 scripts. Windows selected its WSL `bash.exe` shim, and Pod shell fixtures could not open Windows paths. The successful full run set Git Bash first in the test process's path (`C:\Program Files\Git\bin;C:\Program Files\Git\usr\bin`). No Pod files or assertions were changed to resolve this environment issue.
-
-Relevant check output:
+Relevant regression output:
 
 ```text
-Ads checks ok: guarded and pinned public GETs, redirects, byte/time limits,
-extraction, local media, writer approval, edited scripts, variant canvases,
-product/presenter slots and Library metadata. No provider calls.
-
+Malformed 500 kB page parsed in 4 ms
+Targeted format retry checks ok: stored failures, reopened gates,
+repeated failures and preserved sibling outputs
+ok    narration plays once, pads silence, preserves video duration
+      and coexists with music
 Graph check: 110/110 graphs fit ComfyUI v0.41.1 and the listed packs.
-
+theme ok
 Ads studio browser checks ok: both links imported, bad page recovery,
-editable scripts and storyboard, approval blocks rendering,
+editable scripts and storyboard, rights and script approval block rendering,
+primary photo selection, rejected page instructions, partial failure retry,
 images/video/voiceover requests, result approval, Library after reload,
-desktop and 390px. Three mock generations, two writer requests and one
-Stitch mock; no provider calls. Ten screenshots saved.
+desktop and 390px. Four mock render attempts including one targeted retry,
+two writer requests and one Stitch mock; no provider calls.
+Ten screenshots saved.
 ```
 
-A SHA-256 manifest confirmed that all 19 changed source/documentation files present at verification matched the Mac worktree byte for byte. This validation note and the screenshots are evidence artifacts added afterward.
+The exact hostile parser fixture is `<title>A shop</title>` followed by 83,333 repetitions of `<meta `, isolated in a worker with a three-second termination deadline and a 1.5-second execution ceiling. It completed in 4 ms. Additional checks cover parser byte/tag caps, final prompt exclusion of rejected imported instructions, primary photo slot binding, frame/resolution caps and real template canvases. Shared runner checks exercise mixed success/failure, reopening review, repeated failed retry and successful targeted retry. Synthetic audio checks decode samples to prove the short narration is audible at the start and silent later, including coexistence with looping music.
 
-All ten screenshots are actual browser captures of an isolated mock API. They cover Ads review/results, Marketing review/results and Library results at 1440px and 390px. Mock product/ad illustrations and a locally generated ffmpeg fixture stand in for provider media. These images prove interface layout and the complete approval/persistence flow; they do not prove paid model output quality. The Library tab strip required a scoped scrolling fix to fit 390px.
+All ten screenshots are refreshed browser captures against an isolated mock API at 1440px and 390px. They cover Ads review/results, Marketing review/results and Library. Mock product/ad illustrations and local ffmpeg video/audio stand in for provider media. They prove layout and approval/persistence behavior; no live generation quality is claimed. `source-manifest.json` records the source hashes compared against the Windows checkout after CRLF-to-LF normalization. Windows Git used CRLF on checkout; all source text matches after this normalization.
 
-The shared format compiler also received a two-line correction: only picture-like inputs become Writer images. A reference video continues to reach the render step and is not sent to the prompt provider as an unsupported still image. The recreation fixture checks this boundary.
+All seven red-team findings and copy nits are addressed. Recreation takes at most 81 source frames and scales to at most 848 px on the long edge; a 30-second source selection does not imply a 30-second result. Only the reviewed script and validated visible hex palette enter render text. The primary photo and optional presenter/logo remain visual inputs. Rights confirmation is required for initial render and retry. Drafting may bill through the configured writer and is disclosed before drafting.
+
+`scripts/verify.mjs` has no diff against `origin/main`. The open browser-discovery PR #109 was inspected but not merged or modified. No protected RunPod or routing files were edited. The page importer is isolated in its module, and narration is additive to Stitch. No push or pull request was performed.

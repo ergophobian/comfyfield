@@ -91,11 +91,27 @@ export async function runFormat(format, inputs, { run, writePrompt, onChange, co
     },
   })
   const results = () => flow.outputs.flatMap((out) => engine.itemsOf(flow, out.step) || [])
-  const check = () => {
-    const failed = Object.values(engine.state).flatMap((s) => s.items || []).find((i) => i.status === 'failed')
+  const failures = () => Object.values(engine.state).flatMap((s) => s.items || []).filter((i) => i.status === 'failed')
+  const check = (previous = []) => {
+    const failed = failures().find((i) => !previous.includes(i))
     if (failed) throw new Error(failed.error)
   }
   await engine.runNew(flow)
   check()
-  return { flow, engine, results, sendWriter: async (id) => { const result = await engine.sendWriter(flow, id); check(); return result }, send: async (id) => { const result = await engine.send(flow, id); check(); return result } }
+  const checked = async (action) => {
+    const previous = failures()
+    const result = await action()
+    check(previous)
+    return result
+  }
+  return { flow, engine, results, formatRunId: batch,
+    sendWriter: (id) => checked(() => engine.sendWriter(flow, id)),
+    send: (id) => checked(() => engine.send(flow, id)),
+    // A format render is independently retryable only when it has no kept outputs.
+    retry: (id) => {
+      const items = engine.state[id]?.items || []
+      if (!flow.nodes.some((n) => n.id === id && n.type === 'model') || !items.some((i) => i.status === 'failed') || items.some((i) => i.status === 'done')) return Promise.resolve({ ok: false, reason: 'Choose a failed render without completed output' })
+      return checked(() => engine.rerun(flow, id))
+    },
+  }
 }

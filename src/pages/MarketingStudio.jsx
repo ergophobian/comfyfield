@@ -3,10 +3,12 @@ import Segmented from '../components/Segmented.jsx'
 import { Chip, Option } from '../components/Composer.jsx'
 import { Field } from '../components/formats/Fields.jsx'
 import { IconAspect, IconClock, IconSpark, IconClose } from '../components/Icons.jsx'
+import AdProductPhotos from '../components/studiob/AdProductPhotos.jsx'
+import { adAspects } from '../lib/adStudio.js'
 import AdAudio from '../components/studiob/AdAudio.jsx'
 import AdReview from '../components/studiob/AdReview.jsx'
 import { useAdStudio } from '../lib/useAdStudio.js'
-import { Pictures, Colors } from '../components/studiob/Inputs.jsx'
+import { Colors } from '../components/studiob/Inputs.jsx'
 import { useLibrary } from '../lib/useLibrary.js'
 import { Hero, Slot, Stepper, Tiles, Empty, coverAt, stagger } from '../components/studiob/Kit.jsx'
 
@@ -47,7 +49,7 @@ const templates = [
   ['Feature callouts', 'market', 'Bright color', '1:1'],
 ].map(([name, group, style, aspect], i) => ({ id: `t${i}`, label: name, group, style, aspect, note: groupOf(group).name, cover: coverAt(i + 1) }))
 
-const aspects = ['1:1', '4:5', '9:16', '16:9']
+const aspects = adAspects
 const lengths = [5, 8, 10, 15]
 const platforms = ['TikTok', 'Reels', 'Shorts', 'Feed', 'Website']
 const shots = ['Hero shot', 'Lifestyle', 'Detail', 'With a model']
@@ -122,7 +124,7 @@ export default function MarketingStudio() {
     setGroup(t.group)
     setStyle(t.style)
     setKind(groupOf(t.group).kind)
-    setAspect(aspects.includes(t.aspect) ? t.aspect : '4:5')
+    setAspect(t.aspect)
     const calm = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
     window.scrollTo({ top: 0, behavior: calm ? 'auto' : 'smooth' })
   }
@@ -156,10 +158,10 @@ export default function MarketingStudio() {
           <Field input={{ id: 'found-brand', type: 'text', label: 'Brand name' }} value={foundBrand?.name || ''} onChange={(name) => setFoundBrand((b) => ({ ...b, name }))} />
           <Field input={{ id: 'found-description', type: 'longtext', label: 'Product description' }} value={foundProduct.description} onChange={(description) => setFoundProduct((p) => ({ ...p, description }))} />
           <Field input={{ id: 'found-price', type: 'text', label: 'Price' }} value={foundProduct.price} onChange={(price) => setFoundProduct((p) => ({ ...p, price }))} />
-          <Pictures label="Product photos" max={8} value={foundProduct.images} onChange={(images) => setFoundProduct((p) => ({ ...p, images }))} />
           <Colors value={foundBrand?.colors || []} onChange={(colors) => setFoundBrand((b) => ({ ...b, colors }))} />
         </div>}
       </section>
+      {selectedProduct && <AdProductPhotos value={selectedProduct.images || []} onChange={(images) => { setProduct(null); setFoundProduct({ ...selectedProduct, images }) }} />}
       <form className="composer glass sb-compose" onSubmit={(e) => e.preventDefault()}>
         <div className="composer-inner">
           <div className="composer-top">
@@ -227,7 +229,7 @@ export default function MarketingStudio() {
       </form>
       <p className="sb-wire muted">
         {count} {noun}{kind === 'video' ? `, ${length} s` : ''}, {aspect === 'auto' ? 'auto ratio' : aspect}, {g.name} template in the {style.toLowerCase()} style, for {platform}.
-        {' '}Runs on {runsOn} on Instant. Review the concept before rendering. Drafting uses your prompt provider. Rendering starts after approval; a price estimate is unavailable. Creator styles use the presenter as a visual reference; dedicated voice cloning and lip sync belong to their formats.
+        {' '}Runs on {runsOn} on {studio.runType}. Review the concept before rendering. Drafting calls your prompt writer and may bill before render approval. Rendering starts after approval; a price estimate is unavailable. Creator styles use the presenter as a visual reference; dedicated voice cloning and lip sync belong to their formats.
       </p>
 
       <section className="sb-section">
@@ -258,7 +260,7 @@ export default function MarketingStudio() {
 
       {kind === 'video' && <div className="sb-box glass">
         <AdAudio value={voiceover} onChange={setVoiceover} />
-        <p className="sheet-note">Stitch mixes this track into each rendered ad. Keep the recording within the chosen duration.</p>
+        <p className="sheet-note">Stitch plays this narration once and pads the remaining ad with silence. Keep the recording within the chosen duration.</p>
       </div>}
       <AdReview studio={studio} config={config} />
 

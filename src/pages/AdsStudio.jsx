@@ -5,6 +5,7 @@ import { IconLink } from '../components/Icons.jsx'
 import { Hero, Box, Pills, Cards, Stepper, Tiles, ErrorNote, useParam, coverAt, stagger } from '../components/studiob/Kit.jsx'
 import { Pictures, Colors } from '../components/studiob/Inputs.jsx'
 import { useLibrary } from '../lib/useLibrary.js'
+import AdProductPhotos from '../components/studiob/AdProductPhotos.jsx'
 import AdAudio from '../components/studiob/AdAudio.jsx'
 import AdReview from '../components/studiob/AdReview.jsx'
 import { useAdStudio } from '../lib/useAdStudio.js'
@@ -120,7 +121,7 @@ function CreateAds() {
               <Field input={{ id: 'price', type: 'text', label: 'Price', placeholder: '$48' }} value={product.price} onChange={(v) => p({ price: v })} />
             </div>
             <Field input={{ id: 'description', type: 'longtext', label: 'Description', rows: 3, placeholder: 'A roomy everyday tote in washed linen with a leather base' }} value={product.description} onChange={(v) => p({ description: v })} />
-            <Pictures label="Product photos" max={8} value={product.images} onChange={(v) => p({ images: v })} />
+            <AdProductPhotos value={product.images} onChange={(v) => p({ images: v })} />
           </Box>
         </div>
 
@@ -146,7 +147,7 @@ function CreateAds() {
           </Box>
           <div className="sb-go">
             <p className="sheet-note">{summary}</p>
-            <p className="sheet-note">{still ? 'Qwen-Image Edit 2511 on Instant' : 'MiniMax H3 on Instant'}. Review the script before rendering. Drafting uses your prompt provider. Rendering starts after approval; a price estimate is unavailable.</p>
+            <p className="sheet-note">{`${still ? 'Qwen-Image Edit 2511' : 'MiniMax H3'} on ${studio.runType}`}. Review the script before rendering. Drafting calls your prompt writer and may bill before render approval. Rendering starts after approval; a price estimate is unavailable.</p>
             <button type="button" className="btn-blue" disabled={studio.busy || !product.name.trim() || !product.images.length || (still && !picked.length)} onClick={() => studio.draft(config)}>{studio.busy ? 'Working…' : 'Draft concepts'}</button>
           </div>
         </aside>
@@ -166,7 +167,7 @@ function Multiplier() {
   const [location, setLocation] = useState(null)
   const [changes, setChanges] = useState(['product', 'cast'])
   const [prompt, setPrompt] = useState('')
-  const quality = 'Reference resolution'
+  const quality = 'Up to 81 frames, long edge at most 848 px'
   const [versions, setVersions] = useState(2)
   const [error, setError] = useState(null)
   const tags = [product && ['@product', product.name], character && ['@character', character.name], location && ['@location', 'Location photo']].filter(Boolean)
@@ -177,7 +178,7 @@ function Multiplier() {
     <>
       <div className="sb-two">
         <div className="sb-col">
-          <Box label="Reference ad" aside={<span className="muted">4 to 30 seconds</span>}>
+          <Box label="Reference ad" aside={<span className="muted">Up to 81 frames</span>}>
             <div className="sb-stage">
               <Field input={{ id: 'reference', type: 'video', label: 'The ad to remake' }} value={reference} onChange={setReference} setError={setError} />
             </div>
@@ -195,9 +196,10 @@ function Multiplier() {
         </div>
         <aside className="sb-side glass" aria-label="Ad multiplier settings">
           <Field input={{ id: 'product', type: 'product', label: 'Your product' }} value={product} onChange={setProduct} />
+          {product && <AdProductPhotos value={product.images || []} onChange={(images) => setProduct({ ...product, images })} />}
           <Field input={{ id: 'character', type: 'character', label: 'Your character', optional: true }} value={character} onChange={setCharacter} />
           <Field input={{ id: 'location', type: 'image', label: 'Location', optional: true }} value={location} onChange={setLocation} setError={setError} />
-          <p className="sheet-note">Bernini-R preserves the reference resolution. Use a 4 to 30 second reference. Product and presenter photos feed the model; a location photo adds direction only.</p>
+          <p className="sheet-note">Bernini-R renders only the first 81 frames of your selection, scaled to at most 848 px on the long edge. At 24 fps that is about 3.4 seconds. Select up to 30 seconds of source video; longer selections do not make longer renders. Product and presenter photos feed the model. Include location direction in the reviewed script. Drafting calls your prompt writer and may bill before render approval.</p>
           <div className="field"><label>Versions</label><Stepper value={versions} onChange={setVersions} min={1} max={6} label="Versions" noun="versions" /></div>
           <button type="button" className="btn-blue" disabled={studio.busy || !reference?.url || !product?.images?.length} onClick={() => studio.draft(config)}>{studio.busy ? 'Working…' : 'Draft concepts'}</button>
         </aside>

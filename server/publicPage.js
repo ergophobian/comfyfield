@@ -92,14 +92,72 @@ const decode = (value = '') => String(value).replace(/&(?:amp|quot|apos|lt|gt|nb
   if (code) { const n = code[0].toLowerCase() === 'x' ? parseInt(code.slice(1), 16) : Number(code); return n > 0 && n <= 0x10ffff ? String.fromCodePoint(n) : '' }
   return ({ '&amp;': '&', '&quot;': '"', '&apos;': "'", '&lt;': '<', '&gt;': '>', '&nbsp;': ' ' })[match.toLowerCase()] || ''
 })
-const clean = (value) => decode(String(value || '').replace(/<[^>]*>/g, ' ')).replace(/\s+/g, ' ').trim().slice(0, 6000)
-const attrs = (tag) => Object.fromEntries([...tag.matchAll(/([\w:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/g)].map((m) => [m[1].toLowerCase(), decode(m[2] ?? m[3] ?? m[4])]))
+const clean = (value) => decode(String(value || '').replace(/<[^<>]*>/g, ' ')).replace(/\s+/g, ' ').trim().slice(0, 6000)
+// A forward-only scanner bounds work even for malformed tags and attribute runs.
+const attrs = (tag) => {
+  const result = Object.create(null)
+  let i = 0
+  while (i < tag.length) {
+    if (!/[\w:-]/.test(tag[i])) { i++; continue }
+    const start = i++
+    while (i < tag.length && /[\w:-]/.test(tag[i])) i++
+    const key = tag.slice(start, i).toLowerCase()
+    while (/\s/.test(tag[i] || '') && i < tag.length) i++
+    if (tag[i] !== '=') continue
+    i++
+    while (/\s/.test(tag[i] || '') && i < tag.length) i++
+    const quote = ['"', "'"].includes(tag[i]) ? tag[i++] : null
+    const value = i
+    while (i < tag.length && (quote ? tag[i] !== quote : !/[\s>]/.test(tag[i]))) i++
+    result[key] = decode(tag.slice(value, i))
+    if (quote) i++
+  }
+  return result
+}
 
-export function extractBusinessPage(html, base) {
-  const meta = {}
-  for (const [tag] of html.matchAll(/<meta\b[^>]*>/gi)) {
-    const a = attrs(tag)
-    meta[(a.property || a.name || '').toLowerCase()] ??= a.content || ''
+export function extractBusinessPage(input, base) {
+  // Network reads have the same byte limit; enforce it for direct callers too.
+  const html = Buffer.from(String(input).slice(0, 2_000_000)).subarray(0, 2_000_000).toString('utf8')
+  const meta = Object.create(null)
+  const imagesFound = []
+  const links = []
+  const scripts = []
+  let title = ''
+  let content = null
+  let start = -1
+  let quote = null
+  let tags = 0
+  for (let i = 0; i < html.length && tags < 20_000; i++) {
+    const c = html[i]
+    if (start < 0) {
+      if (c === '<') { start = i; quote = null }
+      continue
+    }
+    if (quote) { if (c === quote) quote = null; continue }
+    if (c === '"' || c === "'") { quote = c; continue }
+    if (c === '<') { start = i; continue }
+    if (c !== '>') continue
+    tags++
+    const end = start
+    start = -1
+    if (i - end > 16_384) continue
+    const tag = html.slice(end + 1, i)
+    const name = /^\s*(\/?[a-z][\w:-]*)/i.exec(tag)?.[1]?.toLowerCase()
+    if (content && name === `/${content.name}`) {
+      const text = html.slice(content.start, end)
+      if (content.name === 'title') title ||= text
+      else if (scripts.length < 32) scripts.push(text)
+      content = null
+    }
+    if (content) continue
+    if (name === 'meta') {
+      const a = attrs(tag)
+      meta[(a.property || a.name || '').toLowerCase()] ??= a.content || ''
+    } else if (name === 'img' && imagesFound.length < 64) {
+      const a = attrs(tag)
+      imagesFound.push(a.src || a['data-src'])
+    } else if (name === 'link' && links.length < 64) links.push(attrs(tag))
+    else if (name === 'title' || (name === 'script' && attrs(tag).type?.toLowerCase() === 'application/ld+json')) content = { name, start: i + 1 }
   }
   let product
   const walk = (item, depth = 0) => {
@@ -109,21 +167,20 @@ export function extractBusinessPage(html, base) {
     if ([].concat(item['@type'] || []).includes('Product')) product = item
     else Object.values(item).forEach((v) => walk(v, depth + 1))
   }
-  for (const match of html.matchAll(/<script\b[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
-    try { walk(JSON.parse(match[1])) } catch {}
+  for (const text of scripts) {
+    try { walk(JSON.parse(text)) } catch {}
   }
   const urlOf = (value) => {
     try { const url = new URL(value, base); return ['http:', 'https:'].includes(url.protocol) && !url.username && !url.password ? url.href : null } catch { return null }
   }
-  const name = clean(product?.name || meta['og:title'] || /<title[^>]*>([\s\S]*?)<\/title>/i.exec(html)?.[1])
+  const name = clean(product?.name || meta['og:title'] || title)
   const description = clean(product?.description || meta['og:description'] || meta.description)
   if (!name || /access denied|just a moment|attention required|captcha|verify you are human|^sign in$|^log in$|^not found$|^404\b/i.test(name)) throw bad('That page blocks reading or has no product title. Enter the product details by hand.', 422)
   const images = [...new Set([
     ...[].concat(product?.image || []).map((i) => typeof i === 'string' ? i : i?.url || i?.contentUrl),
     meta['og:image'], meta['twitter:image'],
-    ...[...html.matchAll(/<img\b[^>]*>/gi)].map(([tag]) => { const a = attrs(tag); return a.src || a['data-src'] }),
+    ...imagesFound,
   ].filter(Boolean).map(urlOf).filter(Boolean))].slice(0, 8)
-  const links = [...html.matchAll(/<link\b[^>]*>/gi)].map(([tag]) => attrs(tag))
   const logo = links.find((a) => /(?:^|\s)(?:icon|apple-touch-icon)(?:\s|$)/i.test(a.rel || ''))?.href
   const colors = [...new Set([meta['theme-color'], ...[...html.matchAll(/(?:color|background(?:-color)?)\s*:\s*(#[0-9a-f]{3,8})\b/gi)].map((m) => m[1])].filter((v) => /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(v || '')))].slice(0, 6)
   const offer = [].concat(product?.offers || [])[0]
@@ -131,4 +188,27 @@ export function extractBusinessPage(html, base) {
   const price = amount != null ? clean(`${offer?.priceCurrency || meta['product:price:currency'] || ''} ${amount}`) : ''
   const brandName = clean(typeof product?.brand === 'string' ? product.brand : product?.brand?.name) || clean(meta['og:site_name']) || new URL(base).hostname
   return { url: base, brand: { name: brandName, colors, logo: logo ? urlOf(logo) : null, about: description }, product: { name, description, price, images } }
+}
+
+// Public metadata only. Images use the same guarded transport and become local Library media.
+export async function importBusinessPage({ url }, { get = publicGet, save } = {}) {
+  const page = await get(url)
+  if (!/^text\/html\b|^application\/xhtml\+xml\b/i.test(page.headers['content-type'] || '')) throw Object.assign(new Error('Use an HTML product page, not a file or feed.'), { status: 415 })
+  const result = extractBusinessPage(page.body.toString('utf8'), page.url)
+  const warnings = []
+  const image = async (src) => {
+    try {
+      const file = await get(src, { limit: 8_000_000, accept: 'image/png,image/jpeg,image/webp' })
+      const ext = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' }[(file.headers['content-type'] || '').split(';')[0]]
+      const bytes = file.body
+      const valid = ext === 'png' ? bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])) : ext === 'jpg' ? bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255 : ext === 'webp' && bytes.toString('ascii', 0, 4) === 'RIFF' && bytes.toString('ascii', 8, 12) === 'WEBP'
+      if (!valid) return null
+      return save(bytes, ext).url
+    } catch { warnings.push('One image could not be imported. You can upload a replacement.'); return null }
+  }
+  // Bound simultaneous connections and total response bytes; never crawl linked pages or stylesheets.
+  const images = []
+  for (const src of result.product.images) { const local = await image(src); if (local) images.push(local) }
+  const logo = result.brand.logo ? await image(result.brand.logo) : null
+  return { ...result, brand: { ...result.brand, logo: logo ? [logo] : [] }, product: { ...result.product, images }, warnings: [...new Set(warnings)] }
 }
