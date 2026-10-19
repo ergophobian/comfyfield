@@ -97,6 +97,22 @@ await test('boot script: env carries the token and timers, the app guard fires f
   assert(!('RUNPOD_API_KEY' in env))
 })
 
+await test('status server: binds its port without a hostname lookup', { skip: !python && 'no Python 3.9+ found' }, () => {
+  // On macOS a hostname lookup in the bind stalled the status server for more than 8 s on CI.
+  const code = `
+import importlib.util, socket, sys
+spec = importlib.util.spec_from_file_location('statusd', sys.argv[1])
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+def no_lookup(*a): raise RuntimeError('hostname lookup')
+socket.getfqdn = no_lookup
+s = m.Server(('127.0.0.1', 0), m.Handler)
+print(s.server_address[1] > 0)
+s.server_close()`
+  const r = spawnSync(python[0], [...python.slice(1), '-c', code, statusd], { encoding: 'utf8' })
+  assert.equal(r.status, 0, r.stderr)
+  assert.equal(r.stdout.trim(), 'True')
+})
+
 await test('status server: watchdog rules', { skip: !python && 'no Python 3.9+ found' }, () => {
   const code = `
 import importlib.util, json, sys

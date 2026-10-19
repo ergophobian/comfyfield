@@ -7,6 +7,7 @@ import json
 import os
 import re
 import shutil
+import socketserver
 import subprocess
 import threading
 import time
@@ -329,6 +330,14 @@ def downloader():
         time.sleep(3)
 
 
+class Server(ThreadingHTTPServer):
+  # HTTPServer.server_bind looks up this host's full name (socket.getfqdn), which can stall for
+  # many seconds on macOS. Nothing here uses that name.
+  def server_bind(self):
+    socketserver.TCPServer.server_bind(self)
+    self.server_name, self.server_port = self.server_address[:2]
+
+
 class Handler(BaseHTTPRequestHandler):
   def log_message(self, *args):
     pass
@@ -408,7 +417,7 @@ def main():
     threading.Thread(target=target, daemon=True).start()
   log('starting on port %d' % PORT)
   # Bind first, so the log line means the port answers.
-  server = ThreadingHTTPServer(('0.0.0.0', PORT), Handler)
+  server = Server(('0.0.0.0', PORT), Handler)
   log('status server on port %d' % PORT)
   server.serve_forever()
 
