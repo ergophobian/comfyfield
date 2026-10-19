@@ -1,58 +1,49 @@
 # Startup verification
 
-Implemented issues #40, #42 and #44 on `one-command-start`. Issue #41 already had `ffmpeg-static` and a Stitch fallback in this checkout; this lane adds the shared, executable-checked resolver without changing `server/stitch.js`.
+Issues #40, #41, #42 and #44 on `one-command-start`. The red-team fixes were implemented at `ea34191`; the follow-up commit enforces exact allowed hostname spelling, records this evidence and corrects two test fixtures. `git fetch origin` and `git rebase origin/main` completed first; the branch already contained `origin/main` (`7ee3b1c`). Nothing was pushed or published.
 
-## Commands
+## Findings and fixes
 
-From a fresh source checkout, run `npm start`. No separate dependency install or build is needed. After a maintainer publishes the package, `npx comfyfield` invokes the same launcher with a bundled production build. No package was published during this work.
-
-The launcher prints the studio URL, Connections URL and data folder, opens the default browser, and serves the production app and existing local API on one loopback port. `--no-open` disables browser launch; `--port 5300` chooses a starting port.
-
-## Checks and messages
-
-| Check | Behavior |
+| Finding | Result |
 | --- | --- |
-| Node.js | Below 22: explains the required version, links to the installer and asks the user to reopen the terminal. |
-| Busy port | Reports the occupied port and tries the next port, up to 20 alternatives. |
-| ffmpeg | Probes the system binary, then the npm binary. If neither runs, explains `npm rebuild ffmpeg-static` or a system installation. Does not block browsing. |
-| No saved keys | Prints the Connections link. The app shows “No keys yet” with an Open Connections link. |
-| Comfy account | Uses only a saved key and the read-only account endpoint. Explains rejected keys, unavailable access, inactive accounts, service errors and offline checks. An active account does not prove paid-plan entitlement; the message says so. |
-| Disk | Reports available data-drive space, warns below 5 GB, and pauses below 200 MB. Explains freeing space or choosing another drive. |
-| Data folder | Explains how to choose a writable folder if creation or access fails. |
-| Browser | Uses the native open command on each platform; if it fails, asks the user to open the printed URL. |
+| Rebinding Host/Origin bypass | Every `/api` route, including reads, checks the hostname against localhost, 127.0.0.1, [::1] or the explicitly configured `COMFYFIELD_HOST`. Matching foreign Host/Origin headers are rejected before route execution. Foreign Origin and cross-site fetch headers are rejected too. |
+| Default bind address | Both Vite development and the production launcher explicitly default to 127.0.0.1. An explicit non-loopback `COMFYFIELD_HOST` prints a warning about network access and spending. Wildcard binding does not allow arbitrary API Host headers. |
+| Mandatory ffmpeg download | `ffmpeg-static` and its exclusive transitive dependencies are optional. Failed downloads or unsupported architectures no longer block the app. The resolver probes system ffmpeg, then the optional binary, then warns that Stitch features are disabled. |
+| Launcher ignores .env | The launcher uses Vite's `loadEnv` for its mode before choosing the data folder, building or importing provider code. Existing environment values retain precedence. |
+| Partial dependency install | Every required manifest dependency is resolved, plus development dependencies when a build or development server needs them. Missing packages trigger installation even when Vite exists. A lockfile selects `npm ci`; startup preserves it. |
+| Old Node bootstrap crash | The executable contains no static imports. Its version gate runs before dynamically importing the CLI, so Node 16 prints actionable upgrade guidance. |
+| Agent output directory | The default generation output uses `path.join(core.home(), 'outputs')`, shared with the app and CLI's per-user storage. Explicit output directories still work. |
+| Licensing and install scripts | `NOTICE.md` and the setup guide identify ffmpeg-static, build-specific ffmpeg/GNU General Public License terms, source/build origins, and lifecycle scripts. The notice is included in the package file list. |
+| Disk checks | Startup checks the checkout and actual npm-cache drives before installing, then the selected data drive. A missing cache directory is checked through its existing ancestor. |
+| Stitch integration | `origin/main` still had the same small `findFfmpeg()` implementation. Stitch now imports/re-exports the shared resolver and has no mandatory ffmpeg-static import. Other Stitch rendering behavior was preserved. |
 
-App, CLI and agent server share `~/.comfyfield` on macOS/Linux or `%APPDATA%\comfyfield` on Windows. The existing `COMFYFIELD_HOME` override still means `<folder>/.comfyfield`.
+The writer fixture now supplies a legitimate local Host header. The widget browser fixture permits Vite's next-port fallback: this Vite version treats port 0 as the default port, and port 5173 can be occupied. `scripts/verify.mjs` and all protected Pod/GPU files were left untouched.
 
-## Platform results
+## Current results
 
-| Platform | Evidence |
+All substantial build/check work ran in the fresh Windows scratch clone `C:\Users\User\comfyfield-startup-review-20261019`, one command at a time. Provider credentials were cleared and data folders isolated. The ordinary macOS user (uid 501) ran only the requested lightweight fresh-clone startup smoke, with `NODE_OPTIONS=--max-old-space-size=512` and no browser opened.
+
+| Check | Evidence |
 | --- | --- |
-| Windows x64, Node 24.11.1 | Fresh scratch clone installed dependencies and built through `npm start`; production page and same-port Connections API passed. `npx vite build` passed. Full verification passed all 17 check scripts. |
-| macOS arm64, Node 26.8.1 | Fresh scratch clone installed 199 packages in 4 seconds and built in 1.51 seconds through `npm start`; production page and same-port Connections API passed. Startup checks passed, including an isolated default per-user folder. Node heap capped at 512 MB; measured maximum resident size about 370 MiB. No full browser suite ran on the Mac. |
-| Ubuntu under WSL, Linux x64, Node 22.22.0 | Fresh-clone `npm start`, production page, same-port API and `npx vite build` passed. Full verification passed all 17 check scripts with headless Chromium. |
-| Standalone Linux npm package | Installed the packed artifact into its own project with `--omit=dev` (158 dependencies), without the React development plugin or source pages. `npm exec --offline -- comfyfield --no-open --port 5488` served the built page and API without reinstalling dependencies. This exercises npm's hoisted dependency layout. |
+| Windows x64, Node 24.11.1 | `npx vite build` passed in 2.26 seconds. `node scripts/verify.mjs` passed all 17 scripts, including browser fixtures and synthetic Stitch renders with system and bundled ffmpeg. The build retains its existing large-chunk warning. |
+| Windows fresh clone | `npm start -- --no-open --port 5490` installed and built, served the production page and same-port API, honored synthetic `.env` storage, and left the lockfile unchanged. The ffmpeg download URL deliberately pointed to a refused local port with an isolated npm cache: its real lifecycle script failed and npm continued without that optional package. System ffmpeg worked. |
+| Windows partial install | With Vite present but `node_modules/@comfyorg/sdk` moved aside, `npm start` performed locked dependency repair and served the API. |
+| Windows no ffmpeg | With the optional package moved aside and system ffmpeg excluded from the child process path, startup warned that Stitch features were disabled and still served the API. Netstat confirmed the actual listener was 127.0.0.1 only. The optional package was restored afterward. |
+| Real Node 16.20.2 | `npx --yes --package=node@16 -- node bin/comfyfield.js --help` exited 1 with the Node 22 upgrade message, without an import error. |
+| macOS arm64, Node 26.8.1 | Fresh-clone `npm start` installed, built in 1.09 seconds, and passed the same production page, API, synthetic `.env`, unchanged-lockfile and failed optional-download/system-ffmpeg checks. The smoke completed in 4.92 seconds with a 512 MB Node heap cap. No full verification/browser suite ran on the Mac. |
+| Startup regression script | Checks local/foreign/rebinding hosts, origins and fetch metadata; alternate numeric hostname rejection; explicit host warnings; default development bind configuration; dependency repair and optional dependency metadata; synthetic dotenv storage; checkout/cache disk thresholds; old Node guidance; ffmpeg fallbacks; browser command selection; occupied-port fallback; actual production API requests. |
 
-The automated startup output includes:
+The first full Windows run found the missing-Host writer fixture and the widget port collision. After fixing those fixtures, the entire build and verification run passed. A final audit tightened the allowlist to reject normalized numeric aliases such as 127.1; the full Windows build/verification and fresh macOS startup passed again after that change. Windows ssh uses an elevated token; a non-admin Windows run was not verified. Windows arm64 was not available for hardware testing; missing/throwing optional-module behavior was exercised instead. Earlier Linux/package results are historical and were not rerun for these fixes.
+
+## Captured output
 
 ```text
-Startup checks passed on win32/x64: production app, same-port API, occupied port fallback, isolated per-user storage, no keys, ffmpeg, browser commands and failure guidance
-Startup checks passed on darwin/arm64: production app, same-port API, occupied port fallback, isolated per-user storage, no keys, ffmpeg, browser commands and failure guidance
 17/17 check scripts passed
-Packed npm executable passed on linux/x64; production page and same-port API, no credentials.
+Fresh npm start passed on win32/x64: install, failed optional download, system ffmpeg fallback, build, production page, same-port API, dotenv storage, unchanged lockfile
+Partial-install npm start passed: Vite present, SDK missing, automatic locked repair, same-port API
+No-ffmpeg startup passed: warning, working API, actual loopback-only listen socket
+ComfyField needs Node.js 22 or newer; you have 16.20.2.
+Fresh npm start passed on darwin/arm64: install, failed optional download, system ffmpeg fallback, build, production page, same-port API, dotenv storage, unchanged lockfile
 ```
 
-Startup checks cover upgrade guidance, disk thresholds, writable storage, missing/corrupt saved connections, Comfy responses and timeouts, system/bundled/missing ffmpeg, browser commands and failures, occupied-port fallback, production serving and the local API. Both real system and npm ffmpeg executables were checked. The existing Stitch suite rendered synthetic fixtures with both executables. The browser fixture checks the no-keys notice and its link at 390px; its screenshot is `research_notes/format-runner/mock-startup-mobile.png` in the verification scratch clones.
-
-All launch smoke tests used `--no-open`; native browser command selection and failure handling were tested with an injected launcher. All actual browser tests were headless. Provider credentials were cleared for verification; Comfy responses used fake keys and mocked requests. No paid generations or real account checks ran.
-
-Windows verification needs Git Bash before the WSL bash launcher in the test process path. WSL Snap Chromium needs its test profiles under the Linux home directory rather than `/tmp`. One Windows rerun encountered a transient busy port 5173 in an existing browser fixture; no unrelated process was stopped. Local logs and the inspected mock screenshot are retained under ignored `outputs/startup-verification/`.
-
-## Stitch integration hook
-
-`server/stitch.js` was left untouched. Its existing exported `findFfmpeg()` can delegate to the new resolver by replacing its body with this one line:
-
-```js
-return (await import('./ffmpeg.js')).findFfmpeg()
-```
-
-The shared helper validates that the selected binary can actually run and supplies the same repair message used by startup diagnostics.
+Local evidence and smoke harnesses are under ignored `outputs/startup-review/`; Windows logs are copied there. The macOS fresh clone and its logs are under `outputs/startup-review/mac-fresh/`. Browser screenshots remain in the Windows scratch clone. All smoke processes were stopped. Browser opening was suppressed for live smoke tests; native command selection and failure handling were tested with an injected launcher. No real keys, account checks, paid generations, account changes or external submissions were used.

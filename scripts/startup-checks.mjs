@@ -116,6 +116,7 @@ for (const host of ['localhost:5173', '127.0.0.1:5173', '[::1]:5173']) {
   assert.equal(allowedApiRequest({ host, origin: `http://${host}` }, {}), true)
   assert.equal(allowedApiRequest({ host, origin: 'https://foreign.example' }, {}), false)
 }
+for (const host of ['127.1', '2130706433', '0x7f000001', 'localhost.evil']) assert.equal(allowedApiRequest({ host }, {}), false)
 assert.equal(allowedApiRequest({ host: 'rebind.example:5173', origin: 'http://rebind.example:5173' }, {}), false)
 assert.equal(allowedApiRequest({ host: 'studio.example:5173', origin: 'http://studio.example:5173' }, { COMFYFIELD_HOST: 'studio.example' }), true)
 assert.equal(allowedApiRequest({ host: 'unconfigured.example:5173' }, { COMFYFIELD_HOST: '0.0.0.0' }), false)
