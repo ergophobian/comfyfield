@@ -26,6 +26,38 @@ function checkValue(value, schema) {
   return null
 }
 
+export function routerInputErrors(value, schema, path = 'input') {
+  const errors = []
+  const bad = (message) => errors.push(`${path}: ${message}`)
+  if (value === null && schema.nullable) return errors
+  for (const union of ['anyOf', 'oneOf']) {
+    if (schema[union] && !schema[union].some((option) => !routerInputErrors(value, option, path).length)) bad(`does not match ${union}`)
+  }
+  const message = checkValue(value, schema)
+  if (message) bad(message)
+  if (typeof value === 'number') {
+    if (schema.minimum != null && value < schema.minimum) bad(`must be at least ${schema.minimum}`)
+    if (schema.maximum != null && value > schema.maximum) bad(`must be at most ${schema.maximum}`)
+  }
+  if (typeof value === 'string') {
+    if (schema.minLength != null && value.length < schema.minLength) bad('too short')
+    if (schema.maxLength != null && value.length > schema.maxLength) bad('too long')
+    if (schema.pattern && !new RegExp(schema.pattern).test(value)) bad('invalid pattern')
+  }
+  if (Array.isArray(value)) {
+    if (schema.minItems != null && value.length < schema.minItems) bad('too few items')
+    if (schema.maxItems != null && value.length > schema.maxItems) bad('too many items')
+    if (schema.items) value.forEach((item, i) => errors.push(...routerInputErrors(item, schema.items, `${path}[${i}]`)))
+  } else if (value && typeof value === 'object') {
+    for (const key of schema.required || []) if (value[key] == null) bad(`missing ${key}`)
+    for (const [key, item] of Object.entries(value)) {
+      if (schema.properties?.[key]) errors.push(...routerInputErrors(item, schema.properties[key], `${path}.${key}`))
+      else if (schema.additionalProperties === false) bad(`unknown ${key}`)
+    }
+  }
+  return errors
+}
+
 export function validateFormat(format, schemas = savedSchemas) {
   const reasons = []
   const bad = (message) => reasons.push(message)
@@ -176,16 +208,15 @@ export function validateFormat(format, schemas = savedSchemas) {
         if (all.includes('video')) for (const input of format.inputs) if (input.type === 'video') used.add(input.id)
         if (all.includes('audio')) for (const input of format.inputs) if (input.type === 'audio') used.add(input.id)
         if (all.includes('voice')) for (const input of format.inputs) if (input.type === 'voice') used.add(input.id)
-      } else if (model.provider === 'comfyRouter' && model.model === 'byteplus/dreamina-seedance-2-5-260628') {
+      } else if (model.provider === 'comfyRouter') {
         for (const variant of variants) {
-          const mapped = comfyRouterInput(model.model, optionsFor(step, variant))
-          for (const field of schema.required || []) if (mapped[field] == null) bad(`${label} Required Router field ${field} is not mapped`)
-          for (const [field, value] of Object.entries(mapped)) {
-            if (!schema.properties[field]) bad(`${label} Unknown Router field ${field}`)
-            else if (checkValue(value, schema.properties[field])) bad(`${label} ${field} ${checkValue(value, schema.properties[field])}`)
-          }
+          try {
+            const mapped = comfyRouterInput(model.model, optionsFor(step, variant))
+            for (const field of Object.keys(mapped)) if (!schema.properties[field]) bad(`${label} Unknown Router field ${field}`)
+            for (const error of routerInputErrors(mapped, schema)) bad(`${label} ${error}`)
+          } catch (error) { bad(`${label} ${error.message}`) }
         }
-        for (const input of format.inputs) if (input.type === 'image') used.add(input.id)
+        for (const input of format.inputs) if (pictureTypes.includes(input.type) && model.maxImages) used.add(input.id)
       } else bad(`${label} Provider ${model.provider} has no format schema validator yet`)
     }
   }

@@ -5,6 +5,9 @@ import { fileURLToPath } from 'node:url'
 import { mock } from 'node:test'
 import { Readable } from 'node:stream'
 import { writePrompt, writePromptWithRouter } from '../server/core.js'
+import { schemas } from '../src/lib/formats/schemas.js'
+import { routerInputErrors } from '../src/lib/formats/validate.js'
+import { routerWriterModel } from '../src/lib/catalog.js'
 import comfyfieldApi from '../server/plugin.js'
 
 // Isolate configuration so checks never read saved keys or provider environment variables.
@@ -17,8 +20,9 @@ if (!process.argv.includes('--isolated')) {
 
 const originalRead = fs.readFileSync
 let key = 'mock-google-key'
+let comfy = 'mock-comfy-key'
 mock.method(fs, 'readFileSync', (file, ...args) => {
-  if (String(file).endsWith('keys.json')) return JSON.stringify({ google: { key } })
+  if (String(file).endsWith('keys.json')) return JSON.stringify({ google: { key }, comfy: { key: comfy } })
   if (String(file).endsWith('writer-reference.png')) return Buffer.from('local image bytes')
   return originalRead(file, ...args)
 })
@@ -94,13 +98,56 @@ check('provider errors, empty, filtered and truncated responses fail clearly', a
   await assert.rejects(writePrompt(input), /did not finish/)
 })
 
-check('missing Google key reaches the explicit Router fallback stub without a call', async () => {
-  const count = calls.length
+const routerReply = (text = '  A Router prompt.  ', status = 'completed') => ({ ok: true, json: async () => ({ status, output: [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text }] }] }) })
+
+check('Comfy-only writer uses the text model, instructions, ordered images and user note', async () => {
   key = ''
-  await assert.rejects(writePrompt(input), (e) => e.status === 501 && /Comfy Router/.test(e.message))
-  await assert.rejects(writePromptWithRouter(input), /not wired yet/)
+  response = routerReply()
+  assert.equal(await writePrompt({ ...input, images: ['data:image/jpeg;base64,aW1hZ2U=', '/media/writer-reference.png'] }), 'A Router prompt.')
+  const call = calls.at(-1)
+  assert.equal(call.url, 'https://api.comfy.org/v2/models/openai/gpt-4.1-nano')
+  assert.equal(call.headers['X-API-Key'], comfy)
+  assert.equal(call.body.instructions, input.instructions)
+  assert.deepEqual(routerInputErrors(call.body, { ...schemas.router[routerWriterModel], additionalProperties: false }), [])
+  assert.equal(call.body.store, false)
+  assert.equal(call.body.max_output_tokens, 2048)
+  assert.deepEqual(call.body.input[0].content.slice(0, 2), [
+    { type: 'input_image', image_url: 'data:image/jpeg;base64,aW1hZ2U=' },
+    { type: 'input_image', image_url: `data:image/png;base64,${Buffer.from('local image bytes').toString('base64')}` },
+  ])
+  assert.match(call.body.input[0].content[2].text, /Warm sunset/)
+  assert.match(call.body.input[0].content[2].text, /LTX video/)
+  assert.equal(await writePrompt({ instructions: 'Text only' }), 'A Router prompt.')
+  assert.equal(calls.at(-1).body.input[0].content.length, 1)
+})
+
+check('Router writer rejects empty, refused, truncated and failed output without retries', async () => {
+  response = routerReply('Partial', 'incomplete')
+  await assert.rejects(writePrompt(input), /did not finish/)
+  response = routerReply('')
+  await assert.rejects(writePrompt(input), /no prompt/)
+  response = { ok: true, json: async () => ({ status: 'completed', output: [{ type: 'message', role: 'assistant', content: [{ type: 'refusal', refusal: 'Refused' }] }] }) }
+  await assert.rejects(writePrompt(input), /no prompt/)
+  response = { ok: false, status: 429, json: async () => ({ error: { message: 'Quota exceeded' } }) }
+  const count = calls.length
+  await assert.rejects(writePrompt(input), /Quota exceeded/)
+  assert.equal(calls.length, count + 1)
+  const before = calls.length
+  await assert.rejects(writePrompt({ ...input, images: ['data:image/svg+xml;base64,PHN2Zz4='] }), /PNG, JPG/)
+  assert.equal(calls.length, before)
+})
+
+check('missing both keys fails without a request; Google remains preferred when configured', async () => {
+  const count = calls.length
+  comfy = ''
+  await assert.rejects(writePrompt(input), /Add a Comfy API key/)
+  await assert.rejects(writePromptWithRouter(input), /Add a Comfy API key/)
   assert.equal(calls.length, count)
+  comfy = 'mock-comfy-key'
   key = 'mock-google-key'
+  response = reply([{ text: 'Google preferred' }])
+  assert.equal(await writePrompt(input), 'Google preferred')
+  assert.match(calls.at(-1).url, /googleapis/)
 })
 
 let bad = 0

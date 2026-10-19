@@ -5,7 +5,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { randomUUID } from 'node:crypto'
 import { Comfy } from '@comfyorg/sdk'
-import { models as pinned, falCategories, podWorkflows } from '../src/lib/catalog.js'
+import { models as pinned, falCategories, podWorkflows, routerWriterModel } from '../src/lib/catalog.js'
 import { comfyVars, comfyRouterInput, falInput, estimate, fill, falEndpointFor, dropOptional } from '../shared/mapping.js'
 import { renderStitch } from './stitch.js'
 import { archOf, minVramOf, notOnCloud, podNeedsOf, volumeFor, RUNTIMES } from '../shared/modelFiles.js'
@@ -248,9 +248,25 @@ function pcmToWav(pcm, rate = 24000) {
 
 const GEMINI = 'https://generativelanguage.googleapis.com/v1beta'
 
-// The Router lane can replace this stub without changing the writer contract.
-export async function writePromptWithRouter() {
-  throw Object.assign(new Error('Connect Google AI to write a prompt. Comfy Router prompt writing is not wired yet.'), { status: 501 })
+export async function writePromptWithRouter({ instructions, note = '', images = [], target = '' }) {
+  const content = images.map((url) => {
+    const { buf, mime } = readLocal(url)
+    if (!/^image\/(png|jpeg|webp|gif)$/.test(mime)) {
+      throw Object.assign(new Error('Writer accepts PNG, JPG, WebP or GIF images.'), { status: 415 })
+    }
+    return { type: 'input_image', image_url: dataUri(buf, mime) }
+  })
+  content.push({ type: 'input_text', text: [target && `Target model or medium: ${target}`, note && `User note: ${note}`, 'Write only the finished generation prompt.'].filter(Boolean).join('\n\n') })
+  const response = await fetch(`${ROUTER}/${routerWriterModel}`, {
+    method: 'POST', headers: { 'X-API-Key': comfyKey(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ instructions, input: [{ role: 'user', content }], max_output_tokens: 2048, store: false }),
+  })
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok || data.error || data.error_type) throw comfyError(response, data)
+  if (data.status !== 'completed') throw new Error('Comfy Router did not finish the prompt. Try again or adjust the instructions.')
+  const text = (data.output || []).filter((item) => item.type === 'message' && item.role === 'assistant').flatMap((item) => item.content || []).filter((part) => part.type === 'output_text').map((part) => part.text || '').join('').trim()
+  if (!text) throw new Error('Comfy Router returned no prompt. The request may have been filtered.')
+  return text
 }
 
 export async function writePrompt({ instructions, note = '', images = [], target = '' }) {
@@ -511,7 +527,9 @@ export async function listComfyRouterModels({ limit = 50, cursor } = {}) {
 }
 
 // Router returns each partner's native JSON; normalize media for the shared generation callers.
-function routerFiles(data) {
+function routerFiles(data, model) {
+  if (model === 'byteplus/seedream-5-0-flash-260915') data = { images: (data.data || []).map((image) => image.url).filter(Boolean) }
+  if (model === 'luma/photon-flash-1') data = { image: data.assets?.image }
   const files = []
   const visit = (value, kind) => {
     if (typeof value === 'string' && /^(https?:|data:)/.test(value) && kind) files.push({ url: value, kind })
@@ -557,11 +575,16 @@ export async function runComfyRouter({ model, input, idempotencyKey = randomUUID
     if (!status.ok || update.error_type) throw comfyError(status, update)
     if (update.status !== 'COMPLETED') continue
     const result = await fetch(resultUrl, { headers })
-    const data = await result.json()
     previous = result
+    if (result.ok && result.status !== 202 && /^audio\//.test(result.headers.get('Content-Type') || '')) {
+      const buf = Buffer.from(await result.arrayBuffer())
+      if (!buf.length) throw new Error('Comfy Router returned empty audio.')
+      return [{ ...saveMedia(buf, result.headers.get('Content-Type').includes('mpeg') ? 'mp3' : mimeExt(result.headers.get('Content-Type'))), kind: 'audio' }]
+    }
+    const data = await result.json()
     if (result.status === 202 || result.status === 429 || result.status === 503) continue
     if (!result.ok || data.error_type) throw comfyError(result, data)
-    return routerFiles(data)
+    return routerFiles(data, model)
   }
   throw new Error(`Comfy Router took too long. Request ${job.request_id} may still be running; do not submit again without checking it.`)
 }
@@ -936,7 +959,7 @@ export function resolveModel(id) {
 
 export async function listModels({ kind, query, includeFal = true, limit = 25 } = {}) {
   const out = pinned.filter((m) => (!kind || m.kind === kind) && (m.provider !== 'comfyRouter' || config('comfy').key)).map((m) => ({
-    id: m.id, kind: m.kind, provider: m.provider, name: m.name, note: m.note, pinned: true, durations: m.durations,
+    id: m.id, kind: m.kind, provider: m.provider, name: m.name, note: m.note, pinned: true, durations: m.durations, price: m.price, model: m.model, maxImages: m.maxImages, aspects: m.aspects,
   }))
   if (includeFal && (query || kind)) {
     const cats = kind ? falCategories.filter((c) => c.kind === kind) : falCategories
@@ -978,11 +1001,11 @@ export async function generate({ model, prompt, aspect = '16:9', count = 1, dura
 }
 
 // Rough cost before running; null when the price is unknown.
-export async function estimateCost({ model, aspect = '16:9', count = 1, duration, image }) {
+export async function estimateCost({ model, aspect = '16:9', count = 1, duration, image, prompt = '' }) {
   const m = resolveModel(model)
   const endpoint = await falEndpointFor(m, Boolean(image), falSchema)
   const meta = m.provider === 'fal' ? (await falMeta([endpoint]).catch(() => ({})))[endpoint] : { price: m.price }
-  return estimate(m, meta, { aspect, count, duration })
+  return estimate(m, meta, { aspect, count, duration, chars: prompt.length })
 }
 
 // Copies generated files into a folder. Remote URLs are downloaded; local media is copied.

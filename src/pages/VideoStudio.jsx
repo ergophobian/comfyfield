@@ -56,7 +56,7 @@ function CreateVideo({ preset, onPresets, setError, onRan, addBatch }) {
   const durations = useDurations(model)
   const inputs = useModelInputs(model, Boolean(start))
 
-  const canAttach = model.open || model.provider !== 'comfy' || acceptsImage(model)
+  const canAttach = model.open || (!['comfy', 'comfyRouter'].includes(model.provider)) || acceptsImage(model)
   const needsFrame = ['ltx_i2v', 'h3_i2v'].includes(model.workflow)
   const endOk = model.open || (Boolean(inputs.endFrame) && Boolean(start))
   const endNote = !canAttach ? `${model.name} starts from text only` : !model.open && !inputs.endFrame ? `${model.name} takes a start frame only` : 'Add a start frame first'

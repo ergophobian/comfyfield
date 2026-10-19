@@ -15,7 +15,7 @@ const num = (v) => parseFloat(String(v))
 
 export function acceptsImage(model, props) {
   if (model.provider === 'comfy') return Boolean(model.imageWorkflow) || ['ltx_i2v', 'h3_i2v'].includes(model.workflow)
-  if (model.provider === 'comfyRouter') return model.kind === 'video'
+  if (model.provider === 'comfyRouter') return Boolean(model.maxImages)
   if (model.provider === 'google') return true
   if (model.provider === 'fal') return hasImageInput(props || {})
   return false

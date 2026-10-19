@@ -12,7 +12,7 @@ import { IconAt, IconGrid } from '../components/generate/icons.jsx'
 import { IconAspect, IconClose, IconImage, IconPlus, IconSpark } from '../components/Icons.jsx'
 import { useApp } from '../lib/appContext.js'
 import { usePod } from '../lib/usePod.js'
-import { uploadImage } from '../lib/providers.js'
+import { acceptsImage, uploadImage } from '../lib/providers.js'
 import { estimate, useBalance, useModelMeta } from '../lib/cost.js'
 import { flowFromBatch, openFlow } from '../lib/flowStore.js'
 import { covers } from '../lib/formats/parts.js'
@@ -45,8 +45,9 @@ export default function ImageStudio() {
   const balance = useBalance()
   const metaOf = useModelMeta([model])
 
-  // ComfyUI's FLUX and SDXL workflows have no image input; every other model takes references.
-  const canAttach = model.open || !['comfy', 'comfyRouter'].includes(model.provider)
+  // Router references follow each model's native capability.
+  const canAttach = model.open || (model.provider === 'comfyRouter' ? acceptsImage(model) : model.provider !== 'comfy')
+  const maxRefs = model.maxImages || MAX_REFS
   const images = canAttach ? [...uploads.map((u) => u.url), ...refs.flatMap((r) => r.images.slice(0, 1))] : []
   const inputs = useModelInputs(model, images.length > 0)
   const ratio = inputs.ratios.includes(aspect) ? aspect : ['1:1', 'auto'].find((r) => inputs.ratios.includes(r)) || inputs.ratios[0]
@@ -66,14 +67,14 @@ export default function ImageStudio() {
 
   const attach = async (files) => {
     if (!canAttach) return
-    const list = [...files].filter((f) => !f.type || f.type.startsWith('image/')).slice(0, MAX_REFS - uploads.length)
+    const list = [...files].filter((f) => !f.type || f.type.startsWith('image/')).slice(0, maxRefs - uploads.length)
     if (!list.length) { if (files.length) setError('Add images: PNG, JPG, WebP or GIF.'); return }
     setError(null)
     setUploading((n) => n + list.length)
     await Promise.all(list.map(async (f) => {
       try {
         const up = await uploadImage(f)
-        setUploads((us) => [...us, up].slice(0, MAX_REFS))
+        setUploads((us) => [...us, up].slice(0, maxRefs))
       } catch (e) { setError(e.message) }
       setUploading((n) => n - 1)
     }))
@@ -102,7 +103,7 @@ export default function ImageStudio() {
   }
 
   const dropOk = (e) => canAttach && e.dataTransfer.types.includes('Files')
-  const attachTitle = !canAttach ? `${model.name} does not take reference images` : uploads.length >= MAX_REFS ? `Up to ${MAX_REFS} references` : 'Add reference images'
+  const attachTitle = !canAttach ? `${model.name} does not take reference images` : uploads.length >= maxRefs ? `Up to ${maxRefs} references` : 'Add reference images'
 
   const hero = (
     <div className="gen-hero">
@@ -161,7 +162,7 @@ export default function ImageStudio() {
           <div className="gen-bar-foot">
             <div className="chips">
               <div className="chip gen-icon">
-                <button type="button" aria-label="Add reference images" title={attachTitle} disabled={!canAttach || uploads.length >= MAX_REFS}
+                <button type="button" aria-label="Add reference images" title={attachTitle} disabled={!canAttach || uploads.length >= maxRefs}
                   className={uploads.length ? 'lit' : ''} onClick={() => fileRef.current.click()}><IconPlus /></button>
               </div>
               <Pop up keep className="gen-icon" icon={<IconAt />} title="Add from Library" lit={refs.length > 0}>

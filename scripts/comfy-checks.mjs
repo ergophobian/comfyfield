@@ -4,7 +4,21 @@ import path from 'node:path'
 import { test } from 'node:test'
 import { Comfy } from '@comfyorg/sdk'
 import * as core from '../server/core.js'
+import { createServer } from '../server/mcp.js'
+import { spawnSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
+import { models, aspects } from '../src/lib/catalog.js'
+import { schemas } from '../src/lib/formats/schemas.js'
+import { routerInputErrors } from '../src/lib/formats/validate.js'
 import { comfyRouterInput } from '../shared/mapping.js'
+
+// No inherited provider configuration can reach these mocked checks.
+if (!process.argv.includes('--isolated')) {
+  const result = spawnSync(process.execPath, [fileURLToPath(import.meta.url), '--isolated'], {
+    stdio: 'inherit', env: { SystemRoot: process.env.SystemRoot || '', PATH: process.env.PATH || '' },
+  })
+  process.exit(result.status ?? 1)
+}
 
 fs.mkdirSync('outputs', { recursive: true })
 process.env.COMFYFIELD_HOME = fs.mkdtempSync(path.resolve('outputs/comfy-check-'))
@@ -22,6 +36,98 @@ const setup = (mode = 'local') => {
 }
 const job = { request_id: 'request-1', status: 'IN_QUEUE' }
 const noWait = { pause: async () => {} }
+
+await test('Every pinned Router mapping matches its public schema for all composer ratios and durations', () => {
+  for (const model of models.filter((m) => m.provider === 'comfyRouter')) {
+    const schema = schemas.router[model.model]
+    assert(schema?.properties, model.model)
+    for (const aspect of model.aspects || aspects) for (const duration of model.durations || [5]) {
+      for (const images of [[], ...(model.maxImages ? [['data:image/png;base64,aW1hZ2U=']] : [])]) {
+        const input = comfyRouterInput(model.model, { prompt: 'A fox', aspect, duration, count: 3, images })
+        assert.deepEqual(routerInputErrors(input, { ...schema, additionalProperties: false }), [], `${model.id} ${aspect} ${duration}`)
+      }
+    }
+  }
+  assert.equal(schemas.router['byteplus/seedream-5-0-flash-260915'].properties.image.oneOf[1].maxItems, 10)
+  assert(routerInputErrors({ content: [{ type: 'image_url', image_url: {} }] }, schemas.router['byteplus/dreamina-seedance-2-5-260628']).length)
+  assert(routerInputErrors({ inputs: [{ text: 'Hi' }] }, schemas.router['elevenlabs/eleven_v4_turbo']).length)
+})
+
+await test('Router references keep their order, unsupported inputs fail, and prices use the published units', async () => {
+  const images = ['data:image/png;base64,YQ==', 'data:image/png;base64,Yg==']
+  const flux = comfyRouterInput('bfl/flux-2-max', { prompt: 'Edit', aspect: '4:5', images })
+  assert.deepEqual([flux.input_image, flux.input_image_2], images)
+  assert.deepEqual([flux.width, flux.height], [896, 1120])
+  assert.deepEqual(comfyRouterInput('byteplus/seedream-5-0-flash-260915', { prompt: 'Edit', aspect: '1:1', images }).image, images)
+  assert.throws(() => comfyRouterInput('luma/photon-flash-1', { images }), /up to 0/)
+  assert.throws(() => comfyRouterInput('ltx/ltx-2-5-fast', { aspect: '1:1' }), /16:9 or 9:16/)
+  assert.throws(() => comfyRouterInput('byteplus/seedance-1-0-pro-fast-251015', { images }), /up to 1/)
+  const multi = comfyRouterInput('byteplus/dreamina-seedance-2-5-260628', { prompt: 'Blend', aspect: '16:9', images })
+  assert.deepEqual(multi.content.slice(1).map((item) => [item.image_url.url, item.role]), images.map((url) => [url, 'reference_image']))
+  assert.equal(multi.ratio, '16:9')
+  assert.equal(await core.estimateCost({ model: 'comfy-router-flux-max' }), null)
+  assert.equal((await core.estimateCost({ model: 'comfy-router-kontext', count: 3 })).usd, 0.12)
+  assert(Math.abs((await core.estimateCost({ model: 'comfy-router-ltx', duration: 10 })).usd - 1.287) < 1e-10)
+  assert.equal((await core.estimateCost({ model: 'comfy-router-speech', prompt: 'a'.repeat(1000) })).usd, 0.0572)
+  assert.equal((await core.estimateCost({ model: 'comfy-router-seedance-fast', duration: 5 })).usd, 0.108)
+})
+
+await test('Router normalizes native Seedream, Luma and Ltx results, and saves binary audio', async () => {
+  setup()
+  for (const [model, result, kind, url] of [
+    ['byteplus/seedream-5-0-flash-260915', { data: [{ url: 'https://example.test/image.png' }] }, 'image', 'https://example.test/image.png'],
+    ['luma/photon-flash-1', { assets: { image: 'https://example.test/image.png', video: null }, request: { image_ref: [{ url: 'https://example.test/input.png' }] } }, 'image', 'https://example.test/image.png'],
+    ['ltx/ltx-2-5-fast', { result: { video_url: 'https://example.test/video.mp4' } }, 'video', 'https://example.test/video.mp4'],
+  ]) {
+    const replies = [json(job), json({ status: 'COMPLETED' }), json(result)]
+    globalThis.fetch = async () => replies.shift()
+    assert.deepEqual(await core.runComfyRouter({ model, input: {} }, noWait), [{ url, kind }])
+  }
+  const replies = [json(job), json({ status: 'COMPLETED' }), new Response(Buffer.from('mock audio'), { headers: { 'Content-Type': 'audio/mpeg' } })]
+  globalThis.fetch = async () => replies.shift()
+  const [audio] = await core.runComfyRouter({ model: 'elevenlabs/eleven_v4_turbo', input: {} }, noWait)
+  assert.equal(audio.kind, 'audio')
+  assert.equal(core.readLocal(audio.url).buf.toString(), 'mock audio')
+  const listed = await core.listModels({ includeFal: false })
+  for (const model of models.filter((m) => m.provider === 'comfyRouter')) assert(listed.some((m) => m.id === model.id && m.model === model.model))
+})
+
+await test('CLI and MCP list every Router model through the shared core', async () => {
+  setup()
+  const handlers = new Map()
+  const server = createServer({ handlers })
+  const mcp = await handlers.get('list_models')({})
+  assert(!mcp.isError)
+  const cli = spawnSync(process.execPath, ['bin/comfyfield.js', 'models', '--json'], {
+    encoding: 'utf8', env: { SystemRoot: process.env.SystemRoot || '', PATH: process.env.PATH || '', COMFYFIELD_HOME: process.env.COMFYFIELD_HOME },
+  })
+  assert.equal(cli.status, 0, cli.stderr)
+  for (const entries of [JSON.parse(mcp.content[0].text), JSON.parse(cli.stdout)]) {
+    assert.deepEqual(entries.filter((m) => m.provider === 'comfyRouter').map((m) => m.id), models.filter((m) => m.provider === 'comfyRouter').map((m) => m.id))
+  }
+  await server.close()
+})
+
+await test('New Router image models preserve count through core generation', async () => {
+  setup()
+  for (const id of ['comfy-router-flux-max', 'comfy-router-kontext', 'comfy-router-photon', 'comfy-router-seedream']) {
+    const model = core.resolveModel(id)
+    let submits = 0
+    globalThis.fetch = async (url, options) => {
+      if (options.method === 'POST') {
+        submits++
+        const input = JSON.parse(options.body)
+        assert.equal(input.count, undefined)
+        return json(job, 201, { 'Retry-After': '0' })
+      }
+      if (url.endsWith('/status')) return json({ status: 'COMPLETED' }, 200, { 'Retry-After': '0' })
+      return json(model.id === 'comfy-router-photon' ? { assets: { image: 'https://example.test/result.png' } } : model.id === 'comfy-router-seedream' ? { data: [{ url: 'https://example.test/result.png' }] } : { result: { sample: 'https://example.test/result.png' } })
+    }
+    const files = await core.generate({ model: id, prompt: 'A field', count: 3 })
+    assert.equal(submits, 3, id)
+    assert.equal(files.length, 3, id)
+  }
+})
 
 await test('Comfy Router submit, Retry-After polling, native result and credentials', async () => {
   setup()
