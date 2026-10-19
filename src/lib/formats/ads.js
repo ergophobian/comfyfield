@@ -1,5 +1,6 @@
 // Product videos, UGC and ad variants.
 import { open, note, covers } from './parts.js'
+import { h3Sizes } from '../catalog.js'
 
 export const ads = [
   open({
@@ -16,7 +17,7 @@ export const ads = [
         { id: 'bold', label: 'Bold text', text: 'the product pops in against a bold solid color background with fast punchy camera moves and open space for large headline text' },
       ] },
     ],
-    prompt: 'A vertical product ad for {product}: {style}. Keep the product shape, label and colors exactly the same in every frame, crisp commercial lighting.',
+    prompt: 'A vertical product ad for {product}: {style}. Keep the product shape, label and colors exactly the same in every frame, crisp commercial lighting. In the colors of the brand {brand}, if one is named.',
     settings: { aspect: '9:16', duration: 5 },
     cover: covers.sun,
   }),
@@ -103,7 +104,7 @@ export const ads = [
   open({
     id: 'product-spin', name: 'Product spin', kind: 'video', category: 'ads',
     blurb: 'A smooth 360 degree turn of your product.',
-    runsOn: 'MiniMax H3', workflow: 'h3_i2v',
+    runsOn: 'MiniMax H3', workflow: 'h3_open_i2v', sizes: h3Sizes,
     inputs: [
       { id: 'image', type: 'image', label: 'Product photo' },
       { id: 'background', type: 'choice', label: 'Background', default: 'white', options: [
@@ -121,7 +122,7 @@ export const ads = [
   open({
     id: 'packshot', name: 'Bullet time packshot', kind: 'video', category: 'ads', hub: 'ads',
     blurb: 'Freeze time and sweep the camera around your product.',
-    runsOn: 'MiniMax H3', workflow: 'h3_bullet_time',
+    runsOn: 'MiniMax H3', workflow: 'h3_product_ad', sizes: h3Sizes,
     inputs: [
       { id: 'image', type: 'image', label: 'Product photo' },
       { id: 'background', type: 'choice', label: 'Background', default: 'white', options: [

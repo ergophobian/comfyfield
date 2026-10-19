@@ -359,6 +359,8 @@ const videoEdits = [
       { id: 'next', type: 'text', label: 'What happens next', optional: true, placeholder: 'The door swings open and light floods in' },
     ],
     prompt: 'Continue the video seamlessly from its last frame for {seconds} more seconds with the same subjects, camera, lighting and pace. {next}',
+    // The graph makes this many new seconds after the clip.
+    bindings: { seconds: 'seconds' },
     settings: { aspect: 'auto' },
     cover: covers.indigo,
   }),

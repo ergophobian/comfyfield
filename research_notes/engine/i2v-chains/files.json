@@ -1,0 +1,40 @@
+{
+  "qwen_image_edit_2511_fp8mixed.safetensors": {
+    "repo": "Comfy-Org/Qwen-Image-Edit_ComfyUI",
+    "path": "split_files/diffusion_models/qwen_image_edit_2511_fp8mixed.safetensors",
+    "dir": "diffusion_models",
+    "gb": 20.53,
+    "vramGb": 24,
+    "cloud": true,
+    "sha256": "c9fdc158e46d3b61ef75f21ae866ca2fe808bf4a53643120d1c1e87c19280a4e",
+    "label": "Qwen-Image-Edit-2511"
+  },
+  "qwen_2.5_vl_7b_fp8_scaled.safetensors": {
+    "repo": "Comfy-Org/Qwen-Image_ComfyUI",
+    "path": "split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors",
+    "dir": "text_encoders",
+    "gb": 9.38,
+    "vramGb": 0,
+    "cloud": true,
+    "sha256": "cb5636d852a0ea6a9075ab1bef496c0db7aef13c02350571e388aea959c5c0b4"
+  },
+  "qwen_image_vae.safetensors": {
+    "repo": "Comfy-Org/Qwen-Image_ComfyUI",
+    "path": "split_files/vae/qwen_image_vae.safetensors",
+    "dir": "vae",
+    "gb": 0.25,
+    "vramGb": 0,
+    "cloud": true,
+    "sha256": "a70580f0213e67967ee9c95f05bb400e8fb08307e017a924bf3441223e023d1f"
+  },
+  "Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors": {
+    "repo": "lightx2v/Qwen-Image-Edit-2511-Lightning",
+    "path": "Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors",
+    "dir": "loras",
+    "gb": 0.85,
+    "vramGb": 0,
+    "cloud": true,
+    "sha256": "22226e8d05d354bb356627d428809f5afd7819399b077238a2b70a82883a904f",
+    "label": "The Qwen-Image-Edit-2511 Lightning LoRA"
+  }
+}

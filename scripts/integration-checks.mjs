@@ -19,7 +19,7 @@ globalThis.fetch = () => { throw new Error('Network is forbidden in integration 
 const photo = { url: '/media/photo.png', ratio: '9:16' }
 const valuesFor = (format) => ({ ...initialValues(format), ...Object.fromEntries(format.inputs.filter((i) => i.type === 'image').map((i) => [i.id, photo])) })
 assert.equal(effects.length, 45)
-assert.equal(formats.length, 342)
+assert.equal(formats.length, 388)
 assert.equal(allFormats.length, 479)
 for (const [i, format] of effects.entries()) {
   assert.equal(format.steps[0].instructions, research.specs[i].writer_instructions)
@@ -47,7 +47,7 @@ for (const [i, format] of effects.entries()) {
     assert.equal(opts.images[0], photo.url)
     assert.equal(metadata.formatId, format.id)
     if (renderer === 'ltx') {
-      assert.equal(model.workflow, 'ltx_i2v')
+      assert.equal(model.workflow, 'ltx25_i2v')
       const vars = comfyVars('video', opts)
       assert.equal(vars.image, photo.url)
       assert.equal(vars.width % 32, 0)

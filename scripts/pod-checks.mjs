@@ -1671,7 +1671,7 @@ function sampleInputs(format) {
     if (i.type === 'choice') values[i.id] = i.default ?? i.options[0].id
     else if (i.type === 'count') values[i.id] = i.default ?? i.options[0]
     else if (i.type === 'text' || i.type === 'longtext') values[i.id] = 'Sample'
-    else if (['image', 'draw', 'crop', 'face'].includes(i.type)) values[i.id] = { ...picture, faceUrl: '/media/face.png', box: { x: 0, y: 0, width: 1, height: 1 }, aspect: '1:1' }
+    else if (['image', 'draw', 'crop', 'face'].includes(i.type)) values[i.id] = { ...picture, faceUrl: '/media/face.png', box: { x: 0, y: 0, width: 1, height: 1 }, aspect: '1:1', strokes: '/media/strokes.png' }
     else if (i.type === 'mask') values[i.id] = { ...picture, maskUrl: '/media/mask.png' }
     else if (i.type === 'video') values[i.id] = { url: '/media/clip.mp4', ratio: '16:9', duration: 6, trim: { start: 1, end: 4 } }
     else if (i.type === 'audio') values[i.id] = { url: '/media/voice.mp3', name: 'voice.mp3' }
@@ -1764,4 +1764,98 @@ await test('image services: Cloud takes Edit 2511, Krea 2, Z-Image and HiDream a
   for (const id of ['comfy-z-image-turbo', 'comfy-hidream-o1', 'comfy-qwen-image-edit-2511']) assert(!models.find((m) => m.id === id).pod, `${id} runs on Cloud`)
   const { openModels } = await import('../src/lib/tools.js')
   assert.deepEqual(['qwen-image-edit-2511', 'z-image-turbo', 'hidream-o1'].map((id) => openModels.find((m) => m.id === id).catalog), ['comfy-qwen-image-edit-2511', 'comfy-z-image-turbo', 'comfy-hidream-o1'])
+})
+
+// ---- Video services ---------------------------------------------------------------------------------
+
+await test('video services: no format runs on the paid partner node or on LTX Video 2B', async () => {
+  const { allFormats } = await import('../src/lib/formats/index.js')
+  const graphs = (f) => f.steps.flatMap((s) => [s.workflow, s.imageWorkflow, ...Object.values(s.targets || {}).flatMap((t) => [t.workflow, t.imageWorkflow])])
+  assert.deepEqual(allFormats.filter((f) => graphs(f).some((w) => w === 'h3_i2v' || w === 'ltx_i2v')).map((f) => f.id), [])
+})
+
+await test('video services: presets and the H3, LTX-2.5 and Wan 2.2 graphs go to Comfy Cloud at once', async () => {
+  podMode()
+  const sent = []
+  const client = {
+    assets: { fromBytes: (buf, o) => ({ asset: o.filename }) },
+    workflows: { fromFile: async (f) => ({ file: f, json: null, setInput() {} }) },
+    run: async (wf) => { sent.push(path.basename(wf.file)); return { outputs: [{ type: 'image', contentType: 'video/mp4', name: 'out.mp4', toBytes: async () => Buffer.from('mp4') }] } },
+  }
+  const leases = []
+  const lease = async (o) => { leases.push(o); return { baseUrl: 'https://p-8189.proxy.runpod.net', token: 't', sandbox: false, signal: new AbortController().signal, reason: () => null, release() {} } }
+  const png = 'data:image/png;base64,iVBORw0KGgo='
+  const vars = { prompt: 'Dolly in', width: 1344, height: 768, frames: 121, duration: 5, start: 0, seed: 1, image: png, image2: png, video: 'data:video/mp4;base64,AAAAIGZ0eXBpc29t', seconds: 5 }
+  for (const w of ['h3_open_i2v', 'h3_flf2v', 'h3_i2v_audio', 'h3_extend', 'h3_t2v', 'h3_ref2v', 'h3_product_ad', 'cinema_shot', 'ltx25_i2v', 'ltx25_multishot', 'wan22_i2v', 'wan22_t2v']) {
+    const files = await core.runComfy(w, vars, { createClient: () => client, lease, podPhase: async () => 'none', podVram: () => null, podRoom: () => ({}) })
+    assert.equal(files[0].kind, 'video', w)
+  }
+  assert.equal(leases.length, 0, 'Comfy Cloud has every file these load')
+  assert(readGraph('h3_open_i2v')['17'].inputs.crop === 'center', 'the start frame is cropped to the canvas, not stretched')
+})
+
+await test('video services: an effect LoRA and a chain need a Pod, which downloads that LoRA; first and last frame runs on FreeVideo on 96 GB', async () => {
+  podMode()
+  const { formats } = await import('../src/lib/formats/index.js')
+  const { stepOptions } = await import('../src/lib/formats/options.js')
+  const { comfyVars } = await import('../shared/mapping.js')
+  const sent = []
+  const client = {
+    assets: { fromBytes: (buf, o) => ({ asset: o.filename }) },
+    workflows: { fromFile: async (f) => ({ file: f, json: null, setInput() {} }) },
+    run: async (wf) => { sent.push(path.basename(wf.file)); return { outputs: [{ type: 'image', contentType: 'video/mp4', name: 'out.mp4', toBytes: async () => Buffer.from('mp4') }] } },
+  }
+  const leases = []
+  const lease = async (o) => { leases.push(o); return { baseUrl: 'https://p-8189.proxy.runpod.net', token: 't', sandbox: false, signal: new AbortController().signal, reason: () => null, release() {} } }
+  const png = 'data:image/png;base64,iVBORw0KGgo='
+  const boom = formats.find((f) => f.id === 'building-explosion')
+  const o = stepOptions(boom, boom.steps[0], { image: { url: png }, note: '' })
+  assert.match(o.prompt, /EXPLOSION\.$/, 'the trigger ends the prompt')
+  const vars = { ...comfyVars('video', { ...o, aspect: '16:9' }), seed: 1 }
+  const run = (w, v, phase, vram = 24, room = {}) => core.runComfy(w, v, { createClient: () => client, lease, podPhase: async () => phase, podVram: () => vram, podRoom: () => room })
+  await assert.rejects(run('wan22_lora_i2v', vars, 'none'), (e) => e.code === 'needs_pod', 'Comfy Cloud has no effect LoRA')
+  await run('wan22_lora_i2v', vars, 'ready')
+  assert.deepEqual(leases.at(-1).files.filter((f) => f.dir === 'loras' && /redmond/.test(f.name)).map((f) => f.name).sort(),
+    ['wan22_i2v_explosion_redmond_high_noise.safetensors', 'wan22_i2v_explosion_redmond_low_noise.safetensors'], 'the Pod downloads the effect the run names, for both experts')
+  const frozen = formats.find((f) => f.id === 'frozen-in-motion')
+  const fo = stepOptions(frozen, frozen.steps[0], { image: { url: png } })
+  assert.equal(fo.fields.image2, png, 'the orbit ends on the start photo')
+  for (const w of ['klein_ltx', 'qwen_h3', 'qwen_mockup_ltx']) await assert.rejects(run(w, { ...vars, motion: 'It moves.', width: 768, height: 1344 }, 'none'), (e) => e.code === 'needs_pod', `${w} needs a Pod`)
+  const flf = { prompt: 'A turn', duration: 5, seed: 1, image: png, image2: png, width: 1344, height: 768, frames: 121 }
+  await run('h3_flf2v', flf, 'ready', 96, {})
+  assert.equal(sent.at(-1), 'h3_freevideo_flf2v.json', 'a 96 GB Pod runs first and last frame on FreeVideo')
+  assert.deepEqual(leases.at(-1).runtimes, ['freevideo'])
+  await run('h3_flf2v', flf, 'ready', 32, {})
+  assert.equal(sent.at(-1), 'h3_flf2v.json', 'a 32 GB Pod runs stock H3')
+  assert.deepEqual(core.podNeedsFor('h3_flf2v').runtimes.map((r) => r.runtime), ['freevideo'], 'a Pod started for it gets the GPU FreeVideo runs on')
+})
+
+await test('video services: each video format draws on its model\'s canvas, a draft is smaller, and arrows, seconds and a brand reach their graphs', async () => {
+  const { formats } = await import('../src/lib/formats/index.js')
+  const { stepOptions, stepModel, selectedStep } = await import('../src/lib/formats/options.js')
+  const { comfyVars } = await import('../shared/mapping.js')
+  const { nearestAspect } = await import('../src/lib/formats/runner.js')
+  const by = Object.fromEntries(formats.map((f) => [f.id, f]))
+  const run = (id, values) => {
+    const f = by[id]
+    const all = { ...sampleInputs(f), ...values }
+    const step = selectedStep(f, f.steps[0], all)
+    const model = stepModel(f, step, all)
+    const o = stepOptions(f, step, all)
+    if (o.aspect === 'auto') o.aspect = nearestAspect(o.shape)
+    return { model, vars: comfyVars('video', o, model.sizes), workflow: comfyVars('video', o, model.sizes).image && model.imageWorkflow ? model.imageWorkflow : model.workflow }
+  }
+  const final = run('cinema-shot', { model: 'minimax', quality: 'final', image: null })
+  assert.deepEqual([final.workflow, final.vars.width, final.vars.height], ['h3_open_t2v', 1344, 768])
+  const draft = run('cinema-shot', { model: 'minimax', quality: 'draft' })
+  assert.deepEqual([draft.workflow, draft.vars.width, draft.vars.height], ['cinema_shot', 832, 448], 'a draft is 0.6x, in multiples of 64, from the start frame')
+  assert.deepEqual([run('cinema-shot', { model: 'ltx', quality: 'final', image: null }).workflow, run('cinema-shot', { model: 'wan', quality: 'final' }).workflow], ['ltx25_t2v', 'wan22_i2v'])
+  const cam = run('cam-dolly-left', {})
+  assert.equal(cam.workflow, 'h3_open_i2v')
+  assert.deepEqual([run('cam-orbit-360', {}).vars.width, run('cam-orbit-360', {}).vars.height], [768, 960], 'auto follows the 4:5 photo on H3\'s canvas')
+  assert.equal(run('draw-to-video', {}).vars.mask, '/media/strokes.png', 'the drawn arrows are the mask')
+  assert.equal(run('extend-video', { seconds: 8 }).vars.seconds, 8)
+  assert.equal(run('brand-video', {}).vars.image, '/media/mia.png', 'the brand\'s first picture is the reference')
+  assert.deepEqual([run('human-video', { character: null }).workflow, run('human-video', {}).workflow], ['h3_open_t2v', 'h3_t2v'])
+  assert.equal(run('transition', {}).vars.duration, 5)
 })

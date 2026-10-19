@@ -130,7 +130,7 @@ try {
   await evaluate('[...document.querySelectorAll("button")].find((b) => b.textContent === "Send to render").click()')
   await wait('JSON.parse(localStorage.getItem("comfyfield.library") || "[]").length === 4')
   assert.equal(requests[4].path, '/api/comfy/run')
-  assert.equal(requests[4].body.workflow, 'ltx_i2v')
+  assert.equal(requests[4].body.workflow, 'ltx25_i2v')
   assert.equal(requests[4].body.vars.prompt, 'Edited video prompt from the user')
   assert.equal(requests[4].body.vars.image, '/mock-photo.svg')
   await goto('/apps/podcast-clips')

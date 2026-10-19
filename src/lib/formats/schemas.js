@@ -635,6 +635,14 @@ export const schemas = {
       "start",
       "video"
     ],
+    "cinema_shot": [
+      "duration",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
     "flux3_klein_t2i": [
       "count",
       "height",
@@ -665,6 +673,35 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "h3_draw": [
+      "duration",
+      "image",
+      "mask",
+      "prompt",
+      "seed"
+    ],
+    "h3_extend": [
+      "duration",
+      "prompt",
+      "seconds",
+      "seed",
+      "start",
+      "video"
+    ],
+    "h3_flf2v": [
+      "duration",
+      "image",
+      "image2",
+      "prompt",
+      "seed"
+    ],
+    "h3_freevideo_flf2v": [
+      "duration",
+      "image",
+      "image2",
+      "prompt",
+      "seed"
+    ],
     "h3_freevideo_i2v": [
       "duration",
       "height",
@@ -686,6 +723,28 @@ export const schemas = {
       "prompt",
       "seed"
     ],
+    "h3_i2v_audio": [
+      "duration",
+      "image",
+      "prompt",
+      "seed"
+    ],
+    "h3_loop": [
+      "duration",
+      "height",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "h3_lora_i2v": [
+      "frames",
+      "image",
+      "image2",
+      "lora",
+      "lora_strength",
+      "prompt",
+      "seed"
+    ],
     "h3_open_i2v": [
       "frames",
       "height",
@@ -697,6 +756,38 @@ export const schemas = {
     "h3_open_t2v": [
       "frames",
       "height",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "h3_product_ad": [
+      "duration",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "h3_ref2v": [
+      "duration",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "h3_t2v": [
+      "duration",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "h3_truck_ad": [
+      "duration",
+      "height",
+      "image",
       "prompt",
       "seed",
       "width"
@@ -749,6 +840,13 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "klein_h3": [
+      "frames",
+      "image",
+      "motion",
+      "prompt",
+      "seed"
+    ],
     "klein_headshot": [
       "count",
       "height",
@@ -756,6 +854,13 @@ export const schemas = {
       "prompt",
       "seed",
       "width"
+    ],
+    "klein_ltx": [
+      "frames",
+      "image",
+      "motion",
+      "prompt",
+      "seed"
     ],
     "klein_moodboard": [
       "count",
@@ -780,6 +885,14 @@ export const schemas = {
       "width"
     ],
     "ltx25_i2v": [
+      "frames",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "ltx25_multishot": [
       "frames",
       "height",
       "image",
@@ -871,6 +984,15 @@ export const schemas = {
       "prompt",
       "seed"
     ],
+    "qwen_h3": [
+      "frames",
+      "height",
+      "image",
+      "motion",
+      "prompt",
+      "seed",
+      "width"
+    ],
     "qwen_image21_t2i": [
       "count",
       "height",
@@ -898,6 +1020,31 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "qwen_ltx": [
+      "frames",
+      "image",
+      "motion",
+      "prompt",
+      "seed"
+    ],
+    "qwen_mockup_ltx": [
+      "frames",
+      "image",
+      "motion",
+      "prompt",
+      "seed"
+    ],
+    "qwen_multi_h3": [
+      "frames",
+      "image",
+      "image2",
+      "image3",
+      "image4",
+      "image5",
+      "motion",
+      "prompt",
+      "seed"
+    ],
     "qwen_multiangle": [
       "azimuth",
       "batch",
@@ -914,6 +1061,18 @@ export const schemas = {
     "qwen_shots_grid": [
       "image",
       "seed"
+    ],
+    "qwen_try_on_h3": [
+      "frames",
+      "height",
+      "image",
+      "image2",
+      "image3",
+      "image4",
+      "motion",
+      "prompt",
+      "seed",
+      "width"
     ],
     "qwen_zoom_grid": [
       "count",
@@ -943,6 +1102,32 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "wan22_i2v": [
+      "duration",
+      "height",
+      "image",
+      "image2",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "wan22_lora_i2v": [
+      "duration",
+      "image",
+      "lora",
+      "lora_low",
+      "lora_low_strength",
+      "lora_strength",
+      "prompt",
+      "seed"
+    ],
+    "wan22_t2v": [
+      "duration",
+      "height",
+      "prompt",
+      "seed",
+      "width"
+    ],
     "wan_animate2": [
       "duration",
       "image",
@@ -960,9 +1145,15 @@ export const schemas = {
     ]
   },
   "comfyOptional": {
+    "h3_lora_i2v": [
+      "image2"
+    ],
     "klein_moodboard": [
       "image2",
       "image3"
+    ],
+    "ltx25_multishot": [
+      "image"
     ],
     "qwen2511_edit": [
       "image2",
@@ -970,6 +1161,23 @@ export const schemas = {
     ],
     "qwen_edit_try_on": [
       "image3"
+    ],
+    "qwen_h3": [
+      "image"
+    ],
+    "qwen_multi_h3": [
+      "image2",
+      "image3",
+      "image4",
+      "image5"
+    ],
+    "qwen_try_on_h3": [
+      "image2",
+      "image3",
+      "image4"
+    ],
+    "wan22_i2v": [
+      "image2"
     ]
   },
   "router": {

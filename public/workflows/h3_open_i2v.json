@@ -53,7 +53,7 @@
       "height": "{{height}}",
       "length": "{{frames}}",
       "first_frame": [
-        "16",
+        "17",
         0
       ]
     }
@@ -177,6 +177,22 @@
     "class_type": "LoadImage",
     "inputs": {
       "image": "{{image}}"
+    }
+  },
+  "17": {
+    "class_type": "ImageScale",
+    "_meta": {
+      "title": "Crop the start frame to the canvas, so H3 never stretches it"
+    },
+    "inputs": {
+      "image": [
+        "16",
+        0
+      ],
+      "upscale_method": "lanczos",
+      "width": "{{width}}",
+      "height": "{{height}}",
+      "crop": "center"
     }
   }
 }

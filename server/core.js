@@ -5,7 +5,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { randomUUID } from 'node:crypto'
 import { Comfy } from '@comfyorg/sdk'
-import { models as pinned, falCategories } from '../src/lib/catalog.js'
+import { models as pinned, falCategories, podWorkflows } from '../src/lib/catalog.js'
 import { comfyVars, comfyRouterInput, falInput, estimate, fill, falEndpointFor, dropOptional } from '../shared/mapping.js'
 import { renderStitch } from './stitch.js'
 import { minVramOf, notOnCloud, podNeedsOf, volumeFor, RUNTIMES } from '../shared/modelFiles.js'
@@ -596,7 +596,7 @@ export function workflowNeeds(workflow) {
 const modelOf = (workflow) => pinned.find((m) => m.workflow === workflow || m.imageWorkflow === workflow)
 function podWorkflowOf(workflow) {
   const m = modelOf(workflow)
-  return (m && (workflow === m.imageWorkflow ? m.podImageWorkflow : m.podWorkflow)) || null
+  return (m && (workflow === m.imageWorkflow ? m.podImageWorkflow : m.podWorkflow)) || podWorkflows[workflow] || null
 }
 
 // A Pod started for a workflow is sized for its Pod graph, so H3 gets the GPU FreeVideo runs on.
