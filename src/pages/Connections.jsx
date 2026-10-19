@@ -34,7 +34,7 @@ function Provider({ id, info, state, onSaved }) {
         <span className={`status${state?.connected ? ' ok' : ''}`}>{state?.connected ? 'Connected' : 'Not connected'}</span>
       </div>
       <p>{info.blurb}</p>
-      {info.fields.filter((f) => !(id === 'comfy' && f.id === 'url' && ['cloud', 'pod'].includes(values.mode || state?.mode))).map((f) => (
+      {info.fields.map((f) => (
         <div className="field" key={f.id}>
           <label htmlFor={`${id}-${f.id}`}>{f.label}</label>
           {f.toggle ? (
@@ -44,9 +44,7 @@ function Provider({ id, info, state, onSaved }) {
               onClick={() => setValues((v) => ({ ...v, [f.id]: (v[f.id] ?? (state?.[f.id] === false ? 'off' : 'on')) === 'on' ? 'off' : 'on' }))}>
               <i />{f.note}
             </button>
-          ) : f.options ? <select className="sb-select" id={`${id}-${f.id}`} value={values[f.id] || state?.[f.id] || 'local'} onChange={(e) => setValues((v) => ({ ...v, [f.id]: e.target.value }))}>
-            {f.options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select> : <input
+          ) : <input
             id={`${id}-${f.id}`}
             type={f.secret ? 'password' : 'text'}
             value={values[f.id] || ''}

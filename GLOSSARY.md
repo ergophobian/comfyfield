@@ -9,7 +9,7 @@ The part of ComfyField that takes one run (a model and its inputs) and returns m
 _Avoid_: engine (alone), runner, executor
 
 **Backend**:
-The place where a run executes: Local ComfyUI, Comfy Cloud, a Pod, Comfy Router, fal, Google or ElevenLabs.
+The place where a run executes: Comfy Cloud, a Pod, Comfy Router, fal, Google or ElevenLabs. Users never run ComfyUI on their own GPU.
 _Avoid_: provider (for the execution place), target, host
 
 **Pod**:

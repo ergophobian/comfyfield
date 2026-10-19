@@ -12,7 +12,7 @@ const help = `ComfyField: generate with your own keys from the terminal or any a
 Usage
   comfyfield models [--kind image|video|audio] [--search <text>]
   comfyfield generate "<prompt>" --model <id> [--ratio 16:9] [--duration 5] [--count 1] [--image <url|file>] [--out ./dir]
-  comfyfield connect <comfy|fal|google|elevenlabs|runpod> --key <key> [--url <comfy url>]
+  comfyfield connect <comfy|fal|google|elevenlabs|runpod> --key <key>
   comfyfield balance
   comfyfield stitch <clip> [<clip> ...] [--ratio 16:9] [--music <file>] [--volume 0.25] [--fade 1] [--out ./dir]
   comfyfield stitch --spec <stitch.json> [--preview] [--out ./dir]
@@ -20,13 +20,13 @@ Usage
   comfyfield dev      Start the app
 
 Keys are read from .comfyfield/keys.json in the current directory (or COMFYFIELD_HOME), then from
-FAL_KEY, GEMINI_API_KEY, ELEVENLABS_API_KEY, COMFY_URL, COMFY_API_KEY and RUNPOD_API_KEY.
-With ComfyUI on Comfy Cloud + Pod, runs use a ready Pod, else Comfy Cloud; the CLI never starts a Pod.`
+FAL_KEY, GEMINI_API_KEY, ELEVENLABS_API_KEY, COMFY_API_KEY and RUNPOD_API_KEY.
+ComfyUI runs use a ready Pod, else Comfy Cloud; the CLI never starts a Pod.`
 
 const options = {
   kind: { type: 'string' }, search: { type: 'string' }, model: { type: 'string', short: 'm' },
   ratio: { type: 'string' }, duration: { type: 'string' }, count: { type: 'string' }, image: { type: 'string' },
-  out: { type: 'string', short: 'o' }, key: { type: 'string' }, url: { type: 'string' }, json: { type: 'boolean' },
+  out: { type: 'string', short: 'o' }, key: { type: 'string' }, json: { type: 'boolean' },
   help: { type: 'boolean', short: 'h' },
   spec: { type: 'string' }, music: { type: 'string' }, volume: { type: 'string' }, fade: { type: 'string' }, preview: { type: 'boolean' },
 }
@@ -89,8 +89,7 @@ async function main() {
     if (!core.providers[id]) die(`Provider must be one of: ${Object.keys(core.providers).join(', ')}`)
     const values = {}
     if (v.key) values.key = v.key
-    if (v.url) values.url = v.url
-    if (!Object.keys(values).length) die('Pass --key (and --url for comfy).')
+    if (!Object.keys(values).length) die('Pass --key.')
     core.saveConnection(id, values)
     return console.log(`Saved ${id} to .comfyfield/keys.json`)
   }

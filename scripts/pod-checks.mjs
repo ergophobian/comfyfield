@@ -479,7 +479,7 @@ const jsonReply = (data, status = 200) => new Response(JSON.stringify(data), { s
 function podMode(values = { key: 'comfy-key' }) {
   process.env.COMFYFIELD_HOME = fs.mkdtempSync(path.join(tmp, 'run-'))
   for (const k of ['COMFY_API_KEY', 'COMFY_URL', 'COMFY_MODE', 'COMFY_BASE_URL', 'RUNPOD_API_KEY']) process.env[k] = ''
-  core.saveConnection('comfy', { mode: 'cloud', ...values })
+  core.saveConnection('comfy', values)
 }
 // The Pod-path checks below run as if a Pod were ready.
 const ready = async () => 'ready'
@@ -549,8 +549,8 @@ await test('runs: Comfy Cloud + Pod is a saved choice, and the needs of a workfl
   assert.equal(core.connections().comfy.connected, false, 'no Comfy key and no RunPod key')
   core.saveConnection('runpod', { key: 'rp-key' })
   assert.equal(core.connections().comfy.connected, true, 'a RunPod key alone can run workflows on a Pod')
-  assert.throws(() => core.saveConnection('comfy', { mode: 'gpu' }), /Choose Local or Comfy Cloud \+ Pod/)
-  assert.throws(() => core.saveConnection('comfy', { mode: 'pod' }), /Choose Local or Comfy Cloud \+ Pod/)
+  assert.throws(() => core.saveConnection('comfy', { mode: 'local' }), /runs on Comfy Cloud and Pods/)
+  assert.throws(() => core.saveConnection('comfy', { url: 'http://127.0.0.1:8188' }), /COMFY_MODE=local and COMFY_URL in \.env/)
   assert.throws(() => core.saveConnection('runpod', { cap: '-3' }), /daily cap/)
   core.saveConnection('runpod', { cap: '12.345' })
   assert.equal(core.config('runpod').cap, '12.35')
@@ -1111,6 +1111,31 @@ await test('freevideo: the sandbox installs FreeVideo on a Pod started for it, a
   await pod.terminate({ now: true })
 })
 
+// ---- Comfy Cloud and Pods only ----------------------------------------------------------------------
+
+await test('cloud only: ComfyUI runs on Comfy Cloud and Pods by default, and saved settings cannot pick a local ComfyUI', async () => {
+  podMode({})
+  assert.equal(core.comfyMode(), 'cloud', 'a fresh install has no mode saved and no .env')
+  // An old keys.json that chose Local, as the app could save before.
+  core.writeKeys({ comfy: { key: 'comfy-key', mode: 'local', url: 'http://127.0.0.1:8188' } })
+  assert.deepEqual([core.config('comfy').mode, core.config('comfy').url], ['cloud', ''])
+  assert.equal(core.connections().comfy.mode, 'cloud')
+  assert(!('url' in core.connections().comfy))
+  globalThis.fetch = async () => { throw new Error('no local ComfyUI call') }
+  const sent = []
+  const client = { workflows: { fromFile: async () => ({ json: null, setInput() {} }) }, run: async (wf) => { sent.push(wf.json); return { outputs: [{ type: 'image', contentType: 'image/png', name: 'x.png', toBytes: async () => Buffer.from('png') }] } } }
+  await core.runComfy('image_sdxl', sdxl, { createClient: () => client, podPhase: async () => 'none' })
+  assert.equal(sent.length, 1, 'the old saved Local is ignored: the run went to Comfy Cloud')
+  process.env.COMFY_MODE = 'local'
+  assert.equal(core.comfyMode(), 'local', 'development can still use a local ComfyUI through .env')
+  process.env.COMFY_MODE = ''
+  const { providerInfo } = await import('../src/lib/catalog.js')
+  assert.deepEqual(providerInfo.comfy.fields.map((f) => f.id), ['key'], 'the ComfyUI card asks only for the Comfy API key')
+  assert.equal(providerInfo.comfy.link, 'https://platform.comfy.org/profile/api-keys')
+  assert(!/your own ComfyUI|Local/.test(providerInfo.comfy.blurb))
+  assert(!/COMFY_MODE=local\s*$/m.test(fs.readFileSync('.env.example', 'utf8').replace(/^#.*$/gm, '')), '.env.example does not turn on a local ComfyUI')
+})
+
 // ---- video edits -----------------------------------------------------------------------------------
 
 const EDITS = { bernini_swap: [848, 81], bernini_swap_noref: [848, 81], bernini_restyle: [848, 81], bernini_relight: [848, 81], bernini_headswap: [640, 73], wan_animate2: [832, 81] }
@@ -1187,8 +1212,8 @@ await test('video edits: Cloud takes the edits it has every file for; the face s
 })
 
 await test('video edits: local ComfyUI gets the clip through its upload route', async () => {
-  podMode()
-  core.saveConnection('comfy', { mode: 'local', url: 'http://comfy.test', key: '' })
+  podMode({})
+  Object.assign(process.env, { COMFY_MODE: 'local', COMFY_URL: 'http://comfy.test' })
   const calls = []
   let prompt = null
   globalThis.fetch = async (url, init = {}) => {
@@ -1207,6 +1232,7 @@ await test('video edits: local ComfyUI gets the clip through its upload route', 
   assert.deepEqual([prompt['2'].inputs.start_time, prompt['2'].inputs.duration], [0.5, 2])
   assert.equal(calls.filter((c) => c === 'POST /upload/image').length, 2)
   assert.equal(files[0].kind, 'video')
+  Object.assign(process.env, { COMFY_MODE: '', COMFY_URL: '' })
 })
 
 await test('video edits: the Genjutsu formats run on these graphs and show in the app', async () => {

@@ -38,11 +38,17 @@ export function writeKeys(keys) {
   fs.writeFileSync(path.join(home(), 'keys.json'), JSON.stringify(keys, null, 2), { mode: 0o600 })
 }
 
+// ComfyUI runs on Comfy Cloud and Pods: ComfyField assumes its users do not run ComfyUI on their own GPU.
+// A local ComfyUI is for development only, through COMFY_MODE=local and COMFY_URL in .env. Saved
+// settings cannot pick it, so an old saved "local" no longer sends runs to a machine without ComfyUI.
+export const comfyMode = () => (process.env.COMFY_MODE === 'local' ? 'local' : 'cloud')
+
 // Saved keys win; environment variables are the fallback.
 export function config(id) {
   const saved = readKeys()[id] || {}
   const { env, fields } = providers[id]
-  return Object.fromEntries(fields.map((f, i) => [f, saved[f] || process.env[env[i]] || '']))
+  const out = Object.fromEntries(fields.map((f, i) => [f, saved[f] || process.env[env[i]] || '']))
+  return id === 'comfy' ? { ...out, mode: comfyMode(), url: process.env.COMFY_URL || '' } : out
 }
 
 export const mask = (v) => (v ? `${v.slice(0, 4)}…${v.slice(-4)}` : '')
@@ -380,7 +386,7 @@ export async function writePrompts({ idea, n = 6, kind = 'video' }) {
 export async function testConnection(id) {
   const c = config(id)
   if (id === 'comfy') {
-    if (c.mode === 'cloud' || c.mode === 'pod') {
+    if (c.mode === 'cloud') {
       if (!c.key) return pod().test()
       const r = await fetch('https://cloud.comfy.org/api/user', { headers: { 'X-API-Key': c.key } })
       return r.ok
@@ -439,8 +445,8 @@ export function connections() {
   const out = Object.fromEntries(Object.keys(providers).map((id) => {
     const c = config(id)
     // Comfy Cloud + Pod can run with a Comfy key, or with a RunPod key through a Pod.
-    const on = id !== 'comfy' ? c.key : c.mode === 'cloud' || c.mode === 'pod' ? c.key || config('runpod').key || sandboxed() : c.url || c.key
-    return [id, { connected: Boolean(on), url: c.url, key: mask(c.key), ...(id === 'comfy' ? { mode: c.mode === 'pod' ? 'cloud' : c.mode || 'local' } : {}) }]
+    const on = id !== 'comfy' ? c.key : c.mode === 'cloud' ? c.key || config('runpod').key || sandboxed() : c.url || c.key
+    return [id, { connected: Boolean(on), key: mask(c.key), ...(id === 'comfy' ? { mode: c.mode } : {}) }]
   }))
   out.comfyRouter = { connected: Boolean(config('comfy').key) }
   const rp = config('runpod')
@@ -450,7 +456,7 @@ export function connections() {
 
 export function saveConnection(id, values) {
   if (!providers[id]) throw Object.assign(new Error('Unknown provider'), { status: 400 })
-  if (id === 'comfy' && values.mode && !['local', 'cloud'].includes(values.mode)) throw Object.assign(new Error('Choose Local or Comfy Cloud + Pod.'), { status: 400 })
+  if (id === 'comfy' && (values.mode || values.url)) throw Object.assign(new Error('ComfyUI runs on Comfy Cloud and Pods. A local ComfyUI is for development only: set COMFY_MODE=local and COMFY_URL in .env.'), { status: 400 })
   if (id === 'runpod' && values.auto != null && !['on', 'off'].includes(values.auto)) throw Object.assign(new Error('Start Pods automatically is on or off.'), { status: 400 })
   if (id === 'runpod' && values.cap != null && !(parseFloat(values.cap) > 0)) throw Object.assign(new Error('The daily cap is a dollar amount above 0.'), { status: 400 })
   if (id === 'runpod' && values.cap != null) values = { ...values, cap: String(Math.round(parseFloat(values.cap) * 100) / 100) }
@@ -635,15 +641,13 @@ async function comfyTarget(files, podPhase, podVram, label) {
   throw Object.assign(new Error(`${why}, so this run needs a Pod. Start one in ComfyField from the Pod chip in the top bar.`), { status: 409, code: 'needs_pod', reason: why })
 }
 
-// Runs a bundled workflow on Local ComfyUI, Comfy Cloud or the Pod, and returns file URLs.
+// Runs a bundled workflow on Comfy Cloud or the Pod, or in development on a local ComfyUI, and returns file URLs.
 export async function runComfy(workflow, vars = {}, { createClient = (key, baseUrl) => comfyClient(baseUrl, key), lease = (o) => pod().lease(o), podPhase = () => pod().phaseNow(), podVram = () => pod().vramGb(), podRoom = () => pod().room() } = {}) {
   let { file, template } = readWorkflow(workflow)
   const unset = unsetInput(template, vars)
   if (unset) throw new Error(`Workflow ${workflow} requires ${unset}.`)
   let graph = fill(template, vars)
-  const mode = config('comfy').mode
-  // 'pod' was its own choice before the Pod joined Comfy Cloud; read it as Comfy Cloud + Pod.
-  if (mode === 'cloud' || mode === 'pod') {
+  if (comfyMode() === 'cloud') {
     let needs = podNeedsOf(graph)
     // Errors name the model as the picker shows it.
     const label = modelOf(workflow)?.name

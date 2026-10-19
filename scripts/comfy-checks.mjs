@@ -14,7 +14,12 @@ process.env.COMFY_MODE = ''
 process.env.COMFY_BASE_URL = ''
 const key = 'mock-comfy-key'
 const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json', ...headers } })
-const setup = (mode = 'local') => core.saveConnection('comfy', { key, url: 'http://127.0.0.1:8188', mode })
+// A local ComfyUI is for development only, so it comes from the environment, never from saved settings.
+const setup = (mode = 'local') => {
+  process.env.COMFY_MODE = mode === 'local' ? 'local' : ''
+  process.env.COMFY_URL = mode === 'local' ? 'http://127.0.0.1:8188' : ''
+  core.saveConnection('comfy', { key })
+}
 const job = { request_id: 'request-1', status: 'IN_QUEUE' }
 const noWait = { pause: async () => {} }
 
