@@ -120,8 +120,16 @@ try {
   }
   const screenshot = async (name) => {
     await evaluate('window.scrollTo(0, 0)')
-    await wait('[...document.querySelectorAll("video.widget-video")].every((v) => v.readyState >= 2 && !v.seeking)')
-    await pause(200)
+    await evaluate(`Promise.all([...document.querySelectorAll('video.widget-video')].map(async (v) => {
+      v.pause()
+      const start = Number(v.closest('.widget').querySelector('input[type=number]')?.value || 0)
+      v.currentTime = Math.min(v.duration - 0.01, start + 0.01)
+      v.muted = true
+      await v.play()
+      v.pause()
+    }))`)
+    await wait('[...document.querySelectorAll("video.widget-video")].every((v) => v.readyState >= 3 && !v.seeking && v.paused)')
+    await pause(1200)
     const { cssContentSize, cssLayoutViewport } = await cdp('Page.getLayoutMetrics')
     const clip = await evaluate('Boolean(document.querySelector(".sheet"))')
       ? { x: 0, y: 0, width: cssLayoutViewport.clientWidth, height: cssLayoutViewport.clientHeight } : cssContentSize
@@ -135,6 +143,11 @@ try {
     await cdp('Emulation.setDeviceMetricsOverride', { width: 390, height: 1100, deviceScaleFactor: 1, mobile: true })
     assert(await evaluate('document.documentElement.scrollWidth <= 390'), `${name} must fit 390px`)
     await screenshot(`${name}-390`)
+    if (await evaluate('Boolean(document.querySelector(".sheet .format-limit"))')) {
+      await evaluate('document.querySelector(".sheet-body").scrollTop = document.querySelector(".sheet-body").scrollHeight')
+      await screenshot(`${name}-controls-390`)
+      await evaluate('document.querySelector(".sheet-body").scrollTop = 0')
+    }
     await cdp('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1100, deviceScaleFactor: 1, mobile: false })
   }
   await cdp('Runtime.enable')
