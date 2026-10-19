@@ -250,6 +250,28 @@ const voice = [
     cover: covers.sky,
   }),
   open({
+    id: 'drama3-tts', name: 'Drama 3 speech', kind: 'audio', category: 'voice',
+    blurb: 'Read a script, optionally guided by a voice sample.',
+    runsOn: 'Fish Audio Drama 3', workflow: 'drama3_tts',
+    inputs: [
+      { id: 'script', type: 'longtext', label: 'Script', placeholder: 'Write exactly what the voice should say.' },
+      { id: 'voice', type: 'voice', label: 'Voice sample', optional: true },
+    ],
+    prompt: '{script}',
+    cover: covers.lilac,
+  }),
+  open({
+    id: 'qwen3-tts', name: 'Qwen3-TTS speech', kind: 'audio', category: 'voice',
+    blurb: 'Read a script in the voice of an uploaded sample.',
+    runsOn: 'Qwen3-TTS', workflow: 'qwen3_tts',
+    inputs: [
+      { id: 'script', type: 'longtext', label: 'Script', placeholder: 'Write exactly what the voice should say.' },
+      { id: 'voice', type: 'voice', label: 'Voice sample' },
+    ],
+    prompt: '{script}',
+    cover: covers.mint,
+  }),
+  open({
     id: 'voice-clone', name: 'Voice clone', kind: 'audio', category: 'voice', featured: true,
     blurb: 'Turn a short sample of your voice into a reusable voice.',
     runsOn: 'Chatterbox', workflow: 'chatterbox_clone',

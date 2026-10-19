@@ -152,6 +152,7 @@ export const visibleInputs = (recipe, values) => recipe.inputs.filter((i) => !i.
 export const missingInputs = (recipe, values) => visibleInputs(recipe, values)
   .filter((i) => !i.optional && (widgetTypes.includes(i.type) || (i.type === 'draw' && i.mode !== 'motion')
     ? !widgetReady(i.type === 'draw' ? 'mask' : i.type, values[i.id])
+    : i.type === 'voice' ? !values[i.id]?.sample
     : textual.includes(i.type) ? !values[i.id]?.trim() : values[i.id] == null || values[i.id] === ''))
 
 // Picture-like inputs, in the order a ComfyUI graph's image, image2, ... slots take them.

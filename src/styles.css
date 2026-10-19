@@ -1015,10 +1015,11 @@ code { font-size: .92em; }
 .mixed-looks { min-width: 0; }
 .mixed-looks .apps-bar { margin-bottom: 16px; }
 .look-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
-.look { position: relative; display: flex; flex-direction: column; justify-content: flex-end; aspect-ratio: 16 / 11; padding: 8px; border-radius: var(--r-lg); overflow: hidden;
+.look { text-align: left; position: relative; display: flex; flex-direction: column; justify-content: flex-end; aspect-ratio: 16 / 11; padding: 8px; border-radius: var(--r-lg); overflow: hidden;
   box-shadow: var(--shadow), var(--inset-hi); transition: transform var(--dur-press) var(--spring), box-shadow var(--dur-press) var(--spring); }
-.look:hover { transform: translateY(-3px); box-shadow: var(--shadow-lift); }
-.look:active { transform: scale(.97); }
+.look:disabled { opacity: var(--disabled); transform: none; }
+.look:hover:not(:disabled) { transform: translateY(-3px); box-shadow: var(--shadow-lift); }
+.look:active:not(:disabled) { transform: scale(.97); }
 .look video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .look > span { position: relative; display: flex; flex-direction: column; gap: 1px; padding: 8px 10px; border-radius: var(--r-md);
   background: var(--glass-strong); backdrop-filter: var(--blur-sm); -webkit-backdrop-filter: var(--blur-sm); }

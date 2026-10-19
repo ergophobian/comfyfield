@@ -4,6 +4,7 @@ import { widgetTypes } from '../../../shared/widgetInputs.js'
 import { Link } from 'react-router-dom'
 import { IconUpload } from '../Icons.jsx'
 import { uploadImage } from '../../lib/providers.js'
+import { uploadMedia } from '../widgets/media.js'
 import { useLibrary, toRef } from '../../lib/useLibrary.js'
 
 const media = {
@@ -12,28 +13,15 @@ const media = {
   audio: { accept: 'audio/*', hint: 'Drop an audio file or click to choose', noun: 'an audio file' },
 }
 
-// Library list and tab behind each pick. There is no voices list yet, so voice picks stay empty.
+// Library list and tab behind each saved asset pick.
 const picks = {
   character: { list: 'characters', noun: 'characters' },
   product: { list: 'products', noun: 'products' },
   brand: { list: 'brands', noun: 'brand kits' },
-  voice: { list: 'voices', noun: 'voices' },
 }
 
 const textual = ['text', 'longtext']
 const calm = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-
-// Audio stays local until the backend supports audio uploads.
-const readLocal = (file, type) => new Promise((resolve) => {
-  const url = URL.createObjectURL(file)
-  const done = (ratio) => resolve({ url, name: file.name, local: true, ratio })
-  if (type !== 'video') return done()
-  const v = document.createElement('video')
-  v.preload = 'metadata'
-  v.onloadedmetadata = () => done(v.videoWidth ? `${v.videoWidth}:${v.videoHeight}` : undefined)
-  v.onerror = () => done()
-  v.src = url
-})
 
 function MediaField({ input, value, onChange, setError, labelId }) {
   const { type } = input
@@ -50,11 +38,7 @@ function MediaField({ input, value, onChange, setError, labelId }) {
     setError(null)
     try {
       if (type === 'image') onChange(await uploadImage(file))
-      else {
-        const next = await readLocal(file, type)
-        if (value?.local) URL.revokeObjectURL(value.url)
-        onChange(next)
-      }
+      else onChange(await uploadMedia(file))
     } catch (e) { setError(e.message) }
     setBusy(false)
   }
@@ -243,6 +227,17 @@ function LibraryPick({ input, value, onChange, labelId }) {
   )
 }
 
+// A voice is a real uploaded sample, using the runner's existing voice.sample contract.
+function VoiceField({ value, onChange, ...props }) {
+  return (
+    <div>
+      <MediaField {...props} input={{ type: 'audio' }} value={value?.sample ? { ...value, url: value.sample } : null}
+        onChange={(v) => onChange({ name: v.name, sample: v.url })} />
+      {value?.sample && <button type="button" className="link-btn" onClick={() => onChange(null)}>Clear voice sample</button>}
+    </div>
+  )
+}
+
 export function Field({ input, value, onChange, setError = () => {} }) {
   const id = useId()
   const labelId = `${id}-label`
@@ -250,6 +245,7 @@ export function Field({ input, value, onChange, setError = () => {} }) {
   const props = { input, value, onChange, labelId }
   let body
   if (widgetTypes.includes(type) || (type === 'draw' && input.mode !== 'motion')) body = <InputWidget type={type === 'draw' ? 'mask' : type} {...props} setError={setError} />
+  else if (type === 'voice') body = <VoiceField {...props} setError={setError} />
   else if (media[type]) body = <MediaField {...props} setError={setError} />
   else if (type === 'draw') body = <DrawField {...props} setError={setError} />
   else if (type === 'text') body = <input id={id} value={value ?? ''} onChange={(e) => onChange(e.target.value)} placeholder={input.placeholder} />
