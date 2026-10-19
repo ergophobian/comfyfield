@@ -1,5 +1,5 @@
-import { initialValues, visibleInputs } from '../recipes.js'
-import { falInput, comfyRouterInput } from '../../../shared/mapping.js'
+import { initialValues, visibleInputs, pictureTypes } from '../recipes.js'
+import { falInput, comfyRouterInput, PICTURE_SLOTS } from '../../../shared/mapping.js'
 import { schemas as savedSchemas } from './schemas.js'
 import { stepModel, stepOptions, selectedStep } from './options.js'
 import { widgetTypes } from '../../../shared/widgetInputs.js'
@@ -142,7 +142,11 @@ export function validateFormat(format, schemas = savedSchemas) {
         const imageSchema = model.imageWorkflow ? schemas.comfy[model.imageWorkflow] : null
         if (model.imageWorkflow && !imageSchema) bad(`${label} Missing Comfy workflow ${model.imageWorkflow}`)
         const hasVideo = format.inputs.some((i) => i.type === 'video')
-        const supplied = new Set(['prompt', 'width', 'height', 'count', 'frames', 'duration', 'start', 'seed', ...(hasVideo ? ['video'] : []), ...(stepOptions(format, step, values).images.length || upstream.length ? ['image'] : []), ...Object.keys(step.params || {}), ...Object.keys(step.bindings || {})])
+        // Each picture-like input fills one slot in order, so a format with three gives image to image3.
+        const pictures = format.inputs.filter((i) => pictureTypes.includes(i.type)).length
+        const files = [...PICTURE_SLOTS.slice(1, pictures), ...(format.inputs.some((i) => i.type === 'mask' || (i.type === 'draw' && i.mode !== 'motion')) ? ['mask'] : []),
+          ...(format.inputs.some((i) => i.type === 'audio') ? ['audio'] : []), ...(format.inputs.some((i) => i.type === 'voice') ? ['voice'] : [])]
+        const supplied = new Set(['prompt', 'width', 'height', 'count', 'frames', 'duration', 'start', 'seed', ...(hasVideo ? ['video'] : []), ...(stepOptions(format, step, values).images.length || upstream.length || pictures ? ['image'] : []), ...files, ...Object.keys(step.params || {}), ...Object.keys(step.bindings || {})])
         for (const field of schema) if (!supplied.has(field)) bad(`${label} Unmapped workflow placeholder ${field}`)
         for (const field of imageSchema || []) if (!supplied.has(field) && field !== 'image') bad(`${label} Unmapped workflow placeholder ${field}`)
         if (imageSchema && !imageSchema.includes('image')) bad(`${label} Image workflow ${model.imageWorkflow} takes no image`)
@@ -155,9 +159,11 @@ export function validateFormat(format, schemas = savedSchemas) {
         for (const input of format.inputs) {
           if (input.type === 'choice' && input.options.every((o) => Object.keys(o.params || {}).length && Object.keys(o.params).every((field) => schema.includes(field)))) used.add(input.id)
         }
-        // A saved character gives its first image.
-        if (all.includes('image')) for (const input of format.inputs) if (['image', 'face', 'mask', 'crop', 'draw', 'character'].includes(input.type)) used.add(input.id)
+        // A saved character or product gives its first image.
+        if (PICTURE_SLOTS.some((k) => all.includes(k))) for (const input of format.inputs) if (pictureTypes.includes(input.type)) used.add(input.id)
         if (all.includes('video')) for (const input of format.inputs) if (input.type === 'video') used.add(input.id)
+        if (all.includes('audio')) for (const input of format.inputs) if (input.type === 'audio') used.add(input.id)
+        if (all.includes('voice')) for (const input of format.inputs) if (input.type === 'voice') used.add(input.id)
       } else if (model.provider === 'comfyRouter' && model.model === 'byteplus/dreamina-seedance-2-5-260628') {
         for (const variant of variants) {
           const mapped = comfyRouterInput(model.model, optionsFor(step, variant))

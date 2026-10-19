@@ -154,6 +154,32 @@ export const missingInputs = (recipe, values) => visibleInputs(recipe, values)
     ? !widgetReady(i.type === 'draw' ? 'mask' : i.type, values[i.id])
     : textual.includes(i.type) ? !values[i.id]?.trim() : values[i.id] == null || values[i.id] === ''))
 
+// Picture-like inputs, in the order a ComfyUI graph's image, image2, ... slots take them.
+export const pictureTypes = ['image', 'draw', 'mask', 'face', 'crop', 'character', 'product']
+
+// The files a ComfyUI graph takes by slot: one picture per picture-like input, in the order the format
+// lists them, so an empty optional input keeps its slot (a saved character or product gives its first
+// picture); the first audio input; a saved voice's sample. Null when the format has none of them.
+export function fileSlots(recipe, values) {
+  const shown = new Set(visibleInputs(recipe, values).map((i) => i.id))
+  const value = (i) => (shown.has(i.id) ? values[i.id] : null)
+  const picture = (i) => {
+    const v = value(i)
+    if (!v) return null
+    if (i.type === 'character' || i.type === 'product') return v.images?.[0] || null
+    if (widgetTypes.includes(i.type) || (i.type === 'draw' && i.mode !== 'motion')) {
+      const type = i.type === 'draw' ? 'mask' : i.type
+      return widgetReady(type, v) ? widgetOptions(type, v).image || null : null
+    }
+    return v.url || null
+  }
+  const pictures = recipe.inputs.filter((i) => pictureTypes.includes(i.type)).map(picture)
+  const audio = recipe.inputs.filter((i) => i.type === 'audio').map((i) => value(i)?.url).find(Boolean) || null
+  const voice = recipe.inputs.filter((i) => i.type === 'voice').map((i) => value(i)?.sample).find(Boolean) || null
+  if (!pictures.length && !recipe.inputs.some((i) => i.type === 'audio' || i.type === 'voice')) return null
+  return { pictures, audio, voice }
+}
+
 // Turns a recipe and the sheet's values into options for gens.generate().
 export function recipeOptions(recipe, values) {
   const images = []
@@ -198,8 +224,10 @@ export function recipeOptions(recipe, values) {
   // Collapse spaces but keep line breaks, so shot lists stay one shot per line.
   const prompt = recipe.prompt.replace(/\{(\w+)\}/g, (_, k) => fill[k] ?? '').replace(/[^\S\n]+/g, ' ').replace(/ *\n\s*/g, '\n').trim()
   const first = recipe.inputs.find((i) => i.type === 'image' || i.type === 'draw' || widgetTypes.includes(i.type))
+  const slots = fileSlots(recipe, values)
   return {
     ...widgets, prompt, caption: recipe.name, images, fields, params, count: 1,
+    ...(slots && { slots }),
     ...(Object.keys(inputs).length && { inputs }),
     ...(Object.keys(media).length && { media }), ...(refs.length && { refs }),
     aspect: recipe.settings.aspect, duration: recipe.settings.duration, shape: first ? values[first.id]?.ratio : undefined,

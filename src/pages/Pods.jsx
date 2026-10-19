@@ -10,6 +10,12 @@ const stock = (r) => (r.inStock === false ? 'None free now' : r.inStock ? 'Free 
 const pct = (d) => (d.total ? Math.min(100, (d.bytes / d.total) * 100) : 0)
 // A size names its first models, then how many more.
 const shortList = (names) => (names.length > 3 ? `${names.slice(0, 3).join(', ')} and ${names.length - 3} more` : names.join(', '))
+const gb = (n) => `${n >= 10 ? Math.round(n) : Math.round(n * 10) / 10} GB`
+// Whether every file a service needs is already on the Pod.
+const onPod = (svc, models) => {
+  const have = new Set((models || []).map((f) => `${f.dir}/${f.name}`))
+  return svc.keys.length > 0 && svc.keys.every((k) => have.has(k))
+}
 
 // Pods: what your Pod is doing, a start by size or by a GPU you pick, and the Pod settings.
 // The RunPod key stays in Connections.
@@ -22,6 +28,8 @@ export default function Pods() {
   const [gpu, setGpu] = useState(null)
   const [disk, setDisk] = useState(null)
   const [install, setInstall] = useState(false)
+  // Services to get ready for: downloaded at start, or on the running Pod.
+  const [ready, setReady] = useState([])
   const [cap, setCap] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState(null)
@@ -43,11 +51,17 @@ export default function Pods() {
 
   const p = s?.phase || 'none'
   const picked = gpu && opts?.rungs.find((r) => gpuKey(r) === gpu)
-  const vram = picked ? picked.vramGb : size
+  const services = opts?.services || []
+  const chosen = services.filter((x) => ready.includes(x.id))
+  const toggle = (id) => setReady((r) => (r.includes(id) ? r.filter((x) => x !== id) : [...r, id]))
+  // A service picked for the start needs its GPU size, so the start grows to it.
+  const needVram = Math.max(0, ...chosen.map((x) => x.vramGb))
+  const vram = picked ? picked.vramGb : size && Math.max(size, needVram)
   const fv = opts?.runtimes.find((r) => r.id === 'freevideo')
   const canInstall = Boolean(fv && vram >= fv.vramGb)
   const installs = canInstall && install
-  const diskGb = Math.max(disk || 0, installs ? fv.diskGb : 0)
+  const readyGb = chosen.reduce((n, x) => n + x.gb, 0)
+  const diskGb = Math.max(disk || 0, installs ? fv.diskGb : 0, ready.length ? Math.ceil((readyGb + 30) / 10) * 10 : 0)
   const noKey = s && !s.connected
   const capped = s && s.spend?.today >= s.spend?.cap
 
@@ -56,10 +70,17 @@ export default function Pods() {
     setErr(null)
     try { await podAction(action, body) } catch (e) { setErr({ message: e.message, code: e.code }) } finally { setBusy(false) }
   }
-  const start = () => act('start', {
-    ...(picked ? { gpu: { gpuTypeId: picked.gpuTypeId, cloudType: picked.cloudType } } : { minVramGb: size }),
-    volumeGb: disk, runtimes: installs ? [fv.id] : [],
-  })
+  const start = async () => {
+    await act('start', {
+      ...(picked ? { gpu: { gpuTypeId: picked.gpuTypeId, cloudType: picked.cloudType } } : { minVramGb: size }),
+      volumeGb: disk, runtimes: installs ? [fv.id] : [], services: ready,
+    })
+    setReady([])
+  }
+  const getReady = async () => {
+    await act('prepare', { services: ready })
+    setReady([])
+  }
   const setting = async (values) => {
     setErr(null)
     try {
@@ -82,7 +103,7 @@ export default function Pods() {
       <div className="pods-grid">
         <section className="conn glass" aria-labelledby="pods-main">
           {p === 'none'
-            ? <StartPod {...{ opts, size, setSize, gpu, setGpu, picked, vram, advanced, setAdvanced, disk, setDisk, fv, canInstall, installs, setInstall, diskGb, s, noKey, capped, busy, start }} />
+            ? <StartPod {...{ opts, size, setSize, gpu, setGpu, picked, vram, advanced, setAdvanced, disk, setDisk, fv, canInstall, installs, setInstall, diskGb, s, noKey, capped, busy, start, services, ready, toggle, chosen, needVram, readyGb }} />
             : <YourPod s={s} busy={busy} act={act} />}
           {err && <p className="sheet-error" role="alert">{err.message}</p>}
         </section>
@@ -114,12 +135,79 @@ export default function Pods() {
           </div>
           <p className="pod-note">Your RunPod key is in <Link to="/connections">Connections</Link>.</p>
         </section>
+        {p !== 'none' && <PodModels {...{ s, services, ready, toggle, chosen, readyGb, busy, act, getReady }} />}
       </div>
     </main>
   )
 }
 
-function StartPod({ opts, size, setSize, gpu, setGpu, picked, vram, advanced, setAdvanced, disk, setDisk, fv, canInstall, installs, setInstall, diskGb, s, noKey, capped, busy, start }) {
+// Services to download, as pills: name and size. One already on the Pod says so and cannot be picked;
+// one too big for the Pod's GPU cannot be picked either.
+function ServicePicks({ services, ready, toggle, models, vramGb, label }) {
+  return (
+    <div className="pills pods-services" role="group" aria-label={label}>
+      {services.map((x) => {
+        const there = onPod(x, models)
+        const big = vramGb != null && x.vramGb > vramGb
+        const on = ready.includes(x.id)
+        return (
+          <button type="button" key={x.id} className={on ? 'on' : ''} aria-pressed={on} disabled={there || big}
+            title={[x.name, ...x.also].join(', ')} onClick={() => toggle(x.id)}>
+            {x.name} · {there ? 'on the Pod' : big ? `needs ${x.vramGb} GB` : gb(x.gb)}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+// The Pod's disk: the files on it with the services that use them, and the services to get ready for.
+function PodModels({ s, services, ready, toggle, chosen, readyGb, busy, act, getReady }) {
+  const running = s?.pod && s.phase !== 'paused' && s.disk
+  const files = [...(s?.models || [])].sort((a, b) => (b.usedAt || 0) - (a.usedAt || 0))
+  const used = s?.disk?.totalGb != null && s.disk.freeGb != null ? s.disk.totalGb - s.disk.freeGb : null
+  const evicted = (s?.evicted || []).slice(-3).map((f) => f.name)
+  return (
+    <section className="conn glass pods-models" aria-labelledby="pods-models">
+      <div className="conn-top">
+        <h3 id="pods-models">Models</h3>
+        {running && used != null && <span className="status">{gb(used)} of {gb(s.disk.totalGb)}</span>}
+      </div>
+      {!running && <p className="pod-note">{s?.phase === 'paused' ? 'The disk keeps its models while the Pod is paused. Resume it to see them.' : 'The models show once the Pod answers.'}</p>}
+      {running && used != null && <div className="pod-dl" aria-hidden="true"><i style={{ '--p': `${Math.min(100, (used / s.disk.totalGb) * 100)}%` }} /></div>}
+      {running && (
+        <>
+          <div className="field">
+            <label id="pods-ready">Get ready for</label>
+            <p className="pod-note">Download a service's models now, so its first run starts at once. A run downloads what it needs anyway.</p>
+            <ServicePicks services={services} ready={ready} toggle={toggle} models={s.models} vramGb={s.pod.vramGb} label="Get ready for" />
+            <div className="pod-acts">
+              <button type="button" className="btn-blue sm" disabled={busy || !chosen.length} onClick={getReady}>
+                {chosen.length ? `Download ${gb(readyGb)}` : 'Download'}
+              </button>
+            </div>
+          </div>
+          {files.length > 0
+            ? (
+              <ul className="pod-files">
+                {files.map((f) => (
+                  <li key={`${f.dir}/${f.name}`}>
+                    <strong title={f.name}>{f.name}</strong>
+                    <small>{gb(f.bytes / 1e9)}{f.usedBy?.length ? ` · for ${shortList(f.usedBy)}` : ''}</small>
+                    <button type="button" className="btn-soft xs danger" disabled={busy} aria-label={`Remove ${f.name}`} onClick={() => act('remove', { dir: f.dir, name: f.name })}>Remove</button>
+                  </li>
+                ))}
+              </ul>
+            )
+            : <p className="pod-note">No models on the disk yet.</p>}
+          {evicted.length > 0 && <p className="pod-note">To make room, the Pod removed {shortList(evicted)}, the models used longest ago.</p>}
+        </>
+      )}
+    </section>
+  )
+}
+
+function StartPod({ opts, size, setSize, gpu, setGpu, picked, vram, advanced, setAdvanced, disk, setDisk, fv, canInstall, installs, setInstall, diskGb, s, noKey, capped, busy, start, services, ready, toggle, chosen, needVram, readyGb }) {
   return (
     <>
       <div className="conn-top">
@@ -138,6 +226,14 @@ function StartPod({ opts, size, setSize, gpu, setGpu, picked, vram, advanced, se
               {t.models.length > 0 && <small>For {shortList(t.models)}</small>}
             </button>
           ))}
+        </div>
+      )}
+      {services.length > 0 && (
+        <div className="field">
+          <label id="pods-start-ready">Download at start</label>
+          <p className="pod-note">Optional. Their models download while the Pod boots{chosen.length && needVram ? `, on a GPU of at least ${needVram} GB` : ''}.</p>
+          <ServicePicks services={services} ready={ready} toggle={toggle} vramGb={picked ? picked.vramGb : null} label="Download at start" />
+          {chosen.length > 0 && <p className="pod-note">{gb(readyGb)} to download.</p>}
         </div>
       )}
       <button type="button" className="link-btn pods-more" aria-expanded={advanced} aria-controls="pods-advanced" onClick={() => setAdvanced((a) => !a)}>

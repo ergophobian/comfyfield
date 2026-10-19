@@ -4,6 +4,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { gzipSync } from 'node:zlib'
 import { fileURLToPath } from 'node:url'
+import { NODE_PACKS, MODEL_DIRS } from '../shared/modelFiles.js'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 
@@ -21,6 +22,10 @@ export const FREEVIDEO_VERSION = 'v0.4.14'
 export const FREEVIDEO_COMMIT = 'fcd24fb730e7094565d13b663e92c264ed4d470c'
 // On the volume, so a paused Pod keeps FreeVideo's env, its GPU build and its weights.
 export const FREEVIDEO_HOME = '/workspace/freevideo'
+// Node pack clones and pip's cache, also on the volume: a resumed Pod links the clones again and
+// reinstalls their requirements from the cache, because a resume wipes the container disk.
+export const PACKS_HOME = '/workspace/cf-nodes'
+export const PIP_CACHE = '/workspace/.cache/pip'
 // RunPod refuses a longer dockerStartCmd; PatchWork found the limit by trial.
 export const START_CMD_MAX = 65536
 
@@ -45,21 +50,38 @@ export function podEnv({ token, idleMin = 10, bootDeadlineSec = 900, runtimes = 
   }
 }
 
-const DIRS = 'checkpoints diffusion_models text_encoders vae loras upscale_models latent_upscale_models clip_vision'
+if (!MODEL_DIRS.every((d) => /^[a-z0-9_]+$/.test(d))) throw new Error('A models folder name is unsafe.')
+const DIRS = MODEL_DIRS.join(' ')
+
+// One case per pack for the installer, and the list the status server reads: id, folder, a class to look for.
+const SAFE = /^[\w.-]+$/
+function packCases(packs) {
+  for (const [id, p] of Object.entries(packs)) {
+    if (!/^[a-z0-9]+$/.test(id) || !/^[\w.-]+\/[\w.-]+$/.test(p.repo) || !/^[0-9a-f]{40}$/.test(p.commit) || !SAFE.test(p.folder) || !p.classes.every((c) => SAFE.test(c))) {
+      throw new Error(`Node pack ${id} has an unsafe repo, commit, folder or class name.`)
+    }
+  }
+  return {
+    cases: Object.entries(packs).map(([id, p]) => `  ${id}) repo=https://github.com/${p.repo}.git; commit=${p.commit}; folder=${p.folder} ;;`).join('\n'),
+    list: Object.entries(packs).map(([id, p]) => `${id}\t${p.folder}\t${p.classes.join(',')}`).join('\n'),
+  }
+}
 
 // The token and the pod-scoped RUNPOD_API_KEY arrive in the Pod env. Nothing here prints them,
 // and there is no `set -x`, because the status server serves the boot log.
-export function podBootScript() {
+export function podBootScript({ packs = NODE_PACKS } = {}) {
   // A Windows checkout may hold CRLF; the Pod's bash wants LF.
   const statusd = fs.readFileSync(path.join(HERE, 'pod-statusd.py'), 'utf8').replace(/\r\n/g, '\n')
   const paths = DIRS.split(' ').map((d) => `  ${d}: ${d}`).join('\n')
+  const { cases, list } = packCases(packs)
   return `#!/bin/bash
 CF=/root/cf
 H3=/root/h3
 V=$H3/venv-cu130/bin/python
 M=/workspace/models
-mkdir -p "$CF" /workspace/proxy-state
+mkdir -p "$CF" /workspace/proxy-state ${PACKS_HOME} ${PIP_CACHE}
 for d in ${DIRS}; do mkdir -p "$M/$d"; done
+export PIP_CACHE_DIR=${PIP_CACHE}
 exec >> "$CF/boot.log" 2>&1
 echo "STAGE boot $(date +%s)"
 
@@ -92,6 +114,39 @@ cat > "$CF/statusd.py" <<'STATUSD'
 ${statusd.trimEnd()}
 STATUSD
 
+# The node packs ComfyField knows: id, folder and the classes ComfyUI lists once the pack loads.
+cat > "$CF/packs.tsv" <<'PACKS'
+${list}
+PACKS
+
+# The status server runs this when a Pod needs a node pack. The clone stays on the volume and is linked
+# into ComfyUI's custom_nodes, replacing any older copy the image ships. Its requirements install into
+# ComfyUI's Python without moving the image's torch, numpy or CUDA wheels. The status server then
+# restarts ComfyUI, with an empty queue, to load it.
+cat > "$CF/runtime-pack.sh" <<'PACK'
+#!/bin/bash
+C=/root/h3/ComfyUI
+V=/root/h3/venv-cu130/bin/python
+P=${PACKS_HOME}
+case "$1" in
+${cases}
+  *) echo "unknown node pack $1"; exit 3 ;;
+esac
+d="$P/$folder"
+if [ "$(git -C "$d" rev-parse HEAD 2>/dev/null)" != "$commit" ]; then
+  rm -rf "$d"
+  { git clone --quiet --filter=blob:none --no-checkout "$repo" "$d" && git -C "$d" fetch --quiet --depth 1 origin "$commit" && git -C "$d" checkout --quiet --force "$commit"; } \\
+    || { echo "could not fetch $folder at $commit"; rm -rf "$d"; exit 1; }
+fi
+[ -L "$C/custom_nodes/$folder" ] || rm -rf "$C/custom_nodes/$folder"
+ln -sfn "$d" "$C/custom_nodes/$folder" || { echo "could not link $folder into ComfyUI"; exit 1; }
+"$V" -m pip freeze 2>/dev/null | grep -iE '^(torch|torchvision|torchaudio|numpy|xformers|triton|sageattention|nvidia-[a-z0-9-]+)==' > /root/cf/constraints.txt
+if [ -f "$d/requirements.txt" ]; then
+  PIP_CACHE_DIR=${PIP_CACHE} "$V" -m pip install --quiet -r "$d/requirements.txt" -c /root/cf/constraints.txt || { echo "could not install the requirements of $folder"; exit 1; }
+fi
+grep -qxF "$folder" /root/cf/nodes.list 2>/dev/null || echo "$folder" >> /root/cf/nodes.list
+PACK
+
 cat > "$CF/extra_model_paths.yaml" <<'PATHS'
 comfyfield:
   base_path: /workspace/models
@@ -101,7 +156,7 @@ PATHS
 
 [ -x "$V" ] || { bash "$CF/kill-pod.sh" "the image has no Python at $V"; sleep infinity; }
 [ -n "$POD_TOKEN" ] || { bash "$CF/kill-pod.sh" "the Pod has no token"; sleep infinity; }
-nohup "$V" "$CF/statusd.py" >> "$CF/statusd.log" 2>&1 &
+CF_DIRS="${DIRS}" nohup "$V" "$CF/statusd.py" >> "$CF/statusd.log" 2>&1 &
 up=0
 for i in $(seq 1 40); do
   curl -sf -m 2 -o /dev/null -H "Authorization: Bearer $POD_TOKEN" http://127.0.0.1:${STATUS_PORT}/status && { up=1; break; }
@@ -111,6 +166,13 @@ done
 
 echo "STAGE proxy-install $(date +%s)"
 "$V" -m pip install --quiet --no-deps comfy-api-proxy==${PROXY_VERSION} || die "could not install comfy-api-proxy"
+# comfy-api-proxy ${PROXY_VERSION} drops what ComfyUI lists under "3d", so a .glb from SaveGLB never reaches
+# the app. Pass it on as a file until the proxy does it upstream. Not fatal: only 3D runs need it.
+PA="$("$V" -c 'import comfy_api_proxy, os; print(os.path.join(os.path.dirname(comfy_api_proxy.__file__), "app.py"))' 2>/dev/null)"
+if [ -f "$PA" ] && ! grep -q '"3d": "file"' "$PA"; then
+  sed -i 's/^\\(    "files": "file",\\)$/\\1\\n    "3d": "file",/' "$PA"
+  grep -q '"3d": "file"' "$PA" || echo "could not teach comfy-api-proxy about 3D outputs"
+fi
 
 echo "STAGE comfy-update $(date +%s)"
 C=$H3/ComfyUI
@@ -130,6 +192,9 @@ if [ "$(git -C "$FV" rev-parse HEAD 2>/dev/null)" != "${FREEVIDEO_COMMIT}" ]; th
     && git -C "$FV" fetch --quiet --depth 1 origin ${FREEVIDEO_COMMIT} && git -C "$FV" checkout --quiet --force ${FREEVIDEO_COMMIT}; } \\
     || { echo "could not fetch FreeVideo ${FREEVIDEO_VERSION}"; rm -rf "$FV"; }
 fi
+# Runtime installs wait for this: ComfyUI's own pip installs and FreeVideo's node come first, so two pips
+# never write ComfyUI's Python at once, even when a run asks for a runtime while the Pod boots.
+touch "$CF/.base-ready"
 
 # The status server runs this when a run needs FreeVideo. FreeVideo's installer builds its own Python
 # env, compiles SageAttention for this GPU and fetches about 49 GiB of public weights. It accepts the
@@ -148,24 +213,36 @@ FVSETUP
 # again, which is short, so it is ready again after a resume.
 want="$CF_RUNTIMES"
 [ -f ${FREEVIDEO_HOME}/machine.json ] && want="$want freevideo"
-for e in $want; do
+while IFS=$'\\t' read -r id folder classes; do [ -d "${PACKS_HOME}/$folder" ] && want="$want $id"; done < "$CF/packs.tsv"
+for e in $(printf '%s\\n' $want | sort -u); do
   curl -sf -m 5 -o /dev/null -X POST -H "Authorization: Bearer $POD_TOKEN" http://127.0.0.1:${STATUS_PORT}/runtime/$e || echo "could not start the $e install"
+done
+
+# ComfyUI loads custom nodes only when it starts, so it waits for the packs (10 minutes at most).
+echo "STAGE packs $(date +%s)"
+for i in $(seq 1 120); do
+  curl -sf -m 4 -H "Authorization: Bearer $POD_TOKEN" http://127.0.0.1:${STATUS_PORT}/status \\
+    | "$V" -c 'import json,sys; r=json.load(sys.stdin).get("runtimes",{}); sys.exit(0 if any(v.get("pack") and v.get("state")=="installing" for v in r.values()) else 1)' || break
+  sleep 5
 done
 
 echo "STAGE comfy $(date +%s)"
 (
   cd "$C" || die "the image has no ComfyUI at $C"
-  # Only FreeVideo's node loads: the other custom nodes in the image were built for an older ComfyUI.
-  # FreeVideo reads its install from FREEVIDEO_HOME, so ComfyUI needs no restart when it finishes.
+  # Only FreeVideo's node and the packs ComfyField installed load: the other custom nodes in the image
+  # were built for an older ComfyUI. Each start reads the pack list again, so the status server loads
+  # a new pack by stopping ComfyUI. FreeVideo reads its install from FREEVIDEO_HOME, so it needs no restart.
   # Its idle kernel compile would hold the GPU, which the watchdog reads as work.
   # ComfyUI runs custom node code and needs neither the Pod's RunPod key nor its token.
   unset RUNPOD_API_KEY POD_TOKEN
   export FREEVIDEO_HOME=${FREEVIDEO_HOME} FREEVIDEO_BACKGROUND_COMPILE=off CUDA_VISIBLE_DEVICES="\${CUDA_VISIBLE_DEVICES:-0}"
   while true; do
-    "$V" main.py --listen 127.0.0.1 --port 8188 --disable-auto-launch --disable-all-custom-nodes --whitelist-custom-nodes FreeVideo \\
-      --extra-model-paths-config "$CF/extra_model_paths.yaml" >> "$CF/comfy.log" 2>&1
-    echo "ComfyUI exited ($?), restarting in 10 s"
-    sleep 10
+    "$V" main.py --listen 127.0.0.1 --port 8188 --disable-auto-launch --disable-all-custom-nodes --whitelist-custom-nodes FreeVideo $(cat "$CF/nodes.list" 2>/dev/null) \\
+      --extra-model-paths-config "$CF/extra_model_paths.yaml" >> "$CF/comfy.log" 2>&1 &
+    echo $! > "$CF/comfy.pid"
+    wait $!
+    echo "ComfyUI exited ($?), restarting in 3 s"
+    sleep 3
   done
 ) &
 (

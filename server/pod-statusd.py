@@ -12,6 +12,7 @@ import subprocess
 import threading
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -27,9 +28,34 @@ TICK = float(E.get('CF_TICK', '15'))
 # The shell for the runtime installers and the self-terminate script: bash on a Pod. On Windows,
 # process search looks in System32 before PATH and can find the WSL launcher, so it can be given.
 BASH = E.get('CF_BASH') or shutil.which('bash') or 'bash'
-DIRS = ('checkpoints', 'diffusion_models', 'text_encoders', 'vae', 'loras', 'upscale_models', 'latent_upscale_models', 'clip_vision')
+# The models folders, from the boot script, which takes them from ComfyField's loaders.
+DIRS = tuple(E.get('CF_DIRS', 'checkpoints diffusion_models text_encoders vae loras upscale_models latent_upscale_models clip_vision').split())
 # Runtimes the boot script wrote an installer for, and where each one writes machine.json when it is ready.
 RUNTIME_HOMES = {'freevideo': E.get('CF_FREEVIDEO_HOME', '/workspace/freevideo')}
+# Secrets third-party installers never see.
+SECRETS = ('RUNPOD_API_KEY', 'POD_TOKEN', 'HF_TOKEN')
+# Room kept free on the volume after a download, and how long a loaded pack may take to appear.
+MARGIN = float(E.get('CF_DISK_MARGIN_GB', '3')) * 1e9
+LOAD_DEADLINE = int(E.get('CF_LOAD_DEADLINE', '900'))
+RESTART_GRACE = float(E.get('CF_RESTART_GRACE', '15'))
+USED_FILE = os.path.join(MODELS, '.cf-used.json')
+
+
+def read_packs():
+  # Node packs the boot script knows, from packs.tsv: id, folder, the classes ComfyUI lists once it loads.
+  out = {}
+  try:
+    with open(E.get('CF_PACKS', os.path.join(BASE, 'packs.tsv'))) as f:
+      for line in f:
+        parts = line.rstrip('\n').split('\t')
+        if len(parts) == 3 and parts[0]:
+          out[parts[0]] = {'folder': parts[1], 'classes': [c for c in parts[2].split(',') if c]}
+  except OSError:
+    pass
+  return out
+
+
+PACKS = read_packs()
 CFG = {
   'idle_after': int(E.get('IDLE_AFTER', '780')),
   'heartbeat_deadline': int(E.get('HEARTBEAT_DEADLINE', '600')),
@@ -41,11 +67,35 @@ CFG = {
 
 BOOTED = time.time()
 LOCK = threading.Lock()
-S = {'stage': 'boot', 'ready_at': None, 'hb': None, 'idle': 0, 'queue': None, 'gpu': None, 'fatal': None, 'fatal_at': None, 'ending': None}
+# One pack install at a time: they all pip into ComfyUI's Python.
+PACK_LOCK = threading.Lock()
+S = {'stage': 'boot', 'ready_at': None, 'hb': None, 'idle': 0, 'queue': None, 'gpu': None, 'fatal': None, 'fatal_at': None, 'ending': None,
+     'restarted_at': None, 'evicted': []}
 DOWNLOADS = {}
 RUNTIMES = {}
 WORK = []
 WAKE = threading.Event()
+
+
+def read_used():
+  try:
+    with open(USED_FILE) as f:
+      return {k: float(v) for k, v in json.load(f).items()}
+  except Exception:
+    return {}
+
+
+# When each model file was last asked for, kept on the volume so a resumed Pod still knows.
+USED = read_used()
+
+
+def save_used():
+  try:
+    with open(USED_FILE + '.tmp', 'w') as f:
+      json.dump(USED, f)
+    os.replace(USED_FILE + '.tmp', USED_FILE)
+  except OSError:
+    pass
 
 
 def decide(s, cfg):
@@ -120,7 +170,8 @@ def models():
     for name in sorted(os.listdir(folder)) if os.path.isdir(folder) else []:
       p = os.path.join(folder, name)
       if os.path.isfile(p) and not name.endswith('.part'):
-        out.append({'dir': d, 'name': name, 'bytes': os.path.getsize(p)})
+        key = '%s/%s' % (d, name)
+        out.append({'dir': d, 'name': name, 'bytes': os.path.getsize(p), 'usedAt': int(USED.get(key) or os.path.getmtime(p))})
   return out
 
 
@@ -129,7 +180,12 @@ def downloading():
 
 
 def installing():
-  return any(v['state'] == 'installing' for v in RUNTIMES.values())
+  # A pack that is installed but not loaded yet still keeps the Pod busy.
+  return any(v['state'] in ('installing', 'loading') for v in RUNTIMES.values())
+
+
+def clean_env():
+  return {k: v for k, v in E.items() if k not in SECRETS and k not in ('VIRTUAL_ENV', 'PYTHONHOME')}
 
 
 def runtime_ready(name):
@@ -154,27 +210,43 @@ def last_error(logfile):
   return pick[-1][:300] if pick else None
 
 
+def run_installer(script, args, logfile):
+  with open(logfile, 'a') as out:
+    return subprocess.run([BASH, os.path.join(BASE, script)] + args, stdout=out, stderr=subprocess.STDOUT,
+                          stdin=subprocess.DEVNULL, env=clean_env()).returncode
+
+
 def install(name):
   # Runs the runtime's installer on every request after a failure, and once per boot otherwise.
   # "Ready" needs this boot's run to end well: an old machine.json is there while a re-run holds its locks.
+  # A pack ends its install as "loading": ComfyUI must start again to list its nodes.
   logfile = os.path.join(BASE, '%s.log' % name)
+  pack = name in PACKS
   log('installing %s' % name)
   try:
-    with open(logfile, 'a') as out:
-      code = subprocess.run([BASH, os.path.join(BASE, 'runtime-%s.sh' % name)], stdout=out, stderr=subprocess.STDOUT,
-                            stdin=subprocess.DEVNULL).returncode
-    err = None if code == 0 and runtime_ready(name) else (last_error(logfile) or 'the installer stopped (exit %s)' % code)
+    # The boot script's own pip installs and FreeVideo's clone come first.
+    waited = 0
+    while not os.path.exists(os.path.join(BASE, '.base-ready')) and waited < 1800:
+      time.sleep(2)
+      waited += 2
+    if pack:
+      with PACK_LOCK:
+        code = run_installer('runtime-pack.sh', [name], logfile)
+      err = None if code == 0 else (last_error(logfile) or 'the installer stopped (exit %s)' % code)
+    else:
+      code = run_installer('runtime-%s.sh' % name, [], logfile)
+      err = None if code == 0 and runtime_ready(name) else (last_error(logfile) or 'the installer stopped (exit %s)' % code)
   except Exception as e:
     err = str(e)
   with LOCK:
-    RUNTIMES[name].update(state='failed' if err else 'ready', error=err, endedAt=time.time())
-  log('%s %s' % (name, 'failed: %s' % err if err else 'ready'))
+    RUNTIMES[name].update(state='failed' if err else 'loading' if pack else 'ready', error=err, endedAt=time.time())
+  log('%s %s' % (name, 'failed: %s' % err if err else 'installed' if pack else 'ready'))
 
 
 def want_runtime(name):
   with LOCK:
     e = RUNTIMES.get(name)
-    if e and e['state'] in ('installing', 'ready'):
+    if e and e['state'] in ('installing', 'loading', 'ready'):
       return dict(e)
     RUNTIMES[name] = {'state': 'installing', 'error': None, 'startedAt': time.time(), 'endedAt': None}
     out = dict(RUNTIMES[name])
@@ -184,7 +256,78 @@ def want_runtime(name):
 
 def runtimes():
   now = time.time()
-  return {k: {'state': v['state'], 'error': v['error'], 'sec': int((v['endedAt'] or now) - v['startedAt'])} for k, v in RUNTIMES.items()}
+  return {k: {'state': v['state'], 'error': v['error'], 'sec': int((v['endedAt'] or now) - v['startedAt']), 'pack': k in PACKS}
+          for k, v in RUNTIMES.items()}
+
+
+def lists_classes(classes):
+  for c in classes:
+    try:
+      with urllib.request.urlopen(COMFY + '/object_info/' + c, timeout=4) as r:
+        if c not in json.loads(r.read().decode() or '{}'):
+          return False
+    except Exception:
+      return False
+  return True
+
+
+def restart_comfy():
+  # The boot script's loop starts ComfyUI again, with every installed pack on its whitelist.
+  try:
+    with open(os.path.join(BASE, 'comfy.pid')) as f:
+      pid = int(f.read().strip())
+    os.kill(pid, 15)
+    log('restarted ComfyUI to load node packs')
+    return True
+  except Exception as e:
+    log('could not restart ComfyUI: %s' % e)
+    return False
+
+
+def load_packs(comfy, queue, now):
+  """Moves installed packs to ready once ComfyUI lists their classes. ComfyUI loads custom nodes only when
+  it starts, so a pack installed while it runs needs one restart, made only with an empty queue and with
+  no other pack still installing, so several packs share it."""
+  with LOCK:
+    waiting = [k for k, v in RUNTIMES.items() if k in PACKS and v['state'] == 'loading']
+    busy = any(k in PACKS and v['state'] == 'installing' for k, v in RUNTIMES.items())
+    restarted = S['restarted_at']
+  if not waiting or not comfy:
+    for k in waiting:
+      if now - RUNTIMES[k]['endedAt'] > LOAD_DEADLINE:
+        with LOCK:
+          RUNTIMES[k].update(state='failed', error='ComfyUI did not start again to load it')
+    return
+  stale = []
+  for k in waiting:
+    if lists_classes(PACKS[k]['classes']):
+      with LOCK:
+        RUNTIMES[k].update(state='ready', error=None)
+      log('%s ready' % k)
+    elif restarted and restarted > RUNTIMES[k]['endedAt'] and now - restarted > RESTART_GRACE:
+      # ComfyUI started after the install and still lacks the nodes: the pack failed to import.
+      # The grace skips the moment the old ComfyUI still answers.
+      with LOCK:
+        RUNTIMES[k].update(state='failed', error=comfy_error(PACKS[k]['folder']) or 'ComfyUI did not load it')
+      log('%s did not load' % k)
+    elif not restarted or restarted < RUNTIMES[k]['endedAt']:
+      # Installed after the last restart (or with none yet): this pack needs one.
+      stale.append(k)
+  if stale and not busy and queue == 0:
+    with LOCK:
+      S['restarted_at'] = time.time()
+    restart_comfy()
+
+
+def comfy_error(folder):
+  # ComfyUI logs a failed custom node import with the folder name.
+  try:
+    with open(os.path.join(BASE, 'comfy.log'), errors='replace') as f:
+      lines = [l.strip() for l in f.readlines()[-400:]]
+  except OSError:
+    return None
+  hits = [l for l in lines if folder in l and re.search(r'fail|error|cannot', l, re.I)]
+  return hits[-1][:300] if hits else None
 
 
 def snapshot():
@@ -192,15 +335,16 @@ def snapshot():
   with LOCK:
     hb = S['hb']
     try:
-      free = shutil.disk_usage(MODELS).free / 1e9
+      disk = shutil.disk_usage(MODELS)
+      free, total = disk.free / 1e9, disk.total / 1e9
     except OSError:
-      free = None
+      free = total = None
     return {
       'stage': S['stage'], 'ready': S['stage'] == 'ready', 'everReady': S['ready_at'] is not None, 'fatal': S['fatal'],
       'idleSec': int(S['idle']), 'uptimeSec': int(now - BOOTED), 'queue': S['queue'],
       'heartbeatAgeSec': None if hb is None else int(now - hb), 'gpu': S['gpu'],
-      'diskFreeGb': None if free is None else round(free, 1), 'ending': S['ending'],
-      'models': models(), 'downloads': {k: dict(v) for k, v in DOWNLOADS.items()}, 'runtimes': runtimes(),
+      'diskFreeGb': None if free is None else round(free, 1), 'diskTotalGb': None if total is None else round(total, 1), 'ending': S['ending'],
+      'models': models(), 'downloads': {k: dict(v) for k, v in DOWNLOADS.items()}, 'runtimes': runtimes(), 'evicted': list(S['evicted']),
     }
 
 
@@ -253,6 +397,8 @@ def watchdog():
     reason = None if done else decide(state, CFG)
     if reason:
       terminate(reason)
+    elif not done:
+      load_packs(comfy, queue, time.time())
 
 
 SAFE_NAME = re.compile(r'^[\w.+-]+$')
@@ -264,13 +410,50 @@ def valid(item):
   path = str(item.get('path', ''))
   return (SAFE_REPO.match(str(item.get('repo', ''))) and item.get('dir') in DIRS and SAFE_NAME.match(str(item.get('name', '')))
           and path and '..' not in path.split('/') and not path.startswith('/')
-          and (item.get('sha256') is None or SAFE_SHA.match(str(item['sha256']))))
+          and (item.get('sha256') is None or SAFE_SHA.match(str(item['sha256'])))
+          and (item.get('bytes') is None or (isinstance(item['bytes'], int) and item['bytes'] >= 0)))
+
+
+def plain_key(key):
+  d, _, name = str(key).partition('/')
+  return d in DIRS and SAFE_NAME.match(name) is not None
+
+
+def make_room(need, protect):
+  """Frees `need` bytes on the volume for new downloads by removing the model files used longest ago,
+  never one in `protect` (files a waiting run needs, or downloads in flight). Returns the bytes still
+  missing, 0 when it fits. Runs under LOCK."""
+  try:
+    free = shutil.disk_usage(MODELS).free
+  except OSError:
+    return 0
+  short = need + MARGIN - free
+  if short <= 0:
+    return 0
+  for f in sorted(models(), key=lambda f: f['usedAt']):
+    key = '%s/%s' % (f['dir'], f['name'])
+    if key in protect:
+      continue
+    try:
+      os.remove(os.path.join(MODELS, f['dir'], f['name']))
+    except OSError:
+      continue
+    DOWNLOADS.pop(key, None)
+    USED.pop(key, None)
+    S['evicted'] = (S['evicted'] + [{'dir': f['dir'], 'name': f['name'], 'bytes': f['bytes'], 'at': int(time.time())}])[-20:]
+    log('removed %s to make room' % key)
+    short -= f['bytes']
+    if short <= 0:
+      break
+  save_used()
+  return max(0, short)
 
 
 def fetch(item, key):
   dest = os.path.join(MODELS, item['dir'], item['name'])
   part = dest + '.part'
-  url = '%s/%s/resolve/main/%s' % (HF, item['repo'], item['path'])
+  # Some repos keep files under names with brackets or spaces; the URL carries them encoded.
+  url = '%s/%s/resolve/main/%s' % (HF, item['repo'], urllib.parse.quote(item['path'], safe='/'))
   have = os.path.getsize(part) if os.path.exists(part) else 0
   req = urllib.request.Request(url, headers={'Range': 'bytes=%d-' % have} if have else {})
   digest = hashlib.sha256()
@@ -382,29 +565,65 @@ class Handler(BaseHTTPRequestHandler):
     if self.path == '/download':
       try:
         size = int(self.headers.get('Content-Length') or 0)
-        files = json.loads(self.rfile.read(size).decode() or '{}').get('files') or []
+        body = json.loads(self.rfile.read(size).decode() or '{}')
+        files = body.get('files') or []
       except Exception:
         return self.reply(400, {'error': 'send JSON with a files list'})
       if not isinstance(files, list) or not all(isinstance(f, dict) and valid(f) for f in files):
         return self.reply(400, {'error': 'each file needs a public repo, a path, a known dir and a plain name'})
+      # `keep`: files other runs on this Pod still need, which making room must not remove.
+      keep = set(k for k in (body.get('keep') or []) if plain_key(k))
       with LOCK:
+        now = time.time()
+        new = []
         for f in files:
           key = '%s/%s' % (f['dir'], f['name'])
+          USED[key] = now
           present = os.path.isfile(os.path.join(MODELS, f['dir'], f['name']))
           if present:
             DOWNLOADS[key] = {'state': 'done', 'bytes': os.path.getsize(os.path.join(MODELS, f['dir'], f['name'])), 'total': None, 'error': None}
           elif DOWNLOADS.get(key, {}).get('state') not in ('queued', 'downloading'):
-            DOWNLOADS[key] = {'state': 'queued', 'bytes': 0, 'total': None, 'error': None}
+            new.append((key, f))
+        flight = {k for k, v in DOWNLOADS.items() if v['state'] in ('queued', 'downloading')}
+        pending = sum(max(0, (v.get('want') or v.get('total') or 0) - v['bytes']) for k, v in DOWNLOADS.items() if k in flight)
+        need = pending + sum(f.get('bytes') or 0 for _, f in new)
+        short = make_room(need, keep | flight | {'%s/%s' % (f['dir'], f['name']) for f in files}) if new else 0
+        for key, f in new:
+          if short > 0:
+            DOWNLOADS[key] = {'state': 'failed', 'bytes': 0, 'total': None, 'want': f.get('bytes'), 'error': 'disk full', 'shortGb': round(short / 1e9, 1)}
+          else:
+            DOWNLOADS[key] = {'state': 'queued', 'bytes': 0, 'total': None, 'want': f.get('bytes'), 'error': None}
             WORK.append(f)
+        save_used()
         if WORK:
           WAKE.set()
       return self.reply(202, {'downloads': {k: dict(v) for k, v in DOWNLOADS.items()}})
     if self.path.startswith('/runtime/'):
       name = self.path[len('/runtime/'):]
-      if name not in RUNTIME_HOMES:
+      if name not in RUNTIME_HOMES and name not in PACKS:
         return self.reply(404, {'error': 'unknown runtime'})
-      return self.reply(202, {'runtime': want_runtime(name)})
+      return self.reply(202, {'runtime': dict(want_runtime(name), pack=name in PACKS)})
     self.reply(404, {'error': 'not found'})
+
+  def do_DELETE(self):
+    # Removes one model file to free the disk. A download in flight is not removed.
+    if not self.authorized():
+      return
+    key = self.path[len('/models/'):] if self.path.startswith('/models/') else ''
+    if not plain_key(key):
+      return self.reply(404, {'error': 'not found'})
+    path = os.path.join(MODELS, *key.split('/', 1))
+    with LOCK:
+      if DOWNLOADS.get(key, {}).get('state') in ('queued', 'downloading'):
+        return self.reply(409, {'error': 'it is still downloading'})
+      if not os.path.isfile(path):
+        return self.reply(404, {'error': 'not on the Pod'})
+      os.remove(path)
+      DOWNLOADS.pop(key, None)
+      USED.pop(key, None)
+      save_used()
+    log('removed %s' % key)
+    return self.reply(204)
 
 
 def main():
