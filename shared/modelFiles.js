@@ -167,6 +167,31 @@ export const MODEL_FILES = {
     label: 'The pupil transition LoRA', sha256: 'a1601f2f36e3dec7908cabe865fed710f9fe2e9a87a33bcecef28d928b7a6c36' },
   'minimax_h3_360_orbit_flf2v_lora_v1.safetensors': { repo: 'pablodawson/MiniMax-H3-360-Orbit-LoRA', path: 'minimax_h3_flf2v_lora_v1.safetensors', dir: 'loras', gb: 0.16, vramGb: 0, cloud: false,
     label: 'The 360 orbit LoRA', sha256: '14f13e3effaf3e729fdc0c97680344aa63f473be0c55963f963d718b3db2a4d4' },
+  // Video edits and enhance tools (research_notes/engine/video-edit and enhance), checked against the Hugging Face API and the Comfy Cloud listing on 2026-10-19.
+  'sam3.1_multiplex_fp16.safetensors': { repo: 'Comfy-Org/sam3.1', path: 'checkpoints/sam3.1_multiplex_fp16.safetensors', dir: 'checkpoints', gb: 1.75, vramGb: 0, cloud: true,
+    label: 'SAM 3.1', sha256: '9ba99c92703c2e8b4f47de2d34a539bb8e18923049e238b780d70dbe6368eb03' },
+  'void_pass1.safetensors': { repo: 'Comfy-Org/void-model', path: 'diffusion_models/void_pass1.safetensors', dir: 'diffusion_models', gb: 11.14, vramGb: 32, cloud: true,
+    label: 'VOID', sha256: 'f3fff936d57008c39054e37ae0db6a3fd3f48ccaf1291a186e28d8760d68e6f3' },
+  'void_pass2.safetensors': { repo: 'Comfy-Org/void-model', path: 'diffusion_models/void_pass2.safetensors', dir: 'diffusion_models', gb: 11.14, vramGb: 32, cloud: true,
+    label: 'VOID', sha256: '884d96ae3be9e2c899f15446aee69260f56e21496c1005400fc6676701e67704' },
+  'cogvideox_vae.safetensors': { repo: 'Comfy-Org/void-model', path: 'vae/cogvideox_vae.safetensors', dir: 'vae', gb: 0.43, vramGb: 0, cloud: true,
+    sha256: 'bd47d57ad948ff80da0af0cb2e4dcdef65073aba59bccfd383ada9a7d1c02024' },
+  'raft_large_C_T_SKHT_V2-ff5fadd5.safetensors': { repo: 'Comfy-Org/void-model', path: 'optical_flow/raft_large_C_T_SKHT_V2-ff5fadd5.safetensors', dir: 'optical_flow', gb: 0.02, vramGb: 0, cloud: true,
+    sha256: 'aac3561dbbb49a30853bc7d9bb1bf39ce59cc260f670911d43c900ba27a4a8bb' },
+  'wan2.1_14B_SCAIL_2_int8_convrot.safetensors': { repo: 'Comfy-Org/SCAIL-2', path: 'diffusion_models/wan2.1_14B_SCAIL_2_int8_convrot.safetensors', dir: 'diffusion_models', gb: 16.65, vramGb: 24, cloud: true,
+    label: 'SCAIL-2', sha256: 'a2114c18a811243185f103765cd5004b61652141aa55a9016d3bdceebceb5ac0' },
+  'wan2.1_SCAIL_2_DPO_lora_bf16.safetensors': { repo: 'Comfy-Org/SCAIL-2', path: 'loras/wan2.1_SCAIL_2_DPO_lora_bf16.safetensors', dir: 'loras', gb: 1.23, vramGb: 0, cloud: true,
+    sha256: 'b106522036f64e50f5f8ae3b808973515ff442cc2fac27b65d875eafb95b89e2' },
+  'lightx2v_I2V_14B_480p_cfg_step_distill_rank64_bf16.safetensors': { repo: 'Comfy-Org/Wan-Animate-2', path: 'loras/lightx2v_I2V_14B_480p_cfg_step_distill_rank64_bf16.safetensors', dir: 'loras', gb: 0.74, vramGb: 0, cloud: true,
+    sha256: '85c4a61c30e0497aa44b91d93a893b624708461a56fe5485183b28fa07e2dfb3' },
+  'Wan2_1_kwai_recammaster_1_3B_step20000_bf16.safetensors': { repo: 'Kijai/WanVideo_comfy', path: 'Wan2_1_kwai_recammaster_1_3B_step20000_bf16.safetensors', dir: 'diffusion_models', gb: 2.98, vramGb: 24, cloud: true,
+    label: 'ReCamMaster', sha256: 'f0dcfbae828750e611286308e743b011aba93e2643b86cdae9ddfb6bbc9c84ca' },
+  'seedvr2_3b_int8_convrot.safetensors': { repo: 'Comfy-Org/SeedVR2', path: 'diffusion_models/seedvr2_3b_int8_convrot.safetensors', dir: 'diffusion_models', gb: 3.46, vramGb: 24, cloud: true,
+    label: 'SeedVR2 3B', sha256: 'c3dec8bcc5916843a8a858572970597462e1f2dc598d6dfd818f6cd40f53a157' },
+  'RealESRGAN_x4plus.safetensors': { repo: 'Comfy-Org/Real-ESRGAN_repackaged', path: 'RealESRGAN_x4plus.safetensors', dir: 'upscale_models', gb: 0.07, vramGb: 24, cloud: true,
+    label: 'RealESRGAN', sha256: '37f9a931c215f040aa6d50f711f2cb115f713c46df1d0d6469a8bd7bfe9a60bb' },
+  'rife_v4.26.safetensors': { repo: 'Comfy-Org/frame_interpolation', path: 'frame_interpolation/rife_v4.26.safetensors', dir: 'frame_interpolation', gb: 0.02, vramGb: 24, cloud: true,
+    label: 'RIFE 4.26', sha256: '151874592c877740e5db11522f4514df569eeafb0a0fcb2696f16e9e8d317c94' },
 }
 
 // Which input of which loader names a file, and the ComfyUI folder it loads from.
@@ -183,6 +208,10 @@ export const LOADERS = {
   UpscaleModelLoader: { model_name: 'upscale_models' },
   LatentUpscaleModelLoader: { model_name: 'latent_upscale_models' },
   FreeVideoLoRA: { lora: 'loras' },
+  OpticalFlowLoader: { model_name: 'optical_flow' },
+  WanVideoModelLoader: { model: 'diffusion_models' },
+  WanVideoVAELoader: { model_name: 'vae' },
+  FrameInterpolationModelLoader: { model_name: 'frame_interpolation' },
   ModelPatchLoader: { name: 'model_patches' },
   LoadBackgroundRemovalModel: { bg_removal_name: 'background_removal' },
 }
@@ -203,9 +232,13 @@ const ENVS = {
 // a pack ready once ComfyUI lists them. Ids are lower-case letters and digits (they travel in the Pod env).
 export const NODE_PACKS = {
   vhs: { name: 'VideoHelperSuite', repo: 'Kosinkadink/ComfyUI-VideoHelperSuite', commit: '4d907bee61e92c2e65af3bd6383a4e4d356126d1', date: '2026-09-02',
-    folder: 'ComfyUI-VideoHelperSuite', classes: ['VHS_SelectEveryNthImage', 'VHS_DuplicateImages', 'VHS_GetImageCount'], cloud: true },
+    folder: 'ComfyUI-VideoHelperSuite', classes: ['VHS_SelectEveryNthImage', 'VHS_DuplicateImages', 'VHS_GetImageCount', 'VHS_VideoCombine'], cloud: true },
   kjnodes: { name: 'KJNodes', repo: 'kijai/ComfyUI-KJNodes', commit: '17195fcfa8a05f601b766a0f09c9733284f47416', date: '2026-10-15',
     folder: 'ComfyUI-KJNodes', classes: ['ColorMatch'], cloud: true },
+  // ReCamMaster runs only in this wrapper. Newest commit on main (no tags), five months older than
+  // ComfyUI v0.41.1, so the first reshoot on a Pod is its test.
+  wanvideo: { name: 'WanVideoWrapper', repo: 'kijai/ComfyUI-WanVideoWrapper', commit: '088128b224242e110d3906c6750e9a3a348a659b', date: '2026-05-24',
+    folder: 'ComfyUI-WanVideoWrapper', classes: ['WanVideoModelLoader', 'WanVideoVAELoader', 'WanVideoEncode', 'WanVideoDecode', 'WanVideoTextEmbedBridge', 'WanVideoReCamMasterDefaultCamera', 'WanVideoReCamMasterGenerateOrbitCamera', 'WanVideoReCamMasterCameraEmbed', 'WanVideoSampler'], cloud: true },
 }
 
 // Every runtime: FreeVideo's own env, and the node packs. A pack is small and installs in a minute or two.

@@ -17,8 +17,8 @@ const frameRate = { id: 'fps', type: 'choice', label: 'Frame rate', half: true, 
 
 const look = (slug, name, blurb, style, cover) => open({
   id: `mm-${slug}`, name, kind: 'video', category: 'mixed', group: 'Mixed media', blurb,
-  // Their own graph: Strength and Frame rate need more than the restyle graph, and core ComfyUI has no
-  // node that drops frames for 8 or 12 fps, so these stay hidden until it is built.
+  // Their own graph: it drops frames for 8 and 12 fps with core nodes, and blends the look over the
+  // footage by Strength. At 24 fps it makes the first 3.4 s of the clip, at 8 fps up to 10 s.
   runsOn: 'Bernini-R', workflow: 'bernini_mixed',
   inputs: [{ ...clip, label: 'Your video, 1 to 10 seconds' }, strength, frameRate],
   prompt: `Restyle the whole video in this look: ${style} Apply it {strength}, frame by frame, with the subject rotoscoped so the look tracks every movement, and keep the original motion, timing and framing.`,

@@ -1,0 +1,153 @@
+{
+  "1": {
+    "class_type": "LoadVideo",
+    "inputs": {
+      "file": "{{video}}"
+    }
+  },
+  "2": {
+    "class_type": "Video Slice",
+    "inputs": {
+      "video": [
+        "1",
+        0
+      ],
+      "start_time": "{{start}}",
+      "duration": "{{duration}}",
+      "strict_duration": false
+    }
+  },
+  "3": {
+    "class_type": "GetVideoComponents",
+    "inputs": {
+      "video": [
+        "2",
+        0
+      ]
+    }
+  },
+  "4": {
+    "class_type": "GetImageSize",
+    "inputs": {
+      "image": [
+        "3",
+        0
+      ]
+    }
+  },
+  "5": {
+    "class_type": "PrimitiveInt",
+    "inputs": {
+      "value": "{{multiplier}}"
+    }
+  },
+  "6": {
+    "class_type": "ComfyMathExpression",
+    "inputs": {
+      "expression": "1920 if a <= 4 else 1280",
+      "values.a": [
+        "5",
+        0
+      ]
+    }
+  },
+  "7": {
+    "class_type": "ComfyMathExpression",
+    "inputs": {
+      "expression": "max(a, b) > (1920 if c <= 4 else 1280)",
+      "values.a": [
+        "4",
+        0
+      ],
+      "values.b": [
+        "4",
+        1
+      ],
+      "values.c": [
+        "5",
+        0
+      ]
+    }
+  },
+  "8": {
+    "class_type": "ResizeImageMaskNode",
+    "inputs": {
+      "input": [
+        "3",
+        0
+      ],
+      "resize_type": "scale longer dimension",
+      "resize_type.longer_size": [
+        "6",
+        1
+      ],
+      "scale_method": "lanczos"
+    }
+  },
+  "9": {
+    "class_type": "ComfySwitchNode",
+    "inputs": {
+      "switch": [
+        "7",
+        2
+      ],
+      "on_true": [
+        "8",
+        0
+      ],
+      "on_false": [
+        "3",
+        0
+      ]
+    }
+  },
+  "10": {
+    "class_type": "FrameInterpolationModelLoader",
+    "inputs": {
+      "model_name": "rife_v4.26.safetensors"
+    }
+  },
+  "11": {
+    "class_type": "FrameInterpolate",
+    "inputs": {
+      "interp_model": [
+        "10",
+        0
+      ],
+      "images": [
+        "9",
+        0
+      ],
+      "multiplier": [
+        "5",
+        0
+      ]
+    }
+  },
+  "12": {
+    "class_type": "CreateVideo",
+    "inputs": {
+      "images": [
+        "11",
+        0
+      ],
+      "fps": [
+        "3",
+        2
+      ]
+    }
+  },
+  "13": {
+    "class_type": "SaveVideo",
+    "inputs": {
+      "video": [
+        "12",
+        0
+      ],
+      "filename_prefix": "comfyfield/rife_interpolate",
+      "format": "mp4",
+      "codec": "h264",
+      "format.codec": "h264"
+    }
+  }
+}

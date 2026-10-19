@@ -817,8 +817,8 @@ await test('models: every bundled workflow is a linked API graph that saves medi
       assert(node.inputs && !Array.isArray(node.inputs), w)
       visit(node.inputs)
     }
-    // FreeVideoGenerate saves its own mp4.
-    assert(Object.values(graph).some((n) => /^(Save(Image|Video|Animated(WEBP|PNG)|Audio\w*)|FreeVideoGenerate)$/.test(n.class_type)), `${w} saves nothing`)
+    // FreeVideoGenerate saves its own mp4; VideoHelperSuite saves a video that keeps its alpha.
+    assert(Object.values(graph).some((n) => /^(Save(Image|Video|GLB|Animated(WEBP|PNG)|Audio\w*)|FreeVideoGenerate|VHS_VideoCombine)$/.test(n.class_type)), `${w} saves nothing`)
     if (/i2v/.test(w)) assert(Object.values(graph).some((n) => n.class_type === 'LoadImage' && n.inputs.image === 'start.png'), `${w} takes no start image`)
   }
 })
@@ -1890,4 +1890,53 @@ await test('video services: each video format draws on its model\'s canvas, a dr
   assert.equal(run('brand-video', {}).vars.image, '/media/mia.png', 'the brand\'s first picture is the reference')
   assert.deepEqual([run('human-video', { character: null }).workflow, run('human-video', {}).workflow], ['h3_open_t2v', 'h3_t2v'])
   assert.equal(run('transition', {}).vars.duration, 5)
+})
+
+// ---- Video edits and enhance tools ------------------------------------------------------------------
+
+await test('edits and enhance: Bernini-R, VOID, SCAIL-2, SeedVR2, RIFE and BiRefNet go to Comfy Cloud; reshoot installs WanVideoWrapper on a Pod; Qwen backgrounds need a Pod', async () => {
+  podMode()
+  const client = {
+    assets: { fromBytes: (buf, o) => ({ asset: o.filename }) },
+    workflows: { fromFile: async (f) => ({ file: f, json: null, setInput() {} }) },
+    run: async () => ({ outputs: [{ type: 'image', contentType: 'video/mp4', name: 'out.mp4', toBytes: async () => Buffer.from('mp4') }] }),
+  }
+  const leases = []
+  const lease = async (o) => { leases.push(o); return { baseUrl: 'https://p-8189.proxy.runpod.net', token: 't', sandbox: false, signal: new AbortController().signal, reason: () => null, release() {} } }
+  const png = 'data:image/png;base64,iVBORw0KGgo='
+  const vars = { prompt: 'A look', seed: 1, start: 0, duration: 3, video: 'data:video/mp4;base64,AAAAIGZ0eXBpc29t', image: png, image2: png, image3: png,
+    fps: 12, strength: 0.65, target: 'person', trajectory: 'arc_left', orbit: false, upscale_factor: 2, multiplier: 2, output: 'alpha', background: 'A beach', preset: 'natural', temperature: 0, grain: 0 }
+  const run = (w, phase = 'none', vram = 24) => core.runComfy(w, vars, { createClient: () => client, lease, podPhase: async () => phase, podVram: () => vram, podRoom: () => ({}) })
+  for (const w of ['bernini_mixed', 'bernini_grade', 'bernini_clone_edit', 'bernini_recreate_ad', 'void_inpaint', 'video_bg_change', 'scail2_character_swap', 'recammaster',
+    'seedvr2_image', 'seedvr2_video', 'image_upscale', 'image_upscale_esrgan', 'rife_interpolate', 'birefnet_image', 'birefnet_video_matte', 'birefnet_video_matte_alpha', 'image_grade']) {
+    await run(w)
+  }
+  assert.equal(leases.length, 0, 'Comfy Cloud has every file and pack these use')
+  for (const w of ['birefnet_qwen_background', 'birefnet_video_matte_scene']) await assert.rejects(run(w), (e) => e.code === 'needs_pod', `${w} needs a Pod`)
+  await run('recammaster', 'ready')
+  assert.deepEqual(leases.at(-1).runtimes, ['wanvideo'], 'a Pod installs WanVideoWrapper for a reshoot')
+  await run('birefnet_video_matte_alpha', 'ready')
+  assert.deepEqual(leases.at(-1).runtimes, ['vhs'], 'and VideoHelperSuite for a transparent matte')
+  assert(leases.at(-1).files.some((f) => f.dir === 'background_removal' && f.name === 'birefnet.safetensors'), 'BiRefNet downloads to its own folder')
+  assert(podBootScript().includes('  background_removal: background_removal\n') && podBootScript().includes('  frame_interpolation: frame_interpolation\n'), 'ComfyUI on the Pod finds those folders')
+})
+
+await test('edits and enhance: upscale and background removal pick their graph by choice; reshoot uses ReCamMaster names', async () => {
+  const { formats } = await import('../src/lib/formats/index.js')
+  const { stepOptions, stepModel, selectedStep } = await import('../src/lib/formats/options.js')
+  const by = Object.fromEntries(formats.map((f) => [f.id, f]))
+  const pick = (id, values) => {
+    const f = by[id]
+    const all = { ...sampleInputs(f), ...values }
+    const step = selectedStep(f, f.steps[0], all)
+    return { model: stepModel(f, step, all), o: stepOptions(f, step, all) }
+  }
+  assert.deepEqual([pick('image-upscale', { mode: 'faithful' }).model.workflow, pick('image-upscale', { mode: 'enhance' }).model.workflow], ['image_upscale_esrgan', 'image_upscale'])
+  assert.deepEqual(['transparent', 'green', 'new'].map((result) => pick('video-bg-remove', { result }).model.workflow), ['birefnet_video_matte_alpha', 'birefnet_video_matte', 'birefnet_video_matte_scene'])
+  assert.equal(pick('video-bg-remove', { result: 'new', background: 'A beach' }).o.fields.background, 'A beach')
+  const names = ['pan_right', 'pan_left', 'tilt_up', 'tilt_down', 'zoom_in', 'zoom_out', 'translate_up', 'translate_down', 'arc_left', 'arc_right']
+  for (const opt of by.reshoot.inputs.find((i) => i.id === 'angle').options) assert(names.includes(opt.params.trajectory) && typeof opt.params.orbit === 'boolean', opt.id)
+  assert.equal(pick('video-erase', { target: 'the red car' }).o.fields.target, 'the red car', 'SAM 3.1 gets the label as typed')
+  assert.deepEqual([pick('edit-video', {}).model.workflow, pick('edit-video', {}).model.imageWorkflow], ['bernini_swap_noref', 'bernini_swap'])
+  assert.deepEqual(['same', '2k', '4k'].map((size) => pick('unblur', { size }).o.params), [{ upscale_factor: 1, target: 0 }, { upscale_factor: 1, target: 2048 }, { upscale_factor: 1, target: 4096 }])
 })

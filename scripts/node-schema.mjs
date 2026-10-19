@@ -37,7 +37,7 @@ const node = (n) => ({ in: inputs(n.input || {}), out: n.output || [], ...(Strin
 
 const nodes = Object.fromEntries(Object.entries(info).sort(([a], [b]) => a.localeCompare(b)).map(([k, n]) => [k, node(n)]))
 
-// The registry id of each pack is its repo name, lower-cased. The registry scans some versions only,
+// The registry id of each pack is its repo name. The registry scans some versions only,
 // so the newest version whose scan lists the pack's classes stands for the pinned commit.
 const api = async (p) => (await fetch(`https://api.comfy.org/nodes/${p}`)).json()
 async function scan(reg, version) {
@@ -51,7 +51,9 @@ async function scan(reg, version) {
 }
 const packs = {}
 for (const [id, p] of Object.entries(NODE_PACKS)) {
-  const reg = p.repo.split('/')[1].toLowerCase()
+  // The lookup ignores case, the scans do not: take the registry's own spelling of the id.
+  const reg = (await api(p.repo.split('/')[1])).id
+  if (!reg) throw new Error(`The Comfy registry has no ${p.repo}.`)
   const versions = (await api(`${reg}/versions?limit=40`)).map?.((v) => v.version) || []
   if (!versions.length) throw new Error(`The Comfy registry has no ${reg}.`)
   for (const version of versions) {

@@ -21,6 +21,14 @@ function spec(type) {
   return { error: `${type} is no node of ComfyUI ${schema.comfyui} or of a listed pack` }
 }
 
+// VideoHelperSuite adds a format's own options from video_formats/<format>.json, which the registry's
+// scan cannot list. These are video/webm's at the pinned commit 4d907bee.
+const FORMAT_OPTIONS = {
+  VHS_VideoCombine: {
+    'video/webm': { pix_fmt: [['yuv420p', 'yuva420p'], 0], crf: ['INT', 0], save_metadata: ['BOOLEAN', 0], trim_to_audio: ['BOOLEAN', 0] },
+  },
+}
+
 const placeholder = (v) => typeof v === 'string' && /\{\{\w+\}\}/.test(v)
 const isLink = (v) => Array.isArray(v) && v.length === 2 && typeof v[0] === 'string' && Number.isInteger(v[1])
 const accepts = (want, got) => want === '*' || got === '*' || got === 'COMFY_MATCHTYPE_V3' || want.split(',').includes(got) || (want === 'COMBO' && got === 'STRING')
@@ -55,7 +63,7 @@ export function checkGraph(graph) {
   for (const [id, n] of Object.entries(graph)) {
     const s = specs[id]
     if (!s?.node) continue
-    const ins = s.node.in
+    const ins = { ...s.node.in, ...FORMAT_OPTIONS[n.class_type]?.[n.inputs.format] }
     // Inputs a dynamic combo's choice brings, and an autogrow's names.
     const nested = (name) => {
       const [parent, child] = [name.slice(0, name.indexOf('.')), name.slice(name.indexOf('.') + 1)]
