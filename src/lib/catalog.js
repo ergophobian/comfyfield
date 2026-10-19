@@ -55,11 +55,10 @@ export const providerInfo = {
   comfy: { name: 'ComfyUI', blurb: 'Your Comfy API key runs open models on Comfy Cloud in seconds, on a paid Comfy plan. For a long session, add your RunPod key on the RunPod card and start a Pod from the top bar: while it runs, ComfyUI runs use it. The key also unlocks hosted models through Comfy Router.', fields: [
     { id: 'key', label: 'Comfy API key', placeholder: 'From platform.comfy.org', secret: true },
   ], link: 'https://platform.comfy.org/profile/api-keys' },
-  runpod: { name: 'RunPod', blurb: 'Your RunPod key starts a Pod: a GPU that runs ComfyUI for you, billed by the minute. It suits long sessions; Comfy Cloud covers a couple of runs. Once the spend today reaches the daily cap, no new Pod starts.', fields: [
+  // page: where the rest of this service's settings live.
+  runpod: { name: 'RunPod', blurb: 'Your RunPod key starts a Pod: a GPU that runs ComfyUI for you, billed by the minute. It suits long sessions; Comfy Cloud covers a couple of runs. Pick the GPU, the daily cap and the idle shutdown on the Pods page.', fields: [
     { id: 'key', label: 'API key', placeholder: 'RunPod API key', secret: true },
-    { id: 'cap', label: 'Daily cap in dollars', placeholder: '20' },
-    { id: 'auto', label: 'Start Pods automatically', toggle: true, note: 'Generate starts a Pod sized for the service when one is needed.' },
-  ], link: 'https://www.runpod.io/console/user/settings' },
+  ], link: 'https://www.runpod.io/console/user/settings', page: { to: '/pods', label: 'Open the Pods page' } },
   fal: { name: 'fal', blurb: 'One key for hosted FLUX, Kling, Seedance, Veo and more. Pay per run.', fields: [
     { id: 'key', label: 'API key', placeholder: 'fal key', secret: true },
   ], link: 'https://fal.ai/dashboard/keys' },

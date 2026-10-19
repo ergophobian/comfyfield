@@ -165,7 +165,7 @@ export default function PodChip() {
             ) : null}
             {err?.code === 'resume_no_gpu' && <button type="button" className="btn-blue sm" disabled={busy} onClick={replace}>Terminate it and start a new Pod</button>}
           </div>
-          <Link className="link-btn menu-foot" to="/connections">Pod settings</Link>
+          <Link className="link-btn menu-foot" to="/pods">Pods and settings</Link>
         </div>
       )}
     </div>

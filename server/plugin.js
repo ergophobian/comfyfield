@@ -4,6 +4,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
 import * as core from './core.js'
+import { POD_VOLUMES } from './pod.js'
 import { upload } from './upload.js'
 import { serveMedia } from './serveMedia.js'
 import { agentRoutes } from './agent-routes.js'
@@ -180,11 +181,19 @@ async function podQuote(workflow) {
     runtimes: needs.runtimes.map((e) => ({ name: e.name, gb: e.gb, minutes: e.minutes })), volumeGb: needs.volumeGb }
 }
 
-async function podAction(action, { workflow, now } = {}) {
+// A start names a workflow (sized for it), or comes from the Pods page: a size, or a GPU picked by
+// hand, a disk size and runtimes to install. The Pod manager checks the GPU and the runtimes.
+export async function podAction(action, { workflow, now, minVramGb, gpu, volumeGb, runtimes } = {}) {
   const p = core.pod()
+  if (action === 'start' && workflow) {
+    const needs = podNeeds(workflow)
+    return p.start({ minVramGb: needs.minVramGb, volumeGb: needs.volumeGb, runtimes: needs.runtimes.map((e) => e.runtime) })
+  }
   if (action === 'start') {
-    const { minVramGb, volumeGb, runtimes } = podNeeds(workflow)
-    return p.start({ minVramGb, volumeGb, runtimes: runtimes.map((e) => e.runtime) })
+    if (volumeGb != null && !POD_VOLUMES.includes(Number(volumeGb))) throw Object.assign(new Error(`Pick a disk of ${POD_VOLUMES.join(', ')} GB.`), { status: 400 })
+    if (runtimes != null && !Array.isArray(runtimes)) throw Object.assign(new Error('Runtimes are a list.'), { status: 400 })
+    return p.start({ minVramGb: Math.max(0, Number(minVramGb) || 0), volumeGb: Number(volumeGb) || POD_VOLUMES[0], runtimes: (runtimes || []).map(String),
+      gpu: gpu ? { gpuTypeId: String(gpu.gpuTypeId), cloudType: String(gpu.cloudType) } : null })
   }
   if (action === 'pause') return p.pause({ now: Boolean(now) })
   if (action === 'resume') return p.resume()
@@ -222,6 +231,7 @@ function mount(server, harness) {
         return send(res, 200, { ...status, mode, instant: Boolean(key), auto: core.podAutoStart(), suggest })
       }
       if (url.pathname === '/api/pod/quote') return send(res, 200, await podQuote(url.searchParams.get('workflow')))
+      if (url.pathname === '/api/pod/options' && req.method === 'GET') return send(res, 200, await core.podOptions())
       if (url.pathname.startsWith('/api/pod/') && req.method === 'POST') return send(res, 200, await podAction(url.pathname.slice('/api/pod/'.length), await body(req)))
       if (await agents(req, res, url)) return
       if (url.pathname === '/api/connections' && req.method === 'GET') return send(res, 200, core.connections())

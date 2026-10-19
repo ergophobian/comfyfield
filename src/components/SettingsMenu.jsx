@@ -5,9 +5,10 @@ import { IconSettings } from './Icons.jsx'
 const pages = [
   ['/models', 'Models', 'Browse and add more models'],
   ['/connections', 'Connections', 'Keys, ComfyUI and other services'],
+  ['/pods', 'Pods', 'Your GPU on RunPod, sizes and settings'],
 ]
 
-// Models and Connections live here so the top bar stays about making things.
+// Models, Connections and Pods live here so the top bar stays about making things.
 export default function SettingsMenu() {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)

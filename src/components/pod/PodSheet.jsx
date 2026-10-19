@@ -77,7 +77,7 @@ export default function PodSheet() {
         {kind === 'start' && quote && <p className="sheet-note">It terminates after 10 idle minutes. Pause or terminate it any time from the Pod chip in the top bar.</p>}
         {s?.sandbox && <p className="sheet-note">Sandbox mode: no real Pod and no charges.</p>}
         {noKey && kind === 'start' && <p className="sheet-error">Add your RunPod key in <Link to="/connections" onClick={() => answerPod(false)}>Connections</Link> to start a Pod.</p>}
-        {capped && <p className="sheet-error">Daily cap reached: {spendText(quote)}. Raise it in <Link to="/connections" onClick={() => answerPod(false)}>Connections</Link>.</p>}
+        {capped && <p className="sheet-error">Daily cap reached: {spendText(quote)}. Raise it on the <Link to="/pods" onClick={() => answerPod(false)}>Pods page</Link>.</p>}
         {err && <p className="sheet-error">{err.message}</p>}
         <div className="form-sheet-foot">
           <span className="grow" />

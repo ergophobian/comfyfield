@@ -2531,3 +2531,18 @@ button.gen-step:active { transform: scale(.97); }
 .format-review-media button { border: var(--widget-border) solid var(--line); border-radius: var(--r-sm); padding: var(--widget-gap); }
 .format-review-media button[aria-pressed=true] { border-color: var(--blue); }
 .format-review-media img, .format-review-media video { width: var(--widget-preview); max-width: 100%; }
+
+/* Pods page: your Pod or a start, beside the Pod settings */
+.pods-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; align-items: start; }
+.pods-sizes { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+.pods-gpus { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+.pods-gpus .opt:disabled { opacity: var(--disabled); transform: none; border-color: var(--line); }
+.pods-more { align-self: flex-start; margin-left: -10px; }
+.pods-adv { display: grid; gap: 14px; }
+.pods .field > .pod-note { margin-top: 6px; }
+.pods .field > .pod-note + .opt-grid { margin-top: 8px; }
+.pods-cap { display: flex; gap: 8px; }
+.pods-cap input { flex: 1; min-width: 0; }
+@media (max-width: 720px) {
+  .pods-grid { grid-template-columns: minmax(0, 1fr); }
+}
