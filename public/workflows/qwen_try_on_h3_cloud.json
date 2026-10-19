@@ -440,57 +440,6 @@
       "strength_model": 1
     }
   },
-  "78": {
-    "class_type": "ImageStitch",
-    "inputs": {
-      "image1": [
-        "5",
-        0
-      ],
-      "image2": [
-        "17",
-        0
-      ],
-      "direction": "left",
-      "match_image_size": true,
-      "spacing_width": 16,
-      "spacing_color": "white"
-    }
-  },
-  "79": {
-    "class_type": "ImageStitch",
-    "inputs": {
-      "image1": [
-        "78",
-        0
-      ],
-      "image2": [
-        "15",
-        0
-      ],
-      "direction": "right",
-      "match_image_size": true,
-      "spacing_width": 16,
-      "spacing_color": "white"
-    }
-  },
-  "80": {
-    "class_type": "ImageStitch",
-    "inputs": {
-      "image1": [
-        "79",
-        0
-      ],
-      "image2": [
-        "16",
-        0
-      ],
-      "direction": "right",
-      "match_image_size": true,
-      "spacing_width": 16,
-      "spacing_color": "white"
-    }
-  },
   "81": {
     "class_type": "TextEncodeQwenImageEditPlus",
     "inputs": {
@@ -498,13 +447,21 @@
         "2",
         0
       ],
-      "prompt": "The reference is a contact sheet. Its panels preserve the supplied reference order from left to right; use every supplied person or garment. Generate one coherent scene, not a contact sheet. {{prompt}}",
+      "prompt": "{{prompt}}",
       "vae": [
         "3",
         0
       ],
       "image1": [
-        "80",
+        "17",
+        0
+      ],
+      "image2": [
+        "5",
+        0
+      ],
+      "image3": [
+        "15",
         0
       ]
     }
@@ -522,7 +479,15 @@
         0
       ],
       "image1": [
-        "80",
+        "17",
+        0
+      ],
+      "image2": [
+        "5",
+        0
+      ],
+      "image3": [
+        "15",
         0
       ]
     }
@@ -531,7 +496,7 @@
     "class_type": "FluxKontextMultiReferenceLatentMethod",
     "inputs": {
       "conditioning": [
-        "81",
+        "92",
         0
       ],
       "reference_latents_method": "index_timestep_zero"
@@ -541,10 +506,67 @@
     "class_type": "FluxKontextMultiReferenceLatentMethod",
     "inputs": {
       "conditioning": [
-        "82",
+        "93",
         0
       ],
       "reference_latents_method": "index_timestep_zero"
+    }
+  },
+  "90": {
+    "class_type": "ImageScaleToTotalPixels",
+    "inputs": {
+      "image": [
+        "16",
+        0
+      ],
+      "upscale_method": "area",
+      "megapixels": 1.0,
+      "resolution_steps": 8
+    },
+    "_meta": {
+      "optional": "image3"
+    }
+  },
+  "91": {
+    "class_type": "VAEEncode",
+    "inputs": {
+      "pixels": [
+        "90",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ]
+    },
+    "_meta": {
+      "optional": "image3"
+    }
+  },
+  "92": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "81",
+        0
+      ],
+      "latent": [
+        "91",
+        0
+      ]
+    }
+  },
+  "93": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "82",
+        0
+      ],
+      "latent": [
+        "91",
+        0
+      ]
     }
   }
 }

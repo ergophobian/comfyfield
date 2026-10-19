@@ -42,6 +42,7 @@ for (const name of ['ltx_i2v', 'h3_i2v']) {
   console.log(`${name}: API graph, placeholders and links valid`)
 }
 
+// Instant workflow variant contracts (independent of format inventory checks).
 const nodeSchema = JSON.parse(readFileSync('scripts/fixtures/comfy-nodes.json', 'utf8')).nodes
 const graphOf = (name) => JSON.parse(readFileSync(`public/workflows/${name}.json`, 'utf8'))
 const evidence = JSON.parse(readFileSync('research_notes/instant-ports/public-evidence.json', 'utf8'))
@@ -93,3 +94,4 @@ for (const [original, cloud] of Object.entries(cloudWorkflows)) {
   } else assert.deepEqual(missing, [], `${cloud}: remaining Cloud blockers`)
 }
 console.log(`${Object.keys(cloudWorkflows).length} Cloud alternates: core node contracts, links, placeholders and optional references valid; two Trellis graphs retain other Pod-only files. No live runs.`)
+// End Instant workflow variant contracts.

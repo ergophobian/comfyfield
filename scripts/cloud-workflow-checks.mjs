@@ -50,27 +50,32 @@ for (const [original, cloud] of Object.entries(cloudWorkflows)) {
     await assert.rejects(core.runComfy(original, vars, options('instant')), (e) => e.code === 'needs_pod')
     assert.equal(submitted, null)
     assert.equal(leased, null)
+    reset()
+    await assert.rejects(core.runComfy(original, vars, options(undefined, 'none')), (e) => e.code === 'needs_pod')
+    assert.equal(submitted, null, `${original}: automatic routing ignored Cloud blockers`)
   } else {
     // Instant must use Cloud even with a ready Session. Missing optional references must work too.
     const sparse = { ...vars }
     for (const key of schemas.comfyOptional[cloud] || []) delete sparse[key]
-    for (const values of [vars, sparse]) {
+    for (const [run, phase, values] of [['instant', 'ready', vars], ['instant', 'ready', sparse], [undefined, 'none', vars], [undefined, 'none', sparse], [null, 'starting', vars], [null, 'ready', vars]]) {
       reset()
-      await core.runComfy(original, values, options('instant'))
+      await core.runComfy(original, values, options(run, phase, run === null && phase === 'ready' ? 0 : 200))
       assert.equal(path.basename(submitted.file), `${cloud}.json`)
       assert.deepEqual(submitted.json, expected(cloud, values))
-      assert.equal(leased, null, `${original}: Instant leased a Pod`)
-      assert.equal(clientBase, undefined, `${original}: Instant used a Pod URL`)
+      assert.equal(leased, null, `${original}: Cloud alternate leased a Pod`)
+      assert.equal(clientBase, undefined, `${original}: Cloud alternate used a Pod URL`)
       assert.equal(uploaded.length, core.uploadsOf(dropOptional(read(cloud), values)).length)
     }
   }
-  reset()
-  await core.runComfy(original, vars, options('session'))
-  assert.equal(path.basename(submitted.file), `${original}.json`)
-  assert.deepEqual(submitted.json, expected(original))
-  assert.equal(clientBase, 'https://synthetic-pod.invalid')
-  assert.equal(released, 1)
-  assert.deepEqual(leased.files.map((f) => f.name).sort(), core.workflowNeeds(original).files.map((f) => f.name).sort())
+  for (const run of ['session', undefined]) {
+    reset()
+    await core.runComfy(original, vars, options(run))
+    assert.equal(path.basename(submitted.file), `${original}.json`)
+    assert.deepEqual(submitted.json, expected(original))
+    assert.equal(clientBase, 'https://synthetic-pod.invalid')
+    assert.equal(released, 1)
+    assert.deepEqual(leased.files.map((f) => f.name).sort(), core.workflowNeeds(original).files.map((f) => f.name).sort())
+  }
   reset()
   await assert.rejects(core.runComfy(original, vars, options('session', 'none')), (e) => e.code === 'needs_pod')
   assert.equal(submitted, null, `${original}: Session fell back to Cloud`)
@@ -84,8 +89,13 @@ await core.runComfy('flux_look', vars, options(null))
 assert.deepEqual(submitted.json, expected('flux_look'), 'automatic ready-Pod routing keeps the original')
 core.writeKeys({ comfy: { key: '' } })
 reset()
-await assert.rejects(core.runComfy('flux_look', vars, options('instant')), (e) => e.code === 'needs_pod' && /Comfy API key/.test(e.reason))
-assert.equal(leased, null)
-assert.equal(submitted, null)
+for (const [original] of Object.entries(cloudWorkflows)) {
+  for (const run of ['instant', undefined]) {
+    reset()
+    await assert.rejects(core.runComfy(original, vars, options(run, 'none')), (e) => e.code === 'needs_pod' && /Comfy API key/.test(e.reason))
+    assert.equal(leased, null)
+    assert.equal(submitted, null)
+  }
+}
 for (const [original, cloud] of Object.entries(cloudWorkflows)) assert.deepEqual(schemas.comfy[cloud], schemas.comfy[original])
-console.log(`${Object.keys(cloudWorkflows).length} alternate pairs: Instant selects Cloud graphs, Session preserves original graphs/files, optional uploads and target guards pass. Synthetic clients only; no live generations.`)
+console.log(`${Object.keys(cloudWorkflows).length} alternate pairs: Instant and unset runs without a fitting ready Pod select Cloud graphs; Session and fitting ready Pods preserve original graphs/files; optional uploads and target guards pass. Synthetic clients only; no live generations.`)

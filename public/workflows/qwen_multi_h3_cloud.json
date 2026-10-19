@@ -396,9 +396,18 @@
       "strength_model": 1
     }
   },
-  "78": {
-    "class_type": "ImageStitch",
+  "82": {
+    "class_type": "TextEncodeQwenImageEditPlus",
     "inputs": {
+      "clip": [
+        "2",
+        0
+      ],
+      "prompt": "{{prompt}}",
+      "vae": [
+        "3",
+        0
+      ],
       "image1": [
         "5",
         0
@@ -407,77 +416,8 @@
         "15",
         0
       ],
-      "direction": "right",
-      "match_image_size": true,
-      "spacing_width": 16,
-      "spacing_color": "white"
-    }
-  },
-  "79": {
-    "class_type": "ImageStitch",
-    "inputs": {
-      "image1": [
-        "78",
-        0
-      ],
-      "image2": [
+      "image3": [
         "16",
-        0
-      ],
-      "direction": "right",
-      "match_image_size": true,
-      "spacing_width": 16,
-      "spacing_color": "white"
-    }
-  },
-  "80": {
-    "class_type": "ImageStitch",
-    "inputs": {
-      "image1": [
-        "79",
-        0
-      ],
-      "image2": [
-        "17",
-        0
-      ],
-      "direction": "right",
-      "match_image_size": true,
-      "spacing_width": 16,
-      "spacing_color": "white"
-    }
-  },
-  "81": {
-    "class_type": "ImageStitch",
-    "inputs": {
-      "image1": [
-        "80",
-        0
-      ],
-      "image2": [
-        "18",
-        0
-      ],
-      "direction": "right",
-      "match_image_size": true,
-      "spacing_width": 16,
-      "spacing_color": "white"
-    }
-  },
-  "82": {
-    "class_type": "TextEncodeQwenImageEditPlus",
-    "inputs": {
-      "clip": [
-        "2",
-        0
-      ],
-      "prompt": "The reference is a contact sheet. Its panels preserve the supplied reference order from left to right; use every supplied person or garment. Generate one coherent scene, not a contact sheet. {{prompt}}",
-      "vae": [
-        "3",
-        0
-      ],
-      "image1": [
-        "81",
         0
       ]
     }
@@ -495,7 +435,15 @@
         0
       ],
       "image1": [
-        "81",
+        "5",
+        0
+      ],
+      "image2": [
+        "15",
+        0
+      ],
+      "image3": [
+        "16",
         0
       ]
     }
@@ -504,7 +452,7 @@
     "class_type": "FluxKontextMultiReferenceLatentMethod",
     "inputs": {
       "conditioning": [
-        "82",
+        "96",
         0
       ],
       "reference_latents_method": "index_timestep_zero"
@@ -514,30 +462,173 @@
     "class_type": "FluxKontextMultiReferenceLatentMethod",
     "inputs": {
       "conditioning": [
-        "83",
+        "97",
         0
       ],
       "reference_latents_method": "index_timestep_zero"
     }
   },
   "86": {
-    "class_type": "FluxKontextImageScale",
+    "class_type": "GetImageSize",
     "inputs": {
       "image": [
-        "81",
+        "5",
         0
       ]
     }
   },
   "87": {
+    "class_type": "EmptySD3LatentImage",
+    "inputs": {
+      "width": [
+        "88",
+        1
+      ],
+      "height": [
+        "89",
+        1
+      ],
+      "batch_size": 1
+    }
+  },
+  "88": {
+    "class_type": "ComfyMathExpression",
+    "inputs": {
+      "expression": "max(32, round(1024 * sqrt(a / b) / 32) * 32)",
+      "values.a": [
+        "86",
+        0
+      ],
+      "values.b": [
+        "86",
+        1
+      ]
+    }
+  },
+  "89": {
+    "class_type": "ComfyMathExpression",
+    "inputs": {
+      "expression": "max(32, round(1024 * sqrt(b / a) / 32) * 32)",
+      "values.a": [
+        "86",
+        0
+      ],
+      "values.b": [
+        "86",
+        1
+      ]
+    }
+  },
+  "90": {
+    "class_type": "ImageScaleToTotalPixels",
+    "inputs": {
+      "image": [
+        "17",
+        0
+      ],
+      "upscale_method": "area",
+      "megapixels": 1.0,
+      "resolution_steps": 8
+    },
+    "_meta": {
+      "optional": "image4"
+    }
+  },
+  "91": {
     "class_type": "VAEEncode",
     "inputs": {
       "pixels": [
-        "86",
+        "90",
         0
       ],
       "vae": [
         "3",
+        0
+      ]
+    },
+    "_meta": {
+      "optional": "image4"
+    }
+  },
+  "92": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "82",
+        0
+      ],
+      "latent": [
+        "91",
+        0
+      ]
+    }
+  },
+  "93": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "83",
+        0
+      ],
+      "latent": [
+        "91",
+        0
+      ]
+    }
+  },
+  "94": {
+    "class_type": "ImageScaleToTotalPixels",
+    "inputs": {
+      "image": [
+        "18",
+        0
+      ],
+      "upscale_method": "area",
+      "megapixels": 1.0,
+      "resolution_steps": 8
+    },
+    "_meta": {
+      "optional": "image5"
+    }
+  },
+  "95": {
+    "class_type": "VAEEncode",
+    "inputs": {
+      "pixels": [
+        "94",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ]
+    },
+    "_meta": {
+      "optional": "image5"
+    }
+  },
+  "96": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "92",
+        0
+      ],
+      "latent": [
+        "95",
+        0
+      ]
+    }
+  },
+  "97": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "93",
+        0
+      ],
+      "latent": [
+        "95",
         0
       ]
     }

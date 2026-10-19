@@ -1,8 +1,8 @@
 # Instant model ports
 
-104 runnable formats now have Instant alternates: 55 using Klein and 49 using Qwen. There are 39 new graphs; 37 have every file on the public Cloud listing. The two Trellis variants still need files Cloud does not list, so `text-to-3d` and `character-to-3d` remain Session-only.
+Runnable Klein and Qwen formats now have Instant alternates. All alternate graphs except the two Trellis variants have every file on the public Cloud listing. The two Trellis variants still need files Cloud does not list, so `text-to-3d` and `character-to-3d` remain Session-only.
 
-Explicit Instant selects `cloudWorkflow` / `cloudImageWorkflow` or the format mapping in `src/lib/catalog.js` before loading the graph. Session and the existing automatic/unselected routing keep the original graphs. `comfyTarget` is unchanged. Original workflow files and the Pod manager are unchanged.
+Before `comfyTarget` evaluates a run, Instant selects a fully Cloud-compatible `cloudWorkflow` / `cloudImageWorkflow` or the format mapping in `src/lib/catalog.js`. An unset run type does the same when no ready Pod fits the original graph. Session and unset runs with a fitting ready Pod keep the original graphs. Alternates with missing Cloud files stay blocked, and missing Comfy keys retain the existing error. `comfyTarget` is unchanged. Original workflow files and the Pod manager are unchanged.
 
 Flux 3 Klein becomes Flux.2 Klein 4B with the Qwen 3 4B encoder (`flux2`), the Flux.2 VAE, Euler sampling and the resolution-aware Flux.2 scheduler at four steps. The Flux 3 prompt upsampler is removed; reference conditioning uses VAE encoding and reference latents following the official distilled Klein examples.
 
@@ -10,23 +10,27 @@ Qwen-Image 2.1 edits/references become Edit 2511 with the Lightning four-step ad
 
 ## Quality risk and unverified behavior
 
-These are different models, so prompt following, text rendering, identity, fine detail and editing fidelity can differ. Klein no longer expands prompts. Edit 2511 references are encoded at its native resolution rather than Qwen 2.1 resolution. `qwen_multi_h3` and `qwen_try_on_h3` keep all references as ordered contact sheets to fit the older encoder; this may weaken identity and garment separation. Image 2512 does not generate alpha, so the logo variant uses the existing BiRefNet cutout model; edges and internal cutouts need visual review.
+These are different models, so prompt following, text rendering, identity, fine detail and editing fidelity can differ. Klein no longer expands prompts. Edit 2511 references are encoded at its native resolution rather than Qwen 2.1 resolution. `qwen_multi_h3_cloud` and `qwen_try_on_h3_cloud` now use separate reference inputs instead of contact sheets. The pinned `TextEncodeQwenImageEditPlus` contract takes at most three vision images, each resized independently to about 384 × 384 pixels, with separate reference latents at about 1024 × 1024. Extra references append as separate latents through `ReferenceLatent` on both positive and negative conditioning. They have no vision-encoder representation: person four/five in multi and garment three in try-on therefore still need identity/garment-fidelity review. Optional references preserve the original supplied order; no reference is dropped or put into a contact sheet. Klein already uses separate `ReferenceLatent` chains, so it needs no contact-sheet change. Image 2512 does not generate alpha, so the logo variant uses the existing BiRefNet cutout model; edges and internal cutouts need visual review.
 
 Nothing is verified live: no paid generations, authenticated Cloud requests, Pod provisioning or model downloads were performed. Public file listings and offline core-node contracts do not prove runtime availability or output quality. Run time and memory estimates are estimates, not measurements.
+
+Live-test priorities: `klein_character_swap_cloud`, `qwen_multi_h3_cloud` (image stage), `qwen_image_logo_cloud`.
 
 ## Public evidence
 
 The unauthenticated listing checks, Hugging Face large-file hashes and pinned official workflow URLs are recorded in [public-evidence.json](public-evidence.json). Existing encoder, VAE and Edit 2511 entries already matched those hashes; only the Klein 4B and Image 2512 diffusion entries were added to `shared/modelFiles.js`.
 
+Pinned reference contracts: [Qwen encoder](https://github.com/Comfy-Org/ComfyUI/blob/45bf90d1c91eecd782643346dcfb73cb0017667f/comfy_extras/nodes_qwen.py#L48-L97), [reference latent append](https://github.com/Comfy-Org/ComfyUI/blob/45bf90d1c91eecd782643346dcfb73cb0017667f/comfy_extras/nodes_edit_model.py#L8-L28). Public source GETs only. These contracts establish graph compatibility, not live quality.
+
 Official contracts: [Klein guide](https://docs.comfy.org/tutorials/flux/flux-2-klein), [Comfy workflow templates](https://github.com/Comfy-Org/workflow_templates).
 
 ## Formats with Instant alternates
 
-### Klein formats (55)
+### Klein formats
 
 `all-fine`, `animal`, `anime-me`, `brand-colors`, `brick-toy`, `cafe-60s`, `cartoon-me`, `character-scene`, `character-swap`, `coloring-page`, `drawing`, `game-style`, `glossy-vinyl`, `headshot`, `idol-stage`, `influencer-post`, `look-anime-cel`, `look-claymation`, `look-disposable`, `look-drone-top-down`, `look-film-70s`, `look-film-noir`, `look-fisheye-skate`, `look-golden-hour`, `look-ink-sketch`, `look-instant`, `look-low-poly`, `look-oil-painting`, `look-phone-flash`, `look-pixel-art`, `look-street-style`, `look-studio-fashion`, `look-tilt-shift`, `look-vaporwave`, `look-watercolor`, `loop-background`, `mascot`, `micro-beasts`, `moodboard`, `open-world`, `open-world-hero`, `pixel-game`, `plush-toy`, `portrait`, `profile-picture`, `renaissance`, `render-3d`, `restyle`, `sketch`, `skin-retouch`, `slide-visuals`, `sticker`, `storyboard`, `tiny-creature`, `wallpaper`.
 
-### Qwen formats (49)
+### Qwen formats
 
 `ad-variants`, `age-progression`, `ai-stylist`, `banner`, `behind-the-scenes`, `billboard`, `booking-photo`, `character-sheet`, `comic-story`, `copy-style`, `design-graphic`, `erase`, `expand`, `figure-box`, `game-show`, `graffiti-ad`, `hairstyle`, `invitation-video`, `japanese-poster`, `life-sim`, `logo`, `look-cctv`, `look-comic-book`, `look-magazine-90s`, `meme`, `mural`, `new-background`, `outfit-shot`, `outfit-vending`, `paint-app`, `photo-restore`, `photocard`, `place-product`, `poster`, `product-shot`, `remove-text`, `replace`, `signboard`, `sketch-to-image`, `social-icons`, `squad-strike`, `style-snap`, `thumbnail`, `tokyo-cover`, `truck-ad`, `try-on`, `victory-card`, `video-bg-remove`, `zooms`.
 
@@ -72,18 +76,16 @@ Official contracts: [Klein guide](https://docs.comfy.org/tutorials/flux/flux-2-k
 - `storyboard_ref` → `storyboard_ref_cloud`: `storyboard`.
 - `trellis2_character` → `trellis2_character_cloud`: `character-to-3d`; still Session-only because Trellis files are missing from Cloud.
 
+## Red-team fixes
+
+- Default routing: unset runs without a fitting ready Pod evaluate the Cloud alternate before target selection. Session and fitting ready Pods use original graphs/files. `comfyTarget` is unchanged; the variant catalog import and pre-target block are marked separately from provider/routing work.
+- Output canvas: `qwen_multi_h3_cloud` now creates an empty 16-channel latent using the first reference's aspect at roughly one megapixel, rounded to 32 pixels as in the original. One or five square references produce the same 1024 × 1024 canvas. `qwen_try_on_h3_cloud`, the only other contact-sheet graph, already derived its canvas from the requested format aspect and retains that behavior. No alternate graph retains a contact sheet.
+- Reference quality: separate images use all three available vision inputs, and additional ordered reference latents remain separate. The encoder limit and unverified extra-reference fidelity are documented above. Synthetic checks trace positive/negative reference order and canvas independence for every optional-reference subset.
+
 ## Validation
 
-Checks run in the isolated Windows scratch clone `C:/comfyfield-instant-afa17030`, based on `7ee3b1c`. Dependencies, the production build, verification and headless browsers run there. No heavy checks run on the Mac.
+Rebased `instant-ports` onto `origin/main`; Git reported it already up to date at parent `7ee3b1c`. Implementation started from `f59bef0`.
 
-The format checks compare every alternate’s required and optional placeholders with its original graph. The Comfy format checks validate core node contracts, sampler settings, public model hashes, links and every optional-reference subset. Synthetic execution checks exercise all 39 pairs: Instant, Session, missing references, missing keys, unavailable models and undersized Sessions. No synthetic check calls a provider.
+Validation runs in a fresh isolated Windows scratch clone. No heavy checks run on the Mac. No paid runs, keys from the environment, authenticated provider requests or Pod changes.
 
-The production build passed in 2.28 seconds. Vite reported its existing chunk-size warning (bundle over 500 kB). The full verification passed with Git Bash first on the Windows path. An initial run selected WSL Bash and failed existing shell-path checks; correcting the test environment resolved those failures without repository changes. The Pod suite passed all 82 tests with none skipped.
-
-```text
-39 alternate pairs: Instant selects Cloud graphs, Session preserves original graphs/files, optional uploads and target guards pass. Synthetic clients only; no live generations.
-39 Cloud alternates: core node contracts, links, placeholders and optional references valid; two Trellis graphs retain other Pod-only files. No live runs.
-Format check ok: 450 runnable, 29 hidden, 10 migrated recipes. No generation calls.
-Graph check: 147/147 graphs fit ComfyUI v0.41.1 and the listed packs.
-17/17 check scripts passed
-```
+Build and full verification results will be recorded after the Windows pass.

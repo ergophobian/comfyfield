@@ -5,7 +5,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { randomUUID } from 'node:crypto'
 import { Comfy } from '@comfyorg/sdk'
-import { models as pinned, falCategories, podWorkflows, cloudWorkflows } from '../src/lib/catalog.js'
+import { models as pinned, falCategories, podWorkflows } from '../src/lib/catalog.js'
 import { comfyVars, comfyRouterInput, falInput, estimate, fill, falEndpointFor, dropOptional } from '../shared/mapping.js'
 import { renderStitch } from './stitch.js'
 import { archOf, minVramOf, notOnCloud, podNeedsOf, volumeFor, RUNTIMES } from '../shared/modelFiles.js'
@@ -13,6 +13,9 @@ import { DEFAULT_TIER, TIER_IDS } from '../shared/gpuTiers.js'
 
 import { podManager, GPU_LADDER, IDLE_CHOICES, POD_VOLUMES, STOPPED_DISK_USD_GB_MONTH, idleMinutes } from './pod.js'
 import { sandboxFetch } from './podSandbox.js'
+
+// Instant workflow variants (kept separate from provider imports).
+import { cloudWorkflows } from '../src/lib/catalog.js'
 
 export { podBootScript, podStartCmd } from './podBoot.js'
 export { GPU_LADDER, NO_POD } from './pod.js'
@@ -779,9 +782,7 @@ async function comfyTarget(files, podPhase, podVram, label, run = null, podArch 
 
 // Runs a bundled workflow on Comfy Cloud or the Pod, or in development on a local ComfyUI, and returns file URLs.
 export async function runComfy(workflow, vars = {}, { createClient = (key, baseUrl) => comfyClient(baseUrl, key), lease = (o) => pod().lease(o), podPhase = () => pod().phaseNow(), podVram = () => pod().vramGb(), podRoom = () => pod().room(), podArch = () => pod().arch(), run = runType() } = {}) {
-  // Explicit Instant uses Cloud's compatible model; Session and automatic Pod routing keep the original.
-  const cloudWorkflow = comfyMode() === 'cloud' && run === 'instant' && cloudWorkflowOf(workflow)
-  let { file, template } = readWorkflow(cloudWorkflow || workflow)
+  let { file, template } = readWorkflow(workflow)
   // Nodes for a file the run did not attach (a second garment, an optional reference) drop out first.
   template = dropOptional(template, vars)
   const unset = unsetInput(template, vars)
@@ -789,9 +790,34 @@ export async function runComfy(workflow, vars = {}, { createClient = (key, baseU
   let graph = fill(template, vars)
   if (comfyMode() === 'cloud') {
     let needs = podNeedsOf(graph)
+    // Instant workflow variants: resolve compatible files before the existing target policy.
+    // Session and a ready Pod that fits the original keep its graph and model files.
+    let targetPhase = podPhase
+    const cloudWorkflow = run !== 'session' && cloudWorkflowOf(workflow)
+    if (cloudWorkflow) {
+      const phase = await podPhase()
+      targetPhase = () => phase
+      const vram = podVram()
+      const arch = podArch()
+      const readyPod = phase === 'ready' && (vram == null || vram >= minVramOf(needs)) && (!archOf(needs) || !arch || arch === archOf(needs))
+      if (run === 'instant' || !readyPod) {
+        const alternate = readWorkflow(cloudWorkflow)
+        alternate.template = dropOptional(alternate.template, vars)
+        if (!unsetInput(alternate.template, vars)) {
+          const alternateGraph = fill(alternate.template, vars)
+          const alternateNeeds = podNeedsOf(alternateGraph)
+          if (!notOnCloud(alternateNeeds).length) {
+            ({ file, template } = alternate)
+            graph = alternateGraph
+            needs = alternateNeeds
+          }
+        }
+      }
+    }
+    // End Instant workflow variants.
     // Errors name the model as the picker shows it.
     const label = modelOf(workflow)?.name
-    const target = await comfyTarget(needs, podPhase, podVram, label, run, podArch)
+    const target = await comfyTarget(needs, targetPhase, podVram, label, run, podArch)
     // A run that goes to a Pod big enough for the model's Pod graph runs that graph: H3 on FreeVideo.
     const alt = target === 'pod' && podWorkflowOf(workflow)
     if (alt) {
