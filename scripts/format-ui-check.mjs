@@ -19,6 +19,15 @@ const server = await preview({ configFile: false, envFile: false, plugins: [{
       }
       if (!url.pathname.startsWith('/api/')) return next()
       res.setHeader('Content-Type', 'application/json')
+      if (url.pathname === '/api/comfy/requirements') {
+        let body = ''
+        for await (const chunk of req) body += chunk
+        return res.end(JSON.stringify({
+          connections: { fal: { connected: true }, google: { connected: true }, comfyRouter: { connected: true } },
+          cloudConnected: true, pod: { phase: 'none' },
+          requirements: JSON.parse(body).workflows.map(({ workflow }) => ({ workflow, notOnCloud: [], minVramGb: 0 })),
+        }))
+      }
       if (url.pathname === '/api/stitch/exports') return res.end('[]')
       if (url.pathname === '/api/connections') return res.end(JSON.stringify({ fal: { connected: true }, google: { connected: true } }))
       if (url.pathname === '/api/fal/schema') return res.end(JSON.stringify(schemas.fal[url.searchParams.get('id')] || { properties: { prompt: { type: 'string' } } }))

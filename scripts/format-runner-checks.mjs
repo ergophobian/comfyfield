@@ -1,10 +1,13 @@
 import assert from 'node:assert/strict'
 import { recipes, initialValues, recipeOptions } from '../src/lib/recipes.js'
 import { allFormats, formats, formatProblems } from '../src/lib/formats/index.js'
-import { compileFormat, runFormat } from '../src/lib/formats/runner.js'
+import { compileFormat, runFormat as runWithPlanning, preflight } from '../src/lib/formats/runner.js'
 import { validateFormat } from '../src/lib/formats/validate.js'
 import { schemas } from '../src/lib/formats/schemas.js'
 import { falInput, comfyVars } from '../shared/mapping.js'
+
+import { offlineRequirements } from './fixtures/format-planning.mjs'
+const runFormat = (format, values, options) => runWithPlanning(format, values, { requirements: offlineRequirements, ...options })
 
 globalThis.fetch = () => { throw new Error('Network is forbidden in format checks') }
 const photo = { url: 'https://example.test/photo.png', ratio: '4:5', name: 'Photo' }
@@ -110,9 +113,11 @@ assert.equal(comfyCall.opts.prompt, 'A meadow')
 assert.equal(comfyVars('image', { ...comfyCall.opts, params: { seed: 42 }, fields: { prompt: 'Bound prompt' } }).seed, 42)
 assert.equal(comfyVars('image', { ...comfyCall.opts, fields: { prompt: 'Bound prompt' } }).prompt, 'Bound prompt')
 
-await assert.rejects(runFormat(imageRecipe, valuesFor(imageRecipe), { run: async () => { throw new Error('Mock provider failure') } }), /Mock provider failure/)
+const failedSession = await runFormat(imageRecipe, valuesFor(imageRecipe), { run: async () => { throw new Error('Mock provider failure') } })
+assert.equal(failedSession.error.message, 'Mock provider failure')
+assert.equal(failedSession.engine.state.generate.items[0].status, 'failed')
 const writerFormat = { ...imageRecipe, writer: 'Describe the scene' }
-await assert.rejects(runFormat(writerFormat, valuesFor(imageRecipe), { run: async () => { throw new Error('Must not run') } }), /writing is not connected/)
+assert.match((await runFormat(writerFormat, valuesFor(imageRecipe), { run: async () => { throw new Error('Must not run') } })).error.message, /writing is not connected/)
 let writerPrompt
 const writerSession = await runFormat(writerFormat, valuesFor(writerFormat), {
   writePrompt: async ({ instructions, inputs }) => { assert.equal(instructions, writerFormat.writer); assert.equal(inputs.image.url, photo.url); return 'Written prompt' },
@@ -129,6 +134,173 @@ const briefSession = await runFormat(writerOnly, { ...valuesFor(writerOnly), bri
   run: async (_, opts) => { assert.equal(opts.prompt, 'Change the mood'); return [{ url: 'written.png' }] },
 })
 await briefSession.sendWriter('writer')
+
+// Fail one of two takes: retry pays for only that take, then fills downstream gaps.
+const resilient = { ...chain, steps: [chain.steps[0], { ...chain.steps[2], from: ['draft'] }] }
+const retryCalls = []
+let failTake = true
+let retrySession
+const snapshots = []
+const retainedValues = structuredClone(valuesFor(resilient))
+retrySession = await runFormat(resilient, retainedValues, {
+  onSession: (s) => { retrySession = s },
+  onChange: (_, s) => { if (s) snapshots.push(s.busy) },
+  run: async (model, opts, meta) => {
+    assert.equal(retrySession.busy, true)
+    assert(retrySession.cost, 'Cost is present before the first adapter request')
+    retryCalls.push(meta)
+    if (meta.stepId === 'draft' && retryCalls.length === 2 && failTake) throw Object.assign(new Error('One take failed'), { code: 'mock_failure' })
+    return [{ url: `https://example.test/retry-${retryCalls.length}.png`, kind: model.kind }]
+  },
+})
+assert.equal(retryCalls.length, 2, 'Do not spend downstream while an upstream take has failed')
+assert.equal(retrySession.failures.length, 1)
+assert.equal(retrySession.reason.code, 'mock_failure')
+assert.equal(retrySession.busy, false)
+assert(snapshots.includes(true))
+const kept = retrySession.engine.state.draft.items.find((i) => i.status === 'done')
+retainedValues.image.url = 'https://example.test/changed.png'
+assert.equal(retrySession.flow.values.image.url, photo.url, 'Capture inputs instead of following form edits')
+failTake = false
+await retrySession.retry('draft')
+assert.equal(retryCalls.filter((m) => m.stepId === 'draft').length, 3)
+assert.equal(retryCalls.filter((m) => m.stepId === 'animate').length, 2)
+assert.equal(retrySession.engine.state.draft.items.find((i) => i.id === kept.id), kept)
+assert.equal(retrySession.error, null)
+assert.equal(new Set(retryCalls.map((m) => m.formatRunId)).size, 1)
+await retrySession.retryFailed()
+assert.equal(retryCalls.length, 5, 'Retry with nothing failed is free')
+
+// Retry one failed branch must leave other failed and untouched branches alone.
+const branchCalls = []
+let branchFail = true
+const branches = await runFormat(parallel, valuesFor(parallel), { run: async (_, opts, meta) => {
+  branchCalls.push(meta.stepId)
+  if (branchFail && ['a', 'b'].includes(meta.stepId)) throw new Error('branch failed')
+  return [{ url: 'https://example.test/branch.png' }]
+} })
+branchFail = false
+await branches.retry('a')
+assert.deepEqual(branchCalls.slice(4), ['a'])
+assert.equal(branches.failures[0].stepId, 'b')
+await branches.retryFailed()
+assert.deepEqual(branchCalls.slice(4), ['a', 'b'])
+
+// Approval after a failure remains usable; neither Send nor retry repeats the paid draft.
+let animationFails = true
+const gateCalls = []
+const gatedFailure = await runFormat(chain, valuesFor(chain), { run: async (_, opts, meta) => {
+  gateCalls.push(meta.stepId)
+  if (meta.stepId === 'animate' && animationFails) throw new Error('animate failed')
+  return [{ url: `https://example.test/gate-${gateCalls.length}.png` }]
+} })
+await gatedFailure.send('review')
+assert.equal(gatedFailure.failures.length, 2)
+assert.equal(gatedFailure.engine.gate('review').status, 'sent')
+gatedFailure.engine.clearGate(gatedFailure.flow, 'review')
+animationFails = false
+await gatedFailure.send('review')
+assert.equal(gatedFailure.error, null)
+assert.equal(gateCalls.filter((s) => s === 'draft').length, 2)
+assert.equal(gateCalls.filter((s) => s === 'animate').length, 4)
+await gatedFailure.retryFailed()
+assert.equal(gateCalls.length, 6)
+
+// A failed writer retries without rendering or opening the writer review gate.
+let writes = 0
+let renders = 0
+const writerRetry = await runFormat(writerFormat, valuesFor(writerFormat), {
+  writePrompt: async () => { if (++writes === 1) throw new Error('writer failed'); return 'Recovered prompt' },
+  run: async () => { renders++; return [{ url: 'https://example.test/written.png' }] },
+})
+await writerRetry.retryFailed()
+assert.equal(writes, 2)
+assert.equal(renders, 0)
+await writerRetry.sendWriter('writer')
+assert.equal(writes, 2)
+assert.equal(renders, 1)
+
+// A completed provider step needs no key on retry; its paid outputs are sufficient.
+const crossProvider = { ...chain, steps: [chain.steps[0], { id: 'animate', model: 'comfy-ltx25', kind: 'video', prompt: '{note}' }] }
+let cloudFail = true
+const crossCalls = []
+const crossSession = await runFormat(crossProvider, valuesFor(crossProvider), { run: async (_, opts, meta) => {
+  crossCalls.push(meta.stepId)
+  if (meta.stepId === 'animate' && cloudFail) throw new Error('render failed')
+  return [{ url: 'https://example.test/cross.png' }]
+} })
+cloudFail = false
+await crossSession.retryFailed({ requirements: (w) => ({ ...offlineRequirements(w), connections: { comfyRouter: { connected: true } } }) })
+assert.equal(crossSession.error, null)
+assert.equal(crossCalls.filter((s) => s === 'draft').length, 2)
+assert.equal(crossCalls.filter((s) => s === 'animate').length, 4)
+
+// An in-flight send rejects overlapping retry/start operations without a second request.
+let release
+let markStarted
+const started = new Promise((r) => { markStarted = r })
+const held = await runFormat(chain, valuesFor(chain), { run: async (_, opts, meta) => {
+  if (meta.stepId === 'animate') { markStarted(); await new Promise((r) => { release = r }) }
+  return [{ url: 'https://example.test/held.png' }]
+} })
+held.engine.togglePick(held.flow, 'review', held.engine.reviewItems(held.flow, 'review')[0].id)
+const sending = held.send('review')
+await started
+assert.equal(held.busy, true)
+assert.equal((await held.retryFailed()).reason.code, 'busy')
+assert.equal((await held.start()).reason.code, 'busy')
+release()
+await sending
+assert.equal(held.busy, false)
+
+const cloudMissing = { ...comfy, steps: [comfy.steps[0], { ...comfy.steps[0], id: 'later', workflow: 'qwen_image21_t2i' }], outputs: [{ step: 'later', kind: 'image' }] }
+const tooBig = { ...comfy, steps: [comfy.steps[0], { id: 'later', model: 'comfy-ltx25', kind: 'video', prompt: '{subject}', from: ['generate'] }], outputs: [{ step: 'later', kind: 'video' }] }
+// Use the selected catalog id rather than a format-specific cost or requirement total.
+const ltx = (await import('../src/lib/catalog.js')).models.find((m) => m.workflow === 'ltx25_t2v')
+tooBig.steps[1].model = ltx.id
+const planningCases = [
+  [cloudMissing, { subject: 'A meadow' }, { runType: 'instant' }, 'needs_pod'],
+  [tooBig, { subject: 'A meadow' }, { runType: 'session', pod: { phase: 'ready', vramGb: 24 } }, 'pod_too_small'],
+  [chain, valuesFor(chain), { requirements: (w) => ({ ...offlineRequirements(w), connections: {} }) }, 'missing_key'],
+]
+for (const [format, values, options, code] of planningCases) {
+  let paid = 0
+  const blocked = await runFormat(format, values, { ...options, run: async () => { paid++; return [] } })
+  assert.equal(paid, 0, 'Every requirement must be checked before any paid step')
+  assert.equal(blocked.reason.code, code, blocked.error?.message)
+  assert(blocked.preflight.steps.some((s) => s.stepId === (code === 'missing_key' ? 'animate' : 'later')))
+  assert.equal(blocked.busy, false)
+  await blocked.retryFailed({ runType: 'session', pod: { phase: 'ready', vramGb: 128 }, requirements: offlineRequirements })
+  // The chain still waits at its approval gate.
+  assert(paid > 0)
+}
+const details = await preflight(cloudMissing, { subject: 'A meadow' }, { requirements: offlineRequirements, runType: 'instant' })
+assert(details.steps[1].notOnCloud.length > 0)
+assert(details.steps[1].minVramGb >= 24)
+assert.equal(details.cost.total, null, 'Unknown GPU prices stay unknown')
+const alternate = { ...cloudMissing, steps: [comfy.steps[0], { ...cloudMissing.steps[1], cloudWorkflow: 'image_flux' }] }
+const alternateCalls = []
+const cloudAlternate = await runFormat(alternate, { subject: 'A meadow' }, { runType: 'instant', run: async (model) => { alternateCalls.push(model.workflow); return [{ url: 'https://example.test/alternate.png' }] } })
+assert.equal(cloudAlternate.error, null)
+assert.deepEqual(alternateCalls, ['image_flux', 'image_flux'])
+assert(cloudAlternate.preflight.steps[1].notOnCloud.length)
+assert.equal(cloudAlternate.preflight.steps[1].cloud.notOnCloud.length, 0)
+
+const priced = { ...chain, steps: [{ ...imageRecipe.steps[0], id: 'first', takes: 2 }, { id: 'review', type: 'approve' }, { ...videoRecipe.steps[0], id: 'second', settings: { duration: 4 } }], outputs: [{ step: 'second', kind: 'video' }] }
+const prices = { [imageRecipe.model]: { price: { amount: 0.01, unit: 'image' } }, [videoRecipe.model]: { price: { amount: 0.02, unit: 'second' } } }
+const quote = await preflight(priced, valuesFor(priced), { requirements: offlineRequirements, prices })
+const { stepModel } = await import('../src/lib/formats/options.js')
+const { estimate } = await import('../shared/mapping.js')
+for (const [index, stepIndex] of [[0, 0], [2, 2]]) {
+  const model = stepModel(priced, priced.steps[stepIndex], valuesFor(priced))
+  assert.equal(quote.cost.steps[index].usd, estimate(model, prices[model.model], { ...quote.steps[index].options, takes: 2 }).usd)
+}
+assert.equal(quote.cost.total.usd, quote.cost.steps.reduce((n, s) => n + s.usd, 0))
+const invalidSession = await runFormat(imageRecipe, {}, { run: async () => assert.fail('Invalid input cannot spend') })
+assert.equal(invalidSession.reason.code, 'invalid_format')
+assert.equal(invalidSession.results().length, 0)
+assert.equal(invalidSession.busy, false)
+console.log('Runner resilience checks ok: exact retry counts, retained outputs and run id, approval and writer recovery, busy exclusion, input snapshots, whole-pipeline preflight, Cloud alternates and derived costs.')
 assert.equal(formats.length, 450)
 assert.equal(allFormats.length, 479, 'Do not delete planned formats')
 assert.equal(allFormats.filter((f) => f.category === 'camera').length > 0, true, 'Keep Create prompt presets')

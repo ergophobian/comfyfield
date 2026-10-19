@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { run, writePrompt } from './providers.js'
+import { modelPrices } from './cost.js'
 import { runFormat } from './formats/runner.js'
 
 const KEY = 'comfyfield.library'
@@ -14,6 +15,8 @@ export function useGenerations() {
   const [items, setItems] = useState(load)
   const [error, setError] = useState(null)
   const [retryLast, setRetryLast] = useState(null)
+  const sessions = useRef(new Map())
+  const [, changed] = useState(0)
   const active = useRef(0)
   const waiting = useRef([])
   const busy = items.some((i) => i.pending)
@@ -36,7 +39,7 @@ export function useGenerations() {
   }
 
   // meta can carry batch, row and prompt so the board can group results.
-  function execute(model, opts, meta = {}) {
+  function execute(model, opts, meta = {}, retryStep) {
     const id = crypto.randomUUID()
     const base = { aspect: opts.shape || opts.aspect, caption: opts.caption, model: model.name, kind: model.kind, provider: model.provider, ...meta }
     setError(null)
@@ -53,7 +56,7 @@ export function useGenerations() {
           resolve(files)
         } catch (e) {
           // Retry queues the same run again in place of the failed take.
-          const retry = () => { setItems((xs) => xs.filter((x) => x.id !== id)); generate(model, opts, meta) }
+          const retry = retryStep || (() => { setItems((xs) => xs.filter((x) => x.id !== id)); generate(model, opts, meta) })
           setError(e.message)
           setRetryLast(() => retry)
           setItems((xs) => xs.map((x) => (x.id === id ? { ...base, id, failed: e.message, retry } : x)))
@@ -65,7 +68,29 @@ export function useGenerations() {
   }
 
   const generate = (model, opts, meta) => { execute(model, opts, meta).catch(() => {}) }
-  const generateFormat = (format, values) => runFormat(format, values, { run: execute, writePrompt: ({ instructions, note, images, target }) => writePrompt({ instructions, note, images, target }) })
+  const generateFormat = (format, values, options = {}) => {
+    const previous = sessions.current.get(format.id)
+    if (previous && (previous.pending || previous.session?.busy)) return previous.session?.inFlight?.then(() => previous.session) || previous.promise
+    const record = { pending: true }
+    sessions.current.set(format.id, record)
+    record.promise = runFormat(format, values, {
+      prices: modelPrices,
+      ...options,
+      run: (model, opts, meta) => {
+        // A successful retry replaces the failed Library take for the same session step.
+        setItems((xs) => xs.filter((x) => !(x.failed && x.formatRunId === meta.formatRunId && x.stepId === meta.stepId)))
+        return execute(model, opts, meta, () => record.session.retry(meta.stepId))
+      },
+      writePrompt: ({ instructions, note, images, target }) => writePrompt({ instructions, note, images, target }),
+      onSession: (session) => { record.session = session; options.onSession?.(session) },
+      onChange: (state, session) => {
+        changed((n) => n + 1)
+        setError(session?.error?.message || null)
+        options.onChange?.(state, session)
+      },
+    }).finally(() => { record.pending = false })
+    return record.promise
+  }
 
   const toggleApprove = (id) => setItems((xs) => xs.map((x) => (x.id === id ? { ...x, approved: !x.approved } : x)))
   const dismiss = (id) => {

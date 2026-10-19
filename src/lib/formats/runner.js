@@ -1,7 +1,8 @@
-import { createEngine } from '../flowEngine.js'
+import { createEngine, downstreamOf } from '../flowEngine.js'
 import { initialValues, missingInputs, visibleInputs } from '../recipes.js'
 import { stepModel, stepOptions } from './options.js'
 import { validateFormat } from './validate.js'
+import { preflightFlow } from './preflight.js'
 import { aspectSize } from '../catalog.js'
 
 // The canvas whose ratio is nearest a picture's 'w:h' shape, or square without one.
@@ -15,7 +16,7 @@ export function nearestAspect(shape) {
 export function compileFormat(format, userInputs = {}) {
   const problems = validateFormat(format)
   if (problems.length) throw new Error(`${format.name}: ${problems.join('; ')}`)
-  const values = { ...initialValues(format), ...userInputs }
+  const values = { ...initialValues(format), ...structuredClone(userInputs) }
   const missing = missingInputs(format, values)
   if (missing.length) throw new Error(`Still needed: ${missing.map((i) => i.label || i.id).join(', ')}`)
   for (const input of visibleInputs(format, values)) {
@@ -66,36 +67,108 @@ export function compileFormat(format, userInputs = {}) {
   return { id: `format:${format.id}`, name: format.name, formatId: format.id, nodes, edges, outputs: format.outputs, values }
 }
 
+// Planning is read-only; requirements can be injected for offline adapters and checks.
+export async function preflight(format, values, options) {
+  return preflightFlow(compileFormat(format, values), options)
+}
+
 // run(model, options, metadata) must resolve to files and persist them to the caller's Library.
-// writePrompt is supplied by the prompt-writer lane; no writer calls are implicit.
-export async function runFormat(format, inputs, { run, writePrompt, onChange, concurrency } = {}) {
-  if (typeof run !== 'function') throw new Error('A Library generation adapter is required')
-  const flow = compileFormat(format, inputs)
+export async function runFormat(format, inputs, { run, writePrompt, onChange = () => {}, onSession = () => {}, concurrency, ...planning } = {}) {
+  let flow
+  let setupError
+  try {
+    flow = compileFormat(format, inputs)
+    if (typeof run !== 'function') throw new Error('A Library generation adapter is required')
+  } catch (error) {
+    setupError = error
+    flow ||= { nodes: [], edges: [], outputs: [], values: {} }
+  }
   const batch = globalThis.crypto.randomUUID()
+  let session
+  let operating = false
+  let operationError = setupError || null
+  let plan = null
+  let inFlight = null
+  const notify = () => onChange(engine.state, session)
   const engine = createEngine({
     concurrency,
-    onChange,
+    onChange: notify,
     writePrompt: writePrompt ? (input) => writePrompt({ ...input, inputs: flow.values, format }) : undefined,
     run: (model, unit) => {
       const { formatStep, ...target } = model
       const options = { ...formatStep.options, count: unit.count, caption: format.name }
+      const requirement = plan?.steps.find((s) => s.stepId === formatStep.id)
+      if (requirement?.target === 'cloud' && requirement.cloudWorkflow) {
+        target.workflow = requirement.cloudWorkflow
+        delete target.imageWorkflow
+      }
       if (formatStep.written && unit.prompt) options.prompt = unit.prompt
       if (formatStep.from.length && unit.image) {
         options.images = [unit.image]
         // An upstream picture takes the first slot; the format's other pictures keep theirs.
         if (options.slots) options.slots = { ...options.slots, pictures: [unit.image, ...options.slots.pictures.slice(1)] }
       }
-      // A graph needs a canvas: 'auto' takes the one nearest the first picture's shape.
       if (target.provider === 'comfy' && options.aspect === 'auto') options.aspect = nearestAspect(options.shape)
       return run(target, options, { formatId: format.id, stepId: formatStep.id, formatRunId: batch, prompt: options.prompt })
     },
   })
-  const results = () => flow.outputs.flatMap((out) => engine.itemsOf(flow, out.step) || [])
-  const check = () => {
-    const failed = Object.values(engine.state).flatMap((s) => s.items || []).find((i) => i.status === 'failed')
-    if (failed) throw new Error(failed.error)
+  const failures = () => Object.entries(engine.state).flatMap(([stepId, state]) => (state.items || []).filter((i) => i.status === 'failed').map((item) => ({ stepId, ...item })))
+  const retryScope = (ids = failures().map((f) => f.stepId)) => {
+    const failed = new Set(failures().map((f) => f.stepId))
+    return new Set(ids.filter((id) => failed.has(id)).flatMap((id) => [id, ...downstreamOf(flow, id)]))
   }
-  await engine.runNew(flow)
-  check()
-  return { flow, engine, results, sendWriter: async (id) => { const result = await engine.sendWriter(flow, id); check(); return result }, send: async (id) => { const result = await engine.send(flow, id); check(); return result } }
+  async function perform(action, overrides = {}, only = null) {
+    if (session.busy) return { ok: false, reason: { code: 'busy', message: 'This session is already running.' } }
+    if (setupError) return { ok: false, reason: session.reason }
+    operating = true
+    operationError = null
+    notify()
+    try {
+      plan = await preflightFlow(flow, { ...planning, ...overrides })
+      // A resumed run does not need the credentials or target of an already paid step.
+      const completed = new Set(Object.entries(engine.state).filter(([, s]) => s.items?.length && s.items.every((i) => i.status === 'done')).map(([id]) => id))
+      const reasons = plan.reasons.filter((r) => !completed.has(r.stepId) && (!only || only.has(r.stepId)))
+      plan = { ...plan, reasons, reason: reasons[0] || null, ok: !reasons.length }
+      notify()
+      if (!plan.ok) return { ok: false, reason: plan.reason }
+      const result = await action()
+      return session.error ? { ...result, ok: false, reason: session.reason } : result
+    } catch (error) {
+      operationError = error
+      return { ok: false, reason: session.reason }
+    } finally {
+      operating = false
+      notify()
+    }
+  }
+  const launch = (action, options, only) => {
+    if (session.busy) return Promise.resolve({ ok: false, reason: { code: 'busy', message: 'This session is already running.' } })
+    inFlight = perform(action, options, only)
+    return inFlight
+  }
+  session = {
+    flow, engine, id: batch,
+    results: () => flow.outputs.flatMap((out) => engine.itemsOf(flow, out.step) || []),
+    get busy() { return operating || engine.isRunning() },
+    get inFlight() { return inFlight },
+    get preflight() { return plan },
+    get cost() { return plan?.cost || null },
+    get failures() { return failures() },
+    get reason() {
+      if (operationError) return { code: operationError.code || (setupError ? 'invalid_format' : 'preflight_failed'), message: operationError.message }
+      if (plan && !plan.ok) return plan.reason
+      const failed = failures()[0]
+      return failed ? { code: failed.code || 'step_failed', stepId: failed.stepId, message: failed.error, detail: failed.reason } : null
+    },
+    get error() { const reason = session.reason; return reason ? Object.assign(new Error(reason.message), reason) : null },
+    get ok() { return !session.reason },
+    start: (options) => launch(() => engine.runNew(flow), options),
+    retry: (id, options) => launch(() => engine.retryFailed(flow, [id]), options, retryScope([id])),
+    retryFailed: (options) => launch(() => Object.keys(engine.state).length ? engine.retryFailed(flow) : engine.runNew(flow), options, Object.keys(engine.state).length ? retryScope() : null),
+    sendWriter: (id, options) => launch(() => engine.sendWriter(flow, id), options, downstreamOf(flow, id)),
+    send: (id, options) => launch(() => engine.send(flow, id), options, downstreamOf(flow, id)),
+  }
+  onSession(session)
+  await session.start()
+  return session
 }

@@ -602,6 +602,31 @@ export function workflowNeeds(workflow) {
   return { files: needs.filter((n) => !n.runtime), runtimes: needs.filter((n) => n.runtime), minVramGb: minVramOf(needs), volumeGb: volumeFor(needs) }
 }
 
+// Read-only pipeline planning. No clients, uploads, leases or downloads are created.
+export function comfyRequirements(workflows = []) {
+  if (!Array.isArray(workflows) || workflows.length > 200) throw Object.assign(new Error('Supply up to 200 workflows.'), { status: 400 })
+  return workflows.map(({ workflow, vars = {} }) => {
+    const template = dropOptional(readWorkflow(workflow).template, vars)
+    const needs = podNeedsOf(fill(template, vars))
+    return { workflow, notOnCloud: notOnCloud(needs), minVramGb: minVramOf(needs), arch: archOf(needs) }
+  })
+}
+
+export function formatRequirements(workflows) {
+  const requirements = comfyRequirements(workflows)
+  const connected = connections()
+  return {
+    requirements,
+    connections: Object.fromEntries(Object.entries(connected).map(([id, c]) => [id, { connected: c.connected }])),
+    // Keep the writer's connection contract explicit when another writer provider is added.
+    writerProviders: ['google'],
+    runType: runType(),
+    pod: { phase: pod().status().phase, vramGb: pod().vramGb(), arch: pod().arch() },
+    cloudConnected: Boolean(config('comfy').key),
+    local: comfyMode() === 'local',
+  }
+}
+
 // The catalog model a workflow belongs to, and the graph a big enough Pod runs for it instead.
 const modelOf = (workflow) => pinned.find((m) => m.workflow === workflow || m.imageWorkflow === workflow)
 function podWorkflowOf(workflow) {
