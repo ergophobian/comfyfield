@@ -54,6 +54,16 @@ export function photodumpFormat(setId = photodumpSets[0].id, count = 15) {
 }
 
 export const reframeRatios = ['9:16', '16:9', '4:3', '3:4', '21:9', '1:1', '4:5']
+// Avoid tiny fitted centers and runs whose preserved center would cover the entire output.
+export function reframeIssue(source, target) {
+  const [w, h] = String(source || '').split(':').map(Number)
+  const [tw, th] = String(target || '').split(':').map(Number)
+  if (![w, h, tw, th].every((n) => Number.isFinite(n) && n > 0)) return 'Image dimensions are unavailable. Choose another image.'
+  if (w / h < 1 / 4 || w / h > 4) return 'Use an image with a ratio between 1:4 and 4:1. Crop extreme panoramas before reframing.'
+  if (Math.abs(w / h / (tw / th) - 1) < 0.005) return 'This image already matches the target ratio. Choose a different ratio to add new edges.'
+  return null
+}
+
 export const reframeFormat = {
   id: 'reframe-image', name: 'Reframe image', job: 'Expand a photo into a new aspect ratio',
   shape: 'tool', kind: 'image', category: 'image-edit', runsOn: 'Qwen edit 2511',

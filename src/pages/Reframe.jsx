@@ -4,7 +4,7 @@ import { Field } from '../components/formats/Fields.jsx'
 import Results from '../components/Results.jsx'
 import { Hero, Box, Ratios, Pills, ErrorNote, fitBox } from '../components/studiob/Kit.jsx'
 import { useApp } from '../lib/appContext.js'
-import { reframeFormat, reframeRatios } from '../lib/formats/photodumpReframe.js'
+import { reframeFormat, reframeRatios, reframeIssue } from '../lib/formats/photodumpReframe.js'
 
 export default function Reframe() {
   const { gens } = useApp()
@@ -15,10 +15,11 @@ export default function Reframe() {
   const [direction, setDirection] = useState('')
   const [error, setError] = useState(null)
   const [running, setRunning] = useState(false)
+  const issue = image?.url ? reframeIssue(image.ratio, target) : null
   const media = mode === 'image' ? image : video
   const items = gens.items.filter((item) => item.formatId === reframeFormat.id && !item.failed)
   const run = async () => {
-    if (running || mode !== 'image' || !image?.url) return
+    if (running || mode !== 'image' || !image?.url || issue) return
     setRunning(true)
     setError(null)
     try { await gens.generateFormat(reframeFormat, { image, ratio: target, direction }) }
@@ -52,7 +53,8 @@ export default function Reframe() {
             <>
               <Field input={{ id: 'direction', type: 'longtext', label: 'New edges', optional: true, placeholder: 'Continue the beach and sky' }} value={direction} onChange={setDirection} />
               <p className="sheet-note">Qwen edit 2511. The source scales to fit, then the center is composited back with a blended seam. New workflow, untested live.</p>
-              <button type="button" className="btn-blue" disabled={!image?.url || running} onClick={run}>{running ? 'Reframing…' : 'Generate reframe'}</button>
+              <button type="button" className="btn-blue" disabled={!image?.url || !!issue || running} onClick={run}>{running ? 'Reframing…' : 'Generate reframe'}</button>
+              {issue && <p className="sheet-note" role="status">{issue}</p>}
               <p className="sheet-note">Results save to the <Link to="/assets">Library</Link>.</p>
             </>
           ) : (

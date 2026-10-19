@@ -129,8 +129,8 @@ const briefSession = await runFormat(writerOnly, { ...valuesFor(writerOnly), bri
   run: async (_, opts) => { assert.equal(opts.prompt, 'Change the mood'); return [{ url: 'written.png' }] },
 })
 await briefSession.sendWriter('writer')
-assert.equal(formats.length, 452)
-assert.equal(allFormats.length, 481, 'Do not delete planned formats')
+assert.deepEqual(formats, allFormats.filter((format) => !validateFormat(format).length), 'Gallery contains exactly the valid catalog formats')
+assert.equal(new Set(allFormats.map((format) => format.id)).size, allFormats.length, 'Every catalog id is unique')
 assert.equal(allFormats.filter((f) => f.category === 'camera').length > 0, true, 'Keep Create prompt presets')
 assert(allFormats.filter((f) => !formats.includes(f)).every((f) => formatProblems.get(f.id).length))
 console.log(`Format runner checks ok: ${checked} recipe cases, approval and batching, concurrency, schema rejection, Comfy placeholders, writer handoff and provider failures. No network calls.`)

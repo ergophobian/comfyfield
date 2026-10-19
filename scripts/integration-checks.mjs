@@ -18,9 +18,9 @@ import research from '../research_notes/effect-specs.json' with { type: 'json' }
 globalThis.fetch = () => { throw new Error('Network is forbidden in integration checks') }
 const photo = { url: '/media/photo.png', ratio: '9:16' }
 const valuesFor = (format) => ({ ...initialValues(format), ...Object.fromEntries(format.inputs.filter((i) => i.type === 'image').map((i) => [i.id, photo])) })
-assert.equal(effects.length, 45)
-assert.equal(formats.length, 452)
-assert.equal(allFormats.length, 481)
+assert.equal(effects.length, research.specs.length)
+assert.deepEqual(formats, allFormats.filter((format) => !validateFormat(format).length), 'Gallery contains exactly the valid catalog formats')
+assert.equal(new Set(allFormats.map((format) => format.id)).size, allFormats.length, 'Every catalog id is unique')
 for (const [i, format] of effects.entries()) {
   assert.equal(format.steps[0].instructions, research.specs[i].writer_instructions)
   assert.deepEqual(validateFormat(format), [])

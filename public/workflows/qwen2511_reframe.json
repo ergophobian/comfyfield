@@ -188,7 +188,7 @@
   "19": {
     "class_type": "ComfyMathExpression",
     "inputs": {
-      "expression": "max(8, 8 * floor(min({{width}}, {{height}} * a / b) / 8))",
+      "expression": "max(1, floor(min({{width}}, {{height}} * a / b) + 0.5))",
       "values.a": [
         "8",
         0
@@ -202,7 +202,7 @@
   "20": {
     "class_type": "ComfyMathExpression",
     "inputs": {
-      "expression": "max(8, 8 * floor(min({{height}}, {{width}} * b / a) / 8))",
+      "expression": "max(1, floor(min({{height}}, {{width}} * b / a) + 0.5))",
       "values.a": [
         "8",
         0
@@ -235,7 +235,7 @@
   "22": {
     "class_type": "ComfyMathExpression",
     "inputs": {
-      "expression": "({{width}} - a) / 2",
+      "expression": "floor(({{width}} - a) / 2)",
       "values.a": [
         "19",
         1
@@ -245,7 +245,7 @@
   "23": {
     "class_type": "ComfyMathExpression",
     "inputs": {
-      "expression": "({{height}} - a) / 2",
+      "expression": "floor(({{height}} - a) / 2)",
       "values.a": [
         "20",
         1
@@ -264,7 +264,7 @@
         1
       ],
       "right": [
-        "22",
+        "28",
         1
       ],
       "top": [
@@ -272,10 +272,13 @@
         1
       ],
       "bottom": [
-        "23",
+        "29",
         1
       ],
-      "feathering": 32
+      "feathering": [
+        "24",
+        1
+      ]
     }
   },
   "26": {
@@ -304,6 +307,40 @@
       "mask": [
         "26",
         0
+      ]
+    }
+  },
+  "24": {
+    "class_type": "ComfyMathExpression",
+    "inputs": {
+      "expression": "max(0, min(32, floor((min(a, b) - 1) / 2)))",
+      "values.a": [
+        "19",
+        1
+      ],
+      "values.b": [
+        "20",
+        1
+      ]
+    }
+  },
+  "28": {
+    "class_type": "ComfyMathExpression",
+    "inputs": {
+      "expression": "{{width}} - a - floor(({{width}} - a) / 2)",
+      "values.a": [
+        "19",
+        1
+      ]
+    }
+  },
+  "29": {
+    "class_type": "ComfyMathExpression",
+    "inputs": {
+      "expression": "{{height}} - a - floor(({{height}} - a) / 2)",
+      "values.a": [
+        "20",
+        1
       ]
     }
   }

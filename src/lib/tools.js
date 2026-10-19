@@ -35,7 +35,7 @@ export const tools = [
   { id: 'mixed-media', name: 'Mixed media', menu: 'video', route: '/mixed-media', blurb: 'Restyle a clip with a mixed media look' },
   { id: 'edit-video', name: 'Edit video', menu: 'video', route: '/video/edit', blurb: 'Edit scenes, shots and elements' },
   { id: 'video-upscale', name: 'Video upscale', menu: 'video', route: '/upscale?kind=video', blurb: 'Enhance video quality' },
-  { id: 'reframe', name: 'Reframe', menu: 'video', route: '/reframe', blurb: 'Reframe and resize a video to any ratio' },
+  { id: 'reframe', name: 'Reframe', menu: 'image', route: '/reframe', blurb: 'Extend an image to a new ratio. Video is not wired yet' },
   { id: 'click-to-ad', name: 'Click to ad', menu: 'video', route: '/ads', blurb: 'Turn a product link into video ads' },
   { id: 'color-palette', name: 'Change color palette', menu: 'video', route: '/apps/color-grade', format: 'color-grade', blurb: 'Adjust palette, tones and mood' },
   { id: 'motion-control', name: 'Motion control', menu: 'video', route: '/video?tab=motion', blurb: 'Transfer motion from a video to an image' },
