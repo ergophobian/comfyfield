@@ -7,6 +7,7 @@ import json
 import os
 import re
 import shutil
+import socketserver
 import subprocess
 import threading
 import time
@@ -23,6 +24,9 @@ HF = E.get('CF_HF_BASE', 'https://huggingface.co')
 TOKEN = E.get('POD_TOKEN', '')
 PORT = int(E.get('CF_STATUS_PORT', '8190'))
 TICK = float(E.get('CF_TICK', '15'))
+# The shell for the runtime installers and the self-terminate script: bash on a Pod. On Windows,
+# process search looks in System32 before PATH and can find the WSL launcher, so it can be given.
+BASH = E.get('CF_BASH') or shutil.which('bash') or 'bash'
 DIRS = ('checkpoints', 'diffusion_models', 'text_encoders', 'vae', 'loras', 'upscale_models', 'latent_upscale_models', 'clip_vision')
 # Runtimes the boot script wrote an installer for, and where each one writes machine.json when it is ready.
 RUNTIME_HOMES = {'freevideo': E.get('CF_FREEVIDEO_HOME', '/workspace/freevideo')}
@@ -140,7 +144,9 @@ def last_error(logfile):
   # The installer's own last word is the most useful reason; prefer a line that says what failed.
   try:
     with open(logfile, errors='replace') as f:
-      lines = [l.strip() for l in f.readlines()[-80:] if l.strip()]
+      # A tool that writes UTF-16, such as the WSL launcher, leaves NUL bytes in a text read.
+      lines = [l.replace('\x00', '').strip() for l in f.readlines()[-80:]]
+      lines = [l for l in lines if l]
   except OSError:
     return None
   hits = [l for l in lines if re.search(r'error|fail|insufficient|refus|cannot|could not|not on the pod', l, re.I)]
@@ -155,7 +161,7 @@ def install(name):
   log('installing %s' % name)
   try:
     with open(logfile, 'a') as out:
-      code = subprocess.run(['bash', os.path.join(BASE, 'runtime-%s.sh' % name)], stdout=out, stderr=subprocess.STDOUT,
+      code = subprocess.run([BASH, os.path.join(BASE, 'runtime-%s.sh' % name)], stdout=out, stderr=subprocess.STDOUT,
                             stdin=subprocess.DEVNULL).returncode
     err = None if code == 0 and runtime_ready(name) else (last_error(logfile) or 'the installer stopped (exit %s)' % code)
   except Exception as e:
@@ -206,7 +212,7 @@ def terminate(reason):
     with open(os.path.join(BASE, 'terminated'), 'w') as f:
       f.write(reason)
     return
-  ok = subprocess.run(['bash', os.path.join(BASE, 'kill-pod.sh'), reason]).returncode == 0
+  ok = subprocess.run([BASH, os.path.join(BASE, 'kill-pod.sh'), reason]).returncode == 0
   # A terminate that worked stops this process. Still here later means it failed, whatever the
   # script said, so the watchdog decides again. The app's monitor also terminates from outside.
   time.sleep(90 if ok else 60)
@@ -324,6 +330,14 @@ def downloader():
         time.sleep(3)
 
 
+class Server(ThreadingHTTPServer):
+  # HTTPServer.server_bind looks up this host's full name (socket.getfqdn), which can stall for
+  # many seconds on macOS. Nothing here uses that name.
+  def server_bind(self):
+    socketserver.TCPServer.server_bind(self)
+    self.server_name, self.server_port = self.server_address[:2]
+
+
 class Handler(BaseHTTPRequestHandler):
   def log_message(self, *args):
     pass
@@ -401,8 +415,9 @@ def main():
     os.makedirs(os.path.join(MODELS, d), exist_ok=True)
   for target in (watchdog, downloader):
     threading.Thread(target=target, daemon=True).start()
+  log('starting on port %d' % PORT)
   # Bind first, so the log line means the port answers.
-  server = ThreadingHTTPServer(('0.0.0.0', PORT), Handler)
+  server = Server(('0.0.0.0', PORT), Handler)
   log('status server on port %d' % PORT)
   server.serve_forever()
 
