@@ -9,7 +9,9 @@ import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { models, aspects } from '../src/lib/catalog.js'
 import { schemas } from '../src/lib/formats/schemas.js'
-import { routerInputErrors } from '../src/lib/formats/validate.js'
+import { validateFormat, routerInputErrors } from '../src/lib/formats/validate.js'
+import { runFormat } from '../src/lib/formats/runner.js'
+import { expectedInputs, prompt } from './fixtures/router-payloads.mjs'
 import { comfyRouterInput } from '../shared/mapping.js'
 
 // No inherited provider configuration can reach these mocked checks.
@@ -51,6 +53,99 @@ await test('Every pinned Router mapping matches its public schema for all compos
   assert.equal(schemas.router['byteplus/seedream-5-0-flash-260915'].properties.image.oneOf[1].maxItems, 10)
   assert(routerInputErrors({ content: [{ type: 'image_url', image_url: {} }] }, schemas.router['byteplus/dreamina-seedance-2-5-260628']).length)
   assert(routerInputErrors({ inputs: [{ text: 'Hi' }] }, schemas.router['elevenlabs/eleven_v4_turbo']).length)
+  for (const item of [42, null, [], 'invalid']) assert(routerInputErrors({ inputs: [item] }, schemas.router['elevenlabs/eleven_v4_turbo']).length)
+})
+
+await test('Native payloads match independent expectations for every curated model', () => {
+  for (const model of models.filter((m) => m.provider === 'comfyRouter')) {
+    assert.deepEqual(comfyRouterInput(model.model, { prompt, aspect: model.kind === 'image' ? '1:1' : '16:9', duration: 5 }), expectedInputs[model.model], model.id)
+  }
+})
+
+await test('Router consumes ordered format slots and character or product references', () => {
+  const a = 'https://example.test/product.png'
+  const b = 'https://example.test/person.png'
+  const opts = { prompt: 'Edit', aspect: '1:1', slots: { pictures: [a, null, b] }, images: ['https://example.test/ignored.png'] }
+  assert.deepEqual(comfyRouterInput('bfl/flux-2-pro', opts), { prompt: 'Edit', width: 1024, height: 1024, input_image: a, input_image_2: b })
+  const refs = [{ type: 'product', images: [a] }, { type: 'character', images: [b] }, { type: 'brand', images: ['ignored'] }]
+  assert.deepEqual(comfyRouterInput('byteplus/seedream-5-0-flash-260915', { prompt: 'Edit', aspect: '1:1', refs }), { prompt: 'Edit', size: '1024x1024', response_format: 'url', image: [a, b] })
+  assert.throws(() => comfyRouterInput('luma/photon-flash-1', opts), /up to 0/)
+  const mixed = comfyRouterInput('bfl/flux-2-pro', { prompt: 'Edit', aspect: '1:1', images: [a], refs })
+  assert.deepEqual(mixed, { prompt: 'Edit', width: 1024, height: 1024, input_image: a, input_image_2: b })
+  assert.deepEqual(comfyRouterInput('byteplus/seedance-1-0-pro-fast-251015', { prompt: 'Move', images: [a] }), { content: [{ type: 'text', text: 'Move' }, { type: 'image_url', image_url: { url: a }, role: 'first_frame' }], duration: 5, resolution: '720p' })
+  assert.deepEqual(comfyRouterInput('byteplus/dreamina-seedance-2-5-260628', { prompt: 'Move', slots: { pictures: [a, b] } }), { content: [{ type: 'text', text: 'Move' }, { type: 'image_url', image_url: { url: a }, role: 'reference_image' }, { type: 'image_url', image_url: { url: b }, role: 'reference_image' }], duration: 5, resolution: '720p', ratio: '16:9' })
+})
+
+await test('Router chains reject unsupported upstream images before any generation, including gates and targets', async () => {
+  const base = { id: 'router-chain', name: 'Router chain', job: 'Test chain', shape: 'chain', kind: 'image', cover: 'test', inputs: [], steps: [{ id: 'first', model: 'comfy-router-flux' }, { id: 'gate', type: 'approve' }, { id: 'last', model: 'comfy-router-photon', settings: { aspect: '16:9' } }], outputs: [{ step: 'last', kind: 'image' }] }
+  let calls = 0
+  for (const [model, kind] of [['comfy-router-photon', 'image'], ['comfy-router-ltx', 'video']]) {
+    const format = { ...base, steps: [...base.steps.slice(0, 2), { ...base.steps[2], model, kind }], outputs: [{ step: 'last', kind }] }
+    assert(validateFormat(format).some((error) => /up to 0/.test(error)))
+    await assert.rejects(runFormat(format, {}, { run: async () => { calls++; return [] } }), /up to 0/)
+  }
+  const targets = { ...base, inputs: [{ id: 'target', type: 'choice', label: 'Target', default: 'flux', options: [{ id: 'flux', label: 'Flux' }, { id: 'photon', label: 'Photon' }] }], steps: [...base.steps.slice(0, 2), { ...base.steps[2], model: 'comfy-router-flux', targetInput: 'target', targets: { flux: { model: 'comfy-router-flux' }, photon: { model: 'comfy-router-photon' } } }] }
+  assert(validateFormat(targets).some((error) => /up to 0/.test(error)))
+  assert.equal(calls, 0)
+  assert.deepEqual(validateFormat({ ...base, steps: [base.steps[0], { ...base.steps[2], model: 'comfy-router-flux' }] }), [])
+  const product = { ...base, inputs: [{ id: 'product', type: 'product', label: 'Product' }], steps: [{ id: 'last', model: 'comfy-router-flux' }] }
+  assert.deepEqual(validateFormat(product), [])
+  let mapped = false
+  await runFormat(product, { product: { name: 'Cup', images: ['https://example.test/cup.png'] } }, { run: async (model, opts) => {
+    mapped = true
+    assert.equal(comfyRouterInput(model.model, opts).input_image, 'https://example.test/cup.png')
+    return [{ url: 'https://example.test/output.png', kind: 'image' }]
+  } })
+  assert(mapped)
+})
+
+await test('Seedream base64 is saved locally and octet-stream audio is playable for both audio models', async () => {
+  setup()
+  const bytes = Buffer.from('mock generated png')
+  let replies = [json(job), json({ status: 'COMPLETED' }), json({ data: [{ b64_json: bytes.toString('base64') }] })]
+  globalThis.fetch = async () => replies.shift()
+  const [image] = await core.runComfyRouter({ model: 'byteplus/seedream-5-0-flash-260915', input: { response_format: 'b64_json' } }, noWait)
+  assert.equal(image.kind, 'image')
+  assert.deepEqual(core.readLocal(image.url).buf, bytes)
+  assert.deepEqual(fs.readFileSync(image.path), bytes)
+  const [saved] = await core.saveFiles([image], path.join(process.env.COMFYFIELD_HOME, 'saved'))
+  assert.deepEqual(fs.readFileSync(saved), bytes)
+  for (const model of ['elevenlabs/eleven_v4_turbo', 'elevenlabs/eleven_sfx_v2']) {
+    replies = [json(job), json({ status: 'COMPLETED' }), new Response('mock audio', { headers: { 'Content-Type': 'application/octet-stream' } })]
+    const [audio] = await core.runComfyRouter({ model, input: {} }, noWait)
+    assert.equal(audio.kind, 'audio')
+    assert.match(audio.url, /\.mp3$/)
+    assert.equal(core.readLocal(audio.url).buf.toString(), 'mock audio')
+  }
+})
+
+await test('HTML retry responses preserve the queued job and honor Retry-After before JSON parsing', async () => {
+  setup()
+  const replies = [json(job, 201, { 'Retry-After': '1' }), new Response('<html>Busy</html>', { status: 503, headers: { 'Retry-After': '2' } }), new Response('<html>Limit</html>', { status: 429, headers: { 'Retry-After': '3' } }), json({ status: 'COMPLETED' }), new Response('<html>Busy</html>', { status: 503, headers: { 'Retry-After': '4' } }), json({ status: 'COMPLETED' }), new Response('<html>Limit</html>', { status: 429, headers: { 'Retry-After': '5' } }), json({ status: 'COMPLETED' }), json({ result: { sample: 'https://example.test/image.png' } })]
+  const pauses = []
+  let submits = 0
+  globalThis.fetch = async (url, opts) => { if (opts.method === 'POST') submits++; assert(replies.length); return replies.shift() }
+  assert.equal((await core.runComfyRouter({ model: 'bfl/flux-2-pro', input: {}, idempotencyKey: 'original-key' }, { pause: async (ms) => pauses.push(ms) })).length, 1)
+  assert.deepEqual(pauses, [1000, 2000, 3000, 4000, 5000])
+  assert.equal(submits, 1)
+  for (const stage of ['submit', 'status', 'result']) {
+    const html = new Response('<html>Bad gateway</html>', { status: 502, headers: { 'X-Comfy-Request-Id': `bad-${stage}` } })
+    const next = stage === 'submit' ? [html] : stage === 'status' ? [json(job), html] : [json(job), json({ status: 'COMPLETED' }), html]
+    globalThis.fetch = async () => next.shift()
+    await assert.rejects(core.runComfyRouter({ model: 'bfl/flux-2-pro', input: {} }, noWait), (error) => !(error instanceof SyntaxError) && error.requestId === `bad-${stage}`)
+  }
+})
+
+await test('Malformed successful Router JSON fails with recovery context, without parser exceptions', async () => {
+  setup()
+  for (const value of [null, [], 42, '<html>']) {
+    for (const stage of ['status', 'result']) {
+      const bad = typeof value === 'string' ? new Response(value) : json(value)
+      const replies = stage === 'status' ? [json(job), bad] : [json(job), json({ status: 'COMPLETED' }), bad]
+      globalThis.fetch = async () => replies.shift()
+      await assert.rejects(core.runComfyRouter({ model: 'bfl/flux-2-pro', input: {} }, noWait), (error) => error.requestId === job.request_id && /invalid/.test(error.message))
+    }
+  }
 })
 
 await test('Router references keep their order, unsupported inputs fail, and prices use the published units', async () => {

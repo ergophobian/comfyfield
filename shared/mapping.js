@@ -64,7 +64,9 @@ export function comfyVars(kind, o, sizes) {
 }
 
 export function comfyRouterInput(model, o) {
-  const pictures = o.images?.length ? o.images : o.image ? [o.image] : []
+  const attached = o.images?.length ? o.images : o.image ? [o.image] : []
+  const references = (o.refs || []).filter((r) => ['character', 'product'].includes(r.type)).map((r) => r.images?.[0]).filter((url) => !attached.includes(url))
+  const pictures = (o.slots?.pictures || [...attached, ...references]).filter(Boolean)
   const params = { ...o.params, ...o.fields }
   const aspect = o.aspect === 'auto' || !o.aspect ? '16:9' : o.aspect
   const size = aspectSize[aspect]
@@ -103,9 +105,13 @@ export function comfyRouterInput(model, o) {
     return { prompt: o.prompt, duration: o.duration || 5, resolution: aspect === '9:16' ? '720x1280' : '1280x720', fps: 24, ...params }
   }
   if (model === 'elevenlabs/eleven_v4_turbo') {
+    limited(0)
     return { inputs: [{ text: o.prompt, voice_id: params.voice_id || '21m00Tcm4TlvDq8ikWAM' }], ...Object.fromEntries(Object.entries(params).filter(([key]) => key !== 'voice_id')) }
   }
-  if (model === 'elevenlabs/eleven_sfx_v2') return { text: o.prompt, duration_seconds: o.duration || 5, ...params }
+  if (model === 'elevenlabs/eleven_sfx_v2') {
+    limited(0)
+    return { text: o.prompt, duration_seconds: o.duration || 5, ...params }
+  }
   throw new Error('This Router model needs its native input body. Call runComfyRouter with input.')
 }
 

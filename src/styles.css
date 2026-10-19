@@ -401,7 +401,7 @@ code { font-size: .92em; }
 .picker-pick { flex: 1; min-width: 0; text-align: left; padding: 8px; display: flex; flex-direction: column; gap: 2px; }
 .picker-name { font-size: var(--text-md); font-weight: 500; }
 .picker-row.on .picker-name { color: var(--blue); }
-.picker-sub { display: flex; align-items: center; gap: 6px; font-size: var(--text-xs); color: var(--muted); white-space: nowrap; overflow: hidden; }
+.picker-sub { display: flex; align-items: center; gap: 6px; font-size: var(--text-xs); color: var(--muted); flex-wrap: wrap; }
 .picker-sub em { font-style: normal; color: var(--blue); }
 .picker-row kbd { font: 500 var(--text-xs) 'Inter', sans-serif; color: var(--muted); padding: 2px 6px; border-radius: var(--r-xs); background: var(--ink-fill); }
 .picker-star { color: var(--faint); padding: 4px; border-radius: var(--r-sm); transition: color var(--dur-fast), transform var(--dur-press) var(--spring); }

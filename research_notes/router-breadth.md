@@ -63,3 +63,27 @@ Validation completed:
 The first Windows full run used the WSL Bash alias and failed unchanged Pod shell fixtures. Selecting installed Git Bash made all 75 Pod checks pass, then the complete final suite passed. No repository workaround was needed.
 
 [Full build and verification output](screenshots/router-breadth/verification.txt).
+
+## Review fixes after rebasing main
+
+Rebased `90e1e1c` onto `origin/main` at `7ee3b1c` without conflicts; the original breadth commit is now `3f17537`. Main's Instant/Session and Skills code is retained. The protected Pod files and `comfyTarget` / `runComfy` routing remain unchanged relative to main.
+
+All seven review findings are fixed:
+
+1. Partial image batches save each completed image to the Library immediately. A batch snapshots its native body and assigns one stable key per image. Retry skips completed images, reuses outstanding keys, and ignores duplicate retry clicks. The real hook/browser fixture loses the second accepted response in a three-image batch: four submissions use three unique keys, all three images persist, and image one is never submitted twice. Retry state lives in the current session; completed Library items survive reload.
+2. The Router mapper consumes ordered `slots.pictures`, including saved character and product pictures. Without slots it combines uploaded pictures and saved character/product references without duplicating pictures already present in `images`. Validation samples now contain real reference-shaped values, rather than silently empty Library entries.
+3. Seedream `b64_json` results decode to local image files. Their media paths also support the shared CLI download/copy adapter.
+4. The Router writer sends `Idempotency-Key`, accepts a caller-supplied stable key, retains the key on errors, and includes `X-Comfy-Request-Id` in diagnostic errors. The browser assigns the key to the logical writer request before sending; the local route preserves both diagnostic fields. This follows the public [error guidance](https://docs.comfy.org/development/comfy-router/errors) and [header contract](https://docs.comfy.org/development/comfy-router/headers). Tests cover same-key recovery, generated keys, incomplete output and malformed responses.
+5. Format validation injects an upstream image into Router options, matching the runtime adapter. Flux to Photon/Ltx fails before any generation, including approval-gated chains and alternate targets. Supported Flux chains still validate.
+6. Queued status/result reads handle retryable responses before parsing, honor `Retry-After`, and retain the original job. Malformed or non-object JSON produces a contextual error rather than a parser exception. Checks cover HTML 429/503 responses at both read stages and malformed successful responses.
+7. Image studio limits combine uploads and Library pictures, reserve slots while uploads are pending, prevent further Library attachment at capacity, and block Generate after switching to a model with a smaller limit. Existing references remain visible so the user can remove them explicitly.
+
+Additional review items are fixed: both audio models accept binary `application/octet-stream` as mp3; object schemas reject numbers, null, arrays and strings; every picker model has a hand-written native payload expectation independent of the production mapper; 390px picker price units wrap visibly rather than clipping.
+
+Windows scratch clone: `C:/Users/User/cf-router-review-32a4422e`. Commands run sequentially with only an allowlist of operating-system environment variables, Git Bash on the path, no `.env` or saved configuration, and mocked provider requests. No keys or paid generations were used. Live provider behavior, account availability and billing remain unverified.
+
+Final validation: production build passes (334 modules, existing chunk-size warning); `node scripts/verify.mjs` passes 17/17 scripts, including 21 core checks, 9 writer checks, 82 unchanged Pod checks, and the extended Router browser fixture. The latter checks ten picker models, native payloads, combined references, partial recovery, duplicate-click protection, Library reload, and 390px layout.
+
+- [Full review build and check output](screenshots/router-breadth/review-verification.txt)
+- [Partial batch after failure](screenshots/router-breadth/partial-batch-failure.png)
+- [Recovered batch with three results](screenshots/router-breadth/partial-batch-recovered.png)

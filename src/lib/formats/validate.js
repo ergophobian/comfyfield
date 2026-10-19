@@ -15,11 +15,13 @@ const variables = (text) => [...String(text || '').matchAll(/\{(\w+)\}/g)].map((
 function sampleValues(format) {
   return Object.fromEntries(format.inputs.map((i) => [i.id, i.type === 'choice' ? i.default ?? i.options?.[0]?.id
     : i.type === 'count' ? i.default ?? i.options?.[0] : media.has(i.type) ? { url: 'https://example.test/input.png', ratio: '1:1', maskUrl: 'https://example.test/mask.png', faceUrl: 'https://example.test/face.png', duration: 5, trim: { start: 0, end: 5 }, box: { x: 0, y: 0, width: 1, height: 1 } }
-      : types.has(i.type) && !['text', 'longtext'].includes(i.type) ? { name: 'Sample' } : 'Sample']))
+      : ['character', 'product'].includes(i.type) ? { name: 'Sample', images: ['https://example.test/reference.png'] }
+        : types.has(i.type) && !['text', 'longtext'].includes(i.type) ? { name: 'Sample' } : 'Sample']))
 }
 
 function checkValue(value, schema) {
   if (schema.enum && !schema.enum.includes(value)) return `must be one of ${schema.enum.join(', ')}`
+  if (schema.type === 'object' && (!value || typeof value !== 'object' || Array.isArray(value))) return 'must be an object'
   if (schema.type === 'array' && !Array.isArray(value)) return 'must be an array'
   if (schema.type === 'integer' && !Number.isInteger(value)) return 'must be an integer'
   if (['string', 'number', 'boolean'].includes(schema.type) && typeof value !== schema.type) return `must be ${schema.type}`
@@ -211,7 +213,13 @@ export function validateFormat(format, schemas = savedSchemas) {
       } else if (model.provider === 'comfyRouter') {
         for (const variant of variants) {
           try {
-            const mapped = comfyRouterInput(model.model, optionsFor(step, variant))
+            const opts = optionsFor(step, variant)
+            if (upstream.length) {
+              const image = 'https://example.test/output.png'
+              opts.images = [image]
+              if (opts.slots) opts.slots = { ...opts.slots, pictures: [image, ...opts.slots.pictures.slice(1)] }
+            }
+            const mapped = comfyRouterInput(model.model, opts)
             for (const field of Object.keys(mapped)) if (!schema.properties[field]) bad(`${label} Unknown Router field ${field}`)
             for (const error of routerInputErrors(mapped, schema)) bad(`${label} ${error}`)
           } catch (error) { bad(`${label} ${error.message}`) }

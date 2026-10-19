@@ -137,6 +137,29 @@ check('Router writer rejects empty, refused, truncated and failed output without
   assert.equal(calls.length, before)
 })
 
+check('Router writer keeps the supplied logical key and exposes request ids on every error path', async () => {
+  key = ''
+  const request = { ...input, idempotencyKey: 'logical-writer-key' }
+  response = { ok: false, status: 503, headers: new Headers({ 'X-Comfy-Request-Id': 'writer-request-1', 'X-Comfy-Error-Type': 'provider_unavailable' }), json: async () => { throw new SyntaxError('HTML') } }
+  for (let i = 0; i < 2; i++) {
+    await assert.rejects(writePrompt(request), (error) => error.requestId === 'writer-request-1' && error.idempotencyKey === request.idempotencyKey && /writer-request-1/.test(error.message))
+    assert.equal(calls.at(-1).headers['Idempotency-Key'], request.idempotencyKey)
+  }
+  response = { ok: true, status: 200, headers: new Headers({ 'X-Comfy-Request-Id': 'writer-invalid-json' }), json: async () => null }
+  await assert.rejects(writePrompt(request), (error) => error.requestId === 'writer-invalid-json' && error.idempotencyKey === request.idempotencyKey)
+  response = routerReply('Partial', 'incomplete')
+  response.headers = new Headers({ 'X-Comfy-Request-Id': 'writer-incomplete' })
+  await assert.rejects(writePrompt(request), (error) => error.requestId === 'writer-incomplete' && error.idempotencyKey === request.idempotencyKey)
+  response = routerReply('Recovered')
+  assert.equal(await writePrompt(request), 'Recovered')
+  assert.equal(calls.at(-1).headers['Idempotency-Key'], request.idempotencyKey)
+  await writePrompt(input)
+  const first = calls.at(-1).headers['Idempotency-Key']
+  await writePrompt(input)
+  assert(first)
+  assert.notEqual(calls.at(-1).headers['Idempotency-Key'], first)
+})
+
 check('missing both keys fails without a request; Google remains preferred when configured', async () => {
   const count = calls.length
   comfy = ''

@@ -248,7 +248,7 @@ function pcmToWav(pcm, rate = 24000) {
 
 const GEMINI = 'https://generativelanguage.googleapis.com/v1beta'
 
-export async function writePromptWithRouter({ instructions, note = '', images = [], target = '' }) {
+export async function writePromptWithRouter({ instructions, note = '', images = [], target = '', idempotencyKey = randomUUID() }) {
   const content = images.map((url) => {
     const { buf, mime } = readLocal(url)
     if (!/^image\/(png|jpeg|webp|gif)$/.test(mime)) {
@@ -258,25 +258,26 @@ export async function writePromptWithRouter({ instructions, note = '', images = 
   })
   content.push({ type: 'input_text', text: [target && `Target model or medium: ${target}`, note && `User note: ${note}`, 'Write only the finished generation prompt.'].filter(Boolean).join('\n\n') })
   const response = await fetch(`${ROUTER}/${routerWriterModel}`, {
-    method: 'POST', headers: { 'X-API-Key': comfyKey(), 'Content-Type': 'application/json' },
+    method: 'POST', headers: { 'X-API-Key': comfyKey(), 'Content-Type': 'application/json', 'Idempotency-Key': idempotencyKey },
     body: JSON.stringify({ instructions, input: [{ role: 'user', content }], max_output_tokens: 2048, store: false }),
-  })
-  const data = await response.json().catch(() => ({}))
-  if (!response.ok || data.error || data.error_type) throw comfyError(response, data)
-  if (data.status !== 'completed') throw new Error('Comfy Router did not finish the prompt. Try again or adjust the instructions.')
+  }).catch((error) => { throw Object.assign(error, { idempotencyKey }) })
+  const data = await routerJson(response)
+  const fail = (detail) => Object.assign(comfyError(response, detail), { idempotencyKey })
+  if (!response.ok || data.error || data.error_type) throw fail(data)
+  if (data.status !== 'completed') throw fail({ message: 'Comfy Router did not finish the prompt. Retry with the same request key.' })
   const text = (data.output || []).filter((item) => item.type === 'message' && item.role === 'assistant').flatMap((item) => item.content || []).filter((part) => part.type === 'output_text').map((part) => part.text || '').join('').trim()
-  if (!text) throw new Error('Comfy Router returned no prompt. The request may have been filtered.')
+  if (!text) throw fail({ message: 'Comfy Router returned no prompt. The request may have been filtered.' })
   return text
 }
 
-export async function writePrompt({ instructions, note = '', images = [], target = '' }) {
+export async function writePrompt({ instructions, note = '', images = [], target = '', idempotencyKey }) {
   if (typeof instructions !== 'string' || !instructions.trim()) {
     throw Object.assign(new Error('Add writer instructions first.'), { status: 400 })
   }
   if (typeof note !== 'string' || typeof target !== 'string' || !Array.isArray(images) || images.some((u) => typeof u !== 'string' || !/^(data:image\/|\/media\/)/.test(u))) {
     throw Object.assign(new Error('Writer needs a note, a target and local or inline images.'), { status: 400 })
   }
-  const request = { instructions, note, images, target }
+  const request = { instructions, note, images, target, idempotencyKey }
   const { key } = config('google')
   if (!key) return writePromptWithRouter(request)
   const parts = images.map((url) => {
@@ -502,12 +503,18 @@ const comfyKey = () => {
   return key
 }
 
+async function routerJson(response) {
+  const data = await response.json().catch(() => null)
+  return data && typeof data === 'object' && !Array.isArray(data) ? data : {}
+}
+
 function comfyError(response, data) {
-  const code = data.error_type || data.error?.code
+  const code = response.headers?.get('X-Comfy-Error-Type') || data.error_type || data.error?.code
+  const requestId = response.headers?.get('X-Comfy-Request-Id') || data.request_id
   const message = response.status === 402 || code === 'insufficient_credits'
     ? 'Comfy has insufficient credits. Add credits to your Comfy workspace billing, then try again.'
-    : `Comfy request failed (${code || response.status}): ${data.message || data.error?.message || 'Check the request and your connection.'}`
-  return Object.assign(new Error(message), { status: response.status >= 400 ? response.status : 502 })
+    : `Comfy request failed (${code || response.status}): ${data.message || data.error?.message || (typeof data.detail === 'string' ? data.detail : '') || 'Check the request and your connection.'}`
+  return Object.assign(new Error(`${message}${requestId ? ` Request ${requestId}.` : ''}`), { status: response.status >= 400 ? response.status : 502, requestId })
 }
 
 function retryAfter(response) {
@@ -528,11 +535,15 @@ export async function listComfyRouterModels({ limit = 50, cursor } = {}) {
 
 // Router returns each partner's native JSON; normalize media for the shared generation callers.
 function routerFiles(data, model) {
-  if (model === 'byteplus/seedream-5-0-flash-260915') data = { images: (data.data || []).map((image) => image.url).filter(Boolean) }
+  if (model === 'byteplus/seedream-5-0-flash-260915') data = { images: (data.data || []).map((image) => {
+    if (image.url) return image.url
+    if (image.b64_json) return saveMedia(Buffer.from(image.b64_json, 'base64'), 'png').url
+    return null
+  }).filter(Boolean) }
   if (model === 'luma/photon-flash-1') data = { image: data.assets?.image }
   const files = []
   const visit = (value, kind) => {
-    if (typeof value === 'string' && /^(https?:|data:)/.test(value) && kind) files.push({ url: value, kind })
+    if (typeof value === 'string' && /^(https?:|data:|\/media\/)/.test(value) && kind) files.push({ url: value, kind, ...(value.startsWith('/media/') && { path: mediaPath(value) }) })
     else if (Array.isArray(value)) value.forEach((v) => visit(v, kind))
     else if (value && typeof value === 'object') {
       for (const [key, v] of Object.entries(value)) {
@@ -560,8 +571,8 @@ export async function runComfyRouter({ model, input, idempotencyKey = randomUUID
   const headers = { 'X-API-Key': comfyKey(), 'Content-Type': 'application/json' }
   const base = `${ROUTER}/${model}/requests`
   const response = await fetch(base, { method: 'POST', headers: { ...headers, 'Idempotency-Key': idempotencyKey }, body: JSON.stringify(await withRouterFiles(input)) })
-  const job = await response.json()
-  if (!response.ok || job.error_type) throw comfyError(response, job)
+  const job = await routerJson(response)
+  if (!response.ok || job.error_type) throw Object.assign(comfyError(response, job), { idempotencyKey })
   if (!job.request_id) throw new Error('Comfy Router did not return a request id.')
   // Derive URLs from the documented route so credentials never follow an arbitrary response URL.
   const resultUrl = `${base}/${encodeURIComponent(job.request_id)}`
@@ -569,21 +580,24 @@ export async function runComfyRouter({ model, input, idempotencyKey = randomUUID
   for (let i = 0; i < 1200; i++) {
     await pause(retryAfter(previous))
     const status = await fetch(`${resultUrl}/status`, { headers })
-    const update = await status.json()
     previous = status
     if (status.status === 429 || status.status === 503) continue
-    if (!status.ok || update.error_type) throw comfyError(status, update)
+    const update = await routerJson(status)
+    if (status.ok && !update.status && !update.error_type) throw comfyError(status, { request_id: job.request_id, message: 'Router returned an invalid status response. Retry with the same request key.' })
+    if (!status.ok || update.error_type) throw comfyError(status, { request_id: job.request_id, ...update })
     if (update.status !== 'COMPLETED') continue
     const result = await fetch(resultUrl, { headers })
     previous = result
-    if (result.ok && result.status !== 202 && /^audio\//.test(result.headers.get('Content-Type') || '')) {
+    if (result.status === 202 || result.status === 429 || result.status === 503) continue
+    const mime = (result.headers.get('Content-Type') || '').split(';')[0]
+    if (result.ok && (/^audio\//.test(mime) || (mime === 'application/octet-stream' && model.startsWith('elevenlabs/')))) {
       const buf = Buffer.from(await result.arrayBuffer())
       if (!buf.length) throw new Error('Comfy Router returned empty audio.')
-      return [{ ...saveMedia(buf, result.headers.get('Content-Type').includes('mpeg') ? 'mp3' : mimeExt(result.headers.get('Content-Type'))), kind: 'audio' }]
+      return [{ ...saveMedia(buf, mime === 'application/octet-stream' || mime.includes('mpeg') ? 'mp3' : mimeExt(mime)), kind: 'audio' }]
     }
-    const data = await result.json()
-    if (result.status === 202 || result.status === 429 || result.status === 503) continue
-    if (!result.ok || data.error_type) throw comfyError(result, data)
+    const data = await routerJson(result)
+    if (!result.ok || data.error_type) throw comfyError(result, { request_id: job.request_id, ...data })
+    if (!Object.keys(data).length) throw comfyError(result, { request_id: job.request_id, message: 'Router returned an invalid result response. Retry with the same request key.' })
     return routerFiles(data, model)
   }
   throw new Error(`Comfy Router took too long. Request ${job.request_id} may still be running; do not submit again without checking it.`)
