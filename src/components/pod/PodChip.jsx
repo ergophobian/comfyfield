@@ -126,6 +126,11 @@ export default function PodChip() {
               <i style={{ '--p': `${pct(d)}%` }} />
             </div>
           ))}
+          {(s.runtimes || []).filter((e) => e.state !== 'ready').map((e) => (
+            <p className={e.state === 'failed' ? 'sheet-error' : 'pod-note'} key={e.runtime}>{e.state === 'failed'
+              ? `${e.name} could not install: ${e.error || 'unknown error'}`
+              : `Installing ${e.name} · ${Math.floor((e.sec || 0) / 60)} min.${e.minutes ? ` The first install takes ${e.minutes[0]} to ${e.minutes[1]} minutes.` : ''}`}</p>
+          ))}
           {p === 'ready' && <p className="pod-note">ComfyUI runs use this Pod.</p>}
           {p === 'starting' && s.instant && <p className="pod-note">Runs use Comfy Cloud until the Pod is ready.</p>}
           {s.event && <p className="pod-note">{s.event.text}</p>}

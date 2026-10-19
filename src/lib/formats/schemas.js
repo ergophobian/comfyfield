@@ -605,6 +605,21 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "h3_freevideo_i2v": [
+      "duration",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "h3_freevideo_t2v": [
+      "duration",
+      "height",
+      "prompt",
+      "seed",
+      "width"
+    ],
     "h3_i2v": [
       "duration",
       "image",

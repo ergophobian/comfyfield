@@ -1,6 +1,6 @@
 // A fake RunPod and a fake Pod behind the Pod manager's fetch seam, so the Pod UI can be built and
 // checked without spending money. Turn it on with COMFYFIELD_POD_SANDBOX=1, or =nogpu to see a refusal.
-// Time runs fast: a Pod answers in 4 s, is ready in 15 s, and downloads a model in 8 s.
+// Time runs fast: a Pod answers in 4 s, is ready in 15 s, downloads a model in 8 s and installs a runtime in 20 s.
 import fs from 'node:fs'
 import path from 'node:path'
 
@@ -15,6 +15,8 @@ const price = (gpu, secure) => Math.round(((PRICES[gpu] || 1) + (secure ? 0.2 : 
 const ANSWERS = 4000
 const READY = 15000
 const DOWNLOAD = 8000
+const INSTALL = 20000
+const RUNTIME_GB = 60
 
 export function sandboxFetch({ file, now = Date.now, mode = process.env.COMFYFIELD_POD_SANDBOX } = {}) {
   const load = () => { try { return JSON.parse(fs.readFileSync(file(), 'utf8')) } catch { return {} } }
@@ -34,12 +36,19 @@ export function sandboxFetch({ file, now = Date.now, mode = process.env.COMFYFIE
       lastWork = Math.max(lastWork, d.at + DOWNLOAD)
       if (done >= 1) models.push({ dir: k.split('/')[0], name: k.split('/')[1], bytes: total })
     }
+    const runtimes = {}
+    for (const [k, e] of Object.entries(pod.runtimes || {})) {
+      const done = t - e.at >= INSTALL
+      runtimes[k] = { state: done ? 'ready' : 'installing', error: null, sec: Math.round(Math.max(0, Math.min(t - e.at, INSTALL)) / 1000) }
+      lastWork = Math.max(lastWork, e.at + INSTALL)
+    }
+    const installed = Object.values(runtimes).filter((e) => e.state === 'ready').length * RUNTIME_GB
     const ready = up >= READY
     return {
       stage: ready ? 'ready' : up >= READY / 2 ? 'comfy' : 'boot', ready, everReady: ready, fatal: null,
       idleSec: ready ? Math.max(0, Math.round((t - lastWork) / 1000)) : 0, uptimeSec: Math.round(up / 1000), queue: ready ? 0 : null,
       heartbeatAgeSec: pod.hb ? Math.round((t - pod.hb) / 1000) : null, gpu: ready ? { util: 0, memUsedMb: 900, memTotalMb: pod.vram * 1024 } : null,
-      diskFreeGb: pod.volumeInGb - models.reduce((n, f) => n + f.bytes / 1e9, 0), ending: null, models, downloads,
+      diskFreeGb: pod.volumeInGb - installed - models.reduce((n, f) => n + f.bytes / 1e9, 0), ending: null, models, downloads, runtimes,
     }
   }
 
@@ -58,6 +67,7 @@ export function sandboxFetch({ file, now = Date.now, mode = process.env.COMFYFIE
           id: `sandbox${now().toString(36)}`, name: body.name, desiredStatus: 'RUNNING', costPerHr: price(body.gpuTypeIds[0], body.cloudType === 'SECURE'),
           createdAt: new Date(now()).toISOString(), env: body.env, volumeInGb: body.volumeInGb, machine: { gpuTypeId: body.gpuTypeIds[0] },
           vram: body.gpuTypeIds[0].includes('6000') ? 96 : body.gpuTypeIds[0].includes('4500') ? 32 : 24, bootAt: now(), downloads: {}, secure: body.cloudType === 'SECURE',
+          runtimes: Object.fromEntries((body.env.CF_RUNTIMES || '').split(' ').filter(Boolean).map((e) => [e, { at: now() + ANSWERS }])),
         }
         save({ ...pods, [pod.id]: pod })
         return json(pod, 201)
@@ -67,7 +77,13 @@ export function sandboxFetch({ file, now = Date.now, mode = process.env.COMFYFIE
       if (method === 'GET') return json(pod)
       if (method === 'DELETE') { pod.desiredStatus = 'TERMINATED'; save(pods); return json(null, 204) }
       if (verb === 'stop') { pod.desiredStatus = 'EXITED'; pod.costPerHr = 0; save(pods); return json(pod) }
-      if (verb === 'start') { pod.desiredStatus = 'RUNNING'; pod.costPerHr = price(pod.machine.gpuTypeId, pod.secure); pod.bootAt = now() - READY / 2; pod.hb = null; save(pods); return json(pod) }
+      if (verb === 'start') {
+        pod.desiredStatus = 'RUNNING'; pod.costPerHr = price(pod.machine.gpuTypeId, pod.secure); pod.bootAt = now() - READY / 2; pod.hb = null
+        // A resumed Pod runs its runtimes' installers again, as the boot script does.
+        for (const e of Object.values(pod.runtimes || {})) e.at = now()
+        save(pods)
+        return json(pod)
+      }
       return json({ error: 'not found' }, 404)
     }
 
@@ -94,6 +110,14 @@ export function sandboxFetch({ file, now = Date.now, mode = process.env.COMFYFIE
       }
       save(pods)
       return json({ downloads: podStatus(pod).downloads }, 202)
+    }
+    const em = /^\/runtime\/(\w+)$/.exec(u.pathname)
+    if (em && method === 'POST') {
+      if (em[1] !== 'freevideo') return json({ error: 'unknown runtime' }, 404)
+      pod.runtimes = pod.runtimes || {}
+      if (!pod.runtimes[em[1]]) pod.runtimes[em[1]] = { at: now() }
+      save(pods)
+      return json({ runtime: podStatus(pod).runtimes[em[1]] }, 202)
     }
     return json({ error: 'not found' }, 404)
   }

@@ -1,0 +1,26 @@
+{
+  "700": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "{{image}}"
+    }
+  },
+  "104": {
+    "class_type": "FreeVideoGenerate",
+    "inputs": {
+      "text": "{{prompt}}",
+      "width": "{{width}}",
+      "height": "{{height}}",
+      "seconds": "{{duration}}",
+      "seed": "{{seed}}",
+      "first": ["700", 0],
+      "two_pass": true,
+      "base_steps": 8,
+      "refine_steps": 3,
+      "step_cache": "none",
+      "upscale_factor": "2",
+      "force_regenerate": false,
+      "preview": false
+    }
+  }
+}

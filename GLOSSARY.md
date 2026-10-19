@@ -24,6 +24,10 @@ _Avoid_: stop, suspend
 Delete a Pod and its disk. All charges for it end. Every automatic guard terminates; only the user pauses.
 _Avoid_: stop, kill, end
 
+**Pod runtime**:
+Software a Pod installs for nodes that need more than model files, such as FreeVideo, which runs MiniMax H3. Comfy Cloud has none, so a run that needs one goes to a Pod.
+_Avoid_: engine, add-on, plugin
+
 **Daily cap**:
 The most the user lets Pods spend in one day. When today's spend reaches it, no new Pod starts; a running Pod is not touched.
 _Avoid_: budget, limit (alone)

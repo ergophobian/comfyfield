@@ -35,6 +35,7 @@ export async function podAction(action, body = {}) {
 }
 
 export const downloading = (s) => (s?.downloads || []).filter((d) => d.state === 'queued' || d.state === 'downloading')
+export const installing = (s) => (s?.runtimes || []).filter((e) => e.state === 'installing')
 
 // What the chip says. `short` drops the spend for narrow screens.
 export function podLabel(s, now = Date.now()) {
@@ -44,7 +45,10 @@ export function podLabel(s, now = Date.now()) {
     if (s.stage === 'placing') return 'Finding a GPU'
     return `${s.stage === 'booting' ? 'Booting' : 'Starting'} · ${up} min`
   }
-  if (s.phase === 'ready') return downloading(s).length ? 'Downloading models' : s.runs ? `${s.runs} running` : 'Ready'
+  if (s.phase === 'ready') {
+    const runtime = installing(s)[0]
+    return runtime ? `Installing ${runtime.name}` : downloading(s).length ? 'Downloading models' : s.runs ? `${s.runs} running` : 'Ready'
+  }
   return { none: 'Off', ending: 'Ending after the queue', pausing: 'Pausing', paused: 'Paused', resuming: 'Resuming', terminating: 'Terminating' }[s.phase] || 'Pod'
 }
 
@@ -55,6 +59,7 @@ export const spendText = (s) => (s ? `${money(s.spend?.today)} of ${money(s.spen
 export function takeLabel(it, s) {
   if (it.provider !== 'comfy' || !s || s.mode !== 'cloud') return null
   if (it.pod && s.phase !== 'ready') return 'Waiting for the Pod'
+  if (s.phase === 'ready' && installing(s).length) return `Installing ${installing(s)[0].name} on the Pod`
   if (s.phase === 'ready' && downloading(s).length) return 'Downloading models on the Pod'
   return null
 }
@@ -104,7 +109,7 @@ export function usePodPolling() {
     let timer
     const loop = async () => {
       const s = await refreshPod()
-      const quick = s && (MOVING.includes(s.phase) || s.runs > 0 || downloading(s).length > 0 || state.ask)
+      const quick = s && (MOVING.includes(s.phase) || s.runs > 0 || downloading(s).length > 0 || installing(s).length > 0 || state.ask)
       timer = setTimeout(loop, quick ? 2000 : 10000)
     }
     loop()
