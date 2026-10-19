@@ -288,7 +288,7 @@ try {
   assert.equal(requests.at(-1).model, 'mock/audio')
   assert.deepEqual(errors, [], 'No browser runtime exceptions')
   assert.equal(await evaluate('JSON.parse(localStorage.getItem("comfyfield.library")).length'), requests.length, 'Every output persists in Library')
-  console.log(`Studio UI mock checks ok: ${requests.length} shared runner submissions, five studios, all six video edits, real upload URLs, language/delivery/voice/trim vars, Library persistence, disabled unavailable paths and 390px layouts. ${shots} labeled mock screenshots saved to ${dir}. No provider calls.`)
+  console.log(`Studio UI mock checks ok: ${requests.length} mocked generation requests, five studios, all six video edits, real upload URLs, language/delivery/voice/trim vars, Library persistence, disabled unavailable paths and 390px layouts. ${shots} labeled mock screenshots saved to ${dir}. No provider calls.`)
 } finally {
   await browser?.close()
   await server.close()

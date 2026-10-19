@@ -201,11 +201,14 @@ for (const id of ['edit-video', 'video-character-swap', 'reshoot', 'color-grade'
 }
 assert.deepEqual(upscaleOutput({ ratio: '1920:1080' }, 4, 3840), { width: 3840, height: 2160, scale: 2 })
 assert.deepEqual(upscaleOutput({ ratio: '1920:1080' }, 4, 4096), { width: 4096, height: 2304, scale: 4096 / 1920 })
-for (const id of ['image-upscale', 'video-upscale']) {
-  const r = await run(id, id === 'image-upscale' ? { mode: 'faithful' } : {})
-  const node = id === 'image-upscale' ? ['4', 0] : ['6', 0]
-  const scale = numberAt(r.graph, node, { '2': [1920, 1080], '4': id === 'video-upscale' ? [1920, 1080] : undefined })
-  assert.equal(scale, id === 'image-upscale' ? 0.5 : 2)
+for (const [id, mode, node, source, divisor] of [
+  ['image-upscale', 'faithful', '4', '2', 4],
+  ['image-upscale', 'enhance', '5', '3', 1],
+  ['video-upscale', null, '6', '4', 1],
+]) {
+  const r = await run(id, { factor: '4', ...(mode && { mode }) })
+  const scale = numberAt(r.graph, [node, 0], { [source]: [1920, 1080] })
+  assert.equal(scale * divisor, id === 'image-upscale' ? 4096 / 1920 : 2)
   assert(studioLimitNote(formatById(id), { image: { ratio: '1920:1080' }, video: { ratio: '1920:1080' }, factor: '4' }).includes(id === 'image-upscale' ? '4096' : '3840'))
 }
 const info = formatById('drama3-tts').info
