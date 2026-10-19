@@ -1,0 +1,85 @@
+{
+  "qwen_image_edit_2511_int8_convrot.safetensors": {
+    "repo": "Comfy-Org/Qwen-Image-Edit_ComfyUI",
+    "path": "split_files/diffusion_models/qwen_image_edit_2511_int8_convrot.safetensors",
+    "dir": "diffusion_models",
+    "gb": 20.5,
+    "vramGb": 24,
+    "cloud": true,
+    "sha256": "11b5af5ac601821d73930c84846c9a158e67177356daf927ce1c8d10f3963829"
+  },
+  "qwen_2.5_vl_7b_fp8_scaled.safetensors": {
+    "repo": "Comfy-Org/Qwen-Image_ComfyUI",
+    "path": "split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors",
+    "dir": "text_encoders",
+    "gb": 9.38,
+    "vramGb": 0,
+    "cloud": true,
+    "sha256": "cb5636d852a0ea6a9075ab1bef496c0db7aef13c02350571e388aea959c5c0b4"
+  },
+  "qwen_image_vae.safetensors": {
+    "repo": "Comfy-Org/Qwen-Image_ComfyUI",
+    "path": "split_files/vae/qwen_image_vae.safetensors",
+    "dir": "vae",
+    "gb": 0.25,
+    "vramGb": 0,
+    "cloud": true,
+    "sha256": "a70580f0213e67967ee9c95f05bb400e8fb08307e017a924bf3441223e023d1f"
+  },
+  "Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors": {
+    "repo": "lightx2v/Qwen-Image-Edit-2511-Lightning",
+    "path": "Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors",
+    "dir": "loras",
+    "gb": 0.85,
+    "vramGb": 0,
+    "cloud": true,
+    "sha256": "22226e8d05d354bb356627d428809f5afd7819399b077238a2b70a82883a904f",
+    "label": "The Qwen-Image-Edit 2511 Lightning LoRA"
+  },
+  "qwen-image-edit-2511-multiple-angles-lora.safetensors": {
+    "repo": "fal/Qwen-Image-Edit-2511-Multiple-Angles-LoRA",
+    "path": "qwen-image-edit-2511-multiple-angles-lora.safetensors",
+    "dir": "loras",
+    "gb": 0.3,
+    "vramGb": 0,
+    "cloud": true,
+    "sha256": "42426ded4e25fd22879d9e198b857556445ef4ca56e8da3246d0345155bb6765",
+    "label": "The Multiple-Angles LoRA"
+  },
+  "qwen_image_layered_fp8mixed.safetensors": {
+    "repo": "Comfy-Org/Qwen-Image-Layered_ComfyUI",
+    "path": "split_files/diffusion_models/qwen_image_layered_fp8mixed.safetensors",
+    "dir": "diffusion_models",
+    "gb": 20.53,
+    "vramGb": 24,
+    "cloud": true,
+    "sha256": "e68c406b1bc08c97382a46dce6ed46699bc18a0f50422d97952ee4e8b63ad50a"
+  },
+  "qwen_image_layered_vae.safetensors": {
+    "repo": "Comfy-Org/Qwen-Image-Layered_ComfyUI",
+    "path": "split_files/vae/qwen_image_layered_vae.safetensors",
+    "dir": "vae",
+    "gb": 0.25,
+    "vramGb": 0,
+    "cloud": true,
+    "sha256": "c5320595fc61859ccdd0282184208f7b781c983b8ce4c6bc3e7723a807d3d28d"
+  },
+  "seedvr2_7b_int8_convrot.safetensors": {
+    "repo": "Comfy-Org/SeedVR2",
+    "path": "diffusion_models/seedvr2_7b_int8_convrot.safetensors",
+    "dir": "diffusion_models",
+    "gb": 8.33,
+    "vramGb": 24,
+    "cloud": true,
+    "sha256": "5aa0d25fc9d35e449b659d0c9a5dcb22e2a4fa04032101b95a39da42b32c1be6"
+  },
+  "seedvr2_ema_vae_fp16.safetensors": {
+    "repo": "Comfy-Org/SeedVR2",
+    "path": "vae/seedvr2_ema_vae_fp16.safetensors",
+    "dir": "vae",
+    "gb": 0.5,
+    "vramGb": 0,
+    "cloud": true,
+    "sha256": "20678548f420d98d26f11442d3528f8b8c94e57ee046ef93dbb7633da8612ca1"
+  }
+}

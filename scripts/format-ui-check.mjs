@@ -133,7 +133,7 @@ try {
   assert.equal(requests[4].body.workflow, 'ltx_i2v')
   assert.equal(requests[4].body.vars.prompt, 'Edited video prompt from the user')
   assert.equal(requests[4].body.vars.image, '/mock-photo.svg')
-  await goto('/apps/expand')
+  await goto('/apps/podcast-clips')
   await wait('document.body.innerText.includes("Nothing lives at this address")')
   assert.deepEqual(errors, [], 'No browser runtime exceptions')
   console.log('UI mock checks ok: app runner, shared sheet, Library after reload, 390px layout, Create generation/feed/camera presets and hidden invalid route. Four mocked generations and one reviewed writer request; no provider calls. Six screenshots saved.')

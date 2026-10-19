@@ -1,10 +1,12 @@
 // Jobs from Higgsfield's use-case landing pages that had no ComfyField format yet.
 // Each is one default model, a tuned prompt and a shape. Upload-first jobs that read like an app also set `hub`.
 import { open, photo, clip, note, covers } from './parts.js'
+import { qwenImageSizes } from '../catalog.js'
 
 const still = { aspect: 'auto' }
 const qwen = { runsOn: 'Qwen-Image 2.1', workflow: 'qwen_edit' }
-const qwenType = { runsOn: 'Qwen-Image 2.1', workflow: 'qwen_image' }
+// Text to image on Qwen-Image 2.1; a picture (a face, a character) makes it a reference.
+const qwenType = { runsOn: 'Qwen-Image 2.1', workflow: 'qwen_image21_t2i', imageWorkflow: 'qwen_image_ref', sizes: qwenImageSizes }
 const klein = { runsOn: 'FLUX 3 Image Klein', workflow: 'klein_edit' }
 const kleinLook = { runsOn: 'FLUX 3 Image Klein', workflow: 'flux_look' }
 const h3 = { runsOn: 'MiniMax H3', workflow: 'h3_i2v' }
@@ -167,7 +169,8 @@ const imageJobs = [
   open({
     id: 'logo', name: 'Logo', kind: 'image', category: 'ads',
     blurb: 'Turn a business name into a logo.',
-    runsOn: 'Qwen-Image 2.1 and BiRefNet', workflow: 'qwen_image_logo',
+    // Qwen-Image 2.1 draws the transparency itself, so no cut-out model.
+    runsOn: 'Qwen-Image 2.1', workflow: 'qwen_image_logo', sizes: qwenImageSizes,
     inputs: [
       { id: 'name', type: 'text', label: 'Business name', placeholder: 'Little Loaf' },
       { id: 'about', type: 'text', label: 'What you do', optional: true, placeholder: 'A neighborhood bakery known for sourdough' },
@@ -186,7 +189,7 @@ const imageJobs = [
       ] },
       { id: 'colors', type: 'text', label: 'Colors', optional: true, placeholder: 'Deep green and cream' },
     ],
-    prompt: 'A {mark} logo for a business called "{name}", {style}. {about} Clean, vector-like shapes with the name spelled exactly, centered on a plain white background with generous space around it and no mockup. Colors: {colors}',
+    prompt: 'A {mark} logo for a business called "{name}", {style}. {about} Clean, vector-like shapes with the name spelled exactly, centered with generous empty space around it and no mockup. Colors: {colors}',
     output: 'A logo on a transparent background',
     settings: { aspect: '1:1' },
     cover: covers.indigo,
@@ -211,7 +214,7 @@ const imageJobs = [
       ] },
       { id: 'brand', type: 'brand', label: 'Brand', optional: true },
     ],
-    prompt: 'A {size} with the headline "{headline}" and a button that says "{cta}", in {style}. Clear hierarchy, bold readable type spelled exactly and room around the edges. Use the brand colors and logo when a brand is given.',
+    prompt: 'A {size} with the headline "{headline}" and a button that says "{cta}", in {style}. Clear hierarchy, bold readable type spelled exactly and room around the edges. In the colors and style of the brand {brand}, if one is named.',
     settings: { aspect: '16:9' },
     cover: covers.sky,
   }),
@@ -259,7 +262,7 @@ const imageJobs = [
       ] },
       { id: 'brand', type: 'brand', label: 'Brand', optional: true },
     ],
-    prompt: '{kind} for a presentation about {topic}, in {style}, 16:9, with clean empty space for slide text and no words in the image. Use the brand colors when a brand is given.',
+    prompt: '{kind} for a presentation about {topic}, in {style}, 16:9, with clean empty space for slide text and no words in the image. In the colors of the brand {brand}, if one is named.',
     settings: { aspect: '16:9' },
     cover: covers.lilac,
   }),
@@ -278,14 +281,14 @@ const imageJobs = [
       ] },
       { id: 'brand', type: 'brand', label: 'Brand', optional: true, half: true },
     ],
-    prompt: 'Design a {kind}: {brief}. A clear layout with strong hierarchy, readable text spelled exactly, balanced color and finished print quality. Use the brand colors and logo when a brand is given.',
+    prompt: 'Design a {kind}: {brief}. A clear layout with strong hierarchy, readable text spelled exactly, balanced color and finished print quality. In the colors and style of the brand {brand}, if one is named.',
     settings: { aspect: '4:5' },
     cover: covers.dusk,
   }),
   open({
     id: 'profile-picture', name: 'Profile picture', kind: 'image', category: 'characters', hub: 'face',
     blurb: 'Turn a selfie into a profile picture in any style.',
-    ...klein,
+    ...klein, workflow: 'klein_edit_canvas',
     inputs: [
       { id: 'image', type: 'image', label: 'Selfie' },
       { id: 'style', type: 'choice', label: 'Style', default: 'realistic', options: [
@@ -304,7 +307,7 @@ const imageJobs = [
   open({
     id: 'portrait', name: 'Portrait styles', kind: 'image', category: 'characters', hub: 'face',
     blurb: 'Turn a selfie into a studio, editorial or painted portrait.',
-    ...klein,
+    ...klein, workflow: 'klein_edit_canvas',
     inputs: [
       { id: 'image', type: 'image', label: 'Selfie' },
       { id: 'style', type: 'choice', label: 'Style', default: 'studio', options: [
@@ -435,7 +438,8 @@ const imageJobs = [
   open({
     id: 'ai-human', name: 'AI human', kind: 'image', category: 'characters',
     blurb: 'Create a person who does not exist, ready to save as a character.',
-    runsOn: 'Krea 2 Raw', workflow: 'krea2_t2i',
+    // Krea's own advice: train on Raw, run on Turbo.
+    runsOn: 'Krea 2 Turbo', workflow: 'krea2_t2i',
     inputs: [
       { id: 'description', type: 'longtext', label: 'Who they are', placeholder: 'A cheerful baker in her 40s with flour on her apron and curly gray hair' },
       { id: 'framing', type: 'choice', label: 'Framing', half: true, default: 'half', options: [

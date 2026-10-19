@@ -147,8 +147,15 @@ export function validateFormat(format, schemas = savedSchemas) {
         const files = [...PICTURE_SLOTS.slice(1, pictures), ...(format.inputs.some((i) => i.type === 'mask' || (i.type === 'draw' && i.mode !== 'motion')) ? ['mask'] : []),
           ...(format.inputs.some((i) => i.type === 'audio') ? ['audio'] : []), ...(format.inputs.some((i) => i.type === 'voice') ? ['voice'] : [])]
         const supplied = new Set(['prompt', 'width', 'height', 'count', 'frames', 'duration', 'start', 'seed', ...(hasVideo ? ['video'] : []), ...(stepOptions(format, step, values).images.length || upstream.length || pictures ? ['image'] : []), ...files, ...Object.keys(step.params || {}), ...Object.keys(step.bindings || {})])
-        for (const field of schema) if (!supplied.has(field)) bad(`${label} Unmapped workflow placeholder ${field}`)
-        for (const field of imageSchema || []) if (!supplied.has(field) && field !== 'image') bad(`${label} Unmapped workflow placeholder ${field}`)
+        // A choice that always shows, and whose every option sets a param, supplies it.
+        for (const input of format.inputs) {
+          if (input.type !== 'choice' || input.when) continue
+          for (const field of new Set(input.options.flatMap((o) => Object.keys(o.params || {})))) if (input.options.every((o) => field in (o.params || {}))) supplied.add(field)
+        }
+        // A placeholder only on nodes that drop without their file may stay empty.
+        const optional = (w) => new Set(schemas.comfyOptional?.[w] || [])
+        for (const field of schema) if (!supplied.has(field) && !optional(model.workflow).has(field)) bad(`${label} Unmapped workflow placeholder ${field}`)
+        for (const field of imageSchema || []) if (!supplied.has(field) && !optional(model.imageWorkflow).has(field) && field !== 'image') bad(`${label} Unmapped workflow placeholder ${field}`)
         if (imageSchema && !imageSchema.includes('image')) bad(`${label} Image workflow ${model.imageWorkflow} takes no image`)
         const all = [...new Set([...schema, ...(imageSchema || [])])]
         if ((step.prompt || format.prompt || format.writer) && !schema.includes('prompt')) bad(`${label} Workflow has no prompt placeholder`)
@@ -157,7 +164,8 @@ export function validateFormat(format, schemas = savedSchemas) {
           for (const field of [...Object.keys(opts.params), ...Object.keys(opts.fields)]) if (!schema.includes(field)) bad(`${label} Unknown workflow placeholder ${field}`)
         }
         for (const input of format.inputs) {
-          if (input.type === 'choice' && input.options.every((o) => Object.keys(o.params || {}).length && Object.keys(o.params).every((field) => schema.includes(field)))) used.add(input.id)
+          // A shape choice sets the run's canvas, so it maps without a placeholder.
+          if (input.type === 'choice' && input.options.every((o) => Object.keys(o.params || {}).length && Object.keys(o.params).every((field) => field === 'aspect' || all.includes(field)))) used.add(input.id)
         }
         // A saved character or product gives its first image.
         if (PICTURE_SLOTS.some((k) => all.includes(k))) for (const input of format.inputs) if (pictureTypes.includes(input.type)) used.add(input.id)

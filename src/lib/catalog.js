@@ -1,4 +1,7 @@
 // Google prices are list-price estimates; check ai.google.dev/pricing. fal prices come live from fal.
+// Qwen-Image 2.1's own canvas, in multiples of 32; formats on it use the same.
+export const qwenImageSizes = { '16:9': [1664, 928], '9:16': [928, 1664], '1:1': [1344, 1344], '4:5': [1152, 1440] }
+
 // Pinned models in the composer. Any other fal model can be picked from the Models page.
 // provider 'comfy' runs public/workflows/<workflow>.json; 'fal' fills inputs from the model's schema.
 export const models = [
@@ -11,8 +14,13 @@ export const models = [
   // Newest open image models. Comfy Cloud does not have their files yet, so they run on a Pod.
   // `pod`: a model file is not on Comfy Cloud (pod-checks keeps this in step with shared/modelFiles.js).
   { id: 'comfy-flux3-klein', kind: 'image', provider: 'comfy', name: 'FLUX 3 Klein', note: 'Open weights from Black Forest Labs. Runs on a Pod.', workflow: 'flux3_klein_t2i', pod: true },
-  { id: 'comfy-qwen-image21', kind: 'image', provider: 'comfy', name: 'Qwen-Image 2.1', note: 'Open weights from Alibaba Qwen. Runs on a Pod.', workflow: 'qwen_image21_t2i', pod: true,
-    sizes: { '16:9': [1664, 928], '9:16': [928, 1664], '1:1': [1344, 1344], '4:5': [1152, 1440] } },
+  { id: 'comfy-qwen-image21', kind: 'image', provider: 'comfy', name: 'Qwen-Image 2.1', note: 'Open weights from Alibaba Qwen. Attach an image to edit it. Runs on a Pod.', workflow: 'qwen_image21_t2i', imageWorkflow: 'qwen_edit', pod: true,
+    sizes: qwenImageSizes },
+  // On Comfy Cloud too: every file is in its listing. HiDream-O1 was trained at about 4 MP, so it keeps its own canvas.
+  { id: 'comfy-z-image-turbo', kind: 'image', provider: 'comfy', name: 'Z-Image Turbo', note: 'Open weights from Alibaba Tongyi. On Comfy Cloud or a Pod.', workflow: 'z_image' },
+  { id: 'comfy-hidream-o1', kind: 'image', provider: 'comfy', name: 'HiDream-O1', note: 'Open weights from HiDream. On Comfy Cloud or a Pod.', workflow: 'hidream',
+    sizes: { '16:9': [2560, 1440], '9:16': [1440, 2560], '1:1': [2048, 2048], '4:5': [1792, 2304] } },
+  { id: 'comfy-qwen-image-edit-2511', kind: 'image', provider: 'comfy', name: 'Qwen-Image Edit 2511', note: 'Open weights from Alibaba Qwen. Attach an image to edit it. On Comfy Cloud or a Pod.', workflow: 'qwen2511_edit', imageWorkflow: 'qwen2511_edit' },
   { id: 'fal:fal-ai/nano-banana-pro', kind: 'image', provider: 'fal', name: 'Nano Banana Pro', note: 'Google, via fal', model: 'fal-ai/nano-banana-pro' },
   { id: 'fal:openai/gpt-image-2', kind: 'image', provider: 'fal', name: 'GPT Image 2', note: 'OpenAI, via fal', model: 'openai/gpt-image-2' },
   { id: 'fal:fal-ai/flux-2-pro', kind: 'image', provider: 'fal', name: 'Flux 2 Pro', note: 'Black Forest Labs, via fal', model: 'fal-ai/flux-2-pro' },
@@ -80,7 +88,8 @@ export const plannedAccounts = [
 
 export const aspects = ['1:1', '16:9', '9:16', '4:5']
 export const defaultDurations = [5, 8, 10]
-export const aspectSize = { '1:1': [1024, 1024], '16:9': [1280, 720], '9:16': [720, 1280], '4:5': [896, 1120] }
+// Formats also ask for 4:3 and 21:9; both are multiples of 32, as Qwen and FLUX like.
+export const aspectSize = { '1:1': [1024, 1024], '16:9': [1280, 720], '9:16': [720, 1280], '4:5': [896, 1120], '4:3': [1152, 864], '21:9': [1568, 672] }
 
 export const styles = [
   { group: 'Camera', items: [

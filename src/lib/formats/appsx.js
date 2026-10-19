@@ -69,7 +69,8 @@ const professional = [
         { id: 'twelve', label: '12 best angles', note: 'A full contact sheet', params: { batch: 12 } },
       ] },
     ],
-    prompt: 'Re-render this exact scene with the camera {turn}, {tilt}, {zoom}. Keep the same subject, outfit, materials, lighting and background, and fill in anything that was hidden from the original view with believable detail.',
+    // The graph writes the Multiple-Angles LoRA's own prompt from the turn, tilt and zoom.
+    prompt: '',
     output: 'One new angle, or a sheet of 12',
     settings: still,
     cover: covers.indigo,
@@ -98,7 +99,8 @@ const professional = [
     blurb: 'Nine cinematic angles of one scene on a single sheet.',
     runsOn: 'Qwen-Image Edit 2511 with Multiple-Angles', workflow: 'qwen_shots_grid',
     inputs: [photo],
-    prompt: 'A 3x3 contact sheet of nine film shots of this exact scene: an establishing wide, a full shot, a medium, a medium close up, a close up, an extreme close up on a telling detail, a low angle, a high angle and an over the shoulder. The same people, outfits, set and lighting in every frame, with thin white gutters between frames.',
+    // Nine renders with the Multiple-Angles LoRA, each with its own fixed prompt, joined 3x3 with white gutters.
+    prompt: '',
     output: 'A 3x3 sheet of shots to pick from and upscale',
     settings: still,
     cover: covers.sky,
@@ -152,7 +154,7 @@ const enhanceAndStyle = [
   open({
     id: 'ai-stylist', name: 'Virtual stylist', kind: 'image', category: 'image-edit', hub: 'enhance', layout: 'wide',
     blurb: 'Dress yourself in a full look or piece by piece, then set the pose and backdrop.',
-    ...qwen, workflow: 'qwen_edit_try_on',
+    ...qwen,
     inputs: [
       { id: 'image', type: 'image', label: 'Your photo', half: true },
       { id: 'look', type: 'choice', label: 'Outfit', half: true, default: 'smart', options: [
@@ -191,7 +193,8 @@ const enhanceAndStyle = [
   open({
     id: 'relight-photo', name: 'Move the light', kind: 'image', category: 'image-edit', hub: 'enhance',
     blurb: 'Move a light around your photo and redraw the shadows.',
-    runsOn: 'Qwen-Image Edit 2511 with a relight LoRA', workflow: 'qwen2511_relight',
+    // Relight is built into Edit 2511, so no relight LoRA.
+    runsOn: 'Qwen-Image Edit 2511', workflow: 'qwen2511_relight',
     inputs: [
       photo,
       { id: 'from', type: 'choice', label: 'Light from', half: true, default: 'left', options: [
@@ -207,9 +210,9 @@ const enhanceAndStyle = [
         { id: 'hard', label: 'Hard', text: 'a hard, direct light with crisp shadow edges' },
       ] },
       { id: 'brightness', type: 'choice', label: 'Brightness', half: true, default: 'medium', options: [
-        { id: 'low', label: 'Dim', text: 'dim and moody', params: { brightness: 25 } },
-        { id: 'medium', label: 'Medium', text: 'balanced', params: { brightness: 50 } },
-        { id: 'high', label: 'Bright', text: 'bright and punchy', params: { brightness: 85 } },
+        { id: 'low', label: 'Dim', text: 'dim and moody' },
+        { id: 'medium', label: 'Medium', text: 'balanced' },
+        { id: 'high', label: 'Bright', text: 'bright and punchy' },
       ] },
       { id: 'color', type: 'text', label: 'Light color', optional: true, half: true, placeholder: 'Warm white, or #ffb070' },
     ],
@@ -247,7 +250,7 @@ const enhanceAndStyle = [
   open({
     id: 'outfit-vending', name: 'Vending machine outfit', kind: 'image', category: 'fun', hub: 'enhance',
     blurb: 'Every piece you wear on display in a glowing vending machine.',
-    ...qwen,
+    ...qwen, workflow: 'qwen_edit_mockup',
     inputs: [photo, note],
     prompt: 'Lay out each piece this person is wearing, from the hat to the shoes and every accessory, as separate items behind the glass of a brightly lit vending machine, one item per coil slot with a small price tag and a keypad code under each. The person stands beside the machine in the same outfit. A street at night, the machine glowing, crisp product detail. {note}',
     settings: { aspect: '4:5' },
@@ -598,7 +601,7 @@ const extras = [
   open({
     id: 'paint-app', name: 'Retro paint program', kind: 'image', category: 'fun', hub: 'extras',
     blurb: 'Frame your photo inside an old paint program on a CRT.',
-    ...qwen,
+    ...qwen, workflow: 'qwen_edit_mockup',
     inputs: [photo, note],
     prompt: 'Show this photo as the open canvas in a 1990s desktop paint program on a bulky CRT monitor: a gray window frame with a title bar, a tool palette of pencils, buckets and spray cans down the left, a row of color swatches along the bottom, a few rough brush strokes painted over the photo and a pixel cursor. The monitor sits on a desk beside a beige keyboard, with slight screen curve, scan lines and glare. {note}',
     settings: { aspect: '4:3' },

@@ -63,9 +63,9 @@ export const tools = [
 export const openModels = [
   { id: 'flux-3-klein', name: 'FLUX 3 Image Klein', kind: 'image', vendor: 'Black Forest Labs', blurb: 'Next-generation images and edits, up to 10 references', workflow: 'flux3_klein_t2i', catalog: 'comfy-flux3-klein', badge: 'New' },
   { id: 'qwen-image-2-1', name: 'Qwen-Image 2.1', kind: 'image', vendor: 'Alibaba Qwen', blurb: 'Top open model for images and edits', workflow: 'qwen_image21_t2i', catalog: 'comfy-qwen-image21', badge: 'Top' },
-  { id: 'qwen-image-edit-2511', name: 'Qwen-Image Edit 2511', kind: 'image', vendor: 'Alibaba Qwen', blurb: 'Instruction edits and multiple references', workflow: 'qwen_edit' },
-  { id: 'z-image-turbo', name: 'Z-Image Turbo', kind: 'image', vendor: 'Alibaba Tongyi', blurb: 'Instant lifelike portraits', workflow: 'z_image' },
-  { id: 'hidream-o1', name: 'HiDream-O1', kind: 'image', vendor: 'HiDream', blurb: 'Detailed images with readable text', workflow: 'hidream' },
+  { id: 'qwen-image-edit-2511', name: 'Qwen-Image Edit 2511', kind: 'image', vendor: 'Alibaba Qwen', blurb: 'Instruction edits and multiple references', workflow: 'qwen2511_edit', catalog: 'comfy-qwen-image-edit-2511' },
+  { id: 'z-image-turbo', name: 'Z-Image Turbo', kind: 'image', vendor: 'Alibaba Tongyi', blurb: 'Instant lifelike portraits', workflow: 'z_image', catalog: 'comfy-z-image-turbo' },
+  { id: 'hidream-o1', name: 'HiDream-O1', kind: 'image', vendor: 'HiDream', blurb: 'Detailed images with readable text', workflow: 'hidream', catalog: 'comfy-hidream-o1' },
   { id: 'minimax-h3', name: 'MiniMax H3', kind: 'video', vendor: 'MiniMax', blurb: 'Top open video model with native audio', workflow: 'h3_open_t2v', catalog: 'comfy-h3', badge: 'Top' },
   { id: 'ltx-2-5', name: 'LTX-2.5', kind: 'video', vendor: 'Lightricks', blurb: 'Fast video with multi-shot, keyframes and audio', workflow: 'ltx25_t2v', catalog: 'comfy-ltx25' },
   { id: 'wan-2-2', name: 'Wan 2.2', kind: 'video', vendor: 'Alibaba Wan', blurb: 'Image to video, first and last frame', workflow: 'wan22_i2v' },

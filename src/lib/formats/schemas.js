@@ -642,6 +642,29 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "flux_character_set": [
+      "count",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "flux_look": [
+      "count",
+      "height",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "flux_look_ref": [
+      "count",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
     "h3_freevideo_i2v": [
       "duration",
       "height",
@@ -678,6 +701,13 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "hidream": [
+      "count",
+      "height",
+      "prompt",
+      "seed",
+      "width"
+    ],
     "image_flux": [
       "count",
       "height",
@@ -686,6 +716,63 @@ export const schemas = {
       "width"
     ],
     "image_sdxl": [
+      "count",
+      "height",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "klein_character": [
+      "count",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "klein_character_swap": [
+      "image",
+      "image2",
+      "prompt",
+      "seed"
+    ],
+    "klein_edit": [
+      "image",
+      "prompt",
+      "seed"
+    ],
+    "klein_edit_canvas": [
+      "count",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "klein_headshot": [
+      "count",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "klein_moodboard": [
+      "count",
+      "height",
+      "image",
+      "image2",
+      "image3",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "klein_retouch": [
+      "image",
+      "prompt",
+      "seed"
+    ],
+    "krea2_t2i": [
       "count",
       "height",
       "prompt",
@@ -715,9 +802,136 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "qwen2511_edit": [
+      "image",
+      "image2",
+      "image3",
+      "prompt",
+      "seed"
+    ],
+    "qwen2511_relight": [
+      "image",
+      "prompt",
+      "seed"
+    ],
+    "qwen_character_sheet": [
+      "count",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "qwen_edit": [
+      "count",
+      "image",
+      "prompt",
+      "seed"
+    ],
+    "qwen_edit_mockup": [
+      "count",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "qwen_edit_outpaint": [
+      "count",
+      "image",
+      "pad",
+      "prompt",
+      "seed"
+    ],
+    "qwen_edit_place_product": [
+      "count",
+      "image",
+      "image2",
+      "prompt",
+      "seed"
+    ],
+    "qwen_edit_style_ref": [
+      "count",
+      "image",
+      "image2",
+      "prompt",
+      "seed"
+    ],
+    "qwen_edit_try_on": [
+      "count",
+      "image",
+      "image2",
+      "image3",
+      "prompt",
+      "seed"
+    ],
+    "qwen_edit_variants": [
+      "count",
+      "image",
+      "prompt",
+      "seed"
+    ],
     "qwen_image21_t2i": [
       "count",
       "height",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "qwen_image_layered": [
+      "image",
+      "layers",
+      "seed"
+    ],
+    "qwen_image_logo": [
+      "count",
+      "height",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "qwen_image_ref": [
+      "count",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "qwen_multiangle": [
+      "azimuth",
+      "batch",
+      "elevation",
+      "image",
+      "seed",
+      "zoom"
+    ],
+    "qwen_restore": [
+      "image",
+      "prompt",
+      "seed"
+    ],
+    "qwen_shots_grid": [
+      "image",
+      "seed"
+    ],
+    "qwen_zoom_grid": [
+      "count",
+      "image",
+      "prompt",
+      "seed"
+    ],
+    "storyboard": [
+      "count",
+      "height",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "storyboard_ref": [
+      "count",
+      "height",
+      "image",
       "prompt",
       "seed",
       "width"
@@ -736,6 +950,26 @@ export const schemas = {
       "seed",
       "start",
       "video"
+    ],
+    "z_image": [
+      "count",
+      "height",
+      "prompt",
+      "seed",
+      "width"
+    ]
+  },
+  "comfyOptional": {
+    "klein_moodboard": [
+      "image2",
+      "image3"
+    ],
+    "qwen2511_edit": [
+      "image2",
+      "image3"
+    ],
+    "qwen_edit_try_on": [
+      "image3"
     ]
   },
   "router": {

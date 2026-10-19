@@ -311,7 +311,8 @@ const multiShot = open({
 const storyboard = open({
   id: 'storyboard', name: 'Storyboard', kind: 'image', category: 'story', featured: true, layout: 'wide',
   blurb: 'Turn a story idea into a set of consistent shots.',
-  runsOn: 'FLUX 3 Image Klein', workflow: 'storyboard',
+  runsOn: 'FLUX 3 Image Klein', workflow: 'storyboard', imageWorkflow: 'storyboard_ref',
+  bindings: { count: 'shots' },
   inputs: [
     { id: 'idea', type: 'longtext', label: 'Story idea', placeholder: 'A small delivery robot gets lost in a night market and finds its way home' },
     { id: 'shots', type: 'count', label: 'Shots', options: [4, 6, 8], default: 6, unit: 'shots', half: true },
