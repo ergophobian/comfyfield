@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Segmented from '../components/Segmented.jsx'
 import { Field } from '../components/formats/Fields.jsx'
@@ -13,6 +13,7 @@ import { presenterFormats } from '../lib/formats/presenters.js'
 import { initialValues, missingInputs, visibleInputs } from '../lib/recipes.js'
 import FormatReview from '../components/formats/Review.jsx'
 import Results from '../components/Results.jsx'
+import { motionSeconds } from '../lib/formats/presenterSession.js'
 
 const pickOne = (list) => list[Math.floor(Math.random() * list.length)]
 const labelOf = (group, id) => group.options.find((o) => o.id === id)?.label
@@ -92,6 +93,7 @@ function Builder({ picks, setPicks, open, setOpen }) {
 function PresenterFields({ format, values, setValues, setError }) {
   return <div className="inf-build inf-motion">
     <p className="sa-hint">{format.output}</p>
+    {format.id === 'influencer-motion' && values.video?.duration && <p className="sheet-note" role="status">Output length: {motionSeconds(values.video).toFixed(2)} seconds at 16 fps. Original audio is dropped.</p>}
     {visibleInputs(format, values).map((input) => <Field key={input.id} input={input} value={values[input.id]}
       onChange={(value) => setValues((current) => ({ ...current, [input.id]: value }))} setError={setError} />)}
   </div>
@@ -186,26 +188,47 @@ export default function Influencer() {
   const [valuesById, setValuesById] = useState({})
   const [session, setSession] = useState(null)
   const [running, setRunning] = useState(false)
+  const [engineState, setEngineState] = useState({})
+  const [sessionAction, setSessionAction] = useState(null)
+  const operation = useRef(false)
+  const locked = running || Object.values(engineState).some((state) => state.running > 0)
+  useEffect(() => {
+    if (!session) { setEngineState({}); return }
+    const sync = () => setEngineState(session.engine.state)
+    sync()
+    return session.engine.subscribe(sync)
+  }, [session])
   const [error, setError] = useState(null)
   const format = tab === 'motion' ? motionFormat : ugcFormats.find((item) => item.id === ugcId)
   const values = valuesById[format.id] || initialValues(format)
   const missing = missingInputs(format, values)
   const setValues = (update) => {
+    if (operation.current || session?.engine.isRunning()) return
     setSession(null)
+    setSessionAction(null)
     setValuesById((current) => ({ ...current, [format.id]: update(current[format.id] || initialValues(format)) }))
   }
-  const changeTab = (value) => { if (running) return; setTab(value); setSession(null); setError(null) }
+  const changeTab = (value) => { if (operation.current || locked || session?.engine.isRunning()) return; setTab(value); setSession(null); setSessionAction(null); setError(null) }
   const generate = async () => {
-    if (running || session?.engine.isRunning() || missing.length) return
+    if (operation.current || locked || session?.engine.isRunning() || missing.length) return
+    operation.current = true
     setRunning(true)
     setMain('history')
-    setSession(null)
     setError(null)
-    try { setSession(await gens.generateFormat(format, values)) }
-    catch (error) { setError(error.message) }
-    finally { setRunning(false) }
+    setSessionAction(null)
+    try {
+      if (session) await session.resume()
+      else await gens.generateFormat(format, values, { onSession: setSession })
+    } catch (error) {
+      setError(error.message)
+      if (error.runAsSession) setSessionAction(() => error.runAsSession)
+    } finally { operation.current = false; setRunning(false) }
   }
-  const history = gens.items.filter((item) => presenterFormats.some((format) => format.id === item.formatId))
+  const currentScript = engineState.script?.items?.find((item) => item.status === 'done')?.text
+  const history = gens.items.filter((item) => presenterFormats.some((format) => format.id === item.formatId)).map((item) => (
+    item.kind === 'video' && item.formatRunId === session?.formatRunId && currentScript && item.prompt !== currentScript
+      ? { ...item, caption: `${item.caption} · Older script` } : item
+  ))
   const filled = builder.filter((g) => (g.multi ? picks[g.id]?.length : picks[g.id])).length
 
   const recreate = (preset) => {
@@ -227,14 +250,17 @@ export default function Influencer() {
           {tab === 'create' ? <Builder picks={picks} setPicks={setPicks} open={open} setOpen={setOpen} /> : <>
             {tab === 'ugc' && <div className="field">
               <label htmlFor="presenter-format">Video format</label>
-              <select id="presenter-format" value={ugcId} disabled={running} onChange={(event) => { setUgcId(event.target.value); setSession(null); setError(null) }}>
+              <select id="presenter-format" value={ugcId} disabled={locked} onChange={(event) => { if (operation.current || session?.engine.isRunning()) return; setUgcId(event.target.value); setSession(null); setSessionAction(null); setError(null) }}>
                 {ugcFormats.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
               </select>
             </div>}
-            <fieldset disabled={running} className="inf-inputs">
+            <fieldset disabled={locked} className="inf-inputs">
               <PresenterFields format={format} values={values} setValues={setValues} setError={setError} />
             </fieldset>
-            {session && <FormatReview session={session} />}
+            {session && <FormatReview session={session} onActivityChange={(active) => { operation.current = active; setRunning(active) }} />}
+            {sessionAction && <button type="button" className="btn-soft" disabled={locked} onClick={async () => {
+              try { await sessionAction(); setError(null); setSessionAction(null) } catch (error) { setError(error.message) }
+            }}>Run as a Session</button>}
             {error && <p className="sheet-error" role="alert">{error}</p>}
           </>}
         </div>
@@ -245,8 +271,8 @@ export default function Influencer() {
                 <IconShuffle />
               </button>
             )}
-            {tab === 'create' ? <GoButton className="inf-generate" /> : <button type="button" className="btn-blue inf-generate" disabled={running || missing.length > 0} onClick={generate}>
-              {running ? 'Working' : tab === 'ugc' ? 'Prepare video' : 'Generate motion'}
+            {tab === 'create' ? <GoButton className="inf-generate" /> : <button type="button" className="btn-blue inf-generate" disabled={locked || missing.length > 0} onClick={generate}>
+              {locked ? 'Working' : tab === 'ugc' ? 'Prepare video' : 'Generate motion'}
             </button>}
           </div>
           <p className="inf-meta">

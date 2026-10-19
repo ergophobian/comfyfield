@@ -3,14 +3,15 @@ import { ltx25Sizes } from '../catalog.js'
 
 const presenter = { id: 'character', type: 'character', label: 'Fictional presenter from Library', half: true }
 const product = { id: 'product', type: 'product', label: 'Product from Library', half: true }
+const rights = { id: 'rights', type: 'choice', confirmation: true, label: 'Presenter consent and asset rights', options: [{ id: 'confirmed', label: 'I confirm', note: 'The presenter is a fictional adult, not a real person. I have permission to use its photos or likeness, all product images and any reference clip.' }] }
 const brief = { id: 'brief', type: 'longtext', label: 'Product facts and direction', placeholder: 'What it does, who it helps, and one thing to show. Use verified facts only.' }
 
 const ugc = (id, name, job, scene, action, cover) => open({
   id, name, job, blurb: job, shape: 'pipeline', kind: 'video', category: 'ads', hub: 'ads', layout: 'wide',
   runsOn: action ? 'Qwen Image Edit, LTX 2.5, Chatterbox and InfiniteTalk' : 'Qwen Image Edit, Chatterbox and InfiniteTalk',
-  inputs: [presenter, product, brief],
+  inputs: [presenter, product, brief, rights],
   settings: { aspect: '9:16', duration: 5 },
-  output: 'A presenter still and a short spoken video, saved to Library. Review the script before rendering. Final speech video needs a Session. Use generated fictional adults only.',
+  output: 'A presenter still and an approximately 480p spoken video, saved to Library. Speech is limited to 30 seconds (60 words maximum). Review the script before rendering. Final speech video needs a Session. Use generated fictional adults only.',
   steps: [
     {
       id: 'stage', from: [], provider: 'comfy', workflow: 'qwen2511_edit', kind: 'image',
@@ -48,12 +49,13 @@ export const presenterFormats = [
     runsOn: 'Wan Animate 2', workflow: 'wan_animate2',
     inputs: [
       presenter,
+      rights,
       { id: 'video', type: 'video', label: 'Reference motion clip' },
       { id: 'scene', type: 'text', label: 'Scene direction', optional: true, placeholder: 'Soft daylight, a simple studio backdrop' },
     ],
     prompt: 'The generated fictional adult character from the reference image performs the body movements from the reference video. Preserve the fictional identity and outfit. Use the clip only for motion, never copy its performer identity. {scene}',
     settings: { aspect: '9:16', duration: 5 },
-    output: 'A motion-transfer video saved to Library. Uses the selected trim, or the first five seconds. Use a generated fictional adult with a clear full-body image.',
+    output: 'A silent motion-transfer video saved to Library. Normalized to 16 fps, at most 81 frames (5.06 seconds), rounded down to a 4n+1 frame count. Uses the selected trim or the first five seconds. Use a generated fictional adult with a clear full-body image.',
     cover: covers.indigo,
   }),
 ]

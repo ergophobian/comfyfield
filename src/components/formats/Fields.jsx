@@ -187,6 +187,7 @@ function DrawField({ input, value, onChange, setError, labelId }) {
 }
 
 function Choice({ input, value, onChange, labelId }) {
+  if (input.confirmation) return <label className="presenter-confirmation"><input type="checkbox" checked={value === input.options[0].id} onChange={(event) => onChange(event.target.checked ? input.options[0].id : null)} />{input.options[0].note}</label>
   const cards = input.options.some((o) => o.note)
   return (
     <div className={cards ? 'opt-grid' : 'pills'} role="group" aria-labelledby={labelId}>

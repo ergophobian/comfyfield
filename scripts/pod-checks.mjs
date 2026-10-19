@@ -1192,9 +1192,19 @@ await test('video edits: a clip travels with its trim, and a saved character sta
 await test('video edits: each graph trims, sizes and caps itself from its clip', () => {
   for (const [name, [edge, cap]] of Object.entries(EDITS)) {
     const g = readGraph(name)
-    assert.equal(g['1'].class_type, 'LoadVideo')
-    assert.equal(g['1'].inputs.file, '{{video}}', name)
-    assert.deepEqual([g['2'].inputs.start_time, g['2'].inputs.duration], ['{{start}}', '{{duration}}'], `${name} uses the trim`)
+    if (name === 'wan_animate2') {
+      assert.equal(g['1'].class_type, 'VHS_LoadVideo')
+      assert.equal(g['1'].inputs.video, '{{video}}')
+      assert.equal(g['1'].inputs.force_rate, 16)
+      assert.equal(g['1'].inputs.skip_first_frames, '{{motion_start}}')
+      assert.equal(g['1'].inputs.frame_load_cap, '{{motion_frames}}')
+      assert.equal(g['25'].inputs.fps, 16)
+      assert(!g['25'].inputs.audio, 'Motion reference audio is dropped')
+    } else {
+      assert.equal(g['1'].class_type, 'LoadVideo')
+      assert.equal(g['1'].inputs.file, '{{video}}', name)
+      assert.deepEqual([g['2'].inputs.start_time, g['2'].inputs.duration], ['{{start}}', '{{duration}}'], `${name} uses the trim`)
+    }
     assert.equal(g['81'].inputs.value, cap, `${name} frame cap`)
     const at = (a, b) => [evalMath(g['83'].inputs.expression, a, b), evalMath(g['84'].inputs.expression, a, b)]
     const wide = at(1920, 1080)
@@ -1222,7 +1232,7 @@ await test('video edits: Cloud takes the edits it has every file for; the face s
   const lease = async (o) => { leases.push(o); return { baseUrl: 'https://p-8189.proxy.runpod.net', token: 't', sandbox: false, signal: new AbortController().signal, reason: () => null, release() {} } }
   const clip = 'data:video/mp4;base64,AAAAIGZ0eXBpc29t'
   const face = 'data:image/png;base64,iVBORw0KGgo='
-  const vars = { prompt: 'Swap', seed: 1, start: 0, duration: 3, video: clip, image: face }
+  const vars = { prompt: 'Swap', seed: 1, start: 0, duration: 3, motion_start: 0, motion_frames: 45, video: clip, image: face }
   const run = (w, phase = 'none') => core.runComfy(w, vars, { createClient: () => client, lease, podPhase: async () => phase, podVram: () => 24, podRoom: () => ({}) })
 
   podMode()
@@ -1230,7 +1240,7 @@ await test('video edits: Cloud takes the edits it has every file for; the face s
     const files = await run(w)
     assert.equal(files[0].kind, 'video')
     assert.equal(sent.at(-1).file, `${w}.json`)
-    assert.deepEqual(sent.at(-1).inputs['1.file'], { asset: 'input.mp4', type: 'video/mp4', bytes: 12 }, `${w} uploads the clip to LoadVideo`)
+    assert.deepEqual(sent.at(-1).inputs[w === 'wan_animate2' ? '1.video' : '1.file'], { asset: 'input.mp4', type: 'video/mp4', bytes: 12 }, `${w} uploads the clip to LoadVideo`)
   }
   assert.equal(leases.length, 0, 'Comfy Cloud has every file these use')
   assert.equal(sent.find((x) => x.file === 'bernini_swap.json').inputs['12.image'].type, 'image/png', 'the reference uploads too')

@@ -2,12 +2,13 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { presenterFormats } from '../src/lib/formats/presenters.js'
 import { compileFormat, runFormat } from '../src/lib/formats/runner.js'
+import { createPresenterSession, presenterRequirements, presenterBlock, motionSeconds, speechProblem } from '../src/lib/formats/presenterSession.js'
 import { validateFormat } from '../src/lib/formats/validate.js'
 import { comfyVars, fill, dropOptional } from '../shared/mapping.js'
 
 const character = { type: 'character', id: 'fictional-adult', name: 'Fictional presenter', images: ['https://example.test/presenter.png'] }
 const product = { type: 'product', id: 'cup', name: 'Demo cup', images: ['https://example.test/product.png'] }
-const values = { character, product, brief: 'A reusable cup with a carrying handle.' }
+const values = { character, product, rights: 'confirmed', brief: 'A reusable cup with a carrying handle.' }
 globalThis.fetch = () => { throw new Error('No network allowed') }
 for (const format of presenterFormats) assert.deepEqual(validateFormat(format), [], format.id)
 assert.equal(presenterFormats.filter((format) => format.id.startsWith('ugc-')).length, 4)
@@ -67,7 +68,7 @@ for (const format of presenterFormats.filter((format) => format.id.startsWith('u
 }
 const motion = presenterFormats.find((format) => format.id === 'influencer-motion')
 let vars
-await runFormat(motion, { character, video: { url: 'https://example.test/motion.mp4', trim: { start: 2, end: 6 }, duration: 8 }, scene: 'A simple studio' }, {
+await runFormat(motion, { character, rights: 'confirmed', video: { url: 'https://example.test/motion.mp4', trim: { start: 2, end: 6 }, duration: 8 }, scene: 'A simple studio' }, {
   run: async (model, opts) => {
     assert.equal(model.workflow, 'wan_animate2')
     vars = comfyVars(model.kind, opts)
@@ -78,6 +79,49 @@ assert.equal(vars.image, character.images[0])
 assert.equal(vars.video, 'https://example.test/motion.mp4')
 assert.equal(vars.start, 2)
 assert.equal(vars.duration, 4)
-assert.throws(() => compileFormat(motion, { character }), /Reference motion clip/)
-assert.throws(() => compileFormat(presenterFormats[0], { character, brief: 'A cup' }), /Product from Library/)
+assert.throws(() => compileFormat(motion, { character, rights: 'confirmed' }), /Reference motion clip/)
+assert.throws(() => compileFormat(presenterFormats[0], { character, rights: 'confirmed', brief: 'A cup' }), /Product from Library/)
 console.log('Presenter checks ok: four creator formats, ordered Library references, editable writer and approval gates, speech graph links, motion trim, persistence metadata and rerun safety. No network calls.')
+
+const graphFor = async (workflow) => JSON.parse(readFileSync(`public/workflows/${workflow}.json`))
+for (const format of presenterFormats.filter((format) => format.id.startsWith('ugc-'))) {
+  const requirements = await presenterRequirements(compileFormat(format, values), graphFor)
+  assert.equal(requirements.steps.length, 2, 'Every generation workflow is checked before starting')
+  assert(requirements.session, 'wav2vec requires a Session')
+  const demo = ['ugc-unboxing', 'ugc-tutorial'].includes(format.id)
+  assert.equal(requirements.vram, demo ? 32 : 24)
+  const block = presenterBlock(requirements, { phase: 'none' }, 'instant')
+  assert.equal(block.message, demo ? 'This format needs a Session with a 32 GB GPU' : 'Speech videos need a Session')
+  assert.equal(block.workflow, demo ? 'ugc_presenter_demo' : 'ugc_presenter_talk')
+  assert(presenterBlock(requirements, { phase: 'ready', pod: { vramGb: 16 } }, 'session'))
+  assert.equal(presenterBlock(requirements, { phase: 'ready', pod: { vramGb: 32 } }, 'session'), null)
+}
+let staged = 0
+let written = 0
+const retained = createPresenterSession(presenterFormats[0], values, {
+  run: async () => { staged++; return [{ kind: 'image', url: 'stage.png' }] },
+  writePrompt: async () => { written++; if (written === 1) throw new Error('Writer unavailable'); return 'Carry the cup easily.' },
+})
+await assert.rejects(retained.resume(), (error) => error.message === 'Writer unavailable' && error.session === retained)
+await retained.resume()
+assert.equal(staged, 1, 'Retry must keep the paid stage output')
+assert.equal(written, 2, 'Only the failed writer retries')
+let callsBeforeBlocked = 0
+const blocked = createPresenterSession(presenterFormats[0], values, {
+  guard: async () => { throw new Error('Speech videos need a Session') },
+  run: async () => { callsBeforeBlocked++ }, writePrompt: async () => { callsBeforeBlocked++ },
+})
+await assert.rejects(blocked.resume(), /Speech videos need a Session/)
+assert.equal(callsBeforeBlocked, 0, 'No writer or staging when preflight blocks')
+assert.throws(() => createPresenterSession(presenterFormats[0], { ...values, rights: null }, {}), /consent/)
+assert(speechProblem(Array(61).fill('word').join(' ')))
+assert.equal(speechProblem(Array(60).fill('word').join(' ')), null)
+const motionGraph = await graphFor('wan_animate2')
+assert.equal(motionGraph['1'].inputs.force_rate, 16, '30 fps and 60 fps sources normalize before the frame cap')
+assert.equal(motionGraph['25'].inputs.fps, 16)
+assert(!('audio' in motionGraph['25'].inputs), 'Reference audio never reaches the output')
+assert.equal(vars.motion_start, 32)
+assert.equal(vars.motion_frames, 61)
+assert.equal(motionSeconds({ trim: { start: 2, end: 6 } }), 61 / 16)
+assert.equal(motionSeconds({ trim: { start: 0, end: 10 } }), 81 / 16)
+console.log('Presenter regression checks ok: full-format Session preflight, no duplicate staging on writer retry, rights, speech length and normalized silent motion.')

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { run, writePrompt } from './providers.js'
 import { runFormat } from './formats/runner.js'
+import { createPresenterSession, isPresenterFormat, presenterBlock, presenterRequirements } from './formats/presenterSession.js'
+import { askPod, refreshPod, runTypeOf, setRunType } from './usePod.js'
 
 const KEY = 'comfyfield.library'
 const MAX_PARALLEL = 3
@@ -65,7 +67,24 @@ export function useGenerations() {
   }
 
   const generate = (model, opts, meta) => { execute(model, opts, meta).catch(() => {}) }
-  const generateFormat = (format, values) => runFormat(format, values, { run: execute, writePrompt: ({ instructions, note, images, target }) => writePrompt({ instructions, note, images, target }) })
+  const generateFormat = async (format, values, { onSession } = {}) => {
+    const adapters = { run: execute, writePrompt: ({ instructions, note, images, target }) => writePrompt({ instructions, note, images, target }) }
+    if (!isPresenterFormat(format)) return runFormat(format, values, adapters)
+    const guard = async (flow) => {
+      const requirements = await presenterRequirements(flow, async (workflow) => {
+        const response = await fetch(`/workflows/${workflow}.json`)
+        if (!response.ok) throw new Error('Could not check this format’s Session requirements. Try again.')
+        return response.json()
+      })
+      const status = await refreshPod()
+      const block = presenterBlock(requirements, status, runTypeOf(status))
+      if (block) throw Object.assign(new Error(block.message), { runAsSession: async () => { await setRunType('session'); await askPod(block.workflow, block.message) } })
+    }
+    const session = createPresenterSession(format, values, { ...adapters, guard })
+    onSession?.(session)
+    await session.resume()
+    return session
+  }
 
   const toggleApprove = (id) => setItems((xs) => xs.map((x) => (x.id === id ? { ...x, approved: !x.approved } : x)))
   const dismiss = (id) => {

@@ -1347,11 +1347,11 @@ export const schemas = {
       "width"
     ],
     "wan_animate2": [
-      "duration",
       "image",
+      "motion_frames",
+      "motion_start",
       "prompt",
       "seed",
-      "start",
       "video"
     ],
     "z_image": [

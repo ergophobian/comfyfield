@@ -148,7 +148,7 @@ export function validateFormat(format, schemas = savedSchemas) {
         const pictures = format.inputs.filter((i) => pictureTypes.includes(i.type)).length
         const files = [...PICTURE_SLOTS.slice(1, pictures), ...(format.inputs.some((i) => i.type === 'mask' || i.type === 'draw') ? ['mask'] : []),
           ...(format.inputs.some((i) => i.type === 'audio') ? ['audio'] : []), ...(format.inputs.some((i) => i.type === 'voice') ? ['voice'] : [])]
-        const supplied = new Set(['prompt', 'width', 'height', 'count', 'frames', 'duration', 'start', 'seed', ...(hasVideo ? ['video'] : []), ...(stepOptions(format, step, values).images.length || upstream.length || pictures ? ['image'] : []), ...files, ...Object.keys(step.params || {}), ...Object.keys(step.bindings || {})])
+        const supplied = new Set(['prompt', 'width', 'height', 'count', 'frames', 'duration', 'start', 'motion_frames', 'motion_start', 'seed', ...(hasVideo ? ['video'] : []), ...(stepOptions(format, step, values).images.length || upstream.length || pictures ? ['image'] : []), ...files, ...Object.keys(step.params || {}), ...Object.keys(step.bindings || {})])
         // A choice that always shows (or shows whenever this target runs), and whose every option sets a
         // param, supplies it.
         for (const input of format.inputs) {
@@ -191,6 +191,7 @@ export function validateFormat(format, schemas = savedSchemas) {
   }
   // A choice that decides which inputs show is used through them.
   for (const input of format.inputs) if (input.when) used.add(input.when[0])
+  for (const input of format.inputs) if (input.confirmation && input.type === 'choice' && input.options.length === 1) used.add(input.id)
   if (!missingTarget) for (const input of format.inputs) if (!used.has(input.id)) bad(`Input ${input.id} does not map to a target model`)
   // Check a missing optional slot cannot leave a required model field unmapped.
   for (const step of format.steps.filter((s) => !s.type)) {

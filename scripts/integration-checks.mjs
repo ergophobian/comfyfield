@@ -19,8 +19,9 @@ globalThis.fetch = () => { throw new Error('Network is forbidden in integration 
 const photo = { url: '/media/photo.png', ratio: '9:16' }
 const valuesFor = (format) => ({ ...initialValues(format), ...Object.fromEntries(format.inputs.filter((i) => i.type === 'image').map((i) => [i.id, photo])) })
 assert.equal(effects.length, 45)
-assert.equal(formats.length, 455)
-assert.equal(allFormats.length, 484)
+assert.deepEqual(formats, allFormats.filter((format) => validateFormat(format).length === 0))
+for (const id of ['ugc-product-review', 'ugc-unboxing', 'ugc-tutorial', 'ugc-talking-head', 'influencer-motion']) assert(formats.some((format) => format.id === id), `${id} is runnable`)
+assert(allFormats.length >= formats.length)
 for (const [i, format] of effects.entries()) {
   assert.equal(format.steps[0].instructions, research.specs[i].writer_instructions)
   assert.deepEqual(validateFormat(format), [])

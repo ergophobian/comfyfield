@@ -2695,3 +2695,8 @@ a.skill-chip:active { transform: scale(.96); }
 .inf-inputs { border: 0; padding: 0; margin: 0; min-width: 0; }
 .inf-panel select { width: 100%; min-height: var(--widget-touch); padding: var(--widget-gap) var(--widget-space); border: var(--widget-border) solid var(--line); border-radius: var(--r-md); font: inherit; color: var(--ink); background: var(--glass-strong); }
 .page:has(.lib-body) .page-head .seg, .lib-filters .seg { max-width: 100%; overflow-x: auto; scrollbar-width: thin; }
+
+/* Presenter consent and script freshness */
+.presenter-confirmation { display: flex; align-items: start; gap: var(--agent-small-gap); font-size: var(--text-sm); }
+.presenter-confirmation input { width: auto; flex-shrink: 0; }
+.presenter-stale { padding: var(--agent-small-gap); border: var(--agent-border) solid var(--line); border-radius: var(--r-sm); }
