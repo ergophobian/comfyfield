@@ -1383,6 +1383,8 @@ code { font-size: .92em; }
 .gen-scene { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: var(--r-md); border: 1px solid var(--line); background: var(--paper); }
 .gen-scene .seg button, .gen-main-head .seg button { display: inline-flex; align-items: center; gap: 6px; }
 .gen-scene .seg svg, .gen-main-head .seg svg { width: 14px; height: 14px; }
+.gen-upscale-more { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; }
+.gen-upscale .pills button:disabled { opacity: var(--disabled); border-color: var(--line); transform: none; }
 
 .gen-main { min-width: 0; display: flex; flex-direction: column; gap: 14px; }
 .gen-main-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
