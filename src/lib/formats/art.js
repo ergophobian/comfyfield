@@ -1,3 +1,5 @@
+import videoIds from '../../../public/art/video/index.json' with { type: 'json' }
+
 // Generated editorial art is optional; unmapped entries keep their original gradient.
 export const coverArt = {
   "zooms": "/art/covers/shots.webp",
@@ -241,4 +243,23 @@ export const pageArtId = (pathname) => {
   const path = pathname.split('/').filter(Boolean)
   if (path[0] === 'video' && path[1] === 'edit') return 'video-edit'
   return path[0] === 'assets' || path[0] === 'library' ? 'library' : path[0] || 'cinema'
+}
+
+// Clip filenames stay independent of the catalog's tool, page and format names.
+const videoAliases = {
+  cinema: 'cinema-studio',
+  influencer: 'ai-influencer',
+  'ai-influencer-video': 'ai-influencer',
+}
+
+export function artEntry(id, src) {
+  const still = src || coverArt[id] || toolArt(id) || heroArt(id)
+  const sourceId = still?.match(/^\/art\/(?:covers|heroes)\/([^/]+)\.webp$/)?.[1]
+  const source = heroSources[sourceId] || sourceId
+  const toolIds = source ? Object.keys(toolSources).filter((key) => toolSources[key] === source) : []
+  const clip = [id, sourceId, source, ...toolIds].flatMap((key) => [key, videoAliases[key]]).find((key) => videoIds.includes(key))
+  return {
+    still,
+    ...(clip ? { video: `/art/video/${clip}.mp4`, poster: `/art/video/${clip}.webp` } : {}),
+  }
 }

@@ -2703,6 +2703,10 @@ a.skill-chip:active { transform: scale(.96); }
 
 /* Art stays inside existing glass layouts and never stands in for saved results. */
 .art-image { display: block; width: 100%; height: 100%; object-fit: cover; }
+.art-media { position: relative; aspect-ratio: var(--art-card-ratio); overflow: hidden; }
+.art-media > .art-image { position: absolute; inset: 0; object-position: inherit; }
+.art-video { visibility: hidden; }
+.art-video.is-playing { visibility: visible; }
 .recipe-cover > .art-image, .sheet-cover > .art-image, .app-cover > .art-image,
 .ex-art > .art-image, .mega-icon > .art-image, .model-logo > .art-image,
 .gen-preset > .art-image, .inf-fan-card > .art-image, .inf-card-cover > .art-image,
