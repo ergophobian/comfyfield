@@ -70,11 +70,12 @@ try {
   await cdp('Page.enable')
   await cdp('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] })
   await cdp('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1100, deviceScaleFactor: 1, mobile: false })
-  // The page saves its own picker state once it is up, so the model is picked after that, then reloaded.
-  await cdp('Page.navigate', { url: `${origin}/video` })
-  await wait('document.querySelector("textarea[aria-label=Prompt]")')
+  // The app saves its own picker state on mount and can overwrite ours on a slow machine,
+  // so the model is picked on a same-origin API page that runs no app code.
+  await cdp('Page.navigate', { url: `${origin}/api/stitch/exports` })
+  await wait('location.pathname === "/api/stitch/exports" && document.readyState === "complete"')
   await evaluate(`localStorage.clear(); localStorage.setItem('comfyfield.picker', JSON.stringify({ kind: 'video', chosen: { video: 'fal:${model}' } }))`)
-  await cdp('Page.reload')
+  await cdp('Page.navigate', { url: `${origin}/video` })
   await wait('document.querySelector("textarea[aria-label=Prompt]") && document.querySelector(".gen-settings [title=Resolution]")')
 
   // Off, the Resolution chip sets the size. On, Upscale picks it: 720p made, 1080p delivered.
