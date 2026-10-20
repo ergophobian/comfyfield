@@ -877,10 +877,10 @@ await test('auto-start: Generate starts, resumes or keeps the Pod by itself, onc
   const opts = { prompt: 'A fox', aspect: '1:1' }
   // A stub of the app's API: runs need a Pod until one exists.
   const api = (start = {}) => {
-    const s = { phase: 'none', auto: true, connected: true, posts: [], ...start }
+    const s = { phase: 'none', auto: true, connected: true, run: 'session', posts: [], ...start }
     globalThis.fetch = async (url, init = {}) => {
       const reply = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } })
-      if (url === '/api/pod') return reply({ phase: s.phase, auto: s.auto, connected: s.connected, spend: { today: 0, cap: 20 } })
+      if (url === '/api/pod') return reply({ phase: s.phase, auto: s.auto, connected: s.connected, run: s.run ?? null, spend: { today: 0, cap: 20 } })
       if (url.startsWith('/api/pod/')) {
         s.posts.push({ action: url.slice(9), body: JSON.parse(init.body || '{}') })
         if (s.refuse) return reply({ error: s.refuse }, 402)
@@ -913,6 +913,15 @@ await test('auto-start: Generate starts, resumes or keeps the Pod by itself, onc
   s = api({ phase: 'ending' })
   await run(model, opts)
   assert.deepEqual(s.posts.map((p) => p.action), ['keep'])
+
+  // Instant never starts a Pod, with auto-start on or off: the run fails with needs_pod and nothing is asked.
+  for (const auto of [true, false]) {
+    s = api({ run: 'instant', auto })
+    waited = 0
+    await assert.rejects(run(model, opts, { onPod: () => waited++ }), (e) => e.code === 'needs_pod', `Instant with auto-start ${auto ? 'on' : 'off'} fails, and does not wait on the start sheet`)
+    assert.deepEqual(s.posts, [], 'Instant starts, resumes or keeps no Pod')
+    assert.equal(waited, 0, 'the take is not marked as waiting for a Pod')
+  }
 
   s = api({ refuse: 'Daily cap reached: $20.00 of $20.00 today. Raise it in Connections.' })
   await assert.rejects(run(model, opts), /Daily cap reached/)
