@@ -164,10 +164,10 @@ const kindOfTool = (t) => [t.menu].flat().find((m) => kindName[m])
 const tagOfTool = (t) => ([t.menu].flat().includes('studio') ? 'Studio' : null)
 
 // Higgsfield's small tool card: icon, medium chip, name with badge, one line.
-function Tile({ to, icon, kind, tag, name, badge, line, sub, i, art }) {
+function Tile({ to, icon, kind, tag, name, badge, line, sub, i, art, artId }) {
   return (
     <Link to={to} className="ex-tile rise" style={{ '--d': `calc(${Math.min(i, 12)} * var(--stagger))` }}>
-      {art && <span className="ex-tile-art"><ArtImage src={art} alt={`${name} example`} /></span>}
+      {art && <span className="ex-tile-art"><ArtImage id={artId} src={art} alt={`${name} example`} /></span>}
       <span className="ex-tile-top">
         <span className="mega-icon">{icon}</span>
         {(kind || tag) && <span className="ex-kind">{kind ? <><KindIcon kind={kind} />{kindName[kind]}</> : tag}</span>}
@@ -220,7 +220,7 @@ function Home() {
         {apps.length ? <FormatGrid list={apps} onOpen={(f) => navigate(`/apps/${f.id}`)} /> : (
           // Until formats carry a hub, show the hubs themselves.
           <div className="ex-tiles">
-            {hubs.map((h, i) => <Tile key={h.id} i={i} to={`/apps#${h.id}`} art={hubArt(h.id)} icon={<ToolIcon id="apps" />} name={h.name} line={h.blurb} />)}
+            {hubs.map((h, i) => <Tile key={h.id} i={i} to={`/apps#${h.id}`} art={hubArt(h.id)} artId={h.id} icon={<ToolIcon id="apps" />} name={h.name} line={h.blurb} />)}
           </div>
         )}
       </Row>

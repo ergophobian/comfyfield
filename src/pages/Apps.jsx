@@ -53,7 +53,7 @@ export default function Apps() {
         return (
           <section key={g.id} className="apps-sec rise" style={{ '--d': `calc(${Math.min(gi + 2, 12)} * var(--stagger))` }}>
             <div className="apps-sec-head">
-              <span className="hub-art"><ArtImage src={hubArt(g.id) || categoryArt(g.id)} alt={`${g.name} examples`} /></span>
+              <span className="hub-art"><ArtImage id={g.id} src={hubArt(g.id) || categoryArt(g.id)} alt={`${g.name} examples`} /></span>
               <div>
                 <h2>{g.name}</h2>
                 <p>{g.blurb}</p>

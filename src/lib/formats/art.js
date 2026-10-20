@@ -257,7 +257,9 @@ export function artEntry(id, src) {
   const sourceId = still?.match(/^\/art\/(?:covers|heroes)\/([^/]+)\.webp$/)?.[1]
   const source = heroSources[sourceId] || sourceId
   const toolIds = source ? Object.keys(toolSources).filter((key) => toolSources[key] === source) : []
-  const clip = [id, sourceId, source, ...toolIds].flatMap((key) => [key, videoAliases[key]]).find((key) => videoIds.includes(key))
+  // A hero is named for its page, so its own clip wins; a shared cover defers to the tools that use it.
+  const keys = still?.startsWith('/art/heroes/') ? [id, sourceId, source, ...toolIds] : [id, ...toolIds, sourceId, source]
+  const clip = keys.flatMap((key) => [key, videoAliases[key]]).find((key) => videoIds.includes(key))
   return {
     still,
     ...(clip ? { video: `/art/video/${clip}.mp4`, poster: `/art/video/${clip}.webp` } : {}),

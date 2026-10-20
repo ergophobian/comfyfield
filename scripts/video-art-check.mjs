@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { artEntry, heroArt, toolArt } from '../src/lib/formats/art.js'
-import { allFormats } from '../src/lib/formats/index.js'
+import { allFormats, hubs } from '../src/lib/formats/index.js'
 import { tools } from '../src/lib/tools.js'
 import { createCoverPlayback } from '../src/lib/artPlayback.js'
 
@@ -9,7 +9,7 @@ const directory = new URL('../public/art/video/', import.meta.url)
 const ids = JSON.parse(readFileSync(new URL('index.json', directory)))
 assert(Array.isArray(ids), 'Video index must be an array')
 assert.equal(new Set(ids).size, ids.length, 'Video ids must be unique')
-const catalog = [...allFormats, ...tools].map(({ id }) => id)
+const catalog = [...allFormats, ...tools, ...hubs].map(({ id }) => id)
 for (const id of ids) {
   assert.match(id, /^[a-z0-9]+(?:-[a-z0-9]+)*$/)
   const entry = artEntry(id)
@@ -30,7 +30,7 @@ for (const id of ids) {
 assert.deepEqual(readdirSync(directory).filter((file) => !file.startsWith('._') && file.endsWith('.mp4')).map((file) => file.slice(0, -4)).sort(), [...ids].sort(), 'Index must include every encoded clip')
 assert.equal(artEntry(undefined, toolArt('influencer')).video, artEntry('ai-influencer-video').video)
 assert.equal(artEntry(undefined, heroArt('cinema')).video, artEntry('cinema-studio').video)
-assert.equal(artEntry(undefined, heroArt('effects')).video, artEntry('turn-to-sand').video)
+assert.equal(artEntry(undefined, heroArt('effects')).video, '/art/video/effects.mp4')
 assert.equal(artEntry('unknown-format').video, undefined)
 assert.equal(artEntry('unknown-format').still, undefined)
 
