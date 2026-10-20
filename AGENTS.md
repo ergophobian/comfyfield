@@ -154,3 +154,17 @@ Windows/macOS/Linux CI matrix with Chrome installed through setup-chrome.
 - Model nodes with output never re-run except through their own Rerun.
 - Run fills gaps only; Regenerate all wipes and re-runs.
 - Any change to `flowEngine.js` needs a matching check in `scripts/flow-checks.mjs`.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in this repo's GitHub Issues, through the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five default triage roles, with `agent-ready` standing in for ready-for-agent. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
