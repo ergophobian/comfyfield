@@ -1,0 +1,573 @@
+## Tools
+- Create image (/image) [image]: Generate images from a prompt
+- Cinematic cameras (/cinema?mode=image) [image]: Image generation with camera controls
+- Canvas (/flows) [image,video]: Chain prompts, references and models on a board
+- Moodboard (/moodboard) [image]: Turn your references into a reusable style
+- Character (/character) [image]: Create a character that stays the same
+- AI influencer (/influencer) [image,top]: Create and manage your AI influencer
+- Photodump (/photodump) [image]: A set of photos in your aesthetic
+- Relight (/apps/relight) [image]: Adjust light position, color and brightness
+- Inpaint (/edit) [image]: Select an area, describe the change
+- Image upscale (/upscale) [image]: Enhance image quality
+- Face swap (/apps/face-swap) [image]: Swap in your own face or a saved character
+- Character swap (/apps/character-swap) [image]: Put a saved character into any photo
+- Fashion factory (/fashion) [image]: Outfits and lookbooks from one character
+- Create video (/video) [video]: Generate videos from a prompt or a frame
+- Cinema studio (/cinema) [video,top]: Direct a shot like a film set
+- Faceless studio (/faceless) [video]: Start a faceless channel from a topic
+- 3D studio (/3d) [video]: Build 3D scenes and turn them into videos
+- Shorts studio (/shorts) [video]: Turn your footage into ready-made shorts
+- Explainer (/explainer) [video]: Turn any topic into an explainer video
+- Mixed media (/mixed-media) [video]: Restyle a clip with a mixed media look
+- Edit video (/video/edit) [video]: Edit scenes, shots and elements
+- Video upscale (/upscale?kind=video) [video]: Enhance video quality
+- Reframe (/reframe) [video]: Reframe and resize a video to any ratio
+- Click to ad (/ads) [video]: Turn a product link into video ads
+- Change color palette (/apps/color-grade) [video]: Adjust palette, tones and mood
+- Motion control (/video?tab=motion) [video]: Transfer motion from a video to an image
+- Lipsync studio (/lipsync) [video]: Make any face speak your audio
+- Text to speech (/audio?mode=speech) [audio]: Generate speech from text
+- Voice change (/audio?mode=change) [audio]: Swap the voice in any recording
+- Translate (/audio?mode=translate) [audio]: Translate and lipsync a video into a new language
+- Explore (/) [top]: Everything you can make
+- Apps (/apps) [top]: One-click tools for photos and videos
+- Effects (/effects) [studio]: Viral effects from one photo
+- Motion presets (/motion) [studio]: Camera moves and effects for any photo
+- Marketing studio (/marketing) [studio]: Product videos and ads from one brief
+- Ads studio (/ads) [studio,top]: Branded ads from a link
+- Assistant (/assistant) [studio]: Describe it, get a plan with costs, approve it
+- Skills (/skills) [top]: Ready-made jobs your agent runs on ComfyField
+- Assets (/assets) [top]: Your generations and saved elements
+
+## Open models
+- FLUX 3 Image Klein (image, Black Forest Labs): Next-generation images and edits, up to 10 references
+- Qwen-Image 2.1 (image, Alibaba Qwen): Top open model for images and edits
+- Qwen-Image Edit 2511 (image, Alibaba Qwen): Instruction edits and multiple references
+- Z-Image Turbo (image, Alibaba Tongyi): Instant lifelike portraits
+- HiDream-O1 (image, HiDream): Detailed images with readable text
+- MiniMax H3 (video, MiniMax): Top open video model with native audio
+- LTX-2.5 (video, Lightricks): Fast video with multi-shot, keyframes and audio
+- Wan 2.2 (video, Alibaba Wan): Image to video, first and last frame
+- Wan Animate 2 (video, Alibaba Wan): Transfer motion from a video to a character
+- Bernini-R (video, ByteDance): Restyle, relight and swap objects in real video
+- InfiniteTalk (video, MeiGen): Talking heads and lipsync of any length
+- Chatterbox Multilingual (audio, Resemble AI): Speech in 23 languages with emotion control
+- Fish Audio Drama 3 (audio, Fish Audio): Top open voice model, 83 languages
+- Qwen3-TTS (audio, Alibaba Qwen): Voice design and cloning from 3 seconds
+- MiniMax Music 3 (audio, MiniMax): Songs with vocals and lyrics
+- Stable Audio 3 (audio, Stability AI): Sound effects and instrumentals
+
+## Formats by category
+
+### Camera moves (72) runs on: MiniMax H3 x72
+- Dolly in [video, wired] MiniMax H3: The camera glides slowly toward your subject.
+- Dolly out [video, wired] MiniMax H3: The camera pulls back to reveal the whole scene.
+- Pan left [video, wired] MiniMax H3: The camera turns to sweep left across the scene.
+- Pan right [video, wired] MiniMax H3: The camera turns to sweep right across the scene.
+- Tilt up [video, wired] MiniMax H3: The camera tilts up from your subject to what is above.
+- Tilt down [video, wired] MiniMax H3: The camera tilts down from above to land on your subject.
+- Tilt reveal [video, wired] MiniMax H3: The camera tilts up from the ground to reveal the subject.
+- Zoom in [video, wired] MiniMax H3: The lens zooms in slowly on your subject.
+- Zoom out [video, wired] MiniMax H3: The lens zooms out to show the wider scene.
+- Tracking shot [video, wired] MiniMax H3: The camera moves alongside your subject.
+- Handheld [video, wired] MiniMax H3: A loose camera that feels shot on the spot.
+- Still camera [video, wired] MiniMax H3: The camera holds still while the scene comes alive.
+- Crane up [video, wired] MiniMax H3: The camera rises high above the scene.
+- Boom down [video, wired] MiniMax H3: The camera drops from high above to eye level.
+- FPV dive [video, wired] MiniMax H3: A drone dives down and races through the scene.
+- Drone flyover [video, wired] MiniMax H3: A drone sweeps over the scene from high above.
+- Orbit [video, wired] MiniMax H3: The camera circles around your subject.
+- Bullet time [video, wired] MiniMax H3: Time freezes while the camera sweeps around.
+- Crash zoom [video, wired] MiniMax H3: A sudden punch in on your subject.
+- Dolly zoom [video, wired] MiniMax H3: The background stretches while the subject stays put.
+- Robo arm [video, wired] MiniMax H3: A fast robotic sweep that stops dead on a new angle.
+- Spiral up [video, wired] MiniMax H3: The camera circles and rises above your subject.
+- 360 roll [video, wired] MiniMax H3: The frame rolls a full turn as the camera pushes in.
+- Sky pull back [video, wired] MiniMax H3: The camera rockets back until your subject is a speck.
+- Whip pan [video, wired] MiniMax H3: A fast pan that streaks into the next moment.
+- Snorricam [video, wired] MiniMax H3: The camera rides on your subject as the world sways.
+- POV walk [video, wired] MiniMax H3: See the scene through the eyes of someone walking in.
+- Car mount [video, wired] MiniMax H3: A camera rigged to a car with the world streaming past.
+- Earthquake shake [video, wired] MiniMax H3: The ground rumbles and the frame shakes hard.
+- Hyperlapse [video, wired] MiniMax H3: The camera moves forward while time races past.
+- Rack focus [video, wired] MiniMax H3: Focus shifts from the foreground onto your subject.
+- Turntable [video, wired] MiniMax H3: Your subject turns in place as if on a lazy susan.
+- Through the window [video, wired] MiniMax H3: The camera pushes through a window into the scene.
+- Slow shutter [video, wired] MiniMax H3: Motion smears into dreamy streaks around your subject.
+- Mix two moves [video, wired] MiniMax H3: Chain two camera moves into one continuous shot.
+- Arc left [video, wired] MiniMax H3: The camera curves around your subject to the left.
+- Arc right [video, wired] MiniMax H3: The camera curves around your subject to the right.
+- Dolly left [video, wired] MiniMax H3: The camera slides sideways to the left.
+- Dolly right [video, wired] MiniMax H3: The camera slides sideways to the right.
+- Overhead [video, wired] MiniMax H3: A top down camera that follows your subject.
+- Lazy susan [video, wired] MiniMax H3: The camera turns around your subject while they hold still.
+- 360 orbit [video, wired] MiniMax H3: The camera circles all the way around your subject.
+- Crash zoom out [video, wired] MiniMax H3: A sudden snap back that reveals the whole scene.
+- Dolly zoom out [video, wired] MiniMax H3: Pull back while zooming in for a vertigo warp.
+- Zoom out to space [video, wired] MiniMax H3: Pull back from your subject all the way out to the planet.
+- Glam sweep [video, wired] MiniMax H3: A high speed sweep around your subject in slow motion.
+- Zoom bounce [video, wired] MiniMax H3: A rapid zoom in and straight back out.
+- Glass floor [video, wired] MiniMax H3: Look up at your subject from beneath a glass floor.
+- Through and out [video, wired] MiniMax H3: The camera backs out through an object to reveal the scene.
+- Double dolly [video, wired] MiniMax H3: You and the camera travel together as the world slides by.
+- Car chase [video, wired] MiniMax H3: Chase a speeding car from dynamic angles.
+- Object POV [video, wired] MiniMax H3: See the scene from the point of view of an object.
+- Roll transition [video] MiniMax H3: Roll from one frame into the next like a turning wheel.
+- Rap video moves [video, wired] MiniMax H3: Low angles, slides and slow zooms like a rap video.
+- Wiggle push [video, wired] MiniMax H3: A playful little shake on a slow push in.
+- Into the mouth [video, wired] MiniMax H3: A quick zoom into the mouth for a comic beat.
+- Head lock [video, wired] MiniMax H3: The camera locks onto the head while the world shifts.
+- Dutch angle [video, wired] MiniMax H3: A tilted horizon that adds tension.
+- Tilted world [video, wired] MiniMax H3: The world tilts steeply around your subject.
+- Dirty lens [video, wired] MiniMax H3: Smudges, dust and water drops on the lens.
+- Lens crack [video, wired] MiniMax H3: The lens cracks across the shot.
+- Lens flare [video, wired] MiniMax H3: Bright streaks and flares sweep across the lens.
+- People in fast forward [video, wired] MiniMax H3: People race by while the setting stays calm.
+- Downhill POV [video, wired] MiniMax H3: Ride down a slope in first person.
+- FPV over a time lapse [video, wired] MiniMax H3: A drone races over the land as time speeds up.
+- Snorricam slow shutter [video, wired] MiniMax H3: You stay locked in frame while the world smears.
+- Crash zoom tentacles [video, wired] MiniMax H3: A fast zoom in as tentacles curl out of the eyes.
+- Crash zoom punch [video, wired] MiniMax H3: The camera punches in as a stage punch lands.
+- Chrome eyes in [video, wired] MiniMax H3: Chrome spreads as the camera dives into mirror eyes.
+- Run while on fire [video, wired] MiniMax H3: Sprint through the scene wrapped in flames.
+- Fly while on fire [video, wired] MiniMax H3: Soar through the sky like a comet.
+- Chase and blast [video, wired] MiniMax H3: A car chase as a building explodes beside the road.
+
+### Effects (166) runs on: LTX Video 2B x143; MiniMax H3 x19; Seedance 2.0 via fal x3; Kling 3 via fal x1
+- Turn to sand [video, wired] LTX Video 2B: Your subject crumbles into drifting sand.
+- Origami fold [video, wired] LTX Video 2B: The scene folds itself into paper origami.
+- Snow globe [video, wired] LTX Video 2B: The scene shrinks into a snow globe.
+- Time lapse [video, wired] LTX Video 2B: Hours pass in seconds around your subject.
+- Burst into petals [video, wired] LTX Video 2B: The subject bursts into a swirl of flower petals.
+- Paint splash [video, wired] LTX Video 2B: Bright paint splashes across the frame.
+- Floating fall [video, wired] LTX Video 2B: Your subject drifts down through the sky like a feather.
+- High flip [video, wired] LTX Video 2B: Your subject springs up into a high backflip.
+- Studio slide [video, wired] LTX Video 2B: The background slides away to reveal a photo studio.
+- Eyes in [video, wired] LTX Video 2B: The camera dives into an eye and out into another world.
+- Street giant [video, wired] LTX Video 2B: Your subject towers over a busy street.
+- World morph [video, wired] LTX Video 2B: The world around your subject changes again and again.
+- Selfception [video, wired] LTX Video 2B: The camera pulls back to find the photo inside itself.
+- Roller coaster [video, wired] LTX Video 2B: Your subject rides the front car of a roller coaster.
+- Glitch out [video, wired] LTX Video 2B: The frame breaks into digital glitches.
+- Hologram [video, wired] LTX Video 2B: Your subject flickers into a glowing hologram.
+- Turn to ice [video, wired] LTX Video 2B: Frost creeps over your subject until it freezes solid.
+- Shatter [video, wired] LTX Video 2B: The picture cracks like glass and bursts apart.
+- Portal [video, wired] LTX Video 2B: A glowing portal opens and your subject steps through.
+- Pixel dissolve [video, wired] LTX Video 2B: Your subject breaks apart into floating pixels.
+- Balloon lift [video, wired] LTX Video 2B: A bunch of balloons lifts your subject into the sky.
+- Suited agent [video, wired] LTX Video 2B: Glitch, then morph into a sharp suited agent.
+- Angel wings [video, wired] LTX Video 2B: Feathered wings unfold behind your shoulders.
+- Black tears [video, wired] LTX Video 2B: Dark ink streams from the eyes.
+- Flower mouth [video, wired] LTX Video 2B: Petals and flowers spill from an open mouth.
+- Building explosion [video, wired] LTX Video 2B: A building blows up in the scene.
+- Car explosion [video, wired] LTX Video 2B: A car bursts into flames and debris.
+- Clone burst [video, wired] LTX Video 2B: You split into copies that burst outward.
+- Turn to diamond [video, wired] LTX Video 2B: Your body turns into faceted, sparkling diamond.
+- Duplicate [video, wired] LTX Video 2B: You split into identical copies side by side.
+- Fire breath [video, wired] LTX Video 2B: Breathe out a blast of flame.
+- Air fish [video, wired] LTX Video 2B: A pale blue fish swims through the air around you.
+- Flood [video, wired] LTX Video 2B: Water spreads and rises to fill the space.
+- Flower face [video, wired] LTX Video 2B: Flowers blossom out of your face.
+- Glow fish school [video, wired] LTX Video 2B: Glowing fish swim around you in the dark.
+- Glow change [video, wired] LTX Video 2B: A soft glow surrounds you as you become someone new.
+- Confetti head [video, wired] LTX Video 2B: Your head pops into a burst of confetti.
+- Floating head [video, wired] LTX Video 2B: Your head lifts off and floats away like a balloon.
+- Light from within [video, wired] LTX Video 2B: Light builds and shines from inside you.
+- Invisible body [video, wired] LTX Video 2B: You vanish, leaving only your movement behind.
+- Sky jellyfish [video, wired] LTX Video 2B: Glowing jellyfish float in the air around you.
+- Stone skin [video, wired] LTX Video 2B: Your skin hardens and cracks into grey stone.
+- Melting [video, wired] LTX Video 2B: You soften and drip as if in great heat.
+- Ripple morph [video, wired] LTX Video 2B: Your skin ripples as you morph into someone new.
+- Paparazzi [video, wired] LTX Video 2B: Camera flashes burst all around you.
+- Sandstorm [video, wired] LTX Video 2B: Sand blasts through and engulfs the scene.
+- Set on fire [video, wired] LTX Video 2B: You burst into stylized flames.
+- Under the skin [video, wired] LTX Video 2B: Shapes push out through the surface of your skin.
+- Spirit leap [video, wired] LTX Video 2B: Your spirit leaps out of your body.
+- Tentacles [video, wired] LTX Video 2B: Tentacles writhe out of the eyes.
+- Lightning eyes [video, wired] LTX Video 2B: Your eyes glow as lightning crackles around you.
+- Chrome body [video, wired] LTX Video 2B: Your skin turns into chrome, silver or gold.
+- Headwind [video, wired] LTX Video 2B: Fierce wind whips your hair and clothes.
+- Overgrown [video, wired] LTX Video 2B: Flowers and greenery grow all over you.
+- Levitation [video, wired] LTX Video 2B: You rise slowly off the ground.
+- Powder burst [video, wired] LTX Video 2B: Colored powder erupts around you.
+- Datamosh [video, wired] LTX Video 2B: Glitchy pixels smear and bleed between frames.
+- Blast to dust [video, wired] LTX Video 2B: A blast, then the building crumbles to dust.
+- Invisible float [video, wired] LTX Video 2B: You vanish and rise, leaving only your clothes floating.
+- Storm rise [video, wired] LTX Video 2B: Lift into the air amid crackling lightning.
+- Storm metal [video, wired] LTX Video 2B: Lightning strikes turn you to metal.
+- Storm wind [video, wired] LTX Video 2B: Lightning eyes while a gale blasts your face.
+- Molten metal [video, wired] LTX Video 2B: Turn to chrome, then melt into liquid metal.
+- Action run [video, wired] MiniMax H3: Sprint through the scene with a shaky action camera.
+- High kick [video, wired] MiniMax H3: A powerful high kick with fast leg motion.
+- Slam dunk [video, wired] MiniMax H3: Leap and slam a basketball home.
+- Boxing combo [video, wired] MiniMax H3: Quick jabs, hooks and head movement.
+- Catwalk [video, wired] MiniMax H3: Strut a confident runway walk.
+- Stage punch [video, wired] MiniMax H3: A comic stage punch lands in slow motion.
+- Kiss [video, wired] MiniMax H3: A tender kiss in soft focus and slow motion.
+- Moonwalk left [video, wired] MiniMax H3: Glide backward to the left in a moonwalk.
+- Moonwalk right [video, wired] MiniMax H3: Glide backward to the right in a moonwalk.
+- Pressed to glass [video, wired] MiniMax H3: Squashed against an invisible pane of glass.
+- Skate cruise [video, wired] MiniMax H3: Cruise down the street on a skateboard.
+- Skate glide [video, wired] MiniMax H3: Roll along in one smooth skateboard glide.
+- Skate ollie [video, wired] MiniMax H3: Pop an ollie off the ground.
+- Ski carving [video, wired] MiniMax H3: Carve clean, fast turns on skis.
+- Ski powder [video, wired] MiniMax H3: Cut through deep powder on skis.
+- Snowboard carving [video, wired] MiniMax H3: Deep snowboard turns that throw up spray.
+- Snowboard powder [video, wired] MiniMax H3: Float through fresh powder on a snowboard.
+- Burning figure [video, wired] LTX Video 2B: Flames catch and spread until you glow like a living fire.
+- Scrapbook page [video, wired] LTX Video 2B: Your photo becomes a cut and paste scrapbook page.
+- Pigeon street [video, wired] LTX Video 2B: An absurd crowd of pigeons takes over the street.
+- Pearl portrait [video, wired] LTX Video 2B: Become a Dutch golden age portrait, split with your photo.
+- Straight face [video, wired] LTX Video 2B: Keep a straight face while chaos unfolds behind you.
+- Dab with a monster [video, wired] LTX Video 2B: A friendly monster pops in and dabs with you.
+- Clones [video, wired] LTX Video 2B: You multiply into a row of copies.
+- Paper puppet [video, wired] LTX Video 2B: You become a flat paper cutout puppet.
+- Power up fighter [video, wired] LTX Video 2B: Power up into a fighting game hero.
+- Moonwalk [video, wired] LTX Video 2B: Moonwalk all the way across the frame.
+- Rippling city [video, wired] LTX Video 2B: The buildings ripple like a wave.
+- Out of the screen [video, wired] LTX Video 2B: Step out of a cinema screen as an ancient army follows.
+- One-eyed giant [video, wired] LTX Video 2B: A gentle one-eyed giant peers at you in a dreamy painting.
+- Deep blue sink [video, wired] LTX Video 2B: Sink slowly into a deep blue ocean.
+- Breakneck ride [video, wired] LTX Video 2B: Hang on through a wild, breakneck ride.
+- Endless clones [video, wired] LTX Video 2B: Endless copies of you stretch to the horizon.
+- Stadium star [video, wired] LTX Video 2B: Step into the spotlight to a roaring crowd.
+- Skateboarding dog [video, wired] LTX Video 2B: A little dog rolls past you on a skateboard.
+- Giant hand grab [video, wired] LTX Video 2B: A giant hand smashes in and whisks you away.
+- Lace body [video, wired] LTX Video 2B: You turn into delicate white lace.
+- Boarding pass [video, wired] LTX Video 2B: Your photo becomes a boarding pass, then off you fly.
+- Lidar scan [video, wired] LTX Video 2B: A point cloud scan sweeps through your scene.
+- Winged painting [video, wired] LTX Video 2B: Become a brooding winged figure in a classical painting.
+- Castle at twilight [video, wired] LTX Video 2B: Arrive at a fairytale castle at twilight.
+- Frozen moment [video, wired] LTX Video 2B: The moment freezes as the camera drifts through it.
+- Puff of smoke [video, wired] LTX Video 2B: You disappear from the shot in a puff of smoke.
+- Everyone freezes [video, wired] LTX Video 2B: Time stops for everything but you.
+- Surprise kiss [video, wired] MiniMax H3: Someone pops into frame and plants a quick kiss on your cheek.
+- Desert worms [video, wired] LTX Video 2B: Giant worms rise out of the dunes behind you.
+- Toilet pop up [video, wired] LTX Video 2B: Your head pops up out of a toilet, meme style.
+- Lightning monster [video, wired] LTX Video 2B: A huge creature looms behind you in a lightning storm.
+- Ember sunset [video, wired] LTX Video 2B: Sit in a fiery sunset full of drifting sparks.
+- Eating show [video, wired] MiniMax H3: Eat on camera mukbang style with snappy crash zooms.
+- Doodle melt [video, wired] LTX Video 2B: Your face melts away into hand-drawn doodle lines.
+- 70s thriller [video, wired] LTX Video 2B: A 1970s Italian thriller scene with a mysterious figure behind you.
+- Ghoul night [video, wired] LTX Video 2B: Pale ghouls creep out of the dark around you.
+- Banana break [video, wired] LTX Video 2B: Calmly eat a banana in a plain scene.
+- Melt [video, wired] Seedance 2.0 via fal: Your subject slowly melts into liquid chrome.
+- Zero gravity [video, wired] Seedance 2.0 via fal: Everything in the frame floats weightlessly upward.
+- City giant [video, wired] Kling 3 via fal: The subject grows into a giant towering over a city.
+- Claymation [video, wired] Seedance 2.0 via fal: The scene turns into handmade stop motion clay.
+- Airborne belongings [video, wired] LTX Video 2B: Turn your references into airborne belongings. Review the prompt before rendering.
+- Studio cross-wipe [video, wired] LTX Video 2B: Turn your references into studio cross-wipe. Review the prompt before rendering.
+- Dive into the eye [video, wired] LTX Video 2B: Turn your references into dive into the eye. Review the prompt before rendering.
+- Intersection drift [video, wired] LTX Video 2B: Turn your references into intersection drift. Review the prompt before rendering.
+- Beer thief chase [video, wired] LTX Video 2B: Turn your references into beer thief chase. Review the prompt before rendering.
+- Calm in the chaos [video, wired] LTX Video 2B: Turn your references into calm in the chaos. Review the prompt before rendering.
+- Two scenes, one crane [video, wired] LTX Video 2B: Turn your references into two scenes, one crane. Review the prompt before rendering.
+- Giant in the city [video, wired] LTX Video 2B: Turn your references into giant in the city. Review the prompt before rendering.
+- Exploded building [video, wired] LTX Video 2B: Turn your references into exploded building. Review the prompt before rendering.
+- Droste hand [video, wired] LTX Video 2B: Turn your references into droste hand. Review the prompt before rendering.
+- Frozen fashion pose [video, wired] LTX Video 2B: Turn your references into frozen fashion pose. Review the prompt before rendering.
+- Folding city [video, wired] LTX Video 2B: Turn your references into folding city. Review the prompt before rendering.
+- Shoelace tightrope [video, wired] LTX Video 2B: Turn your references into shoelace tightrope. Review the prompt before rendering.
+- Handshake with fire [video, wired] LTX Video 2B: Turn your references into handshake with fire. Review the prompt before rendering.
+- Wax melt [video, wired] LTX Video 2B: Turn your references into wax melt. Review the prompt before rendering.
+- Ticket carpet [video, wired] LTX Video 2B: Turn your references into ticket carpet. Review the prompt before rendering.
+- Titan double [video, wired] LTX Video 2B: Turn your references into titan double. Review the prompt before rendering.
+- Neon scan landing [video, wired] LTX Video 2B: Turn your references into neon scan landing. Review the prompt before rendering.
+- Building becomes a wave [video, wired] LTX Video 2B: Turn your references into building becomes a wave. Review the prompt before rendering.
+- Street clones [video, wired] LTX Video 2B: Turn your references into street clones. Review the prompt before rendering.
+- Paper scrap doodles [video, wired] LTX Video 2B: Turn your references into paper scrap doodles. Review the prompt before rendering.
+- Time-split walk [video, wired] LTX Video 2B: Turn your references into time-split walk. Review the prompt before rendering.
+- Screen rip [video, wired] LTX Video 2B: Turn your references into screen rip. Review the prompt before rendering.
+- Orbit to street [video, wired] LTX Video 2B: Turn your references into orbit to street. Review the prompt before rendering.
+- Painting mirror [video, wired] LTX Video 2B: Turn your references into painting mirror. Review the prompt before rendering.
+- Frozen diner orbit [video, wired] LTX Video 2B: Turn your references into frozen diner orbit. Review the prompt before rendering.
+- Comic freefall [video, wired] LTX Video 2B: Turn your references into comic freefall. Review the prompt before rendering.
+- Painting to cinema [video, wired] LTX Video 2B: Turn your references into painting to cinema. Review the prompt before rendering.
+- Car clown swarm [video, wired] LTX Video 2B: Turn your references into car clown swarm. Review the prompt before rendering.
+- Frozen mid-leap [video, wired] LTX Video 2B: Turn your references into frozen mid-leap. Review the prompt before rendering.
+- Poof, only clothes [video, wired] LTX Video 2B: Turn your references into poof, only clothes. Review the prompt before rendering.
+- Sticker doodle sprint [video, wired] LTX Video 2B: Turn your references into sticker doodle sprint. Review the prompt before rendering.
+- Detection overlay [video, wired] LTX Video 2B: Turn your references into detection overlay. Review the prompt before rendering.
+- Photocopy glitch aisle [video, wired] LTX Video 2B: Turn your references into photocopy glitch aisle. Review the prompt before rendering.
+- Error storm slurp [video, wired] LTX Video 2B: Turn your references into error storm slurp. Review the prompt before rendering.
+- Point-cloud performance [video, wired] LTX Video 2B: Turn your references into point-cloud performance. Review the prompt before rendering.
+- Oil paint barrel roll [video, wired] LTX Video 2B: Turn your references into oil paint barrel roll. Review the prompt before rendering.
+- Living portrait [video, wired] LTX Video 2B: Turn your references into living portrait. Review the prompt before rendering.
+- Pigeon skates [video, wired] LTX Video 2B: Turn your references into pigeon skates. Review the prompt before rendering.
+- Dachshund surf [video, wired] LTX Video 2B: Turn your references into dachshund surf. Review the prompt before rendering.
+- Stadium phone-cam [video, wired] LTX Video 2B: Turn your references into stadium phone-cam. Review the prompt before rendering.
+- Aquarium turn [video, wired] LTX Video 2B: Turn your references into aquarium turn. Review the prompt before rendering.
+- Field to castle [video, wired] LTX Video 2B: Turn your references into field to castle. Review the prompt before rendering.
+- Knight collapse [video, wired] LTX Video 2B: Turn your references into knight collapse. Review the prompt before rendering.
+- Paper stage walk [video, wired] LTX Video 2B: Turn your references into paper stage walk. Review the prompt before rendering.
+
+### Cinema (9) runs on: MiniMax H3, LTX-2.5 or Wan 2.2 x1; MiniMax H3 x5; MiniMax H3 Fun ControlNet x1; LTX-2.5 x1; FLUX 3 Image Klein and MiniMax H3 x1
+- Cinema shot [video] MiniMax H3, LTX-2.5 or Wan 2.2: Pick the camera, lens and move, then describe the scene.
+- First and last frame [video] MiniMax H3: Set the first and last frame, get the shot in between.
+- Draw to video [video] MiniMax H3 Fun ControlNet: Draw arrows on a frame to show what moves where.
+- Multi-shot scene [video] LTX-2.5: Describe a scene and get one video cut into several shots.
+- Animation [video] MiniMax H3: 2D, 3D, anime or clay animation with a steady cast.
+- Anime video [video, wired] MiniMax H3: A prompt or a photo becomes an anime scene with voices and sound.
+- Nature scene [video, wired] MiniMax H3: A landscape photo becomes a living scene with sound.
+- Sketch to video [video, wired] MiniMax H3: Animate a drawing and keep its hand-drawn look.
+- Looping background [video] FLUX 3 Image Klein and MiniMax H3: Seamless motion backdrops for sites, streams and slides.
+
+### Storyboards (4) runs on: FLUX 3 Image Klein x1; MiniMax H3 x1; Qwen-Image Edit 2511 with Multiple-Angles x1; Nano Banana 2 via fal x1
+- Storyboard [image] FLUX 3 Image Klein: Turn a story idea into a set of consistent shots.
+- Transition [video] MiniMax H3: Carry one shot into the next without a hard cut.
+- Shot grid [image] Qwen-Image Edit 2511 with Multiple-Angles: Nine cinematic angles of one scene on a single sheet.
+- 9 shots from one image [image, wired] Nano Banana 2 via fal: A 3 by 3 contact sheet of cinematic angles of the same scene.
+
+### Explainers (7) runs on: Qwen3.8, FLUX 3 Image Klein, MiniMax H3 and Chatterbox x4; Qwen3.8 x1; Qwen3.8, MiniMax H3, Chatterbox and MiniMax Music 3 x2
+- Explainer video [video] Qwen3.8, FLUX 3 Image Klein, MiniMax H3 and Chatterbox: Type a topic and get a narrated explainer.
+- Faceless video [video] Qwen3.8, FLUX 3 Image Klein, MiniMax H3 and Chatterbox: Turn a topic into a narrated short with no one on camera.
+- Motion graphics [video] Qwen3.8: Describe animated titles, charts or shapes and get them rendered.
+- Story video [video] Qwen3.8, FLUX 3 Image Klein, MiniMax H3 and Chatterbox: An idea in, a written, illustrated and narrated story out.
+- Script to video [video] Qwen3.8, FLUX 3 Image Klein, MiniMax H3 and Chatterbox: Paste a script and get scenes, a narrator and subtitles.
+- Event video [video] Qwen3.8, MiniMax H3, Chatterbox and MiniMax Music 3: A narrated birthday, wedding or holiday video from your photos.
+- Anniversary video [video] Qwen3.8, MiniMax H3, Chatterbox and MiniMax Music 3: Your years together as a narrated picture story.
+
+### Looks (27) runs on: FLUX 3 Image Klein x24; Qwen-Image 2.1 x3
+- Phone flash at night [image] FLUX 3 Image Klein: Light a candid night shot with a harsh phone flash.
+- Golden hour editorial [image] FLUX 3 Image Klein: Warm low sun and polished magazine framing.
+- Studio fashion [image] FLUX 3 Image Klein: Shoot on a clean backdrop with crisp fashion lighting.
+- Street style [image] FLUX 3 Image Klein: Catch the subject mid stride on a busy sidewalk.
+- 90s magazine [image] Qwen-Image 2.1: Put the subject on a glossy 1990s cover, masthead and all.
+- CCTV still [image] Qwen-Image 2.1: Turn the scene into a grainy security camera frame.
+- Drone top down [image] FLUX 3 Image Klein: Look straight down from high above.
+- Tilt shift miniature [image] FLUX 3 Image Klein: Make a real scene look like a tiny model.
+- Disposable camera [image] FLUX 3 Image Klein: Add point and shoot flash and cheap film grain.
+- Film noir [image] FLUX 3 Image Klein: Hard shadows and smoky black and white.
+- 70s film stock [image] FLUX 3 Image Klein: Warm faded color and soft grain from the seventies.
+- Instant photo [image] FLUX 3 Image Klein: Print the moment as an instant photo with a white border.
+- Fisheye skate video [image] FLUX 3 Image Klein: Get low, close and warped like an old skate tape.
+- Watercolor [image] FLUX 3 Image Klein: Paint in soft washes and blooms on textured paper.
+- Oil painting [image] FLUX 3 Image Klein: Rich color and thick, visible brush strokes.
+- Ink sketch [image] FLUX 3 Image Klein: Draw it in loose pen lines and hatching.
+- Anime cel [image] FLUX 3 Image Klein: A hand painted frame from a classic anime film.
+- Comic book [image] Qwen-Image 2.1: Bold inks, halftone dots and a speech bubble.
+- Claymation still [image] FLUX 3 Image Klein: Sculpt the scene as handmade clay figures on a tiny set.
+- Pixel art [image] FLUX 3 Image Klein: Crisp pixels and a limited retro palette.
+- Low poly [image] FLUX 3 Image Klein: Build it from faceted 3D shapes with soft flat shading.
+- Vaporwave [image] FLUX 3 Image Klein: Neon pink, teal sunsets and retro computer dreams.
+- Match a moodboard [image] FLUX 3 Image Klein: Borrow the look of your own reference images.
+- Brand colors [image] FLUX 3 Image Klein: Put your brand palette into any picture.
+- Drawing [image] FLUX 3 Image Klein: Illustrations, comic pages and tattoo designs from a description.
+- Sketch [image] FLUX 3 Image Klein: Pencil, charcoal, ink or marker sketches from a description.
+- Wallpaper [image] FLUX 3 Image Klein: Phone and desktop wallpapers with room for the clock.
+
+### Image edits (25) runs on: Qwen-Image 2.1 x13; Flux Fill via fal x1; Qwen-Image Layered x1; FLUX 3 Image Klein x1; Qwen-Image Edit 2511 with Multiple-Angles x1; Qwen3.8 and FLUX 3 Image Klein x1; Color filters, no model x1; Qwen-Image Edit 2511 with a relight LoRA x1; Qwen3-VL 8B and Qwen-Image 2.1 x1; BiRefNet and Qwen-Image 2.1 x1; Qwen Image Edit via fal x1; Nano Banana 2 via fal x1; FASHN via fal x1
+- Expand [image] Qwen-Image 2.1: Extend the picture past its edges.
+- Paint to change [image, wired] Flux Fill via fal: Paint over part of a picture and say what it should become.
+- Erase an object [image] Qwen-Image 2.1: Remove anything and fill the gap naturally.
+- Replace an object [image] Qwen-Image 2.1: Swap one thing in a picture for another.
+- Split into layers [image] Qwen-Image Layered: Pull each object and the background onto its own layer.
+- Try on outfits [image] Qwen-Image 2.1: Dress the person in a photo in clothes from other photos.
+- Restyle [image] FLUX 3 Image Klein: Redraw a picture in a new art style.
+- Copy a style [image] Qwen-Image 2.1: Redraw your picture in the look of another one.
+- Sketch to image [image] Qwen-Image 2.1: Turn a rough drawing into a finished picture.
+- Product shot [image] Qwen-Image 2.1: Put your product in a clean, styled scene.
+- Place a product [image] Qwen-Image 2.1: Drop your product into a photo you already have.
+- Any angle [image] Qwen-Image Edit 2511 with Multiple-Angles: See your photo from any camera position, even from behind.
+- What happens next [image] Qwen3.8 and FLUX 3 Image Klein: Eight ideas for the next moment of your scene.
+- Zoom grid [image] Qwen-Image 2.1: Nine framings of one image, from a tiny detail to a wide view.
+- Photo grade [image] Color filters, no model: Grade a photo with film looks, then fine tune it.
+- Virtual stylist [image] Qwen-Image 2.1: Dress yourself in a full look or piece by piece, then set the pose and backdrop.
+- Move the light [image] Qwen-Image Edit 2511 with a relight LoRA: Move a light around your photo and redraw the shadows.
+- Ready-made outfits [image] Qwen-Image 2.1: Swap your outfit for a ready-made look, same pose and light.
+- Labeled flat lay [image] Qwen3-VL 8B and Qwen-Image 2.1: Lay out everything in a photo with labels, like a flat lay.
+- Hairstyle changer [image] Qwen-Image 2.1: Try a new cut, color or beard on your own photo.
+- Remove text from a photo [image] Qwen-Image 2.1: Erase captions, signs, date stamps or your own watermark.
+- Background changer [image] BiRefNet and Qwen-Image 2.1: Put your subject in a new place with matching light.
+- New angle [image, wired] Qwen Image Edit via fal: See the same image from another camera position.
+- Relight [image, wired] Nano Banana 2 via fal: Keep everything, change only the light.
+- Outfit swap [image, wired] FASHN via fal: Put a garment from one photo onto the person in another.
+
+### Video edits (20) runs on: Bernini-R x3; Wan Animate 2 x1; Bernini-R head swap x1; KJNodes color match and Bernini-R x1; Bernini-R and MiniMax H3 x1; ReCamMaster x1; MiniMax H3 x1; SCAIL-2, with Chatterbox for a new voice x1; Qwen-Image 2.1, MiniMax H3 and MiniMax Music 3 x2; SAM 3.1 and BiRefNet x1; Bernini-R with SAM 3.1 x1; VOID with SAM 3.1 x1; LTX-2.5 Clean-Plate x1; SAM 3.1, BiRefNet and Bernini-R x1; Qwen3-ASR and ffmpeg x1; Qwen3-ASR, Qwen3.8 and FLUX 3 Image Klein x1; Qwen3-ASR, Qwen3-VL 8B and ffmpeg x1
+- Swap an element [video, wired] Bernini-R: Change one thing in a video and keep the rest.
+- Motion transfer [video, wired] Wan Animate 2: Make the character in a photo copy the moves in a video.
+- Video face swap [video, wired] Bernini-R head swap: Swap the face in a video for your own face or a saved character.
+- Restyle video [video, wired] Bernini-R: Redraw a whole video in a new style.
+- Relight video [video, wired] Bernini-R: Change the lighting of a video after it was shot.
+- Color grade [video] KJNodes color match and Bernini-R: Give a video a film look in one click.
+- Clone an edit [video] Bernini-R and MiniMax H3: Copy the cuts and pacing of any edit with your own cast.
+- Re-shoot from a new angle [video] ReCamMaster: See the same take from another camera position.
+- Extend video [video] MiniMax H3: Keep a video going past its last frame.
+- Video character swap [video] SCAIL-2, with Chatterbox for a new voice: Replace the person in a video with your character, same moves and timing.
+- Outfit reel [video] Qwen-Image 2.1, MiniMax H3 and MiniMax Music 3: One selfie in, a beat-cut reel of different outfits out.
+- Beat cut outfits [video] Qwen-Image 2.1, MiniMax H3 and MiniMax Music 3: A 10 second outfit video cut to the beat of a track.
+- Sticker pop cuts [video] SAM 3.1 and BiRefNet: Turn the person in a clip into a glittering sticker that pops on each cut.
+- Edit a video by text [video] Bernini-R with SAM 3.1: Describe a change and get the same video with it made.
+- Remove an object from a video [video] VOID with SAM 3.1: Name what to erase and the gap fills in on every frame.
+- Remove text from a video [video] LTX-2.5 Clean-Plate: Erase subtitles, captions and your own logos from a clip.
+- Video background changer [video] SAM 3.1, BiRefNet and Bernini-R: Put yourself somewhere new without a green screen.
+- Add text to a video [video] Qwen3-ASR and ffmpeg: Captions, titles, lower thirds and calls to action.
+- Podcast to clips [video] Qwen3-ASR, Qwen3.8 and FLUX 3 Image Klein: Turn an episode into vertical clips, captions and a cover.
+- Long video to shorts [video] Qwen3-ASR, Qwen3-VL 8B and ffmpeg: Find the best moments of a long video and cut them into shorts.
+
+### Characters (13) runs on: Qwen-Image Edit 2511 x1; FLUX 3 Image Klein x6; Nano Banana 2 via fal x1; Chatterbox and MiniMax H3 x1; No model x1; Qwen-Image 2.1 x1; Krea 2 Raw x1; MiniMax H3 x1
+- Character sheet [image] Qwen-Image Edit 2511: Turn one photo into a sheet of angles and expressions.
+- Character in any scene [image] FLUX 3 Image Klein: Put your character anywhere and keep their face.
+- Face swap [image, wired] Nano Banana 2 via fal: Swap the face in a photo for your own face or a saved character.
+- Character swap [image] FLUX 3 Image Klein: Replace the main person with your own face or a saved character, same pose and scene.
+- Professional headshot [image] FLUX 3 Image Klein: Turn a casual photo of you into a polished headshot.
+- AI influencer post [image] FLUX 3 Image Klein: A ready-to-post set of photos of your character.
+- AI influencer video [video] Chatterbox and MiniMax H3: Your character talks to camera in a ready-to-post video.
+- Likeness consent [image] No model: Record how your face may be used, saved with your character.
+- Age progression [image] Qwen-Image 2.1: See yourself younger or older, still clearly you.
+- Profile picture [image] FLUX 3 Image Klein: Turn a selfie into a profile picture in any style.
+- Portrait styles [image] FLUX 3 Image Klein: Turn a selfie into a studio, editorial or painted portrait.
+- AI human [image] Krea 2 Raw: Create a person who does not exist, ready to save as a character.
+- AI human video [video] MiniMax H3: Lifelike people on camera with real sound.
+
+### Voice and avatars (8) runs on: InfiniteTalk x2; Qwen3-ASR, Gemma 4, Chatterbox and InfiniteTalk x1; HunyuanVideo-Foley x1; Chatterbox Multilingual x1; Chatterbox x2; Qwen3-VL 8B and Chatterbox x1
+- Talking head [video] InfiniteTalk: Make a face in a photo speak your script.
+- Lipsync [video] InfiniteTalk: Match the lips in a video to new audio.
+- Dub into another language [video] Qwen3-ASR, Gemma 4, Chatterbox and InfiniteTalk: Translate the speech, keep the voice and match the lips.
+- Add sound to video [video] HunyuanVideo-Foley: Generate sound that matches what happens on screen.
+- Text to speech [audio] Chatterbox Multilingual: Read any script aloud in a natural voice.
+- Voice clone [audio] Chatterbox: Turn a short sample of your voice into a reusable voice.
+- Voice change [audio] Chatterbox: Make a recording sound like another voice, same timing and emotion.
+- Voice over a video [video] Qwen3-VL 8B and Chatterbox: Narrate a video with your script, or let it write one.
+
+### Music and sound (2) runs on: MiniMax Music 3 x1; Stable Audio 3 Medium x1
+- Music [audio] MiniMax Music 3: Make a song or instrumental from a short brief.
+- Sound effect [audio] Stable Audio 3 Medium: Describe a sound and hear it.
+
+### Ads (35) runs on: MiniMax H3 x15; Chatterbox and MiniMax H3 x1; Qwen-Image 2.1 x5; Qwen3.8 and FLUX 3 Image Klein x1; Bernini-R and MiniMax H3 x1; Qwen-Image 2.1 and MiniMax H3 x2; Qwen3-VL 8B x1; Qwen-Image 2.1, Chatterbox, InfiniteTalk and HunyuanVideo-Foley x2; MiniMax H3 with native audio x2; Qwen-Image 2.1 and LTX-2.5 x2; Qwen-Image 2.1 and BiRefNet x1; FLUX 3 Image Klein x1; Qwen3.8, Qwen-Image 2.1, Chatterbox and MiniMax H3 x1
+- Product to ad [video] MiniMax H3: Turn a product into a short vertical ad.
+- UGC ad [video] Chatterbox and MiniMax H3: Your character talks about your product to camera.
+- Ad variants [image] Qwen-Image 2.1: Spin one ad into many versions to test.
+- Ads from a link [image] Qwen3.8 and FLUX 3 Image Klein: Paste a product page and get a set of ready ads.
+- Recreate an ad [video] Bernini-R and MiniMax H3: Remake an ad shot for shot with your own product.
+- Product spin [video, wired] MiniMax H3: A smooth 360 degree turn of your product.
+- Bullet time packshot [video] MiniMax H3: Freeze time and sweep the camera around your product.
+- Billboard mockup [image] Qwen-Image 2.1: See your ad out in the world before you print it.
+- Truck ad [video] Qwen-Image 2.1 and MiniMax H3: Watch your ad roll down a city street on the side of a truck.
+- Hook check [video] Qwen3-VL 8B: Score the first three seconds of your ad and learn how to fix them.
+- Garment photoshoot [video] Qwen-Image 2.1 and MiniMax H3: Put up to three garments on a model for a quick photoshoot clip.
+- ASMR product whisper [video] Qwen-Image 2.1, Chatterbox, InfiniteTalk and HunyuanVideo-Foley: Your character whispers your line about your product, ASMR style.
+- ASMR moment [video] MiniMax H3 with native audio: Bring a photo to life with soft whispers and tingly sounds, picture unchanged.
+- Promo poster [video] Qwen-Image 2.1 and LTX-2.5: Recast your product as a bold promo poster that comes alive.
+- Frozen product scene [video] MiniMax H3: Freeze time and orbit your product in a scene built around it.
+- Color match chameleon [video] MiniMax H3: A chameleon shifts its skin to match your product.
+- ASMR studio host [video] MiniMax H3 with native audio: Turn a photo into a host whispering to camera in an ASMR studio.
+- Macro lifestyle set [video] MiniMax H3: Your product in macro detail inside a lifestyle set.
+- Button press reveal [video] MiniMax H3: Drop your product into a whimsical commercial moment.
+- Skyline giant [video] MiniMax H3: Your product towers over a city skyline.
+- Rival kick [video] MiniMax H3: Your product wins as a plain rival gets kicked out of frame.
+- Graffiti wall [video] Qwen-Image 2.1 and LTX-2.5: Your product sprayed onto a city wall as graffiti.
+- Product burst [video] MiniMax H3: Your product bursts apart in slow motion bullet time.
+- Fridge grab [video] MiniMax H3: A fridge opens and a hand reaches for your product.
+- Volcano hero [video] MiniMax H3: Your product stands firm before an erupting volcano.
+- Extreme close up [video] MiniMax H3: Film your product in extreme close up.
+- ASMR product scene [video] Qwen-Image 2.1, Chatterbox, InfiniteTalk and HunyuanVideo-Foley: A scripted ASMR studio scene built around your product.
+- Logo [image] Qwen-Image 2.1 and BiRefNet: Turn a business name into a logo.
+- Banner [image] Qwen-Image 2.1: Web banners, display ads and social covers with a headline.
+- Thumbnail [image] Qwen-Image 2.1: A video thumbnail with bold words and your face.
+- Slide visuals [image] FLUX 3 Image Klein: Title art and backgrounds for your slides.
+- Posters and social graphics [image] Qwen-Image 2.1: Posters, social posts and mockups from a short brief.
+- Brand film [video] MiniMax H3: Brand films, logo reveals and campaign spots.
+- Link to video ad [video] Qwen3.8, Qwen-Image 2.1, Chatterbox and MiniMax H3: Paste a product page and get a short video ad.
+- Car video [video, wired] MiniMax H3: One car photo becomes rolling shots, orbits or drifts.
+
+### Just for fun (41) runs on: FLUX 3 Image Klein x11; Qwen-Image 2.1 x10; MiniMax H3 x2; Qwen-Image 2.1 and MiniMax H3 x2; FLUX 3 Image Klein and MiniMax H3 x3; FLUX 3 Image Klein and LTX-2.5 x6; Qwen-Image 2.1 and LTX-2.5 x6; Qwen3.8, MiniMax Music 3 and InfiniteTalk x1
+- Plush toy [image] FLUX 3 Image Klein: Turn anyone or anything into a soft plush toy.
+- Boxed figure [image] Qwen-Image 2.1: Make your photo a collectible figure in its box.
+- Die-cut sticker [image] FLUX 3 Image Klein: Turn your photo into a sticker with a white edge.
+- Signboard [image] Qwen-Image 2.1: Put your words on a sign in the picture.
+- Video game style [image] FLUX 3 Image Klein: See your photo as a scene from a video game.
+- Meme maker [image] Qwen-Image 2.1: Add top and bottom captions to any photo.
+- Tiny creature [image] FLUX 3 Image Klein: Shrink a pet or toy into a palm-sized creature.
+- Behind the scenes [image] Qwen-Image 2.1: Pull back to reveal your photo was shot on a film set.
+- Life sim game [image] Qwen-Image 2.1: Drop yourself into a cozy life simulation game.
+- Game show contestant [image] Qwen-Image 2.1: Put yourself behind a podium on a bright TV game show.
+- Cloud surfing [video, wired] MiniMax H3: Surf across a sea of clouds high in the sky.
+- Idol photocard [image] Qwen-Image 2.1: Turn a portrait into a glossy pop idol photocard.
+- Everything is fine [image] FLUX 3 Image Klein: Sip calmly while the room goes up in cartoon flames.
+- Brick toy [image] FLUX 3 Image Klein: Rebuild your photo out of plastic toy bricks.
+- Coloring book page [image] FLUX 3 Image Klein: Turn your photo into line art ready to color in.
+- Vending machine outfit [image] Qwen-Image 2.1: Every piece you wear on display in a glowing vending machine.
+- Squad strike [video] Qwen-Image 2.1 and MiniMax H3: Turn up to five people into a tactical game squad.
+- Open world hero [video] FLUX 3 Image Klein and MiniMax H3: See yourself as the hero of an open world city game.
+- 3D viewport render [video] FLUX 3 Image Klein and LTX-2.5: Render your photo as a 3D object inside a modeling scene.
+- 8-bit runner [video] FLUX 3 Image Klein and LTX-2.5: Your character runs through a retro 8-bit world.
+- Retro paint program [image] Qwen-Image 2.1: Frame your photo inside an old paint program on a CRT.
+- Wall mural [image] Qwen-Image 2.1: See your photo as a huge mural on a city wall.
+- Tiny animal crowd [image] FLUX 3 Image Klein: Surround yourself with tiny animals of your choice.
+- Glossy vinyl [video] FLUX 3 Image Klein and LTX-2.5: Restyle your look in sleek, glossy black vinyl.
+- Tokyo magazine [video] Qwen-Image 2.1 and LTX-2.5: Put yourself on the cover of a Japanese street fashion magazine.
+- 1960s coffee shop [video] FLUX 3 Image Klein and LTX-2.5: Step into a 1960s coffee shop.
+- Winning card [video] Qwen-Image 2.1 and LTX-2.5: Print yourself on the winning card of a poker hand.
+- Japanese poster [video] Qwen-Image 2.1 and LTX-2.5: Turn your photo into a Japanese style poster with bold type.
+- Team mascot [video] FLUX 3 Image Klein and LTX-2.5: Become the mascot of a made-up sports team.
+- Comic story [video] Qwen-Image 2.1 and LTX-2.5: Star in a short comic story with panels and speech bubbles.
+- Gallery masterpiece [video] FLUX 3 Image Klein and LTX-2.5: Hang as a classical painting in a busy gallery.
+- Rap video [video] Qwen3.8, MiniMax Music 3 and InfiniteTalk: Your photo performs a rap with fresh lyrics and a beat.
+- Open world run [video] FLUX 3 Image Klein and MiniMax H3: Run, jump and drive through an open world game as yourself.
+- Booking photo [video] Qwen-Image 2.1 and LTX-2.5: A tongue-in-cheek police booking photo, height chart and all.
+- Notification swarm [video] Qwen-Image 2.1 and LTX-2.5: Surround your photo with floating app-style icons.
+- Idol stage [video] FLUX 3 Image Klein and MiniMax H3: Take the stage as a pop idol.
+- Cartoon yourself [image] FLUX 3 Image Klein: Turn selfies, family photos and pets into cartoon characters.
+- Anime yourself [image] FLUX 3 Image Klein: Redraw your photo as anime or a manga panel.
+- Animal [image] FLUX 3 Image Klein: Pets, wildlife and creatures that do not exist.
+- Invitation video [video] Qwen-Image 2.1 and MiniMax H3: An animated invite for a wedding, birthday or party.
+- Pet video [video, wired] MiniMax H3: Your pet photo becomes a cute or talking clip with sound.
+
+### Mixed media (33) runs on: Bernini-R x33
+- Acid [video] Bernini-R: Psychedelic neon color that warps and bleeds.
+- Icy neon [video] Bernini-R: Cold neon light and deep shadow.
+- Lava [video] Bernini-R: Molten lava color flowing through the shot.
+- Color trip [video] Bernini-R: Waves of shifting rainbow color.
+- Noir [video] Bernini-R: Hard, cinematic black and white.
+- Ocean [video] Bernini-R: Liquid sea color washing over the footage.
+- Overexposed [video] Bernini-R: Blown out, extreme exposure.
+- Glow bursts [video] Bernini-R: Bursts of glow pop across the frame.
+- Toxic [video] Bernini-R: Radioactive neon color blasts.
+- Duotone [video] Bernini-R: A bold, high contrast two-tone print.
+- Ultraviolet [video] Bernini-R: A neon blacklight glow.
+- Acrylic blocks [video] Bernini-R: Layered blocks of acrylic color.
+- Canvas [video] Bernini-R: Hand-drawn artwork on canvas.
+- Comic [video] Bernini-R: An illustrated comic book look.
+- Comic panels [video] Bernini-R: Punchy, high energy comic panels.
+- Gouache [video] Bernini-R: Loose, freehand brushwork.
+- Palette knife [video] Bernini-R: Hand-painted blocks of color.
+- Sketch [video] Bernini-R: Textured hand-drawn line work.
+- Inked vintage [video] Bernini-R: A hand-inked vintage illustration.
+- Shattered mirror [video] Bernini-R: Shattered mirror reflections.
+- Bubbles [video] Bernini-R: A dreamy soap bubble texture.
+- Fragments [video] Bernini-R: Abstract fragments layered over the footage.
+- Layered worlds [video] Bernini-R: Layers of reality colliding.
+- Light particles [video] Bernini-R: Glowing particles moving through the shot.
+- Motion tracking [video] Bernini-R: Tracking lines lock onto moving objects.
+- Pop-up windows [video] Bernini-R: Overlapping computer interface windows.
+- Smoke poster [video] Bernini-R: A smoky psychedelic poster look.
+- Layered collage [video] Bernini-R: A stacked collage of mixed materials.
+- Magazine [video] Bernini-R: A printed magazine page.
+- Marble [video] Bernini-R: A sculpted marble finish.
+- Swiss minimal [video] Bernini-R: Clean, geometric minimalism.
+- Origami [video] Bernini-R: Crisp folded paper geometry.
+- Paper [video] Bernini-R: Handmade paper texture over the footage.
+
+### 3D models (4) runs on: TRELLIS.2 x2; FLUX 3 Image Klein and TRELLIS.2 x1; TRELLIS.2 and Blender x1
+- Photo to 3D model [3d] TRELLIS.2: Turn a photo of one object into a 3D model.
+- Text to 3D model [3d] FLUX 3 Image Klein and TRELLIS.2: Describe an object and get a 3D model of it.
+- Character figure [3d] TRELLIS.2: Turn a saved character into a 3D figure.
+- 3D turntable video [3d] TRELLIS.2 and Blender: Spin a product or object a full turn in 3D.
+
+### Scenes and games (3) runs on: Qwen3.8 and Blender x1; Qwen3.8 or Kimi K3 x1; HY-World 2.0 x1
+- 3D scene [3d] Qwen3.8 and Blender: Describe a place and get a 3D scene you can edit.
+- Game from a prompt [3d] Qwen3.8 or Kimi K3: Describe a game idea and play it in your browser.
+- Explorable world [3d] HY-World 2.0: Describe a place and look around it in 360 degrees.
+
+### Enhance (10) runs on: SeedVR2 x2; RIFE 4.26 x1; SAM 3.1 and BiRefNet x1; FLUX 3 Image Klein x1; BiRefNet x1; SeedVR2 or RealESRGAN x1; Qwen-Image 2.1 and SeedVR2 x1; Bria via fal x1; SeedVR via fal x1
+- Video upscale [video] SeedVR2: More resolution and detail, same video.
+- Slow motion [video] RIFE 4.26: Add in-between frames for smooth slow motion.
+- Video background remove [video] SAM 3.1 and BiRefNet: Cut the subject out of every frame of a video.
+- Skin retouch [image] FLUX 3 Image Klein: Even out skin and keep the face true to life.
+- Cut out the background [image] BiRefNet: Cut out a person, product or pet on a clean background.
+- Unblur a photo [image] SeedVR2: Sharpen a blurry photo and bring faces back into focus.
+- Image upscale [image] SeedVR2 or RealESRGAN: More resolution and detail, same picture.
+- Restore an old photo [image] Qwen-Image 2.1 and SeedVR2: Repair scratches and fading, and bring back the color.
+- Background remove [image, wired] Bria via fal: A clean cutout with a transparent background.
+- Upscale [image, wired] SeedVR via fal: More resolution and detail, same picture.
