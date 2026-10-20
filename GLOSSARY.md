@@ -49,7 +49,7 @@ How the user's ComfyUI runs execute: Instant or Session, picked in the top bar.
 _Avoid_: mode, backend (for the user's choice)
 
 **Instant**:
-The generation type that sends ComfyUI runs to Comfy Cloud at once. It runs only the models and LoRAs Cloud has installed.
+The generation type that sends ComfyUI runs to Comfy Cloud at once. It runs only the models and LoRAs Cloud has installed. It never starts a Pod: a run Cloud cannot take fails until the user switches to Session.
 _Avoid_: cloud mode
 
 **Session**:

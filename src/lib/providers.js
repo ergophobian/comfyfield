@@ -1,5 +1,5 @@
 import { generate as runComfy } from './comfy.js'
-import { askPod, autoPod, refreshPod } from './usePod.js'
+import { askPod, autoPod, refreshPod, runTypeOf } from './usePod.js'
 import { comfyVars, comfyRouterInput, falInput, durationsFromProps, hasImageInput, falEndpointFor } from '../../shared/mapping.js'
 
 const schemas = new Map()
@@ -63,9 +63,10 @@ export async function run(model, opts, hooks = {}) {
     return files
   }
   if (model.provider === 'comfy') {
-    // Comfy Cloud takes the run at once. When it cannot, the server says needs_pod. With auto-start on,
-    // the app starts a Pod sized for this workflow; with it off, the start sheet asks once. Then the
-    // same run goes again and waits for the Pod.
+    // Comfy Cloud takes the run at once. When it cannot, the server says needs_pod. On Instant the run
+    // fails there: Instant never starts a Pod, the person switches to Session (docs/adr/0001). Otherwise,
+    // with auto-start on, the app starts a Pod sized for this workflow; with it off, the start sheet
+    // asks once. Then the same run goes again and waits for the Pod.
     const vars = comfyVars(model.kind, opts, model.sizes)
     // A model with a start-image workflow uses it when an image is attached.
     const workflow = vars.image && model.imageWorkflow ? model.imageWorkflow : model.workflow
@@ -73,8 +74,9 @@ export async function run(model, opts, hooks = {}) {
       return await runComfy(workflow, vars)
     } catch (e) {
       if (e.code !== 'needs_pod') throw e
-      hooks.onPod?.()
       const s = await refreshPod()
+      if (runTypeOf(s) === 'instant') throw e
+      hooks.onPod?.()
       if (s?.auto && s?.connected) await autoPod(workflow)
       else await askPod(workflow, e.reason)
       return runComfy(workflow, vars)
