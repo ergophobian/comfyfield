@@ -10,6 +10,7 @@ import { archOf } from '../shared/modelFiles.js'
 import { upload } from './upload.js'
 import { serveMedia } from './serveMedia.js'
 import { agentRoutes } from './agent-routes.js'
+import { allowedApiRequest } from './local-access.js'
 
 export { providers } from './core.js'
 
@@ -235,11 +236,7 @@ export async function podAction(action, { workflow, now, minVramGb, gpu, volumeG
 // A page on another site can send a request to localhost even when it cannot read the answer.
 // Browsers mark those; tools like curl and the CLI send neither header.
 export function crossSite(headers) {
-  const site = headers['sec-fetch-site']
-  if (site && site !== 'same-origin' && site !== 'none') return true
-  const origin = headers.origin
-  if (!origin) return false
-  try { return new URL(origin).host !== headers.host } catch { return true }
+  return !allowedApiRequest(headers)
 }
 
 function mount(server, harness) {
@@ -250,8 +247,8 @@ function mount(server, harness) {
   server.httpServer?.once('close', () => { core.pod().stopMonitor(); agents.close().catch(() => {}) })
   server.middlewares.use(async (req, res, next) => {
     const url = new URL(req.url, 'http://local')
-    // Anything that spends money or changes saved data must come from ComfyField's own pages.
-    if (url.pathname.startsWith('/api/') && req.method !== 'GET' && crossSite(req.headers)) return send(res, 403, { error: 'Requests from other sites are refused.' })
+    // Validate even reads: a rebinding domain can present matching Host and Origin headers.
+    if ((url.pathname === '/api' || url.pathname.startsWith('/api/')) && crossSite(req.headers)) return send(res, 403, { error: 'Use the local ComfyField app. Requests from other sites are refused.' })
     try {
       if (url.pathname === '/api/pod' && req.method === 'GET') {
         const { mode, key } = core.config('comfy')

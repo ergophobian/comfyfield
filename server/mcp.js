@@ -50,12 +50,12 @@ export function createServer({ invoke, handlers = new Map(), flowService = flows
       count: z.number().int().min(1).max(4).optional().describe('Images per run'),
       duration: z.number().optional().describe('Video length in seconds'),
       image: z.string().optional().describe('Start image: URL or local file path'),
-      out: z.string().optional().describe('Folder to save into. Default .comfyfield/outputs'),
+      out: z.string().optional().describe('Folder to save into. Default outputs in the per-user data folder'),
     },
   }, tool(async ({ out, ...args }) => {
     const cost = await core.estimateCost(args).catch(() => null)
     const files = await core.generate(args)
-    const saved = await core.saveFiles(files, path.resolve(out || path.join(process.env.COMFYFIELD_HOME || '.', '.comfyfield', 'outputs')))
+    const saved = await core.saveFiles(files, path.resolve(out || path.join(core.home(), 'outputs')))
     return {
       files: files.map((f, i) => ({ kind: f.kind, path: saved[i], url: f.url })),
       estimated_cost_usd: cost ? { amount: Number(cost.usd.toFixed(4)), approximate: cost.approx } : null,
