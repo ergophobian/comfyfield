@@ -425,7 +425,7 @@ code { font-size: .92em; }
 .picker-pick { flex: 1; min-width: 0; text-align: left; padding: 8px; display: flex; flex-direction: column; gap: 2px; }
 .picker-name { font-size: var(--text-md); font-weight: 500; }
 .picker-row.on .picker-name { color: var(--blue); }
-.picker-sub { display: flex; align-items: center; gap: 6px; font-size: var(--text-xs); color: var(--muted); white-space: nowrap; overflow: hidden; }
+.picker-sub { display: flex; align-items: center; gap: 6px; font-size: var(--text-xs); color: var(--muted); flex-wrap: wrap; }
 .picker-sub em { font-style: normal; color: var(--blue); }
 .picker-row kbd { font: 500 var(--text-xs) 'Inter', sans-serif; color: var(--muted); padding: 2px 6px; border-radius: var(--r-xs); background: var(--ink-fill); }
 .picker-star { color: var(--faint); padding: 4px; border-radius: var(--r-sm); transition: color var(--dur-fast), transform var(--dur-press) var(--spring); }
@@ -548,6 +548,40 @@ code { font-size: .92em; }
 .lib-toast { position: absolute; left: 50%; top: 50%; translate: -50% -50%; padding: 6px 12px; border-radius: var(--r-pill); font-size: var(--text-xs); font-weight: 600; background: var(--surface); box-shadow: var(--shadow); }
 .audio .lib-acts { top: auto; bottom: 8px; }
 .audio .lib-act { background: var(--scrim-strong); }
+/* Search, folders and the bulk bar for picking several takes at once */
+.lib-tools { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.lib-tools .seg { margin: 0; }
+.lib-search { flex: 1 1 240px; max-width: 360px; }
+.lib-select { margin-left: auto; }
+.lib-select.on { background: var(--blue-select); color: var(--blue); }
+.lib-folders { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.lib-count { font-size: var(--text-xs); color: var(--muted); }
+.pills button.on .lib-count { color: var(--blue); }
+.lib-new { display: inline-flex; align-items: center; gap: 4px; font-size: var(--text-sm); }
+.lib-new svg { width: 14px; height: 14px; }
+.lib-folder-acts { display: flex; gap: 6px; margin-left: auto; }
+.lib-pick { position: absolute; top: 8px; left: 8px; z-index: 2; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%; color: transparent;
+  background: var(--scrim); border: 2px solid var(--on-fill); opacity: 0; transition: opacity var(--dur-fast), background var(--dur-fast), color var(--dur-fast), transform var(--dur-press) var(--spring); }
+.lib-pick svg { width: 14px; height: 14px; }
+.lib-pick:active { transform: scale(.9); }
+.lib-card:hover .lib-pick, .lib-pick:focus-visible, .lib-grid.selecting .lib-pick { opacity: 1; }
+.lib-pick:hover { color: var(--on-fill); }
+.lib-pick.on { background: var(--blue); border-color: var(--blue); color: var(--on-fill); }
+.lib-grid.selecting .lib-card { cursor: pointer; }
+.lib-card.picked { border-color: var(--blue); }
+.lib-bulk { position: sticky; bottom: 16px; z-index: 20; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 16px; padding: 8px 8px 8px 16px; border-radius: var(--r-xl); }
+.lib-bulk-count { font-size: var(--text-md); font-weight: 600; }
+.lib-bulk-grow { flex: 1; }
+.lib-move > button { height: 30px; border-color: transparent; background: var(--ink-fill); }
+.lib-move > button:hover { background: var(--ink-fill-hover); border-color: transparent; }
+.lib-move > button:disabled { opacity: var(--disabled); transform: none; }
+@media (max-width: 720px) {
+  /* Five tabs do not fit a phone; the row scrolls sideways instead of widening the page */
+  .page-head .seg { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .lib-search { flex-basis: 100%; max-width: none; }
+  .lib-tools .seg { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .lib-bulk .lib-move.right > .menu { left: 0; right: auto; transform-origin: bottom left; }
+}
 
 .viewer { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; gap: 14px; padding: 24px;
   background: var(--scrim); backdrop-filter: var(--blur-scrim); animation: fadein var(--dur-pop) ease backwards; }
@@ -572,6 +606,20 @@ code { font-size: .92em; }
 .viewer-nav:active, .viewer-close:active { transform: scale(.9); }
 .viewer-nav:disabled { opacity: var(--disabled); cursor: default; }
 .viewer-close { position: absolute; top: 18px; right: 18px; }
+
+/* Before and after compare: the source over the result, cut at the divider */
+.compare { --at: 50%; position: relative; display: block; width: fit-content; min-width: 0; max-width: 100%; margin: 0 auto; overflow: hidden; border-radius: inherit; touch-action: pan-y; user-select: none; -webkit-user-select: none; cursor: ew-resize; }
+.compare img { display: block; max-width: 100%; pointer-events: none; -webkit-user-drag: none; }
+.compare .compare-before { position: absolute; inset: 0; width: 100%; height: 100%; max-height: none; clip-path: inset(0 calc(100% - var(--at)) 0 0); }
+.compare-line { position: absolute; top: 0; bottom: 0; left: var(--at); width: 2px; margin-left: -1px; background: var(--on-fill); box-shadow: var(--shadow-sm); pointer-events: none; }
+.compare-handle { position: absolute; top: 50%; left: var(--at); width: 40px; height: 40px; margin: -20px 0 0 -20px; display: flex; align-items: center; justify-content: center; border-radius: 50%; color: var(--ink); background: var(--glass-strong); box-shadow: var(--shadow); backdrop-filter: var(--blur-sm); -webkit-backdrop-filter: var(--blur-sm); transition: transform var(--dur-press) var(--spring), background var(--dur-fast); }
+.compare-handle svg { width: 13px; height: 13px; margin: 0 -2px; }
+.compare:hover .compare-handle { background: var(--paper); }
+.compare.dragging .compare-handle { transform: scale(.9); }
+.compare-handle:focus-visible { outline: 2px solid var(--blue-hi); outline-offset: 2px; }
+.compare-tag { position: absolute; top: 10px; padding: 3px 10px; border-radius: var(--r-pill); font-size: var(--text-xs); font-weight: 500; color: var(--on-fill); background: var(--scrim); backdrop-filter: var(--blur-sm); -webkit-backdrop-filter: var(--blur-sm); pointer-events: none; }
+.compare-tag.before { left: 10px; }
+.compare-tag.after { right: 10px; }
 
 .asset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
 .asset { display: flex; flex-direction: column; gap: 4px; padding: 8px 8px 14px; border-radius: var(--r-lg); text-align: left; transition: transform var(--dur-press) var(--spring), box-shadow var(--dur-press) var(--spring);
@@ -1282,6 +1330,20 @@ code { font-size: .92em; }
 .gen-banner strong { font-size: var(--text-lg); font-weight: 600; letter-spacing: -.01em; }
 .gen-banner span { font-size: var(--text-sm); color: var(--ink-2); }
 
+/* The "new to this tool" pill, centred like Higgsfield's Academy tip */
+.tip { display: flex; align-items: center; gap: 12px; width: fit-content; max-width: 100%; margin: 0 auto 16px; padding: 6px 6px 6px 8px; border-radius: var(--r-pill); }
+.tip > div { min-width: 0; display: flex; flex-direction: column; }
+.tip strong { font-size: var(--text-md); font-weight: 600; }
+.tip > div span { font-size: var(--text-xs); color: var(--ink-2); }
+.tip-icon { flex-shrink: 0; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; background: var(--blue-select); color: var(--blue); }
+.tip-icon svg { width: 18px; height: 18px; }
+.tip .btn-blue { flex-shrink: 0; }
+.tip-close { flex-shrink: 0; width: 28px; height: 28px; }
+.tip-close svg { width: 14px; height: 14px; }
+@media (max-width: 720px) {
+  .tip { border-radius: var(--r-lg); }
+}
+
 .gen-bar { position: sticky; bottom: 16px; z-index: 20; width: min(var(--w-composer), 100%); }
 /* backwards, not both: a held transform would make the bar the anchor for every menu inside it */
 .route .gen-bar { animation: rise var(--dur-hero) var(--spring) calc(var(--stagger) * 3) backwards; }
@@ -1720,6 +1782,13 @@ button.gen-step:active { transform: scale(.97); }
 .sb-empty { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 40px 20px; text-align: center; border-radius: var(--r-lg); border: 1.5px dashed var(--faint); background: var(--glass); color: var(--ink-2); }
 .sb-empty strong { font-weight: 600; color: var(--ink); }
 .sb-empty p { margin: 0; font-size: var(--text-sm); }
+.sb-compared { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.sb-compare { margin: 0; display: flex; flex-direction: column; gap: 8px; padding: 8px; border-radius: var(--r-lg); }
+.sb-compare .compare { width: 100%; border-radius: var(--r-md); background: var(--ink-fill); }
+.sb-compare .compare-after { width: 100%; }
+.sb-compare figcaption { display: flex; justify-content: space-between; gap: 10px; padding: 2px 6px 4px; font-size: var(--text-sm); }
+.sb-compare figcaption span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sb-compare figcaption .muted { flex-shrink: 0; }
 
 /* Shorts and lipsync: the picked look */
 .sb-preview { position: relative; flex-shrink: 0; height: 190px; display: flex; align-items: flex-end; padding: 12px; overflow: hidden; border-radius: var(--r-lg); box-shadow: var(--inset-hi); }

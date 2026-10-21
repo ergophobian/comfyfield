@@ -1,7 +1,8 @@
 import { generate as runComfy } from './comfy.js'
-import { runJob } from './jobs.js'
+import { runJob, waitJob, Cancelled } from './jobs.js'
 import { askPod, autoPod, refreshPod, runTypeOf } from './usePod.js'
-import { comfyVars, comfyRouterInput, falInput, durationsFromProps, hasImageInput, falEndpointFor } from '../../shared/mapping.js'
+import { comfyVars, falInput, durationsFromProps, hasImageInput, falEndpointFor } from '../../shared/mapping.js'
+import { createRouterBatch, runRouterBatch } from './routerBatch.js'
 
 const schemas = new Map()
 export async function falSchema(endpoint) {
@@ -16,7 +17,7 @@ const num = (v) => parseFloat(String(v))
 
 export function acceptsImage(model, props) {
   if (model.provider === 'comfy') return Boolean(model.imageWorkflow) || model.workflow === 'ltx_i2v'
-  if (model.provider === 'comfyRouter') return model.kind === 'video'
+  if (model.provider === 'comfyRouter') return Boolean(model.maxImages)
   if (model.provider === 'google') return true
   if (model.provider === 'fal') return hasImageInput(props || {})
   return false
@@ -50,19 +51,26 @@ export async function durationsFor(model) {
 async function post(url, payload) {
   const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
   const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`)
+  if (!res.ok) throw Object.assign(new Error(data.error || `Request failed (${res.status})`), { status: res.status, code: data.code, retryable: data.retryable, requestId: data.requestId, idempotencyKey: data.idempotencyKey })
   return data
 }
 
 // hooks.onPod: the run is waiting for a Pod, after the start sheet. hooks.onJob: a server job started for this run.
 export async function run(model, opts, hooks = {}) {
-  const job = (route, payload) => runJob(route, payload, hooks)
+  const job = (route, payload) => {
+    if (hooks.isCancelled?.()) throw new Cancelled()
+    return runJob(route, payload, hooks)
+  }
   if (model.provider === 'comfyRouter') {
-    const files = []
-    for (let i = 0; i < (model.kind === 'image' ? opts.count || 1 : 1); i++) {
-      files.push(...(await job('/api/comfy/router', { model: model.model, input: comfyRouterInput(model.model, opts) })))
-    }
-    return files
+    const batch = opts.routerBatch ||= createRouterBatch(model, opts)
+    return runRouterBatch(batch, (payload, call) => {
+      if (hooks.isCancelled?.()) throw new Cancelled()
+      if (call.jobId) return waitJob(call.jobId)
+      return runJob('/api/comfy/router', payload, { ...hooks, onJob: (id) => {
+        call.jobId = id
+        hooks.onJob?.(id)
+      } })
+    }, hooks.onFiles)
   }
   if (model.provider === 'comfy') {
     // Comfy Cloud takes the run at once. When it cannot, the server says needs_pod. On Instant the run
@@ -111,6 +119,7 @@ export async function getConnections() {
 }
 
 export async function writePrompt(input) {
+  input.idempotencyKey ||= crypto.randomUUID()
   return (await post('/api/prompt', input)).text
 }
 

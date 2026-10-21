@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { covers } from '../../lib/formats/parts.js'
 import { IconPlus } from '../Icons.jsx'
+import Compare from '../widgets/Compare.jsx'
 
 // Shared pieces for the studio pages: marketing, ads, faceless, explainer, shorts, 3D, lipsync,
 // image and video edits, upscale, reframe and the assistant.
@@ -230,4 +231,22 @@ export function Empty({ title, children }) {
 
 export function ErrorNote({ error }) {
   return error ? <p className="sheet-error" role="alert">{error}</p> : null
+}
+
+// Finished results that know their source picture, each on a before and after slider.
+export function Compared({ items, title = 'Before and after', note }) {
+  if (!items.length) return null
+  return (
+    <section className="sb-section" aria-label={title}>
+      <div className="studio-sub"><h2>{title}</h2>{note && <span className="muted">{note}</span>}</div>
+      <div className="sb-compared">
+        {items.map((it, i) => (
+          <figure key={it.id} className="sb-compare glass rise" style={stagger(i)}>
+            <Compare before={it.source} after={it.url} alt={it.caption} />
+            <figcaption><span>{it.caption}</span><span className="muted">{it.model}</span></figcaption>
+          </figure>
+        ))}
+      </div>
+    </section>
+  )
 }

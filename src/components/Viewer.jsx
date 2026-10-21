@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import UseIn from './formats/UseIn.jsx'
+import Compare from './widgets/Compare.jsx'
 import { useApp } from '../lib/appContext.js'
 import { handoffFor } from '../lib/handoff.js'
 import { create } from '../lib/useLibrary.js'
@@ -86,7 +87,7 @@ export default function Viewer({ items, at, setAt, copy = copyPrompt, onClose })
     <div className="viewer" onClick={onClose} role="dialog" aria-label="Viewer">
       <button className="viewer-nav prev" aria-label="Previous" disabled={at === 0} onClick={(e) => { e.stopPropagation(); setAt(at - 1) }}><IconChevron dir="left" /></button>
       <div className="viewer-card glass pop" key={it.id} onClick={(e) => e.stopPropagation()}>
-        <div className="viewer-media"><Media it={it} full /></div>
+        <div className="viewer-media">{it.kind === 'image' && it.source ? <Compare before={it.source} after={it.url} alt={it.caption} /> : <Media it={it} full />}</div>
         <div className="viewer-foot">
           <div className="viewer-text">
             <p>{it.caption}</p>

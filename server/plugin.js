@@ -11,6 +11,7 @@ import { upload } from './upload.js'
 import { serveMedia } from './serveMedia.js'
 import { agentRoutes } from './agent-routes.js'
 import { createJobs } from './jobs.js'
+import { allowedApiRequest } from './local-access.js'
 
 export { providers } from './core.js'
 
@@ -23,7 +24,7 @@ function comfyFiles(files) {
 // The generation routes the browser can run as jobs, keyed by the route it would otherwise call directly.
 const runners = {
   '/api/fal': (b, ctx) => core.runFal(b, ctx),
-  '/api/comfy/router': (b) => core.runComfyRouter(b),
+  '/api/comfy/router': (b, ctx) => core.runComfyRouter(b, ctx),
   '/api/comfy/run': async ({ workflow, vars }) => comfyFiles(await core.runComfy(workflow, vars)),
   '/api/elevenlabs': (b) => core.runElevenLabs(b),
   '/api/google': (b) => core.runGoogle(b),
@@ -253,11 +254,7 @@ export async function podAction(action, { workflow, now, minVramGb, gpu, volumeG
 // A page on another site can send a request to localhost even when it cannot read the answer.
 // Browsers mark those; tools like curl and the CLI send neither header.
 export function crossSite(headers) {
-  const site = headers['sec-fetch-site']
-  if (site && site !== 'same-origin' && site !== 'none') return true
-  const origin = headers.origin
-  if (!origin) return false
-  try { return new URL(origin).host !== headers.host } catch { return true }
+  return !allowedApiRequest(headers)
 }
 
 function mount(server, harness) {
@@ -268,8 +265,8 @@ function mount(server, harness) {
   server.httpServer?.once('close', () => { core.pod().stopMonitor(); agents.close().catch(() => {}) })
   server.middlewares.use(async (req, res, next) => {
     const url = new URL(req.url, 'http://local')
-    // Anything that spends money or changes saved data must come from ComfyField's own pages.
-    if (url.pathname.startsWith('/api/') && req.method !== 'GET' && crossSite(req.headers)) return send(res, 403, { error: 'Requests from other sites are refused.' })
+    // Validate even reads: a rebinding domain can present matching Host and Origin headers.
+    if ((url.pathname === '/api' || url.pathname.startsWith('/api/')) && crossSite(req.headers)) return send(res, 403, { error: 'Use the local ComfyField app. Requests from other sites are refused.' })
     try {
       if (url.pathname === '/api/pod' && req.method === 'GET') {
         const { mode, key } = core.config('comfy')
@@ -278,6 +275,12 @@ function mount(server, harness) {
         const suggest = mode === 'cloud' && status.phase === 'none' && status.connected ? await core.podSuggestion() : null
         // run: the generation type the user picked (null until they pick); tier: their Session tier.
         return send(res, 200, { ...status, mode, instant: Boolean(key), auto: core.podAutoStart(), suggest, run: core.runType(), tier: core.podTier() })
+      }
+      if (url.pathname === '/api/comfy/requirements' && req.method === 'POST') {
+        const input = await body(req)
+        if (!input || typeof input !== 'object' || Array.isArray(input) || !Array.isArray(input.workflows) ||
+          (input.runType != null && !['instant', 'session'].includes(input.runType))) return send(res, 400, { error: 'Supply workflows and a valid run type.' })
+        return send(res, 200, await core.formatRequirements(input.workflows, { run: input.runType ?? core.runType() }))
       }
       if (url.pathname === '/api/pod/quote') return send(res, 200, await podQuote(url.searchParams.get('workflow')))
       if (url.pathname === '/api/pod/options' && req.method === 'GET') return send(res, 200, await core.podOptions())
@@ -345,7 +348,7 @@ function mount(server, harness) {
       }
       if (url.pathname.startsWith('/comfy/')) return proxyComfy(req, res, url)
     } catch (e) {
-      return send(res, e.status || 500, { error: e.message, ...(e.code ? { code: e.code } : {}), ...(e.reason ? { reason: e.reason } : {}), ...(e.fit ? { fit: e.fit } : {}) })
+      return send(res, e.status || 500, { error: e.message, ...(e.requestId ? { requestId: e.requestId } : {}), ...(e.idempotencyKey ? { idempotencyKey: e.idempotencyKey } : {}), ...(e.code ? { code: e.code } : {}), ...(typeof e.retryable === 'boolean' ? { retryable: e.retryable } : {}), ...(e.reason ? { reason: e.reason } : {}), ...(e.fit ? { fit: e.fit } : {}) })
     }
     next()
   })

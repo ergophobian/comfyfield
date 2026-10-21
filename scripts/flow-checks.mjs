@@ -389,6 +389,58 @@ check('Stitch retries failures, waits for every input, and preserves outputs on 
   assert.equal(eng.plan(partial, 's').blocked, true, 'Wait until all clips in the upstream run finish')
 })
 
+check('partial failures block downstream; scoped retries preserve successful units and closed gates', async () => {
+  let fail = true
+  const calls = []
+  const eng = createEngine({ run: async (model, opts) => {
+    calls.push({ name: model.name, prompt: opts.prompt })
+    if (model.name === 'Img' && opts.prompt === 'two' && fail) throw new Error('take failed')
+    return [{ url: `mock://${calls.length}`, kind: model.kind }]
+  } })
+  const f = { nodes: [n('p', 'prompt', { mode: 'rows', text: 'one\ntwo' }), n('i', 'model', { model: img }), n('v', 'model', { model: vid }), n('a', 'approve'), n('last', 'model', { model: vid, prompt: 'Finish' })], edges: [e('p', 'i'), e('i', 'v'), e('v', 'a'), e('a', 'last')] }
+  await eng.runNew(f)
+  assert.equal(calls.length, 2)
+  assert.equal(eng.plan(f, 'v').blocked, true)
+  const kept = eng.state.i.items.find((i) => i.status === 'done')
+  fail = false
+  await eng.retryFailed(f, ['i'])
+  assert.equal(calls.filter((c) => c.name === 'Img').length, 3)
+  assert.equal(calls.filter((c) => c.name === 'Vid').length, 2)
+  assert.equal(eng.state.i.items.find((i) => i.id === kept.id), kept)
+  assert.equal(eng.gate('a').status, 'reviewing')
+  await eng.retryFailed(f)
+  assert.equal(calls.length, 5, 'Retry neither repeats output nor opens the gate')
+  await eng.send(f, 'a')
+  assert.equal(calls.length, 6)
+})
+
+check('model and writer adapters receive stable unit identities across failures', async () => {
+  const identities = []
+  const writes = []
+  const eng = createEngine({
+    run: async (model, options, identity) => {
+      identities.push(identity)
+      if (identities.length === 1) throw new Error('Lost reply')
+      return [{ url: 'mock://recovered' }]
+    },
+    writePrompt: async (options, identity) => {
+      writes.push(identity)
+      if (writes.length === 1) throw new Error('Writer lost reply')
+      return 'Reviewed prompt'
+    },
+  })
+  const flow = { nodes: [n('w', 'writer', { instructions: 'Describe it' }), n('m', 'model', { model: img })], edges: [e('w', 'm')] }
+  await eng.runNew(flow)
+  await eng.retryFailed(flow)
+  assert.deepEqual(writes[0], writes[1])
+  assert.equal(writes[0].stepId, 'w')
+  await eng.sendWriter(flow, 'w')
+  await eng.retryFailed(flow)
+  assert.deepEqual(identities[0], identities[1])
+  assert.equal(identities[0].stepId, 'm')
+  assert.equal(typeof identities[0].unitId, 'string')
+})
+
 let bad = 0
 for (const [name, fn] of checks) {
   try { await fn(); console.log('ok   ', name) } catch (err) { bad++; console.log('FAIL ', name, '\n     ', err.message) }

@@ -26,13 +26,14 @@ export function createJobs(file) {
   // task(ctx) returns the files. ctx.onCancel(fn) lets a provider stop its own queue when the person cancels.
   function start(task) {
     const id = crypto.randomUUID()
-    const ctx = { cancelled: false, stops: [], onCancel(fn) { this.stops.push(fn) } }
+    const controller = new AbortController()
+    const ctx = { signal: controller.signal, abort: () => controller.abort(), cancelled: false, stops: [], onCancel(fn) { this.stops.push(fn) } }
     jobs.set(id, { id, status: 'running', created: Date.now() })
     live.set(id, ctx)
     save()
     Promise.resolve().then(() => task(ctx)).then(
       (files) => { if (!ctx.cancelled) jobs.set(id, { ...jobs.get(id), status: 'done', files }) },
-      (e) => { if (!ctx.cancelled) jobs.set(id, { ...jobs.get(id), status: 'failed', error: { message: e.message, code: e.code, reason: e.reason, fit: e.fit } }) },
+      (e) => { if (!ctx.cancelled) jobs.set(id, { ...jobs.get(id), status: 'failed', error: { message: e.message, status: e.status, code: e.code, requestId: e.requestId, idempotencyKey: e.idempotencyKey, retryable: e.retryable, reason: e.reason, fit: e.fit } }) },
     ).finally(() => { live.delete(id); save() })
     return id
   }
@@ -45,6 +46,7 @@ export function createJobs(file) {
     const ctx = live.get(id)
     if (ctx && !ctx.cancelled) {
       ctx.cancelled = true
+      ctx.abort()
       for (const stop of ctx.stops) Promise.resolve().then(stop).catch(() => {})
       jobs.set(id, { ...job, status: 'cancelled' })
       save()

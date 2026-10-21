@@ -16,7 +16,7 @@ import { IconAspect, IconClose, IconImage, IconPlus, IconSpark } from '../compon
 import { useApp } from '../lib/appContext.js'
 import { chooseModel, useHandoff } from '../lib/handoff.js'
 import { usePod } from '../lib/usePod.js'
-import { uploadImage } from '../lib/providers.js'
+import { acceptsImage, uploadImage } from '../lib/providers.js'
 import { estimate, useBalance, useModelMeta } from '../lib/cost.js'
 import { flowFromBatch, openFlow } from '../lib/flowStore.js'
 import { covers } from '../lib/formats/parts.js'
@@ -60,9 +60,12 @@ export default function ImageStudio() {
     if (h.refs) setRefs(h.refs)
   })
 
-  // ComfyUI's FLUX and SDXL workflows have no image input; every other model takes references.
-  const canAttach = model.open || !['comfy', 'comfyRouter'].includes(model.provider)
-  const images = canAttach ? [...uploads.map((u) => u.url), ...refs.flatMap((r) => r.images.slice(0, 1))] : []
+  // Router references follow each model's native capability.
+  const canAttach = model.open || (model.provider === 'comfyRouter' ? acceptsImage(model) : model.provider !== 'comfy')
+  const maxRefs = canAttach ? model.maxImages ?? MAX_REFS : 0
+  const pictures = [...uploads.map((u) => u.url), ...refs.flatMap((r) => r.images.slice(0, 1))]
+  const referenceError = pictures.length > maxRefs ? `${model.name} accepts up to ${maxRefs} reference images. Remove references to continue.` : null
+  const images = canAttach ? pictures : []
   const inputs = useModelInputs(model, images.length > 0)
   const ratio = inputs.ratios.includes(aspect) ? aspect : ['1:1', 'auto'].find((r) => inputs.ratios.includes(r)) || inputs.ratios[0]
   const shownQuality = (quality && inputs.qualities?.includes(quality) && quality) || (inputs.qualityDefault != null ? String(inputs.qualityDefault) : inputs.qualities?.[0])
@@ -81,14 +84,14 @@ export default function ImageStudio() {
 
   const attach = async (files) => {
     if (!canAttach) return
-    const list = [...files].filter((f) => !f.type || f.type.startsWith('image/')).slice(0, MAX_REFS - uploads.length)
+    const list = [...files].filter((f) => !f.type || f.type.startsWith('image/')).slice(0, Math.max(0, maxRefs - pictures.length - uploading))
     if (!list.length) { if (files.length) setError('Add images: PNG, JPG, WebP or GIF.'); return }
     setError(null)
     setUploading((n) => n + list.length)
     await Promise.all(list.map(async (f) => {
       try {
         const up = await uploadImage(f)
-        setUploads((us) => [...us, up].slice(0, MAX_REFS))
+        setUploads((us) => [...us, up].slice(0, maxRefs))
       } catch (e) { setError(e.message) }
       setUploading((n) => n - 1)
     }))
@@ -100,7 +103,7 @@ export default function ImageStudio() {
   }
 
   const go = async () => {
-    if (!prompts.length || !connected || uploading || enhancing) return
+    if (!prompts.length || !connected || uploading || enhancing || referenceError) return
     // Enhance rewrites each prompt first; one that cannot be rewritten runs as written.
     let ready = prompts
     if (enhance && !model.open) {
@@ -132,7 +135,7 @@ export default function ImageStudio() {
   }
 
   const dropOk = (e) => canAttach && e.dataTransfer.types.includes('Files')
-  const attachTitle = !canAttach ? `${model.name} does not take reference images` : uploads.length >= MAX_REFS ? `Up to ${MAX_REFS} references` : 'Add reference images'
+  const attachTitle = !canAttach ? `${model.name} does not take reference images` : pictures.length + uploading >= maxRefs ? `Up to ${maxRefs} references` : 'Add reference images'
 
   const hero = (
     <div className="gen-hero">
@@ -158,7 +161,7 @@ export default function ImageStudio() {
         <Feed kind="image" gens={gens} batches={batches} size={view} empty={hero} />
       </section>
 
-      {(error || gens.error) && <div className="notice glass error gen-notice">{error || gens.error}{!error && gens.retry && <button type="button" className="link-btn" onClick={gens.retry}>Retry</button>}</div>}
+      {(referenceError || error || gens.error) && <div className="notice glass error gen-notice">{referenceError || error || gens.error}{!referenceError && !error && gens.retry && <button type="button" className="link-btn" onClick={gens.retry}>Retry</button>}</div>}
 
       <form className={`composer glass gen-bar${dragging ? ' dragging' : ''}`} onSubmit={(e) => { e.preventDefault(); go() }}
         onDragOver={(e) => { if (dropOk(e)) { e.preventDefault(); setDragging(true) } }}
@@ -191,11 +194,11 @@ export default function ImageStudio() {
           <div className="gen-bar-foot">
             <div className="chips">
               <div className="chip gen-icon">
-                <button type="button" aria-label="Add reference images" title={attachTitle} disabled={!canAttach || uploads.length >= MAX_REFS}
+                <button type="button" aria-label="Add reference images" title={attachTitle} disabled={!canAttach || pictures.length + uploading >= maxRefs}
                   className={uploads.length ? 'lit' : ''} onClick={() => setPicking(true)}><IconPlus /></button>
               </div>
               <Pop up keep className="gen-icon" icon={<IconAt />} title="Add from Library" lit={refs.length > 0}>
-                <LibraryPicks refs={refs} setRefs={setRefs} />
+                <LibraryPicks refs={refs} setRefs={setRefs} maxImages={Math.max(0, maxRefs - uploads.length - uploading)} />
               </Pop>
               {!model.open && <EnhanceChip on={enhance} setOn={setEnhance} busy={enhancing} />}
               <ModelPicker up model={model} options={pick.options} open={pick.open} favorites={pick.favorites}
@@ -217,7 +220,7 @@ export default function ImageStudio() {
             </div>
             <div className="foot-actions">
               {batchMode && prompts.length > 0 && !model.open && <button type="button" className="btn-soft" onClick={openAsFlow}>Open as flow</button>}
-              <GoButton total={total} cost={costText(cost)} disabled={!total || !connected || uploading > 0 || enhancing} />
+              <GoButton total={total} cost={costText(cost)} disabled={!total || !connected || uploading > 0 || enhancing || Boolean(referenceError)} />
             </div>
           </div>
           <div className="gen-bar-note">
@@ -237,7 +240,7 @@ export default function ImageStudio() {
       {picking && (
         <MediaPicker multiple title="Add references" accept="image/png,image/jpeg,image/webp,image/gif" setError={setError}
           onClose={() => setPicking(false)}
-          onPick={(it) => { setPicking(false); setUploads((us) => (us.some((u) => u.url === it.url) ? us : [...us, it]).slice(0, MAX_REFS)) }} />
+          onPick={(it) => { setPicking(false); setUploads((us) => (us.some((u) => u.url === it.url) ? us : [...us, it]).slice(0, Math.max(0, maxRefs - refs.length - uploading))) }} />
       )}
     </main>
   )

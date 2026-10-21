@@ -8,7 +8,7 @@ export class Cancelled extends Error {
 export async function startJob(route, body) {
   const res = await fetch('/api/jobs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ route, body }) })
   const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`)
+  if (!res.ok) throw Object.assign(new Error(data.error || `Request failed (${res.status})`), { status: res.status, code: data.code, requestId: data.requestId, idempotencyKey: data.idempotencyKey, retryable: data.retryable })
   return data.id
 }
 
@@ -20,7 +20,7 @@ export async function waitJob(id) {
     const job = res?.ok ? await res.json() : null
     if (job?.status === 'done') return job.files
     if (job?.status === 'cancelled') throw new Cancelled()
-    if (job?.status === 'failed') throw Object.assign(new Error(job.error?.message || 'The run failed.'), { code: job.error?.code, reason: job.error?.reason, fit: job.error?.fit })
+    if (job?.status === 'failed') throw Object.assign(new Error(job.error?.message || 'The run failed.'), job.error)
     await sleep(wait)
   }
 }

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom'
 import TopBar from './components/nav/TopBar.jsx'
 import { RecipeSheet } from './components/Recipes.jsx'
 import Explore from './pages/Explore.jsx'
@@ -69,6 +69,9 @@ export default function App() {
     <AppCtx.Provider value={ctx}>
       <div className="sky" aria-hidden="true"><i /><i /><i /><i /><i /></div>
       <TopBar />
+      {Object.keys(connections).length > 0 && !Object.values(connections).some((c) => c.connected) && pathname !== '/connections' && (
+        <p className="notice" role="status">No keys yet. <Link to="/connections">Open Connections</Link> to add a provider key when you are ready to generate.</p>
+      )}
       <div className="route" key={pathname}>
         <Routes>
           <Route path="/" element={<Explore />} />

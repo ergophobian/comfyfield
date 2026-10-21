@@ -5,6 +5,7 @@ import ModelPicker from '../components/ModelPicker.jsx'
 import PromptList, { newRows } from '../components/Batch.jsx'
 import Pop from '../components/generate/Pop.jsx'
 import Slot from '../components/generate/Slot.jsx'
+import Tip from '../components/generate/Tip.jsx'
 import ShotList, { newShot, shotsPrompt, shotsTotal, snapDuration } from '../components/generate/Shots.jsx'
 import AutoUpscale, { useUpscalePrefs } from '../components/generate/AutoUpscale.jsx'
 import { LibraryPicks, RefTags, refOf } from '../components/generate/Library.jsx'
@@ -73,7 +74,7 @@ function CreateVideo({ preset, onPresets, setError, onRan, addBatch }) {
     if (h.refs) setRefs(h.refs)
   })
 
-  const canAttach = model.open || model.provider !== 'comfy' || acceptsImage(model)
+  const canAttach = model.open || (!['comfy', 'comfyRouter'].includes(model.provider)) || acceptsImage(model)
   const needsFrame = model.workflow === 'ltx_i2v'
   const endOk = model.open || (Boolean(inputs.endFrame) && Boolean(start))
   const endNote = !canAttach ? `${model.name} starts from text only` : !model.open && !inputs.endFrame ? `${model.name} takes a start frame only` : 'Add a start frame first'
@@ -360,6 +361,7 @@ export default function VideoStudio() {
           <Segmented value={main} onChange={setMain} options={mainTabs} />
         </div>
         <Banner />
+        <Tip page="video" onLearn={() => setMain('how')} />
         {gens.error && <div className="notice glass error gen-notice">{gens.error}{gens.retry && <button type="button" className="link-btn" onClick={gens.retry}>Retry</button>}</div>}
         {main === 'how' ? explainer : <Feed kind="video" gens={gens} batches={batches} empty={explainer} />}
       </section>

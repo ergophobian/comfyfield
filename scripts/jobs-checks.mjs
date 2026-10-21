@@ -3,6 +3,8 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { createJobs } from '../server/jobs.js'
+import { waitJob } from '../src/lib/jobs.js'
+import { keepRequestKey } from '../src/lib/routerBatch.js'
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cf-jobs-'))
 const file = path.join(dir, 'jobs.json')
@@ -19,11 +21,20 @@ const ok = (name) => { passed++; console.log(`ok    ${name}`) }
   assert.deepEqual(jobs.get(id).files, [{ url: '/media/a.png', kind: 'image' }])
   ok('A job runs on its own and keeps its files')
 
-  const bad = jobs.start(async () => { throw Object.assign(new Error('needs a Pod'), { code: 'needs_pod', reason: 'too big', fit: { gb: 48 } }) })
+  const bad = jobs.start(async () => { throw Object.assign(new Error('needs a Pod'), { status: 503, code: 'needs_pod', requestId: 'request-1', idempotencyKey: 'key-1', retryable: false, reason: 'too big', fit: { gb: 48 } }) })
   await sleep(10)
-  assert.deepEqual(jobs.get(bad).error, { message: 'needs a Pod', code: 'needs_pod', reason: 'too big', fit: { gb: 48 } })
+  assert.deepEqual(jobs.get(bad).error, { message: 'needs a Pod', status: 503, code: 'needs_pod', requestId: 'request-1', idempotencyKey: 'key-1', retryable: false, reason: 'too big', fit: { gb: 48 } })
   assert.equal(jobs.get(bad).status, 'failed')
-  ok('A failed job keeps the code, reason and fit the browser routes on')
+  const originalFetch = globalThis.fetch
+  try {
+    globalThis.fetch = async () => Response.json(createJobs(file).get(bad))
+    await assert.rejects(waitJob(bad), (error) => {
+      for (const [key, value] of Object.entries(jobs.get(bad).error)) assert.deepEqual(error[key], value)
+      assert.equal(keepRequestKey(error), false, 'Explicit terminal failure overrides a retryable HTTP status')
+      return true
+    })
+  } finally { globalThis.fetch = originalFetch }
+  ok('Job errors preserve status, code, request id, key, retryability and Pod details through disk and polling')
 
   let stopped = 0
   const slow = jobs.start(async (ctx) => { ctx.onCancel(() => { stopped++ }); await sleep(60); return [{ url: '/media/late.png' }] })
