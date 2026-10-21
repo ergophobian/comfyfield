@@ -11,6 +11,7 @@ import { label, paramsFor, useModelInputs } from '../components/generate/useMode
 import { IconAt, IconGrid } from '../components/generate/icons.jsx'
 import { IconAspect, IconClose, IconImage, IconPlus, IconSpark } from '../components/Icons.jsx'
 import { useApp } from '../lib/appContext.js'
+import { chooseModel, useHandoff } from '../lib/handoff.js'
 import { usePod } from '../lib/usePod.js'
 import { uploadImage } from '../lib/providers.js'
 import { estimate, useBalance, useModelMeta } from '../lib/cost.js'
@@ -22,7 +23,7 @@ const fan = [covers.peach, covers.dusk, covers.sky, covers.rose]
 
 // Higgsfield's Create image: the feed fills the page and the prompt bar is pinned to the bottom.
 export default function ImageStudio() {
-  const { gens, connections } = useApp()
+  const { gens, connections, picker } = useApp()
   const { status: pod } = usePod()
   const pick = useGenModel('image')
   const { model } = pick
@@ -44,6 +45,14 @@ export default function ImageStudio() {
   const navigate = useNavigate()
   const balance = useBalance()
   const metaOf = useModelMeta([model])
+  useHandoff((h) => {
+    chooseModel(picker, h.model)
+    if (h.prompt != null) { setBatchMode(false); setPrompt(h.prompt) }
+    if (h.aspect) setAspect(h.aspect)
+    if (h.count) setCount(h.count)
+    if (h.references) setUploads((us) => (h.replace ? h.references : [...us, ...h.references]).slice(0, MAX_REFS))
+    if (h.refs) setRefs(h.refs)
+  })
 
   // ComfyUI's FLUX and SDXL workflows have no image input; every other model takes references.
   const canAttach = model.open || !['comfy', 'comfyRouter'].includes(model.provider)

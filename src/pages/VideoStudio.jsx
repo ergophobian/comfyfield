@@ -15,6 +15,7 @@ import { label, paramsFor, useModelInputs } from '../components/generate/useMode
 import { IconAt, IconBook, IconFolder, IconMute, IconPlay, IconSound } from '../components/generate/icons.jsx'
 import { IconAspect, IconClock, IconImage, IconSpark, IconStack, IconVideo } from '../components/Icons.jsx'
 import { useApp } from '../lib/appContext.js'
+import { chooseModel, useHandoff } from '../lib/handoff.js'
 import { usePod } from '../lib/usePod.js'
 import { acceptsImage } from '../lib/providers.js'
 import { openModels } from '../lib/tools.js'
@@ -35,7 +36,7 @@ const mainTabs = [
 const animate = asOpen(openModels.find((m) => m.id === 'wan-animate-2'))
 
 function CreateVideo({ preset, onPresets, setError, onRan, addBatch }) {
-  const { gens, connections } = useApp()
+  const { gens, connections, picker } = useApp()
   const { status: pod } = usePod()
   const pick = useGenModel('video')
   const { model } = pick
@@ -59,6 +60,14 @@ function CreateVideo({ preset, onPresets, setError, onRan, addBatch }) {
   const metaOf = useModelMeta([model])
   const durations = useDurations(model)
   const inputs = useModelInputs(model, Boolean(start))
+  useHandoff((h) => {
+    chooseModel(picker, h.model)
+    if (h.prompt != null) { setMulti(false); setBatchMode(false); setPrompt(h.prompt) }
+    if (h.aspect) setAspect(h.aspect)
+    if (h.duration) setDuration(h.duration)
+    if (h.start !== undefined) setStart(h.start)
+    if (h.refs) setRefs(h.refs)
+  })
 
   const canAttach = model.open || model.provider !== 'comfy' || acceptsImage(model)
   const needsFrame = model.workflow === 'ltx_i2v'

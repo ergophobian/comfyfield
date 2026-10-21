@@ -559,6 +559,12 @@ code { font-size: .92em; }
 .viewer-text p { margin: 0; font-size: var(--text-md); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .viewer-text span { font-size: var(--text-xs); color: var(--muted); }
 .viewer-acts { display: flex; gap: 6px; flex-shrink: 0; }
+.viewer-more { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 10px 6px; }
+.viewer-save { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 0 10px 6px; font-size: var(--text-md); }
+.viewer-save .field { flex: 1 1 180px; }
+.viewer-save .field input { height: 32px; }
+.viewer-save > span { flex: 1 1 auto; }
+.viewer-save-error { flex-basis: 100%; font-size: var(--text-xs); color: var(--danger); }
 .viewer-acts .lib-act { background: var(--ink-fill); color: var(--ink); }
 .viewer-acts .lib-act:hover { background: var(--ink-fill-hover); }
 .viewer-acts .lib-act.on { background: var(--blue); color: var(--on-fill); }
