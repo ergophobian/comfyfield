@@ -47,13 +47,20 @@ export async function durationsFor(model) {
   return durationsFromProps((await falSchema(model.model)).properties)
 }
 
+async function post(url, payload) {
+  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`)
+  return data
+}
+
 // hooks.onPod: the run is waiting for a Pod, after the start sheet. hooks.onJob: a server job started for this run.
 export async function run(model, opts, hooks = {}) {
-  const post = (route, payload) => runJob(route, payload, hooks)
+  const job = (route, payload) => runJob(route, payload, hooks)
   if (model.provider === 'comfyRouter') {
     const files = []
     for (let i = 0; i < (model.kind === 'image' ? opts.count || 1 : 1); i++) {
-      files.push(...(await post('/api/comfy/router', { model: model.model, input: comfyRouterInput(model.model, opts) })))
+      files.push(...(await job('/api/comfy/router', { model: model.model, input: comfyRouterInput(model.model, opts) })))
     }
     return files
   }
@@ -87,13 +94,13 @@ export async function run(model, opts, hooks = {}) {
   if (model.provider === 'fal') {
     const endpoint = await endpointFor(model, Boolean(opts.images?.length))
     const { properties } = await falSchema(endpoint)
-    return post('/api/fal', { model: endpoint, input: falInput(properties, opts) })
+    return job('/api/fal', { model: endpoint, input: falInput(properties, opts) })
   }
   if (model.provider === 'google') {
-    return post('/api/google', { model: model.model, mode: model.mode, prompt: opts.prompt, aspect: opts.aspect, count: opts.count, duration: opts.duration, images: opts.images || (opts.image ? [opts.image] : []) })
+    return job('/api/google', { model: model.model, mode: model.mode, prompt: opts.prompt, aspect: opts.aspect, count: opts.count, duration: opts.duration, images: opts.images || (opts.image ? [opts.image] : []) })
   }
   if (model.provider === 'elevenlabs') {
-    return post('/api/elevenlabs', { mode: model.mode, text: opts.prompt })
+    return job('/api/elevenlabs', { mode: model.mode, text: opts.prompt })
   }
   throw new Error(`${model.provider} is not wired up yet.`)
 }
