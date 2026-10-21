@@ -2,14 +2,14 @@ import { Link } from 'react-router-dom'
 import { IconClose } from '../Icons.jsx'
 import { useLibrary, toRef } from '../../lib/useLibrary.js'
 
-const groups = [
+export const groups = [
   ['character', 'characters', 'Characters'],
   ['product', 'products', 'Products'],
   ['brand', 'brands', 'Brand kits'],
 ]
 
 // A brand kit rides along as its logo; characters and products as their first photos.
-const refOf = (type, item) => (type === 'brand' ? { ...toRef(type, item), images: item.logo ? [item.logo] : [] } : toRef(type, item))
+export const refOf = (type, item) => (type === 'brand' ? { ...toRef(type, item), images: item.logo ? [item.logo] : [] } : toRef(type, item))
 
 // Menu body for the @ button and the Elements chip: saved characters, products and brand kits to attach.
 export function LibraryPicks({ refs, setRefs }) {

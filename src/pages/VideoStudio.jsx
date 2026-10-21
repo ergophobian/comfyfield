@@ -7,7 +7,8 @@ import Pop from '../components/generate/Pop.jsx'
 import Slot from '../components/generate/Slot.jsx'
 import ShotList, { newShot, shotsPrompt, shotsTotal, snapDuration } from '../components/generate/Shots.jsx'
 import AutoUpscale, { useUpscalePrefs } from '../components/generate/AutoUpscale.jsx'
-import { LibraryPicks, RefTags } from '../components/generate/Library.jsx'
+import { LibraryPicks, RefTags, refOf } from '../components/generate/Library.jsx'
+import MentionText from '../components/generate/Mentions.jsx'
 import { PresetCard, PresetPicker, PresetRow, cameraPresets, general, presetText } from '../components/generate/Presets.jsx'
 import { Banner, Feed, GoButton, PanelTabs, StatusNote, Steps, balanceText, canRun, costText, noun, useBatches, useSticky } from '../components/generate/parts.jsx'
 import { asOpen, useDurations, useGenModel } from '../components/generate/useGenModel.js'
@@ -162,8 +163,9 @@ function CreateVideo({ preset, onPresets, setError, onRan, addBatch }) {
         {multi ? <ShotList shots={shots} setShots={setShots} /> : batching ? (
           <div className="gen-box-list"><PromptList rows={rows} setRows={setRows} kind="video" /></div>
         ) : (
-          <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={4} aria-label="Prompt"
-            placeholder={start ? 'Describe how the frame should move' : 'Describe a shot, e.g. a cyclist racing through a rainy night market'}
+          <MentionText value={prompt} onChange={setPrompt} rows={4} aria-label="Prompt"
+            onPick={(type, item, text) => { setPrompt(text); setRefs((rs) => (rs.some((r) => r.id === item.id) ? rs : [...rs, refOf(type, item)])) }}
+            placeholder={start ? 'Describe how the frame should move' : 'Describe a shot, e.g. a cyclist racing through a rainy night market. Type @ for a saved element'}
             onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), go())} />
         )}
         <div className="chips">

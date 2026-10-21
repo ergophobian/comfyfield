@@ -1481,6 +1481,13 @@ button.gen-step:active { transform: scale(.97); }
 .gen-presets h3 .muted { font-size: var(--text-sm); font-weight: 500; }
 .gen-presets .recipe-grid { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
 
+/* Typed @ mentions in a prompt box */
+.mention { position: relative; display: flex; flex: 1; min-width: 0; }
+.mention > textarea { flex: 1; min-width: 0; width: 100%; }
+.mention-menu { left: 0; top: calc(100% + 6px); max-width: min(320px, 100%); }
+.mention.up .mention-menu { top: auto; bottom: calc(100% + 6px); transform-origin: bottom left; }
+.mention-menu .gen-lib.on { background: var(--blue-hover); color: var(--ink); }
+
 /* Library picks and voices inside menus */
 .menu .gen-lib { flex-direction: row; align-items: center; gap: 10px; }
 .gen-lib-img { width: 30px; height: 30px; flex-shrink: 0; display: grid; place-items: center; overflow: hidden; border-radius: var(--r-sm); font-size: var(--text-sm); font-weight: 600; color: var(--blue); background: var(--blue-mist); }

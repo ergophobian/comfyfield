@@ -4,7 +4,8 @@ import Segmented from '../components/Segmented.jsx'
 import ModelPicker from '../components/ModelPicker.jsx'
 import PromptList, { newRows } from '../components/Batch.jsx'
 import Pop, { Stepper } from '../components/generate/Pop.jsx'
-import { LibraryPicks, RefTags } from '../components/generate/Library.jsx'
+import { LibraryPicks, RefTags, refOf } from '../components/generate/Library.jsx'
+import MentionText from '../components/generate/Mentions.jsx'
 import { Banner, Feed, GoButton, StatusNote, balanceText, canRun, costText, noun, useBatches, useView } from '../components/generate/parts.jsx'
 import { useGenModel } from '../components/generate/useGenModel.js'
 import EnhanceChip, { enhancePrompt, useEnhance } from '../components/generate/Enhance.jsx'
@@ -91,6 +92,11 @@ export default function ImageStudio() {
     }))
   }
 
+  const mention = (type, item, text) => {
+    setPrompt(text)
+    setRefs((rs) => (rs.some((r) => r.id === item.id) ? rs : [...rs, refOf(type, item)]))
+  }
+
   const go = async () => {
     if (!prompts.length || !connected || uploading || enhancing) return
     // Enhance rewrites each prompt first; one that cannot be rewritten runs as written.
@@ -172,8 +178,8 @@ export default function ImageStudio() {
           <div className="gen-bar-body">
             <div className="gen-bar-text" key={batchMode ? 'b' : 's'}>
               {batchMode ? <PromptList rows={rows} setRows={setRows} kind="image" /> : (
-                <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={2} aria-label="Prompt"
-                  placeholder={images.length ? 'Describe what to make with your references' : 'Describe the image you want'}
+                <MentionText up value={prompt} onChange={setPrompt} onPick={mention} rows={2} aria-label="Prompt"
+                  placeholder={images.length ? 'Describe what to make with your references' : 'Describe the image you want. Type @ for a saved element'}
                   onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), go())} />
               )}
             </div>
