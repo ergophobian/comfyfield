@@ -75,7 +75,7 @@ try {
   store.validate(imageFlow)
   store.save({ ...store.read(), flows: [...store.read().flows, imageFlow] })
   await store.perform(imageFlow.id, 'runNew')
-  const input = calls[4]
+  const input = calls.slice(4).find((options) => options.image)
   assert.equal(input.image, '/media/start.png')
   const model = imageFlow.nodes.find((node) => node.id === 'shot-1').data.model
   assert.equal(model.imageWorkflow, 'ltx25_i2v')

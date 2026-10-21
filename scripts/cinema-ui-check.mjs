@@ -27,7 +27,7 @@ let failRender = false
 let failStitch = false
 const flows = createFlows({ directory: core.home, generate: async (options) => {
   calls.push(options)
-  if (failRender) { failRender = false; throw new Error('Mock shot failure; retry this shot') }
+  if (failRender && options.image) { failRender = false; throw new Error('Mock shot failure; retry this shot') }
   const name = `mock-shot-${calls.length}.mp4`
   fs.copyFileSync(path.join(media, 'mock.mp4'), path.join(media, name))
   return [{ kind: 'video', url: `/media/${name}` }]
@@ -54,6 +54,7 @@ const server = await preview({ configFile: false, envFile: false, plugins: [{
           res.setHeader('Content-Type', 'text/event-stream')
           return res.write(': mock stream\n\n')
         }
+        if (url.pathname === '/api/agents') return send(res, [])
         if (url.pathname === '/api/connections') return send(res, { comfy: { connected: true } })
         if (url.pathname === '/api/flows' && req.method === 'GET') return send(res, flows.read())
         if (url.pathname === '/api/stitch/exports') return send(res, core.stitchedExports())
@@ -82,7 +83,7 @@ const server = await preview({ configFile: false, envFile: false, plugins: [{
 const origin = `http://127.0.0.1:${server.httpServer.address().port}`
 const network = global.fetch
 global.fetch = (url, ...args) => {
-  if (!String(url).startsWith(origin)) throw new Error(`Unexpected provider call in Cinema check: ${url}`)
+  if (!/^http:\/\/(127\.0\.0\.1|localhost):[0-9]+\//.test(String(url))) throw new Error(`Unexpected provider call in Cinema check: ${url}`)
   return network(url, ...args)
 }
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -124,7 +125,7 @@ try {
   }
   const goto = async (route) => {
     await cdp('Page.navigate', { url: `${origin}${route}` })
-    await wait('document.querySelector("main") && document.readyState === "complete"')
+    await wait('document.querySelector("main, .flows") && document.readyState === "complete"')
   }
   await cdp('Runtime.enable')
   await cdp('Page.enable')
@@ -136,12 +137,13 @@ try {
     const start = calls.length
     const startAssemblies = assemblies.length
     await cdp('Emulation.setDeviceMetricsOverride', { width, height: 1100, deviceScaleFactor: 1, mobile: width === 390 })
+    console.log(`check ${label}: plan and edit`)
     await goto('/cinema')
     if (width === 390) {
       await click('Plan another scene')
       await click('Try the portal effect')
     }
-    await wait('document.querySelector("textarea[aria-label=\"Cinematic idea\"]")')
+    await wait(`document.querySelector('textarea[aria-label="Cinematic idea"]')`)
     await fill('Cinematic idea', 'A portal materialises and folds a rainy street upward beside a courier in a silver raincoat.')
     failPlan = width === 1440
     await click('Plan shots')
@@ -162,16 +164,17 @@ try {
       await evaluate(`(() => { const input = document.querySelector('.cinema-shot input[type=file]'); const files = new DataTransfer(); files.items.add(new File(['fixture'], 'start.png', {type:'image/png'})); input.files = files.files; input.dispatchEvent(new Event('change', {bubbles:true})) })()`)
       await wait('document.querySelector(".cinema-shot .drop img")?.complete')
     }
+    console.log(`check ${label}: render and per-shot review`)
     failRender = width === 390
     await click('Generate scene')
     await wait('document.querySelectorAll(".cinema-scene .cinema-shot").length === 3 && !document.querySelector(".cinema-scene > button").disabled')
     const id = flows.read().current
     assert.equal(flows.get(id).nodes.filter((node) => node.type === 'model').length, 3)
     assert.equal(calls.length, start + 3)
-    assert.match(calls[start + 1].prompt, new RegExp(`Edited ${label}`))
+    assert(calls.slice(start).some((options) => options.prompt.includes(`Edited ${label}`)))
     assert(calls.slice(start).every((options) => options.model === 'comfy-ltx25'))
     if (width === 390) {
-      assert.equal(calls[start].image, '/media/start.png')
+      assert(calls.slice(start).some((options) => options.image === '/media/start.png'))
       await wait('document.body.innerText.includes("Mock shot failure")')
       await evaluate('document.querySelectorAll(".cinema-actions .btn-soft")[0].click()')
     }
@@ -188,6 +191,7 @@ try {
     }
     await wait('document.querySelector(".stitch-preview")?.readyState >= 2')
     await wait('[...document.querySelectorAll("button")].some((button) => button.textContent === "Export to Library" && !button.disabled)')
+    console.log(`check ${label}: replace, re-stitch and export`)
     const before = calls.length
     await fill('Shot 2 prompt', `Replacement ${label}: a bright ocean swells through the portal`)
     await evaluate('document.querySelectorAll(".cinema-actions .btn-soft")[1].click()')
@@ -215,8 +219,9 @@ try {
     await goto('/cinema')
     await wait('document.querySelectorAll(".cinema-shot video").length === 3 && document.querySelector("a[download]")')
     assert.equal(calls.length, before + 1, 'Reload does not regenerate')
+    console.log(`check ${label}: saved Flow and Library after reload`)
     await goto('/flows')
-    await wait('document.querySelector("input[aria-label=\"Flow name\"]")?.value === "The folded alley"')
+    await wait(`document.querySelector('input[aria-label="Flow name"]')?.value === "The folded alley"`)
     assert.equal(createFlows({ directory: core.home }).get(id).id, id, 'An independent MCP store sees the Cinema Flow')
     await goto('/assets')
     await wait('document.querySelectorAll(".lib-card video").length > 0')

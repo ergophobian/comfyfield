@@ -69,7 +69,7 @@ function RenderedScene({ flow, setStore, storageError, ready }) {
 
   return (
     <div className="cinema-scene">
-      <div className="cinema-scene-heading"><h2>{flow.name}</h2><Link className="btn-soft sm" to="/flows">Open saved Flow</Link></div>
+      <div className="cinema-scene-heading"><h2>{flow.name}</h2><Link className="btn-soft sm" to="/flows" onClick={() => setStore((store) => ({ ...store, current: flow.id }))}>Open saved Flow</Link></div>
       <p className="muted">Review every shot, then Send it to the scene. Rerun replaces only that shot. Stitch the approved clips when you are ready.</p>
       <button type="button" className="btn-soft sm" disabled={busy} onClick={() => act(() => engine.runNew(flow))}>Render missing shots</button>
       <div className="cinema-shots">
@@ -167,7 +167,7 @@ export default function CinemaScene({ storageKey, initialIdea = '' }) {
           </div>
           <div className="cinema-budget glass">
             <strong>Whole scene · ≈{money(cinemaCost(draft.plan.shots))}</strong>
-            <p className="muted">{draft.plan.shots.length} LTX-2.5 clips · {draft.plan.shots.reduce((sum, shot) => sum + shot.duration, 0)} seconds · 16:9. Cloud GPU estimate based on about $0.08 per 5-second clip. Planning and retries are extra; Session billing varies. Stitch and export run locally.</p>
+            <p className="muted">{draft.plan.shots.length} LTX-2.5 clips · {draft.plan.shots.reduce((sum, shot) => sum + shot.duration, 0)} seconds · 16:9. Cloud compute estimate based on about $0.08 per 5-second clip. Planning and retries are extra; Session billing varies. Stitch and export run locally.</p>
             <button type="button" className="btn-blue" disabled={working || !ready || !!planError} onClick={generate}>Generate scene</button>
             {planError && <p className="sheet-error" role="alert">{planError}</p>}
           </div>
