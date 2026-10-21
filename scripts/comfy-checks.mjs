@@ -98,19 +98,19 @@ await test('Key gating and model input mapping', async () => {
   setup()
 })
 
-await test('Local image upload, partner credentials, submission and history', async () => {
+await test('Local image upload, Comfy credentials, submission and history', async () => {
   let submitted
-  const replies = [json({ name: 'start.png', subfolder: 'input' }), json({ prompt_id: 'local-1' }), json({ 'local-1': { outputs: { '3': { videos: [{ filename: 'h3.mp4' }] } } } })]
+  const replies = [json({ name: 'start.png', subfolder: 'input' }), json({ prompt_id: 'local-1' }), json({ 'local-1': { outputs: { '15': { videos: [{ filename: 'h3.mp4' }] } } } })]
   globalThis.fetch = async (url, options) => {
     if (url.endsWith('/upload/image')) assert(options.body instanceof FormData)
     if (url.endsWith('/prompt')) submitted = JSON.parse(options.body)
     assert(replies.length)
     return replies.shift()
   }
-  const files = await core.runComfy('h3_i2v', { image: 'data:image/png;base64,aGVsbG8=', prompt: 'Orbit', duration: 5, seed: 1 })
-  assert.equal(submitted.prompt['1'].inputs.image, 'input/start.png')
+  const files = await core.runComfy('h3_open_i2v', { image: 'data:image/png;base64,aGVsbG8=', prompt: 'Orbit', width: 1344, height: 768, frames: 121, seed: 1 })
+  assert.equal(submitted.prompt['16'].inputs.image, 'input/start.png')
   assert.equal(submitted.extra_data.api_key_comfy_org, key)
-  assert.equal(submitted.prompt['2'].inputs['model.duration'], 5)
+  assert.equal(submitted.prompt['6'].inputs.length, 121)
   assert.equal(files[0].kind, 'video')
   assert(files[0].url.startsWith('http://127.0.0.1:8188/view?'))
 })
@@ -124,21 +124,21 @@ await test('Cloud uses the SDK workflow and asset interfaces and saves downloade
     client.assets.fromBytes = (buf, options) => { assert.equal(Buffer.from(buf).toString(), 'hello'); assert.equal(options.contentType, 'image/png'); return { mockAsset: true } }
     client.run = async (wf, options) => {
       ran = true
-      assert.equal(wf.json['1'].inputs.image.mockAsset, true)
-      assert.equal(wf.json['2'].inputs['model.prompt'], 'Orbit')
+      assert.equal(wf.json['16'].inputs.image.mockAsset, true)
+      assert.equal(wf.json['6'].inputs.prompt, 'Orbit')
       assert.equal(options.apiKey, key)
       return { outputs: [{ type: 'video', contentType: 'video/mp4', name: 'h3.mp4', toBytes: async () => Buffer.from('mock video') }] }
     }
     return client
   }
   globalThis.fetch = async () => { throw new Error('Unexpected network call') }
-  const files = await core.runComfy('h3_i2v', { image: 'data:image/png;base64,aGVsbG8=', prompt: 'Orbit', duration: 5, seed: 1 }, { createClient })
+  const files = await core.runComfy('h3_open_i2v', { image: 'data:image/png;base64,aGVsbG8=', prompt: 'Orbit', width: 1344, height: 768, frames: 121, seed: 1 }, { createClient })
   assert(ran)
   assert(files[0].url.startsWith('/media/'))
   assert.equal(files[0].kind, 'video')
   assert.equal(fs.readFileSync(files[0].path, 'utf8'), 'mock video')
   await assert.rejects(core.runComfy('../private', {}), /Invalid workflow/)
-  await assert.rejects(core.runComfy('h3_i2v', { prompt: 'Missing image' }), /requires image/)
+  await assert.rejects(core.runComfy('h3_open_i2v', { prompt: 'Missing image', width: 1344, height: 768, frames: 121, seed: 1 }), /requires image/)
 })
 
 await test('Connection checks are read-only for Local and Cloud', async () => {
@@ -175,24 +175,24 @@ await test('Real Cloud SDK against mocked HTTP: asset upload, submit, poll, down
     }
     if (route === '/api/v2/jobs') {
       const payload = JSON.parse(options.body)
-      assert.equal(payload.workflow['1'].inputs.image.__type, 'core/ASSET')
-      assert.equal(payload.workflow['1'].inputs.image.info.id, 'input-asset')
+      assert.equal(payload.workflow['16'].inputs.image.__type, 'core/ASSET')
+      assert.equal(payload.workflow['16'].inputs.image.info.id, 'input-asset')
       assert.equal(payload.extra_data.api_key_comfy_org, key)
       assert(options.headers.get('Idempotency-Key'))
       if (!credits) return json({ code: 'insufficient_credits', message: 'No balance' }, 402)
       return json(state, 201)
     }
-    if (route === '/api/v2/jobs/cloud-1') return json({ ...state, status: 'succeeded', outputs: [{ node_id: '3', name: 'h3.mp4', type: 'video', content_type: 'video/mp4', size_bytes: 10, id: 'output-asset', hash: null, url: 'https://example.test/output', url_expires_at: state.expires_at }] })
+    if (route === '/api/v2/jobs/cloud-1') return json({ ...state, status: 'succeeded', outputs: [{ node_id: '15', name: 'h3.mp4', type: 'video', content_type: 'video/mp4', size_bytes: 10, id: 'output-asset', hash: null, url: 'https://example.test/output', url_expires_at: state.expires_at }] })
     if (route === '/api/v2/assets/output-asset/content') return new Response('wire video', { headers: { 'Content-Type': 'video/mp4' } })
     throw new Error(`Unexpected SDK request ${options.method} ${route}`)
   }
   const createClient = (apiKey) => new Comfy({ apiKey, fetch: mockFetch })
-  const vars = { image: 'data:image/png;base64,aGVsbG8=', prompt: 'Orbit', duration: 5, seed: 1 }
-  const files = await core.runComfy('h3_i2v', vars, { createClient })
+  const vars = { image: 'data:image/png;base64,aGVsbG8=', prompt: 'Orbit', width: 1344, height: 768, frames: 121, seed: 1 }
+  const files = await core.runComfy('h3_open_i2v', vars, { createClient })
   assert.equal(fs.readFileSync(files[0].path, 'utf8'), 'wire video')
   assert(calls.includes('POST /api/v2/jobs'))
   assert(calls.includes('GET /api/v2/jobs/cloud-1'))
   assert(calls.includes('GET /api/v2/assets/output-asset/content'))
   credits = false
-  await assert.rejects(core.runComfy('h3_i2v', vars, { createClient }), /insufficient credits/)
+  await assert.rejects(core.runComfy('h3_open_i2v', vars, { createClient }), /insufficient credits/)
 })

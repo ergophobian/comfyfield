@@ -8,7 +8,7 @@ if (mode === 'models') {
   console.log(JSON.stringify(page, null, 2))
 } else {
   if (!process.argv.includes('--allow-paid')) throw new Error('Live generations spend Comfy credits. Pass --allow-paid only with an approved budget.')
-  const models = { router: 'comfy-router-flux', cloud: 'comfy-h3-i2v', ltx: 'comfy-ltx-i2v' }
+  const models = { router: 'comfy-router-flux', cloud: 'comfy-h3', ltx: 'comfy-ltx-i2v' }
   if (!models[mode]) throw new Error('Choose models, router, cloud or ltx.')
   if (mode !== 'router' && (!image || !fs.existsSync(image))) throw new Error('Pass a path to a start image.')
   if (mode === 'cloud' && config('comfy').mode !== 'cloud') throw new Error('This runs on Comfy Cloud: remove COMFY_MODE=local from .env.')

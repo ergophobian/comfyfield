@@ -83,12 +83,14 @@ export function takeLabel(it, s) {
 // and always while a Pod exists, because a Pod charges.
 export const showPod = (s) => Boolean(s && (s.phase !== 'none' || s.mode === 'cloud'))
 
-// A run Comfy Cloud cannot take asks once for a Pod. `reason` says why Cloud cannot take it.
-export function askPod(workflow, reason) {
+// A run Comfy Cloud cannot take asks once for a Pod. `reason` says why Cloud cannot take it. `replace`
+// is the server's `fit` for a run the current Pod is too small for: the sheet then offers to terminate
+// it and start one sized for the workflow.
+export function askPod(workflow, reason, replace = null) {
   if (!state.ask) {
     let resolve, reject
     const promise = new Promise((a, b) => { resolve = a; reject = b })
-    set({ ask: { workflow, reason, promise, resolve, reject } })
+    set({ ask: { workflow, reason, replace, promise, resolve, reject } })
     refreshPod()
   }
   return state.ask.promise
@@ -114,7 +116,7 @@ export function answerPod(ok) {
   if (!a) return
   set({ ask: null })
   if (ok) a.resolve()
-  else a.reject(new Error('Cancelled. No Pod was started.'))
+  else a.reject(new Error(a.replace ? 'Cancelled. Your Pod is still running.' : 'Cancelled. No Pod was started.'))
 }
 
 // Polls fast while the Pod changes, slowly otherwise. App mounts it once.

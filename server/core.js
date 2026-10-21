@@ -762,11 +762,13 @@ async function comfyTarget(files, podPhase, podVram, label, run = null, podArch 
     : !config('comfy').key ? 'Comfy Cloud needs a Comfy API key on a paid plan'
       : missing.length ? `${label || missing[0].label || missing[0].name} is not on Comfy Cloud yet` : null
   if (run !== 'session' && !why) return 'cloud'
-  const needs = (text, code, status = 409) => Object.assign(new Error(text), { status, code, reason: why })
+  const needs = (text, code, status = 409, extra = {}) => Object.assign(new Error(text), { status, code, reason: why, ...extra })
   if (run === 'instant') throw needs(`${why}, so this run needs a Session. Start one from the run type in the top bar.`, 'needs_pod')
   if (!fits && phase !== 'none') {
     const gap = archOk ? `a ${need} GB GPU; your Pod has ${vram} GB` : `a ${ARCH_NAMES[needArch] || needArch} GPU; your Pod has a ${ARCH_NAMES[arch] || arch} one`
-    throw needs(`${why ? `${why}, and this` : 'This'} run needs ${gap}. Terminate it and start a new Pod.`, 'pod_too_small')
+    // `fit` lets the app offer to replace the Pod with one sized for the run: sizes and GPU families only.
+    throw needs(`${why ? `${why}, and this` : 'This'} run needs ${gap}. Terminate it and start a new Pod.`, 'pod_too_small', 409,
+      { fit: { needVramGb: need, podVramGb: vram, needArch: ARCH_NAMES[needArch] || needArch, podArch: ARCH_NAMES[arch] || arch } })
   }
   if (phase === 'starting' || phase === 'resuming') return 'pod'
   throw needs(why ? `${why}, so this run needs a Pod. Start one in ComfyField from the Pod chip in the top bar.` : 'You picked Session, so this run needs a Pod. Start one from the run type in the top bar.', 'needs_pod')
