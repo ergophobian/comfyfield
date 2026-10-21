@@ -7,6 +7,7 @@ import { allFormats } from '../src/lib/formats/index.js'
 
 // A separate Vite server with an in-process mock API never loads provider routes or keys.
 const requests = []
+let connected = true
 const svg = (label) => `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="750" viewBox="0 0 600 750"><rect width="600" height="750" fill="#e4e9ff"/><circle cx="300" cy="280" r="120" fill="#9b8cf5"/><path d="M100 680 Q100 380 300 390 Q500 380 500 680Z" fill="#6f7fd8"/><text x="300" y="720" text-anchor="middle" font-family="sans-serif" font-size="28" fill="#30384d">${label}</text></svg>`
 const server = await preview({ configFile: false, envFile: false, plugins: [{
   name: 'format-mock-api', configurePreviewServer(server) {
@@ -20,7 +21,7 @@ const server = await preview({ configFile: false, envFile: false, plugins: [{
       if (!url.pathname.startsWith('/api/')) return next()
       res.setHeader('Content-Type', 'application/json')
       if (url.pathname === '/api/stitch/exports') return res.end('[]')
-      if (url.pathname === '/api/connections') return res.end(JSON.stringify({ fal: { connected: true }, google: { connected: true } }))
+      if (url.pathname === '/api/connections') return res.end(JSON.stringify({ fal: { connected }, google: { connected } }))
       if (url.pathname === '/api/fal/schema') return res.end(JSON.stringify(schemas.fal[url.searchParams.get('id')] || { properties: { prompt: { type: 'string' } } }))
       if (url.pathname === '/api/upload') { req.resume(); return res.end(JSON.stringify({ url: '/mock-photo.svg' })) }
       if (req.method === 'POST') {
@@ -149,8 +150,16 @@ try {
   assert.equal(requests[4].body.vars.image, '/mock-photo.svg')
   await goto('/apps/podcast-clips')
   await wait('document.body.innerText.includes("Nothing lives at this address")')
+  connected = false
+  await goto('/')
+  await wait('document.querySelector(".notice[role=status] a")')
+  assert.match(await evaluate('document.querySelector(".notice[role=status]").innerText'), /No keys yet/)
+  assert(await evaluate('document.documentElement.scrollWidth <= 390'), 'First-run notice must fit 390px')
+  await screenshot('mock-startup-mobile')
+  await evaluate('document.querySelector(".notice[role=status] a").click()')
+  await wait('location.pathname === "/connections" && !document.querySelector(".notice[role=status]")')
   assert.deepEqual(errors, [], 'No browser runtime exceptions')
-  console.log('UI mock checks ok: app runner, shared sheet, Library after reload, 390px layout, Create generation/feed/camera presets and hidden invalid route. Four mocked generations and one reviewed writer request; no provider calls. Six screenshots saved.')
+  console.log('UI mock checks ok: app runner, shared sheet, Library after reload, 390px layout, Create generation/feed/camera presets and hidden invalid route. Four mocked generations and one reviewed writer request; no provider calls. First-run Connections notice and link checked at 390px. Seven screenshots saved.')
 } finally {
   await browser?.close()
   await server.close()
