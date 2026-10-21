@@ -99,7 +99,7 @@ without removing their copy, controls, prompt templates or provider settings.
   A step's `from: [stepId]` overrides the default previous-step dependency;
   `from: []` starts an independent branch. `{ id, type: 'approve', from: [...] }`
   inserts an engine approval gate. Image outputs can feed the next fal model.
-  Comfy image and video uploads work on Comfy Cloud and the Pod, including `ltx_i2v` and `h3_i2v`.
+  Comfy image and video uploads work on Comfy Cloud and the Pod, including `ltx_i2v` and `h3_open_i2v`.
   Users never run ComfyUI on their own GPU; `COMFY_MODE=local` in `.env` is for development only.
   Other media chaining remains limited to the supported node/provider contracts.
 - `outputs`: `[{ step: stepId, kind: 'image' | 'video' | 'audio' | '3d' }]` selects

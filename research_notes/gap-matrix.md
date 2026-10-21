@@ -383,7 +383,7 @@ Higgsfield resells 143 named models. ComfyField reaches models through fal, Goog
 | Seedance 2.5 / 2.0 / 2.0 Fast | ByteDance video, 15 to 30 s, up to 50 references | Working | Pinned fal bytedance/seedance-2.5/text-to-video; Seedance 2.0 Fast image-to-video in recipes.js | - | None |
 | Kling 3.0 and Kling Motion Control | Kling video, 15 s, 4K, multi-shot | Working | Pinned fal Kling 3 Pro text-to-video; Kling 3 Standard image-to-video in recipes.js. Motion Control not wired | - | None |
 | Veo 3.1 / Fast / Lite | Google video with audio | Working | Google key, server/core.js runGoogle predictLongRunning (text or one start image; no end frame or references) | - | None |
-| MiniMax H3 / Hailuo | Video with references | Working | Pinned fal minimax/h3/text-to-video. The open H3 workflow (h3_i2v) is not built | - | None |
+| MiniMax H3 / Hailuo | Video with references | Working | Pinned fal minimax/h3/text-to-video. The open H3 workflows (`h3_open_t2v`, `h3_open_i2v`) are built; the partner `h3_i2v` was removed in #123 | - | None |
 | Wan 3.0 / 2.7 / 2.6 / 2.5 | Alibaba video | Working | Pinned fal alibaba/wan-3.0/text-to-video. Wan 2.2 and Wan Animate on ComfyUI listed but not built | - | None |
 | LTX 2.5 | Lightricks video | UI only | Only the LTX 2B workflow public/workflows/video_ltx.json runs (comfy-ltx). LTX 2.5 on ComfyUI is listed, not built; reachable on fal if hosted | M | None |
 | Sora 2, Grok Imagine, Gemini Omni Flash, Happy Horse, PixVerse | Other closed video models | Missing | Not pinned. Run through the Models page if fal hosts them. Sora 2 API retires 2026-09-24 | S | None |
