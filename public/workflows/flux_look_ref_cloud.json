@@ -1,0 +1,205 @@
+{
+  "1": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "flux-2-klein-4b-fp8.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "2": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "qwen_3_4b.safetensors",
+      "type": "flux2",
+      "device": "default"
+    }
+  },
+  "3": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "flux2-vae.safetensors"
+    }
+  },
+  "10": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "{{image}}"
+    },
+    "_meta": {
+      "title": "Character"
+    }
+  },
+  "21": {
+    "class_type": "PrimitiveStringMultiline",
+    "inputs": {
+      "value": "{{prompt}}\nThe person or character in the first image is the main subject of the picture; keep their face, hair and build."
+    }
+  },
+  "30": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": [
+        "21",
+        0
+      ],
+      "clip": [
+        "2",
+        0
+      ]
+    }
+  },
+  "31": {
+    "class_type": "ConditioningZeroOut",
+    "inputs": {
+      "conditioning": [
+        "30",
+        0
+      ]
+    }
+  },
+  "33": {
+    "class_type": "EmptyFlux2LatentImage",
+    "inputs": {
+      "width": "{{width}}",
+      "height": "{{height}}",
+      "batch_size": "{{count}}"
+    }
+  },
+  "34": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": [
+        "43",
+        0
+      ],
+      "guider": [
+        "44",
+        0
+      ],
+      "sampler": [
+        "45",
+        0
+      ],
+      "sigmas": [
+        "46",
+        0
+      ],
+      "latent_image": [
+        "33",
+        0
+      ]
+    }
+  },
+  "35": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "34",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ]
+    }
+  },
+  "36": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "filename_prefix": "comfyfield/flux_look_ref",
+      "images": [
+        "35",
+        0
+      ]
+    }
+  },
+  "37": {
+    "class_type": "ImageScaleToTotalPixels",
+    "inputs": {
+      "image": [
+        "10",
+        0
+      ],
+      "upscale_method": "lanczos",
+      "megapixels": 1.0,
+      "resolution_steps": 16
+    }
+  },
+  "38": {
+    "class_type": "VAEEncode",
+    "inputs": {
+      "pixels": [
+        "37",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ]
+    }
+  },
+  "39": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "30",
+        0
+      ],
+      "latent": [
+        "38",
+        0
+      ]
+    }
+  },
+  "40": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "31",
+        0
+      ],
+      "latent": [
+        "38",
+        0
+      ]
+    }
+  },
+  "43": {
+    "class_type": "RandomNoise",
+    "inputs": {
+      "noise_seed": "{{seed}}"
+    }
+  },
+  "44": {
+    "class_type": "CFGGuider",
+    "inputs": {
+      "model": [
+        "1",
+        0
+      ],
+      "positive": [
+        "39",
+        0
+      ],
+      "negative": [
+        "40",
+        0
+      ],
+      "cfg": 1
+    }
+  },
+  "45": {
+    "class_type": "KSamplerSelect",
+    "inputs": {
+      "sampler_name": "euler"
+    }
+  },
+  "46": {
+    "class_type": "Flux2Scheduler",
+    "inputs": {
+      "steps": 4,
+      "width": "{{width}}",
+      "height": "{{height}}"
+    }
+  }
+}

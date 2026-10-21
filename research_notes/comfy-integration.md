@@ -11,7 +11,7 @@ Router submits once with an Idempotency-Key, honors Retry-After on submit/poll/r
 ## Workflow contracts for the format runner lane
 
 - `ltx_i2v`: `{ image, prompt, width, height, frames, seed }`. LTX Video 2B v0.9.5, T5 XXL, built-in LTX nodes, CreateVideo and SaveVideo. Dimensions must be multiples of 32 and frames must be 8n + 1. This builds on the existing LTX 2B graph; it does not claim to be LTX 2.5.
-- `h3_i2v`: `{ image, prompt, duration, seed }`. The real MiniMax H3 partner node `MinimaxHailuo03FirstLastFrameNode`, 768P, 4–15 seconds, followed by SaveVideo. It spends Comfy credits even on Local. H3 is a hosted partner model, not an open-weight checkpoint.
+- `h3_open_i2v`: `{ image, prompt, width, height, frames, seed }`. The open-weights MiniMax H3 fl2va graph (`MiniMaxH3ImageToVideo`, turbo LoRA, 8 steps), with the start frame center-cropped to the canvas. It replaced `h3_i2v`, the paid partner node `MinimaxHailuo03FirstLastFrameNode`, which #123 removed.
 - `image` accepts an app `/media/` URL, a base64 data URI or an HTTP image URL. The runner uploads it into Local ComfyUI or binds it to the Cloud SDK's LoadImage asset input. CLI `generate` also accepts a local path.
 - Format registration/readiness and format execution are owned by #46. This lane supplies the workflow names and variable contracts; it leaves `readyWorkflows` to that lane.
 

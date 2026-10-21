@@ -94,16 +94,17 @@ function ModelPanel({ node, patch, picker, connections }) {
   )
 }
 
-function ImagePanel({ node, patch, upload }) {
+function ImagePanel({ node, patch, upload, uploading = {} }) {
   const file = useRef(null)
   return (
     <>
       {node.data.url && <img className="fp-img" src={node.data.url} alt="" />}
-      <input ref={file} type="file" accept="image/*" hidden onChange={(e) => e.target.files[0] && upload(node.id, e.target.files[0])} />
+      <input ref={file} type="file" accept="image/*" hidden onChange={(e) => { e.target.files[0] && upload(node.id, e.target.files[0]); e.target.value = '' }} />
       <div className="fp-row">
-        <button type="button" className="btn-soft sm" onClick={() => file.current.click()}>{node.data.url ? 'Replace' : 'Upload'}</button>
-        {node.data.url && <button type="button" className="btn-soft sm" onClick={() => patch(node.id, { url: null, name: '' })}>Clear</button>}
+        <button type="button" className="btn-soft sm" disabled={uploading.busy} onClick={() => file.current.click()}>{uploading.busy ? 'Uploading…' : node.data.url ? 'Replace' : 'Upload'}</button>
+        {node.data.url && <button type="button" className="btn-soft sm" disabled={uploading.busy} onClick={() => patch(node.id, { url: null, name: '' })}>Clear</button>}
       </div>
+      {uploading.error && <p className="fstat bad" role="alert">Upload failed. {uploading.error}</p>}
     </>
   )
 }
@@ -127,7 +128,7 @@ function WriterPanel({ node, patch }) {
   )
 }
 
-export default function Panel({ node, patch, picker, connections, upload, remove }) {
+export default function Panel({ node, patch, picker, connections, upload, uploading, remove }) {
   const [error, setError] = useState(null)
   useEffect(() => setError(null), [node.id])
   return (
@@ -136,7 +137,7 @@ export default function Panel({ node, patch, picker, connections, upload, remove
       {node.type === 'prompt' && <PromptPanel node={node} patch={patch} />}
       {widgetTypes.includes(node.type) && <Field input={{ id: node.id, type: node.type, label: nodeLabels[node.type] }} value={node.data.value} onChange={(value) => patch(node.id, { value })} setError={setError} />}
       {error && <p className="sheet-error" role="alert">{error}</p>}
-      {node.type === 'image' && <ImagePanel node={node} patch={patch} upload={upload} />}
+      {node.type === 'image' && <ImagePanel node={node} patch={patch} upload={upload} uploading={uploading} />}
       {node.type === 'writer' && <WriterPanel node={node} patch={patch} />}
       {node.type === 'model' && <ModelPanel node={node} patch={patch} picker={picker} connections={connections} />}
       {node.type === 'stitch' && <StitchPanel node={node} patch={patch} />}

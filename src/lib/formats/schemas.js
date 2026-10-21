@@ -679,6 +679,11 @@ export const schemas = {
       "prompt",
       "seed"
     ],
+    "birefnet_qwen_background_cloud": [
+      "image",
+      "prompt",
+      "seed"
+    ],
     "birefnet_video_matte": [
       "duration",
       "start",
@@ -690,6 +695,13 @@ export const schemas = {
       "video"
     ],
     "birefnet_video_matte_scene": [
+      "background",
+      "duration",
+      "seed",
+      "start",
+      "video"
+    ],
+    "birefnet_video_matte_scene_cloud": [
       "background",
       "duration",
       "seed",
@@ -734,7 +746,22 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "flux3_klein_t2i_cloud": [
+      "count",
+      "height",
+      "prompt",
+      "seed",
+      "width"
+    ],
     "flux_character_set": [
+      "count",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "flux_character_set_cloud": [
       "count",
       "height",
       "image",
@@ -749,6 +776,13 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "flux_look_cloud": [
+      "count",
+      "height",
+      "prompt",
+      "seed",
+      "width"
+    ],
     "flux_look_ref": [
       "count",
       "height",
@@ -757,7 +791,19 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "flux_look_ref_cloud": [
+      "count",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
     "flux_trellis2": [
+      "prompt",
+      "seed"
+    ],
+    "flux_trellis2_cloud": [
       "prompt",
       "seed"
     ],
@@ -805,12 +851,6 @@ export const schemas = {
       "seed",
       "width"
     ],
-    "h3_i2v": [
-      "duration",
-      "image",
-      "prompt",
-      "seed"
-    ],
     "h3_i2v_audio": [
       "duration",
       "image",
@@ -818,6 +858,13 @@ export const schemas = {
       "seed"
     ],
     "h3_loop": [
+      "duration",
+      "height",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "h3_loop_cloud": [
       "duration",
       "height",
       "prompt",
@@ -873,6 +920,14 @@ export const schemas = {
       "width"
     ],
     "h3_truck_ad": [
+      "duration",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "h3_truck_ad_cloud": [
       "duration",
       "height",
       "image",
@@ -955,7 +1010,21 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "klein_character_cloud": [
+      "count",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
     "klein_character_swap": [
+      "image",
+      "image2",
+      "prompt",
+      "seed"
+    ],
+    "klein_character_swap_cloud": [
       "image",
       "image2",
       "prompt",
@@ -974,7 +1043,27 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "klein_edit_canvas_cloud": [
+      "count",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "klein_edit_cloud": [
+      "image",
+      "prompt",
+      "seed"
+    ],
     "klein_h3": [
+      "frames",
+      "image",
+      "motion",
+      "prompt",
+      "seed"
+    ],
+    "klein_h3_cloud": [
       "frames",
       "image",
       "motion",
@@ -989,7 +1078,22 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "klein_headshot_cloud": [
+      "count",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
     "klein_ltx": [
+      "frames",
+      "image",
+      "motion",
+      "prompt",
+      "seed"
+    ],
+    "klein_ltx_cloud": [
       "frames",
       "image",
       "motion",
@@ -1006,7 +1110,22 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "klein_moodboard_cloud": [
+      "count",
+      "height",
+      "image",
+      "image2",
+      "image3",
+      "prompt",
+      "seed",
+      "width"
+    ],
     "klein_retouch": [
+      "image",
+      "prompt",
+      "seed"
+    ],
+    "klein_retouch_cloud": [
       "image",
       "prompt",
       "seed"
@@ -1080,13 +1199,35 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "qwen_character_sheet_cloud": [
+      "count",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
     "qwen_edit": [
       "count",
       "image",
       "prompt",
       "seed"
     ],
+    "qwen_edit_cloud": [
+      "count",
+      "image",
+      "prompt",
+      "seed"
+    ],
     "qwen_edit_mockup": [
+      "count",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "qwen_edit_mockup_cloud": [
       "count",
       "height",
       "image",
@@ -1101,6 +1242,13 @@ export const schemas = {
       "prompt",
       "seed"
     ],
+    "qwen_edit_outpaint_cloud": [
+      "count",
+      "image",
+      "pad",
+      "prompt",
+      "seed"
+    ],
     "qwen_edit_place_product": [
       "count",
       "image",
@@ -1108,7 +1256,21 @@ export const schemas = {
       "prompt",
       "seed"
     ],
+    "qwen_edit_place_product_cloud": [
+      "count",
+      "image",
+      "image2",
+      "prompt",
+      "seed"
+    ],
     "qwen_edit_style_ref": [
+      "count",
+      "image",
+      "image2",
+      "prompt",
+      "seed"
+    ],
+    "qwen_edit_style_ref_cloud": [
       "count",
       "image",
       "image2",
@@ -1123,7 +1285,21 @@ export const schemas = {
       "prompt",
       "seed"
     ],
+    "qwen_edit_try_on_cloud": [
+      "count",
+      "image",
+      "image2",
+      "image3",
+      "prompt",
+      "seed"
+    ],
     "qwen_edit_variants": [
+      "count",
+      "image",
+      "prompt",
+      "seed"
+    ],
+    "qwen_edit_variants_cloud": [
       "count",
       "image",
       "prompt",
@@ -1138,7 +1314,23 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "qwen_h3_cloud": [
+      "frames",
+      "height",
+      "image",
+      "motion",
+      "prompt",
+      "seed",
+      "width"
+    ],
     "qwen_image21_t2i": [
+      "count",
+      "height",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "qwen_image21_t2i_cloud": [
       "count",
       "height",
       "prompt",
@@ -1157,7 +1349,22 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "qwen_image_logo_cloud": [
+      "count",
+      "height",
+      "prompt",
+      "seed",
+      "width"
+    ],
     "qwen_image_ref": [
+      "count",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "qwen_image_ref_cloud": [
       "count",
       "height",
       "image",
@@ -1172,6 +1379,13 @@ export const schemas = {
       "prompt",
       "seed"
     ],
+    "qwen_ltx_cloud": [
+      "frames",
+      "image",
+      "motion",
+      "prompt",
+      "seed"
+    ],
     "qwen_mockup_ltx": [
       "frames",
       "image",
@@ -1179,7 +1393,25 @@ export const schemas = {
       "prompt",
       "seed"
     ],
+    "qwen_mockup_ltx_cloud": [
+      "frames",
+      "image",
+      "motion",
+      "prompt",
+      "seed"
+    ],
     "qwen_multi_h3": [
+      "frames",
+      "image",
+      "image2",
+      "image3",
+      "image4",
+      "image5",
+      "motion",
+      "prompt",
+      "seed"
+    ],
+    "qwen_multi_h3_cloud": [
       "frames",
       "image",
       "image2",
@@ -1203,6 +1435,11 @@ export const schemas = {
       "prompt",
       "seed"
     ],
+    "qwen_restore_cloud": [
+      "image",
+      "prompt",
+      "seed"
+    ],
     "qwen_shots_grid": [
       "image",
       "seed"
@@ -1219,7 +1456,25 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "qwen_try_on_h3_cloud": [
+      "frames",
+      "height",
+      "image",
+      "image2",
+      "image3",
+      "image4",
+      "motion",
+      "prompt",
+      "seed",
+      "width"
+    ],
     "qwen_zoom_grid": [
+      "count",
+      "image",
+      "prompt",
+      "seed"
+    ],
+    "qwen_zoom_grid_cloud": [
       "count",
       "image",
       "prompt",
@@ -1261,12 +1516,26 @@ export const schemas = {
       "upscale_factor",
       "video"
     ],
+    "seedvr2_video_7b": [
+      "duration",
+      "seed",
+      "start",
+      "upscale_factor",
+      "video"
+    ],
     "stable_audio3": [
       "duration",
       "prompt",
       "seed"
     ],
     "storyboard": [
+      "count",
+      "height",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "storyboard_cloud": [
       "count",
       "height",
       "prompt",
@@ -1281,7 +1550,20 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "storyboard_ref_cloud": [
+      "count",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
     "trellis2_character": [
+      "image",
+      "prompt",
+      "seed"
+    ],
+    "trellis2_character_cloud": [
       "image",
       "prompt",
       "seed"
@@ -1384,6 +1666,10 @@ export const schemas = {
       "image2",
       "image3"
     ],
+    "klein_moodboard_cloud": [
+      "image2",
+      "image3"
+    ],
     "ltx25_multishot": [
       "image"
     ],
@@ -1394,10 +1680,22 @@ export const schemas = {
     "qwen_edit_try_on": [
       "image3"
     ],
+    "qwen_edit_try_on_cloud": [
+      "image3"
+    ],
     "qwen_h3": [
       "image"
     ],
+    "qwen_h3_cloud": [
+      "image"
+    ],
     "qwen_multi_h3": [
+      "image2",
+      "image3",
+      "image4",
+      "image5"
+    ],
+    "qwen_multi_h3_cloud": [
       "image2",
       "image3",
       "image4",
@@ -1408,46 +1706,578 @@ export const schemas = {
       "image3",
       "image4"
     ],
+    "qwen_try_on_h3_cloud": [
+      "image2",
+      "image3",
+      "image4"
+    ],
     "wan22_i2v": [
       "image2"
     ]
   },
   "router": {
-    "byteplus/dreamina-seedance-2-5-260628": {
+    "bfl/flux-2-pro": {
+      "properties": {
+        "height": {
+          "maximum": 2048,
+          "minimum": 256,
+          "type": "integer"
+        },
+        "input_image": {
+          "type": "string"
+        },
+        "input_image_2": {
+          "type": "string"
+        },
+        "input_image_3": {
+          "type": "string"
+        },
+        "input_image_4": {
+          "type": "string"
+        },
+        "input_image_5": {
+          "type": "string"
+        },
+        "input_image_6": {
+          "type": "string"
+        },
+        "input_image_7": {
+          "type": "string"
+        },
+        "input_image_8": {
+          "type": "string"
+        },
+        "input_image_9": {
+          "type": "string"
+        },
+        "output_format": {
+          "enum": [
+            "jpeg",
+            "png"
+          ],
+          "type": "string"
+        },
+        "prompt": {
+          "type": "string"
+        },
+        "prompt_upsampling": {
+          "type": "boolean"
+        },
+        "safety_tolerance": {
+          "maximum": 5,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "seed": {
+          "type": "integer"
+        },
+        "width": {
+          "maximum": 2048,
+          "minimum": 256,
+          "type": "integer"
+        }
+      },
       "required": [
-        "content"
+        "prompt"
       ],
+      "type": "object"
+    },
+    "bfl/flux-2-max": {
+      "properties": {
+        "height": {
+          "maximum": 2048,
+          "minimum": 256,
+          "type": "integer"
+        },
+        "input_image": {
+          "type": "string"
+        },
+        "input_image_2": {
+          "type": "string"
+        },
+        "input_image_3": {
+          "type": "string"
+        },
+        "input_image_4": {
+          "type": "string"
+        },
+        "input_image_5": {
+          "type": "string"
+        },
+        "input_image_6": {
+          "type": "string"
+        },
+        "input_image_7": {
+          "type": "string"
+        },
+        "input_image_8": {
+          "type": "string"
+        },
+        "input_image_9": {
+          "type": "string"
+        },
+        "output_format": {
+          "enum": [
+            "jpeg",
+            "png"
+          ],
+          "type": "string"
+        },
+        "prompt": {
+          "type": "string"
+        },
+        "prompt_upsampling": {
+          "type": "boolean"
+        },
+        "safety_tolerance": {
+          "maximum": 5,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "seed": {
+          "type": "integer"
+        },
+        "width": {
+          "maximum": 2048,
+          "minimum": 256,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "prompt"
+      ],
+      "type": "object"
+    },
+    "bfl/flux-kontext-pro": {
+      "properties": {
+        "aspect_ratio": {
+          "type": "string"
+        },
+        "input_image": {
+          "type": "string"
+        },
+        "input_image_2": {
+          "type": "string"
+        },
+        "input_image_3": {
+          "type": "string"
+        },
+        "input_image_4": {
+          "type": "string"
+        },
+        "output_format": {
+          "enum": [
+            "jpeg",
+            "png",
+            "webp"
+          ],
+          "type": "string"
+        },
+        "prompt": {
+          "type": "string"
+        },
+        "prompt_upsampling": {
+          "type": "boolean"
+        },
+        "safety_tolerance": {
+          "maximum": 6,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "seed": {
+          "type": "integer"
+        },
+        "webhook_secret": {
+          "type": "string"
+        },
+        "webhook_url": {
+          "maxLength": 2083,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "prompt"
+      ],
+      "type": "object"
+    },
+    "luma/photon-flash-1": {
+      "properties": {
+        "aspect_ratio": {
+          "enum": [
+            "1:1",
+            "16:9",
+            "9:16",
+            "4:3",
+            "3:4",
+            "21:9",
+            "9:21"
+          ],
+          "type": "string"
+        },
+        "callback_url": {
+          "type": "string"
+        },
+        "character_ref": {
+          "properties": {
+            "identity0": {
+              "properties": {
+                "images": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        },
+        "generation_type": {
+          "enum": [
+            "image"
+          ],
+          "type": "string"
+        },
+        "image_ref": {
+          "items": {
+            "properties": {
+              "url": {
+                "type": "string"
+              },
+              "weight": {
+                "type": "number"
+              }
+            },
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "model": {
+          "nullable": true,
+          "type": "string"
+        },
+        "modify_image_ref": {
+          "properties": {
+            "url": {
+              "type": "string"
+            },
+            "weight": {
+              "type": "number"
+            }
+          },
+          "type": "object"
+        },
+        "prompt": {
+          "type": "string"
+        },
+        "style_ref": {
+          "items": {
+            "properties": {
+              "url": {
+                "type": "string"
+              },
+              "weight": {
+                "type": "number"
+              }
+            },
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "byteplus/seedream-5-0-flash-260915": {
+      "properties": {
+        "guidance_scale": {
+          "maximum": 10,
+          "minimum": 1,
+          "type": "number"
+        },
+        "image": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 10,
+              "minItems": 1,
+              "type": "array"
+            }
+          ]
+        },
+        "layer_decomposition": {
+          "type": "boolean"
+        },
+        "model": {
+          "nullable": true,
+          "type": "string"
+        },
+        "optimize_prompt_options": {
+          "properties": {
+            "mode": {
+              "enum": [
+                "standard",
+                "fast"
+              ],
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "output_format": {
+          "enum": [
+            "png",
+            "jpeg"
+          ],
+          "type": "string"
+        },
+        "prompt": {
+          "type": "string"
+        },
+        "response_format": {
+          "enum": [
+            "url",
+            "b64_json"
+          ],
+          "type": "string"
+        },
+        "seed": {
+          "maximum": 2147483647,
+          "minimum": -1,
+          "type": "integer"
+        },
+        "sequential_image_generation": {
+          "enum": [
+            "auto",
+            "disabled"
+          ],
+          "type": "string"
+        },
+        "sequential_image_generation_options": {
+          "properties": {
+            "max_images": {
+              "maximum": 15,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "type": "object"
+        },
+        "size": {
+          "type": "string"
+        },
+        "stream": {
+          "type": "boolean"
+        },
+        "watermark": {
+          "type": "boolean"
+        }
+      },
+      "required": [],
+      "anyOf": [
+        {
+          "required": [
+            "prompt"
+          ]
+        },
+        {
+          "required": [
+            "image"
+          ]
+        }
+      ],
+      "type": "object"
+    },
+    "byteplus/dreamina-seedance-2-5-260628": {
       "properties": {
         "callback_url": {
           "type": "string"
         },
         "content": {
+          "items": {
+            "oneOf": [
+              {
+                "properties": {
+                  "type": {
+                    "enum": [
+                      "text"
+                    ]
+                  }
+                },
+                "required": [
+                  "text"
+                ]
+              },
+              {
+                "properties": {
+                  "type": {
+                    "enum": [
+                      "image_url"
+                    ]
+                  }
+                },
+                "required": [
+                  "image_url"
+                ]
+              },
+              {
+                "properties": {
+                  "type": {
+                    "enum": [
+                      "video_url"
+                    ]
+                  }
+                },
+                "required": [
+                  "video_url"
+                ]
+              },
+              {
+                "properties": {
+                  "type": {
+                    "enum": [
+                      "audio_url"
+                    ]
+                  }
+                },
+                "required": [
+                  "audio_url"
+                ]
+              },
+              {
+                "properties": {
+                  "type": {
+                    "enum": [
+                      "draft_task"
+                    ]
+                  }
+                },
+                "required": [
+                  "draft_task"
+                ]
+              }
+            ],
+            "properties": {
+              "audio_url": {
+                "properties": {
+                  "url": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "url"
+                ],
+                "type": "object"
+              },
+              "draft_task": {
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id"
+                ],
+                "type": "object"
+              },
+              "image_url": {
+                "properties": {
+                  "url": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "url"
+                ],
+                "type": "object"
+              },
+              "role": {
+                "enum": [
+                  "first_frame",
+                  "last_frame",
+                  "reference_image",
+                  "reference_video",
+                  "reference_audio"
+                ],
+                "type": "string"
+              },
+              "text": {
+                "maxLength": 100000,
+                "type": "string"
+              },
+              "type": {
+                "enum": [
+                  "text",
+                  "image_url",
+                  "video_url",
+                  "audio_url",
+                  "draft_task"
+                ],
+                "type": "string"
+              },
+              "video_url": {
+                "properties": {
+                  "url": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "url"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
           "type": "array"
         },
         "draft": {
           "type": "boolean"
         },
         "duration": {
+          "anyOf": [
+            {
+              "enum": [
+                -1
+              ]
+            },
+            {
+              "maximum": 30,
+              "minimum": 2
+            }
+          ],
           "type": "integer"
         },
         "execution_expires_after": {
+          "maximum": 259200,
+          "minimum": 3600,
           "type": "integer"
         },
         "generate_audio": {
           "type": "boolean"
         },
         "model": {
+          "nullable": true,
           "type": "string"
         },
         "output_format": {
-          "type": "string",
           "enum": [
             "mp4",
             "mov"
-          ]
+          ],
+          "type": "string"
         },
         "ratio": {
-          "type": "string",
           "enum": [
             "16:9",
             "4:3",
@@ -1457,34 +2287,542 @@ export const schemas = {
             "21:9",
             "9:21",
             "adaptive"
-          ]
+          ],
+          "type": "string"
         },
         "resolution": {
-          "type": "string",
           "enum": [
             "480p",
             "720p",
             "1080p",
             "4k"
-          ]
+          ],
+          "type": "string"
         },
         "return_last_frame": {
           "type": "boolean"
         },
         "seed": {
+          "maximum": 4294967295,
+          "minimum": -1,
           "type": "integer"
         },
         "service_tier": {
-          "type": "string",
           "enum": [
             "default",
             "flex"
-          ]
+          ],
+          "type": "string"
         },
         "watermark": {
           "type": "boolean"
         }
-      }
+      },
+      "required": [
+        "content"
+      ],
+      "type": "object"
+    },
+    "byteplus/seedance-1-0-pro-fast-251015": {
+      "properties": {
+        "callback_url": {
+          "type": "string"
+        },
+        "content": {
+          "items": {
+            "oneOf": [
+              {
+                "properties": {
+                  "type": {
+                    "enum": [
+                      "text"
+                    ]
+                  }
+                },
+                "required": [
+                  "text"
+                ]
+              },
+              {
+                "properties": {
+                  "type": {
+                    "enum": [
+                      "image_url"
+                    ]
+                  }
+                },
+                "required": [
+                  "image_url"
+                ]
+              },
+              {
+                "properties": {
+                  "type": {
+                    "enum": [
+                      "video_url"
+                    ]
+                  }
+                },
+                "required": [
+                  "video_url"
+                ]
+              },
+              {
+                "properties": {
+                  "type": {
+                    "enum": [
+                      "audio_url"
+                    ]
+                  }
+                },
+                "required": [
+                  "audio_url"
+                ]
+              },
+              {
+                "properties": {
+                  "type": {
+                    "enum": [
+                      "draft_task"
+                    ]
+                  }
+                },
+                "required": [
+                  "draft_task"
+                ]
+              }
+            ],
+            "properties": {
+              "audio_url": {
+                "properties": {
+                  "url": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "url"
+                ],
+                "type": "object"
+              },
+              "draft_task": {
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id"
+                ],
+                "type": "object"
+              },
+              "image_url": {
+                "properties": {
+                  "url": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "url"
+                ],
+                "type": "object"
+              },
+              "role": {
+                "enum": [
+                  "first_frame",
+                  "last_frame",
+                  "reference_image",
+                  "reference_video",
+                  "reference_audio"
+                ],
+                "type": "string"
+              },
+              "text": {
+                "maxLength": 100000,
+                "type": "string"
+              },
+              "type": {
+                "enum": [
+                  "text",
+                  "image_url",
+                  "video_url",
+                  "audio_url",
+                  "draft_task"
+                ],
+                "type": "string"
+              },
+              "video_url": {
+                "properties": {
+                  "url": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "url"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "draft": {
+          "type": "boolean"
+        },
+        "duration": {
+          "anyOf": [
+            {
+              "enum": [
+                -1
+              ]
+            },
+            {
+              "maximum": 30,
+              "minimum": 2
+            }
+          ],
+          "type": "integer"
+        },
+        "execution_expires_after": {
+          "maximum": 259200,
+          "minimum": 3600,
+          "type": "integer"
+        },
+        "generate_audio": {
+          "type": "boolean"
+        },
+        "model": {
+          "nullable": true,
+          "type": "string"
+        },
+        "output_format": {
+          "enum": [
+            "mp4",
+            "mov"
+          ],
+          "type": "string"
+        },
+        "ratio": {
+          "enum": [
+            "16:9",
+            "4:3",
+            "1:1",
+            "3:4",
+            "9:16",
+            "21:9",
+            "9:21",
+            "adaptive"
+          ],
+          "type": "string"
+        },
+        "resolution": {
+          "enum": [
+            "480p",
+            "720p",
+            "1080p",
+            "4k"
+          ],
+          "type": "string"
+        },
+        "return_last_frame": {
+          "type": "boolean"
+        },
+        "seed": {
+          "maximum": 4294967295,
+          "minimum": -1,
+          "type": "integer"
+        },
+        "service_tier": {
+          "enum": [
+            "default",
+            "flex"
+          ],
+          "type": "string"
+        },
+        "watermark": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "content"
+      ],
+      "type": "object"
+    },
+    "ltx/ltx-2-5-fast": {
+      "properties": {
+        "duration": {
+          "enum": [
+            2,
+            3,
+            4,
+            5,
+            6,
+            8,
+            10,
+            12,
+            14,
+            16,
+            18,
+            20
+          ],
+          "type": "integer"
+        },
+        "fps": {
+          "enum": [
+            24,
+            25,
+            48,
+            50
+          ],
+          "type": "integer"
+        },
+        "generate_audio": {
+          "type": "boolean"
+        },
+        "model": {
+          "nullable": true,
+          "type": "string"
+        },
+        "prompt": {
+          "maxLength": 10000,
+          "type": "string"
+        },
+        "resolution": {
+          "enum": [
+            "1280x720",
+            "720x1280",
+            "1920x1080",
+            "1080x1920",
+            "2560x1440",
+            "1440x2560",
+            "3840x2160",
+            "2160x3840"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "prompt",
+        "duration",
+        "resolution"
+      ],
+      "type": "object"
+    },
+    "elevenlabs/eleven_v4_turbo": {
+      "properties": {
+        "apply_text_normalization": {
+          "enum": [
+            "auto",
+            "on",
+            "off"
+          ],
+          "type": "string"
+        },
+        "inputs": {
+          "items": {
+            "properties": {
+              "text": {
+                "type": "string"
+              },
+              "voice_id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "text",
+              "voice_id"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "language_code": {
+          "nullable": true,
+          "type": "string"
+        },
+        "model_id": {
+          "nullable": true,
+          "type": "string"
+        },
+        "pronunciation_dictionary_locators": {
+          "items": {
+            "properties": {
+              "pronunciation_dictionary_id": {
+                "type": "string"
+              },
+              "version_id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "pronunciation_dictionary_id",
+              "version_id"
+            ],
+            "type": "object"
+          },
+          "maxItems": 3,
+          "nullable": true,
+          "type": "array"
+        },
+        "seed": {
+          "maximum": 4294967295,
+          "minimum": 0,
+          "nullable": true,
+          "type": "integer"
+        },
+        "settings": {
+          "nullable": true,
+          "properties": {
+            "stability": {
+              "nullable": true,
+              "type": "number"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "inputs"
+      ],
+      "type": "object"
+    },
+    "elevenlabs/eleven_sfx_v2": {
+      "properties": {
+        "duration_seconds": {
+          "maximum": 30,
+          "minimum": 0.5,
+          "nullable": true,
+          "type": "number"
+        },
+        "loop": {
+          "type": "boolean"
+        },
+        "model_id": {
+          "nullable": true,
+          "type": "string"
+        },
+        "prompt_influence": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "text",
+        "duration_seconds"
+      ],
+      "type": "object"
+    },
+    "openai/gpt-4.1-nano": {
+      "properties": {
+        "include": {
+          "items": {
+            "type": "string"
+          },
+          "nullable": true,
+          "type": "array"
+        },
+        "input": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {},
+              "type": "array"
+            }
+          ]
+        },
+        "instructions": {
+          "nullable": true,
+          "type": "string"
+        },
+        "max_output_tokens": {
+          "minimum": 1,
+          "nullable": true,
+          "type": "integer"
+        },
+        "model": {
+          "nullable": true,
+          "type": "string"
+        },
+        "parallel_tool_calls": {
+          "nullable": true,
+          "type": "boolean"
+        },
+        "previous_response_id": {
+          "nullable": true,
+          "type": "string"
+        },
+        "reasoning": {
+          "nullable": true,
+          "type": "object"
+        },
+        "store": {
+          "nullable": true,
+          "type": "boolean"
+        },
+        "stream": {
+          "nullable": true,
+          "type": "boolean"
+        },
+        "temperature": {
+          "maximum": 2,
+          "minimum": 0,
+          "nullable": true,
+          "type": "number"
+        },
+        "text": {
+          "nullable": true,
+          "type": "object"
+        },
+        "tool_choice": {
+          "nullable": true,
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "object"
+            }
+          ]
+        },
+        "tools": {
+          "items": {},
+          "nullable": true,
+          "type": "array"
+        },
+        "top_p": {
+          "maximum": 1,
+          "minimum": 0,
+          "nullable": true,
+          "type": "number"
+        },
+        "truncation": {
+          "enum": [
+            "auto",
+            "disabled"
+          ],
+          "nullable": true,
+          "type": "string"
+        },
+        "usage": {
+          "nullable": true,
+          "type": "object"
+        }
+      },
+      "required": [
+        "input"
+      ],
+      "type": "object"
     }
   }
 }

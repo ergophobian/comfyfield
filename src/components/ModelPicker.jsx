@@ -22,12 +22,13 @@ const isMac = typeof navigator !== 'undefined' && /Mac/.test(navigator.platform)
 
 const unitLabel = (p) => {
   const u = p.unit.toLowerCase()
-  if (u.includes('megapixel')) return 'per MP'
+  if (u.includes('gpu-second')) return 'per gpu sec'
+  if (u.includes('megapixel')) return 'per megapixel'
   if (u.includes('second')) return 'per sec'
   if (u.includes('image')) return 'per image'
   if (u.includes('video')) return 'per video'
-  if (u.includes('token')) return 'per 1K tokens'
-  if (u.includes('character')) return 'per 1K chars'
+  if (u.includes('token')) return u.includes('1m') ? 'per 1m tokens' : 'per 1k tokens'
+  if (u.includes('character')) return 'per 1k chars'
   return `per ${p.unit}`
 }
 export const priceText = (p) => (p ? `${p.estimate ? '≈' : ''}$${p.amount < 0.01 ? p.amount.toFixed(4) : p.amount.toFixed(3).replace(/0$/, '')} ${unitLabel(p)}` : null)

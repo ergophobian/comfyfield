@@ -98,7 +98,7 @@ claude mcp add comfyfield -- node /path/to/comfyfield/bin/comfyfield.js mcp
 
 After the npm package is published, the same works with `npx comfyfield mcp`; the Skills page shows the config for each agent.
 
-MCP tools: `list_models`, `generate`, `get_model_schema`, `balance`, `write_prompts`, `stitch`, `export_stitch`, `list_flows`, `get_flow`, `create_flow`, `add_node`, `connect_nodes`, `update_node`, `remove_node` and `run_flow`. Any fal endpoint works as `fal:<endpoint>`. Flows an agent builds are saved in your data folder, so the app shows them. `run_flow` fills gaps only and never opens an Approve gate; only you press Send in Flows.
+MCP tools: `list_models`, `generate`, `get_model_schema`, `balance`, `write_prompts`, `stitch`, `export_stitch`, `list_flows`, `get_flow`, `create_flow`, `add_node`, `connect_nodes`, `update_node`, `remove_node` and `run_flow`. Any fal endpoint works as `fal:<endpoint>`. Flows an agent builds are saved in your data folder, so the app shows them. `run_flow` fills gaps only and never opens an Approve gate; only you press Send in Flows. See [docs/flows-mcp.md](docs/flows-mcp.md).
 
 CLI:
 
