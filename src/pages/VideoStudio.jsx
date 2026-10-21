@@ -5,6 +5,7 @@ import ModelPicker from '../components/ModelPicker.jsx'
 import PromptList, { newRows } from '../components/Batch.jsx'
 import Pop from '../components/generate/Pop.jsx'
 import Slot from '../components/generate/Slot.jsx'
+import Tip from '../components/generate/Tip.jsx'
 import ShotList, { newShot, shotsPrompt, shotsTotal, snapDuration } from '../components/generate/Shots.jsx'
 import AutoUpscale, { useUpscalePrefs } from '../components/generate/AutoUpscale.jsx'
 import { LibraryPicks, RefTags } from '../components/generate/Library.jsx'
@@ -335,6 +336,7 @@ export default function VideoStudio() {
           <Segmented value={main} onChange={setMain} options={mainTabs} />
         </div>
         <Banner />
+        <Tip page="video" onLearn={() => setMain('how')} />
         {gens.error && <div className="notice glass error gen-notice">{gens.error}{gens.retry && <button type="button" className="link-btn" onClick={gens.retry}>Retry</button>}</div>}
         {main === 'how' ? explainer : <Feed kind="video" gens={gens} batches={batches} empty={explainer} />}
       </section>
