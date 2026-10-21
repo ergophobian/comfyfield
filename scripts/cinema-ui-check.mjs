@@ -22,6 +22,7 @@ const calls = []
 const assemblies = []
 const exports = []
 let plannerCalls = 0
+const plannerReplies = new Map()
 let failPlan = false
 let failRender = false
 let failStitch = false
@@ -68,7 +69,8 @@ const server = await preview({ configFile: false, envFile: false, plugins: [{
         if (url.pathname === '/api/prompt') {
           plannerCalls++
           assert.match(data.instructions, /3 to 6 shots/)
-          return send(res, { text: failPlan ? '{"shots":[]}' : JSON.stringify(cinemaPlan) })
+          if (!plannerReplies.has(data.idempotencyKey)) plannerReplies.set(data.idempotencyKey, failPlan ? '{"shots":[]}' : JSON.stringify(cinemaPlan))
+          return send(res, { text: plannerReplies.get(data.idempotencyKey) })
         }
         if (url.pathname === '/api/stitch/export') {
           const item = core.exportStitch(data.url)
@@ -230,6 +232,7 @@ try {
     await screenshot(`mock-library-${label}`)
   }
   assert.equal(plannerCalls, 3, 'Two successful plans and one validation failure')
+  assert.equal(plannerReplies.size, 3, 'A malformed completed plan needs a fresh request key, not the cached invalid reply')
   assert.deepEqual(errors, [], 'No browser runtime exceptions')
   console.log('Cinema browser journey ok at 1440px and 390px: plan, invalid plan, edit, Generate, t2v/i2v, per-shot Send, isolated replacement, explicit re-stitch, export, byte-verified download, Library, saved Flow reload and MCP visibility. Shot and Stitch retry paths checked. Ten labelled mock screenshots; no paid calls or keys.')
 } finally {

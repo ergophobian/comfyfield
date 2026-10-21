@@ -123,9 +123,10 @@ export default function CinemaScene({ storageKey, initialIdea = '' }) {
     setError('')
     try {
       if (!request.current || request.current.note !== draft.idea) request.current = { instructions: cinemaInstructions, note: draft.idea, target: 'LTX-2.5 cinematic shot plan as JSON', idempotencyKey: crypto.randomUUID() }
-      const result = validateCinemaPlan(await writePrompt(request.current))
-      setDraft((value) => ({ ...value, plan: result, flowId: null }))
+      const response = await writePrompt(request.current)
       request.current = null
+      const result = validateCinemaPlan(response)
+      setDraft((value) => ({ ...value, plan: result, flowId: null }))
     } catch (value) { setError(value.message) }
     finally { setWorking(false) }
   }
