@@ -12,7 +12,6 @@ export const models = [
   { id: 'comfy-router-flux', kind: 'image', provider: 'comfyRouter', name: 'Flux 2 Pro', note: 'Hosted through Comfy Router', model: 'bfl/flux-2-pro' },
   { id: 'comfy-router-seedance', kind: 'video', provider: 'comfyRouter', name: 'Seedance 2.5', note: 'Hosted through Comfy Router', model: 'byteplus/dreamina-seedance-2-5-260628', durations: [5, 8, 10] },
   { id: 'comfy-ltx-i2v', kind: 'video', provider: 'comfy', name: 'LTX image to video', note: 'LTX Video 2B on Comfy Cloud or a Pod. Attach a start image.', workflow: 'ltx_i2v', durations: [3, 5, 8] },
-  { id: 'comfy-h3-i2v', kind: 'video', provider: 'comfy', name: 'MiniMax H3 image to video', note: 'Comfy partner node. Attach a start image. Uses Comfy credits.', workflow: 'h3_i2v', durations: [5, 8, 10] },
   { id: 'comfy-flux', kind: 'image', provider: 'comfy', name: 'FLUX', note: 'On Comfy Cloud or a Pod', workflow: 'image_flux' },
   { id: 'comfy-sdxl', kind: 'image', provider: 'comfy', name: 'SDXL', note: 'On Comfy Cloud or a Pod', workflow: 'image_sdxl' },
   // Session keeps the newest image weights; Instant uses the compatible Cloud alternates below.

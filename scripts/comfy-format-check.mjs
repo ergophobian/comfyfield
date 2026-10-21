@@ -1,15 +1,15 @@
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import { fill, comfyVars, dropOptional } from '../shared/mapping.js'
-import { cloudWorkflows } from '../src/lib/catalog.js'
+import { cloudWorkflows, h3Sizes } from '../src/lib/catalog.js'
 import { podNeedsOf, notOnCloud, MODEL_FILES } from '../shared/modelFiles.js'
 import { schemas } from '../src/lib/formats/schemas.js'
 import { checkGraph } from './graph-check.mjs'
 
 // Kept separate from the format runner lane's inventory checks.
-for (const name of ['ltx_i2v', 'h3_i2v']) {
+for (const name of ['ltx_i2v', 'h3_open_i2v']) {
   const template = JSON.parse(readFileSync(new URL(`../public/workflows/${name}.json`, import.meta.url)))
-  const vars = comfyVars('video', { prompt: 'A slow camera orbit', aspect: '16:9', duration: 5, image: 'start.png' })
+  const vars = comfyVars('video', { prompt: 'A slow camera orbit', aspect: '16:9', duration: 5, image: 'start.png' }, name === 'h3_open_i2v' ? h3Sizes : undefined)
   const placeholders = [...JSON.stringify(template).matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1])
   assert(placeholders.includes('image') && placeholders.includes('prompt'))
   for (const key of placeholders) assert(vars[key] != null, `${name}: no value for ${key}`)
@@ -35,9 +35,10 @@ for (const name of ['ltx_i2v', 'h3_i2v']) {
     assert.equal((latent.inputs.length - 1) % 8, 0)
     assert.deepEqual(graph['9'].inputs.latent_image, ['6', 2])
   } else {
-    assert.equal(graph['2'].class_type, 'MinimaxHailuo03FirstLastFrameNode')
-    assert.equal(graph['2'].inputs['model.duration'], 5)
-    assert.equal(graph['2'].inputs['model.prompt'], vars.prompt)
+    // The open-weights H3 graph, not the paid MiniMax partner node.
+    assert.equal(graph['6'].class_type, 'MiniMaxH3ImageToVideo')
+    assert.deepEqual([graph['6'].inputs.width, graph['6'].inputs.height], [1344, 768])
+    assert.equal(graph['6'].inputs.prompt, vars.prompt)
   }
   console.log(`${name}: API graph, placeholders and links valid`)
 }

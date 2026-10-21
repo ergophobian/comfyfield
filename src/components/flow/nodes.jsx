@@ -44,16 +44,24 @@ export function PromptNode({ data, selected }) {
 }
 
 export function ImageNode({ id, data, selected }) {
-  const { upload } = useFlow()
+  const { upload, uploads } = useFlow()
   const file = useRef(null)
+  const st = uploads?.[id] || {}
+  const pick = () => !st.busy && file.current.click()
+  const drop = {
+    onDragOver: (e) => e.preventDefault(),
+    onDrop: (e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f && !st.busy) upload(id, f) },
+  }
   return (
     <Shell type="image" selected={selected} output>
-      <input ref={file} type="file" accept="image/*" hidden onChange={(e) => e.target.files[0] && upload(id, e.target.files[0])} />
+      <input ref={file} type="file" accept="image/*" hidden onChange={(e) => { e.target.files[0] && upload(id, e.target.files[0]); e.target.value = '' }} />
       {data.url ? (
-        <button type="button" className="fthumb nodrag" onClick={() => file.current.click()} title="Replace image"><img src={data.url} alt={data.name || ''} /></button>
+        <button type="button" className={`fthumb nodrag${st.busy ? ' busy' : ''}`} onClick={pick} {...drop} title="Replace image" aria-busy={!!st.busy}><img src={data.url} alt={data.name || ''} /></button>
       ) : (
-        <button type="button" className="fdrop nodrag" onClick={() => file.current.click()}>Upload an image</button>
+        <button type="button" className={`fdrop nodrag${st.busy ? ' busy' : ''}`} onClick={pick} {...drop} aria-busy={!!st.busy}>{st.busy ? 'Uploading…' : 'Upload an image'}</button>
       )}
+      {st.busy && data.url && <span className="fstat">Uploading…</span>}
+      {st.error && <span className="fstat bad" role="alert">Upload failed. {st.error}</span>}
     </Shell>
   )
 }

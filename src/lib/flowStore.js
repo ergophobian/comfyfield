@@ -2,24 +2,15 @@ import { models } from './catalog.js'
 import { useEffect, useSyncExternalStore } from 'react'
 import { api, initFlows, changeFlows, flushFlows, refreshFlows, flowSnapshot, subscribeFlows } from './remoteFlows.js'
 import { createEngine } from './flowEngine.js'
+import { nodeLabels, nodeDefaults } from '../../shared/flowRules.js'
+
+export { nodeLabels }
 
 const KEY = 'comfyfield.flows'
 const uid = () => crypto.randomUUID().slice(0, 8)
 const find = (id, kind) => models.find((m) => m.id === id) || models.find((m) => m.kind === kind)
 
-export const nodeLabels = { prompt: 'Prompt', image: 'Image', writer: 'Writer', mask: 'Mask painter', face: 'Face picker', video: 'Video input', crop: 'Crop and reframe', model: 'Model', stitch: 'Stitch', approve: 'Approve', output: 'Output', note: 'Note' }
-
-export function defaults(type) {
-  if (type === 'prompt') return { mode: 'single', text: '' }
-  if (['mask', 'face', 'video', 'crop'].includes(type)) return { value: null }
-  if (type === 'image') return { url: null, name: '' }
-  if (type === 'writer') return { instructions: 'Write one vivid generation prompt from the reference images and user note. Preserve visible details. Return only the finished prompt.', note: '', target: 'image' }
-  if (type === 'model') return { kind: 'image', model: find(null, 'image'), aspect: '1:1', duration: 5, takes: 1, prompt: '' }
-  if (type === 'note') return { text: '' }
-  if (type === 'stitch') return { clips: [], aspect: '16:9' }
-  return {}
-}
-
+export const defaults = nodeDefaults
 export const makeNode = (type, position, data = {}) => ({ id: `${type}-${uid()}`, type, position, data: { ...defaults(type), ...data } })
 const link = (a, b) => ({ id: `${a}-${b}`, source: a, target: b })
 
@@ -130,10 +121,12 @@ const strip = (f) => ({
   edges: f.edges.map(({ id, source, target }) => ({ id, source, target })),
 })
 
+// Before server storage, flows lived in this browser's localStorage. initFlows moves them to the
+// server once; the browser copy stays as a fallback.
 export function loadFlows() {
   try {
     const s = JSON.parse(localStorage.getItem(KEY))
-    if (s?.flows?.length) return { ...s, runs: Object.fromEntries(s.flows.map((f) => {
+    if (s?.flows?.length) return { ...s, legacy: true, runs: Object.fromEntries(s.flows.map((f) => {
       try { return [f.id, JSON.parse(localStorage.getItem(`comfyfield.flowrun.${f.id}`)) || {}] } catch { return [f.id, {}] }
     })) }
   } catch {}

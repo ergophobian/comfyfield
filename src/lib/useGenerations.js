@@ -35,8 +35,9 @@ export function useGenerations() {
     }
   }
 
-  // meta can carry batch, row and prompt so the board can group results.
-  function execute(model, opts, meta = {}) {
+  // meta can carry batch, row and prompt so the board can group results. `after` gets the files of a
+  // run that worked, so a follow-up such as Upscale also follows a retried take.
+  function execute(model, opts, meta = {}, after) {
     const id = crypto.randomUUID()
     const base = { aspect: opts.shape || opts.aspect, caption: opts.caption, model: model.name, kind: model.kind, provider: model.provider, ...meta }
     setError(null)
@@ -51,9 +52,10 @@ export function useGenerations() {
             ? files.map((f, i) => ({ id: `${id}-${i}`, ...base, ...f, created: Date.now() }))
             : [x])))
           resolve(files)
+          after?.(files)
         } catch (e) {
           // Retry queues the same run again in place of the failed take.
-          const retry = () => { setItems((xs) => xs.filter((x) => x.id !== id)); generate(model, opts, meta) }
+          const retry = () => { setItems((xs) => xs.filter((x) => x.id !== id)); generate(model, opts, meta, after) }
           setError(e.message)
           setRetryLast(() => retry)
           setItems((xs) => xs.map((x) => (x.id === id ? { ...base, id, failed: e.message, retry } : x)))
@@ -64,7 +66,7 @@ export function useGenerations() {
     })
   }
 
-  const generate = (model, opts, meta) => { execute(model, opts, meta).catch(() => {}) }
+  const generate = (model, opts, meta, after) => { execute(model, opts, meta, after).catch(() => {}) }
   const generateFormat = (format, values) => runFormat(format, values, { run: execute, writePrompt: ({ instructions, note, images, target }) => writePrompt({ instructions, note, images, target }) })
 
   const toggleApprove = (id) => setItems((xs) => xs.map((x) => (x.id === id ? { ...x, approved: !x.approved } : x)))
