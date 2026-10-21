@@ -365,6 +365,18 @@ assert.equal(invalidSession.busy, false)
 console.log('Runner resilience checks ok: exact retry counts, retained outputs and run id, approval and writer recovery, busy exclusion, input snapshots, whole-pipeline preflight, Cloud alternates and derived costs.')
 assert.equal(formats.length, allFormats.filter((format) => !validateFormat(format).length).length)
 assert.equal(new Set(allFormats.map((format) => format.id)).size, allFormats.length)
+
+// Edits and upscales carry the picture they started from, for the before and after slider.
+const sourceOf = async (f, extra) => {
+  let meta
+  await runFormat(f, { ...valuesFor(f), ...extra }, { run: async (_, __, m) => { meta = m; return [{ url: 'out.png' }] } })
+  return meta.source
+}
+assert.equal(await sourceOf(allFormats.find((f) => f.id === 'image-upscale')), photo.url)
+assert.equal(await sourceOf(allFormats.find((f) => f.id === 'erase'), { target: 'The sign' }), photo.url)
+assert.equal(await sourceOf(imageRecipe), undefined, 'Only edits and upscales carry a source')
+assert.equal(formats.length, 450)
+assert.equal(allFormats.length, 479, 'Do not delete planned formats')
 assert.equal(allFormats.filter((f) => f.category === 'camera').length > 0, true, 'Keep Create prompt presets')
 assert(allFormats.filter((f) => !formats.includes(f)).every((f) => formatProblems.get(f.id).length))
 console.log(`Format runner checks ok: ${checked} recipe cases, approval and batching, concurrency, schema rejection, Comfy placeholders, writer handoff and provider failures. No network calls.`)

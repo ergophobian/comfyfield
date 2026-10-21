@@ -104,6 +104,10 @@ export async function runFormat(format, inputs, { run, writePrompt, onChange = (
     return adapter
   }
   const notify = () => onChange(engine.state, session)
+  // Edits and upscales keep the picture they started from, so the result can be compared with it.
+  const sourceInput = !setupError && format.kind === 'image' && ['image-edit', 'enhance'].includes(format.category)
+    && visibleInputs(format, flow.values).find((i) => ['image', 'draw', 'mask', 'product'].includes(i.type) && flow.values[i.id]?.url)
+  const source = sourceInput ? flow.values[sourceInput.id].url : undefined
   const engine = createEngine({
     concurrency,
     onChange: notify,
@@ -131,7 +135,7 @@ export async function runFormat(format, inputs, { run, writePrompt, onChange = (
       }
       if (target.provider === 'comfy' && options.aspect === 'auto') options.aspect = nearestAspect(options.shape)
       const adapter = adapterFor(identity, options)
-      const files = await run(target, adapter.options, { formatId: format.id, stepId: formatStep.id, formatRunId: batch, itemId: adapter.itemId, prompt: adapter.options.prompt })
+      const files = await run(target, adapter.options, { formatId: format.id, stepId: formatStep.id, formatRunId: batch, itemId: adapter.itemId, prompt: adapter.options.prompt, ...(source && { source }) })
       adapter.done = true
       return files
     },
