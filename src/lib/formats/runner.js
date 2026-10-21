@@ -72,6 +72,10 @@ export async function runFormat(format, inputs, { run, writePrompt, onChange, co
   if (typeof run !== 'function') throw new Error('A Library generation adapter is required')
   const flow = compileFormat(format, inputs)
   const batch = globalThis.crypto.randomUUID()
+  // Edits and upscales keep the picture they started from, so the result can be compared with it.
+  const sourceInput = format.kind === 'image' && ['image-edit', 'enhance'].includes(format.category)
+    && visibleInputs(format, flow.values).find((i) => ['image', 'draw', 'mask', 'product'].includes(i.type) && flow.values[i.id]?.url)
+  const source = sourceInput ? flow.values[sourceInput.id].url : undefined
   const engine = createEngine({
     concurrency,
     onChange,
@@ -87,7 +91,7 @@ export async function runFormat(format, inputs, { run, writePrompt, onChange, co
       }
       // A graph needs a canvas: 'auto' takes the one nearest the first picture's shape.
       if (target.provider === 'comfy' && options.aspect === 'auto') options.aspect = nearestAspect(options.shape)
-      return run(target, options, { formatId: format.id, stepId: formatStep.id, formatRunId: batch, prompt: options.prompt })
+      return run(target, options, { formatId: format.id, stepId: formatStep.id, formatRunId: batch, prompt: options.prompt, ...(source && { source }) })
     },
   })
   const results = () => flow.outputs.flatMap((out) => engine.itemsOf(flow, out.step) || [])
