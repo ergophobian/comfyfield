@@ -7,6 +7,7 @@ import Pop, { Stepper } from '../components/generate/Pop.jsx'
 import { LibraryPicks, RefTags } from '../components/generate/Library.jsx'
 import { Banner, Feed, GoButton, StatusNote, balanceText, canRun, costText, noun, useBatches, useView } from '../components/generate/parts.jsx'
 import { useGenModel } from '../components/generate/useGenModel.js'
+import EnhanceChip, { enhancePrompt, useEnhance } from '../components/generate/Enhance.jsx'
 import { label, paramsFor, useModelInputs } from '../components/generate/useModelInputs.js'
 import { IconAt, IconGrid } from '../components/generate/icons.jsx'
 import { IconAspect, IconClose, IconImage, IconPlus, IconSpark } from '../components/Icons.jsx'
@@ -38,6 +39,8 @@ export default function ImageStudio() {
   const [uploading, setUploading] = useState(0)
   const [refs, setRefs] = useState([])
   const [error, setError] = useState(null)
+  const [enhance, setEnhance] = useEnhance('image')
+  const [enhancing, setEnhancing] = useState(false)
   const [dragging, setDragging] = useState(false)
   const [view, setView] = useView()
   const [batches, addBatch] = useBatches('image')
@@ -88,17 +91,27 @@ export default function ImageStudio() {
     }))
   }
 
-  const go = () => {
-    if (!prompts.length || !connected || uploading) return
+  const go = async () => {
+    if (!prompts.length || !connected || uploading || enhancing) return
+    // Enhance rewrites each prompt first; one that cannot be rewritten runs as written.
+    let ready = prompts
+    if (enhance && !model.open) {
+      setEnhancing(true)
+      setError(null)
+      const failed = []
+      ready = await Promise.all(prompts.map((p) => enhancePrompt(p, 'image', model).catch((e) => { failed.push(e.message); return p })))
+      setEnhancing(false)
+      if (failed.length) setError(`Enhance did not run: ${failed[0]} Your prompt ran as written.`)
+    }
     const batch = { id: crypto.randomUUID(), prompts, total, model: model.name, kind: 'image' }
     if (batchMode) addBatch(batch)
     const params = paramsFor(inputs, { quality, resolution })
-    prompts.forEach((p, r) => {
+    ready.forEach((p, r) => {
       for (let t = 0; t < calls; t++) {
         gens.generate(model, {
           prompt: p, caption: p, aspect: ratio, count: perCall, duration: 5, images,
           ...(Object.keys(params).length && { params }), ...(refs.length && { refs }),
-        }, batchMode ? { batch: batch.id, row: r } : {})
+        }, { ...(batchMode && { batch: batch.id, row: r }), ...(p !== prompts[r] && { original: prompts[r] }) })
       }
     })
   }
@@ -176,6 +189,7 @@ export default function ImageStudio() {
               <Pop up keep className="gen-icon" icon={<IconAt />} title="Add from Library" lit={refs.length > 0}>
                 <LibraryPicks refs={refs} setRefs={setRefs} />
               </Pop>
+              {!model.open && <EnhanceChip on={enhance} setOn={setEnhance} busy={enhancing} />}
               <ModelPicker up model={model} options={pick.options} open={pick.open} favorites={pick.favorites}
                 toggleFavorite={pick.toggleFavorite} choose={pick.choose} connections={connections} />
               <Pop up icon={<IconAspect />} label={label(ratio)} title="Aspect ratio">
@@ -195,7 +209,7 @@ export default function ImageStudio() {
             </div>
             <div className="foot-actions">
               {batchMode && prompts.length > 0 && !model.open && <button type="button" className="btn-soft" onClick={openAsFlow}>Open as flow</button>}
-              <GoButton total={total} cost={costText(cost)} disabled={!total || !connected || uploading > 0} />
+              <GoButton total={total} cost={costText(cost)} disabled={!total || !connected || uploading > 0 || enhancing} />
             </div>
           </div>
           <div className="gen-bar-note">

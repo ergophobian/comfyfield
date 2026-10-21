@@ -11,6 +11,7 @@ import { LibraryPicks, RefTags } from '../components/generate/Library.jsx'
 import { PresetCard, PresetPicker, PresetRow, cameraPresets, general, presetText } from '../components/generate/Presets.jsx'
 import { Banner, Feed, GoButton, PanelTabs, StatusNote, Steps, balanceText, canRun, costText, noun, useBatches, useSticky } from '../components/generate/parts.jsx'
 import { asOpen, useDurations, useGenModel } from '../components/generate/useGenModel.js'
+import EnhanceChip, { enhancePrompt, useEnhance } from '../components/generate/Enhance.jsx'
 import { label, paramsFor, useModelInputs } from '../components/generate/useModelInputs.js'
 import { IconAt, IconBook, IconFolder, IconMute, IconPlay, IconSound } from '../components/generate/icons.jsx'
 import { IconAspect, IconClock, IconImage, IconSpark, IconStack, IconVideo } from '../components/Icons.jsx'
@@ -53,6 +54,8 @@ function CreateVideo({ preset, onPresets, setError, onRan, addBatch }) {
   const [resolution, setResolution] = useState(null)
   const [sound, setSound] = useState(null)
   const [takes, setTakes] = useState(1)
+  const [enhance, setEnhance] = useEnhance('video')
+  const [enhancing, setEnhancing] = useState(false)
   const [up, setUp] = useUpscalePrefs()
   const [upSource, setUpSource] = useState(null)
   const navigate = useNavigate()
@@ -95,9 +98,19 @@ function CreateVideo({ preset, onPresets, setError, onRan, addBatch }) {
   const cost = each && prompts.length ? { usd: each.usd * prompts.length, approx: each.approx } : null
   const bal = !model.open && balanceText(balance, model.provider)
 
-  const go = (e) => {
+  const go = async (e) => {
     e?.preventDefault()
-    if (!prompts.length || !connected || (needsFrame && !start)) return
+    if (!prompts.length || !connected || (needsFrame && !start) || enhancing) return
+    // Enhance rewrites each prompt before the camera move is added; a multi-shot prompt is already written shot by shot.
+    let ready = prompts
+    if (enhance && !model.open && !multi) {
+      setEnhancing(true)
+      setError(null)
+      const failed = []
+      ready = await Promise.all(prompts.map((p) => enhancePrompt(p, 'video', model).catch((err) => { failed.push(err.message); return p })))
+      setEnhancing(false)
+      if (failed.length) setError(`Enhance did not run: ${failed[0]} Your prompt ran as written.`)
+    }
     const batch = { id: crypto.randomUUID(), prompts, total, model: model.name, kind: 'video' }
     if (batching) addBatch(batch)
     // With Upscale on, the plan's source replaces the Resolution chip: a fal resolution or a smaller canvas.
@@ -112,10 +125,10 @@ function CreateVideo({ preset, onPresets, setError, onRan, addBatch }) {
         if (job) gens.generate(upscaler, { prompt: '', caption, aspect: ratio, count: 1, video: f.url, duration: job.duration, params: { upscale_factor: job.factor } }, { ...meta, upscaled: target.label })
       }
     }
-    prompts.forEach((p, r) => {
+    ready.forEach((p, r) => {
       const full = withMove(p)
       const caption = multi ? shots.map((s) => s.text.trim()).filter(Boolean).join(' / ') : p
-      const meta = batching ? { batch: batch.id, row: r } : {}
+      const meta = { ...(batching && { batch: batch.id, row: r }), ...(p !== prompts[r] && { original: prompts[r] }) }
       for (let t = 0; t < perPrompt; t++) {
         gens.generate(model, {
           prompt: full, caption, aspect: ratio, count: 1, duration: dur, images, ...(scale && { scale }),
@@ -157,6 +170,7 @@ function CreateVideo({ preset, onPresets, setError, onRan, addBatch }) {
           <Pop keep icon={<IconAt />} label={refs.length ? `${refs.length} ${refs.length === 1 ? 'element' : 'elements'}` : 'Elements'} lit={refs.length > 0} title="Elements from Library">
             <LibraryPicks refs={refs} setRefs={setRefs} />
           </Pop>
+          {!model.open && !multi && <EnhanceChip on={enhance} setOn={setEnhance} busy={enhancing} />}
           {inputs.sound && (
             <div className="chip">
               <button type="button" className={soundOn ? 'lit' : ''} aria-pressed={soundOn} disabled={inputs.sound.fixed}
@@ -209,7 +223,7 @@ function CreateVideo({ preset, onPresets, setError, onRan, addBatch }) {
       <StatusNote model={model} connected={connected} />
       <div className="gen-go-row">
         {batching && prompts.length > 0 && !model.open && <button type="button" className="btn-soft" onClick={openAsFlow}>Open as flow</button>}
-        <GoButton total={total} cost={costText(cost)} disabled={!total || !connected || (needsFrame && !start)} />
+        <GoButton total={total} cost={costText(cost)} disabled={!total || !connected || (needsFrame && !start) || enhancing} />
       </div>
       {connected && (
         <p className="gen-sum">
