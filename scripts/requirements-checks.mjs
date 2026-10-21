@@ -25,6 +25,13 @@ mock.method(fs, 'readFileSync', (file, ...args) => {
 })
 mock.method(globalThis, 'fetch', () => assert.fail('Requirements must never make network requests'))
 try {
+  let liveReads = 0
+  mock.method(pod(), 'phaseNow', async () => { liveReads++; return 'starting' })
+  const live = await formatRequirements([], { run: 'session' })
+  assert.equal(live.pod.phase, 'starting', 'Planning reads the live phase rather than cached status')
+  assert.equal(liveReads, 1)
+  assert.equal(typeof live.pod.auto, 'boolean')
+  mock.method(pod(), 'phaseNow', async () => 'none')
   const workflows = ['image_flux', 'qwen_image21_t2i', 'ltx25_i2v'].map((workflow) => ({ workflow, vars: { image: 'preflight://image', prompt: 'A meadow' } }))
   const expected = offlineRequirements(workflows).requirements.map(({ workflow, notOnCloud, minVramGb, arch }) => ({ workflow, notOnCloud, minVramGb, arch }))
   assert.deepEqual(comfyRequirements(workflows), expected)
@@ -35,7 +42,7 @@ try {
   let handler
   comfyfieldApi().configureServer({ middlewares: { use: (fn) => { handler = fn } } })
   const req = Readable.from([JSON.stringify({ workflows })])
-  Object.assign(req, { url: '/api/comfy/requirements', method: 'POST', headers: {} })
+  Object.assign(req, { url: '/api/comfy/requirements', method: 'POST', headers: { host: 'localhost:5173' } })
   let payload
   const res = { setHeader() {}, end: (body) => { payload = JSON.parse(body) } }
   await handler(req, res, () => assert.fail('Requirements route was not handled'))
@@ -51,7 +58,7 @@ try {
   assert.deepEqual(payload.writerProviders, ['google', 'comfyRouter'])
   const request = async (input) => {
     const req = Readable.from([JSON.stringify(input)])
-    Object.assign(req, { url: '/api/comfy/requirements', method: 'POST', headers: {} })
+    Object.assign(req, { url: '/api/comfy/requirements', method: 'POST', headers: { host: 'localhost:5173' } })
     let data
     const res = { setHeader() {}, end: (body) => { data = JSON.parse(body) } }
     await handler(req, res, () => assert.fail('Requirements route was not handled'))

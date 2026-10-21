@@ -40,6 +40,7 @@ export async function preflightFlow(flow, { runType, pod, requirements = loadReq
   runType = runType ?? context.runType
   if (typeof prices === 'function') prices = await prices(flow.nodes.filter((n) => n.type === 'model').map((n) => n.data.model))
   const reasons = []
+  const warnings = []
   const counts = new Map()
   const costs = []
   for (const step of steps) {
@@ -74,10 +75,13 @@ export async function preflightFlow(flow, { runType, pod, requirements = loadReq
     if (!own || !Array.isArray(own.notOnCloud)) throw Object.assign(new Error(`Requirements missing for ${step.workflow}.`), { code: 'preflight_failed' })
     Object.assign(step, { notOnCloud: own.notOnCloud, minVramGb: own.minVramGb, arch: own.arch,
       cloud: own.cloud, target: own.target, selectedWorkflow: own.selectedWorkflow })
-    if (own.reason) fail(own.reason.code, own.reason.message, { ...own.reason, stepId: step.stepId })
-    else if (!own.target) throw Object.assign(new Error(`Target missing for ${step.workflow}.`), { code: 'preflight_failed' })
+    if (own.reason) {
+      const runtimePod = runType !== 'instant' && (own.reason.code === 'needs_pod' || (own.reason.code === 'pod_too_small' && pod.auto))
+      if (runtimePod) warnings.push({ ...own.reason, stepId: step.stepId })
+      else fail(own.reason.code, own.reason.message, { ...own.reason, stepId: step.stepId })
+    } else if (!own.target) throw Object.assign(new Error(`Target missing for ${step.workflow}.`), { code: 'preflight_failed' })
   }
   const known = costs.every((c) => c.usd != null)
-  return { ok: !reasons.length, reason: reasons[0] || null, reasons, steps, runType, pod,
+  return { ok: !reasons.length, reason: reasons[0] || null, reasons, warnings, steps, runType, pod,
     cost: { steps: costs, total: known ? { usd: costs.reduce((n, c) => n + c.usd, 0), approx: costs.some((c) => c.approx) } : null } }
 }

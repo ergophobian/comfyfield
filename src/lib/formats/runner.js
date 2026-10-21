@@ -4,6 +4,7 @@ import { stepModel, stepOptions } from './options.js'
 import { validateFormat } from './validate.js'
 import { preflightFlow } from './preflight.js'
 import { aspectSize } from '../catalog.js'
+import { keepRequestKey } from '../routerBatch.js'
 
 // The canvas whose ratio is nearest a picture's 'w:h' shape, or square without one.
 export function nearestAspect(shape) {
@@ -92,10 +93,12 @@ export async function runFormat(format, inputs, { run, writePrompt, onChange = (
   const adapters = new Map()
   const adapterFor = ({ stepId, unitId }, options) => {
     const key = JSON.stringify([stepId, unitId])
+    const { routerBatch, ...body } = options
+    const signature = JSON.stringify(body)
     let adapter = adapters.get(key)
-    // A deliberate Rerun after success gets a new request; failures retain their body and keys.
-    if (!adapter || adapter.done) {
-      adapter = { options, itemId: crypto.randomUUID(), done: false }
+    // Only an identical retry can reconcile the original request.
+    if (!adapter || adapter.done || adapter.signature !== signature) {
+      adapter = { options, signature, itemId: crypto.randomUUID(), done: false }
       adapters.set(key, adapter)
     }
     return adapter
@@ -105,10 +108,17 @@ export async function runFormat(format, inputs, { run, writePrompt, onChange = (
     concurrency,
     onChange: notify,
     writePrompt: writePrompt ? async (input, identity) => {
-      const adapter = adapterFor(identity, { ...input, inputs: flow.values, format, idempotencyKey: crypto.randomUUID() })
-      const text = await writePrompt(adapter.options)
-      if (typeof text === 'string' && text.trim()) adapter.done = true
-      return text
+      const adapter = adapterFor(identity, { ...input, inputs: flow.values, format })
+      adapter.options.idempotencyKey ||= crypto.randomUUID()
+      try {
+        const text = await writePrompt(adapter.options)
+        if (typeof text === 'string' && text.trim()) adapter.done = true
+        else delete adapter.options.idempotencyKey
+        return text
+      } catch (error) {
+        if (!keepRequestKey(error)) delete adapter.options.idempotencyKey
+        throw error
+      }
     } : undefined,
     run: async (model, unit, identity) => {
       const { formatStep, ...target } = model
@@ -161,6 +171,18 @@ export async function runFormat(format, inputs, { run, writePrompt, onChange = (
     inFlight = perform(action, options, only)
     return inFlight
   }
+  const queuedRetries = new Map()
+  const retry = (id, options) => {
+    if (queuedRetries.has(id)) return queuedRetries.get(id)
+    if (!session.busy) return launch(() => engine.retryFailed(flow, [id]), options, retryScope([id]))
+    if (!inFlight) return Promise.reject(Object.assign(new Error('This session is already running. Try again when it finishes.'), { session, code: 'busy' }))
+    const queued = inFlight.catch(() => {}).then(() => {
+      queuedRetries.delete(id)
+      return retry(id, options)
+    })
+    queuedRetries.set(id, queued)
+    return queued
+  }
   session = {
     flow, engine, id: batch, formatRunId: batch,
     results: () => flow.outputs.flatMap((out) => engine.itemsOf(flow, out.step) || []),
@@ -178,7 +200,7 @@ export async function runFormat(format, inputs, { run, writePrompt, onChange = (
     get error() { const reason = session.reason; return reason ? Object.assign(new Error(reason.message), reason, { session }) : null },
     get ok() { return !session.reason },
     start: (options) => launch(() => engine.runNew(flow), options),
-    retry: (id, options) => launch(() => engine.retryFailed(flow, [id]), options, retryScope([id])),
+    retry,
     retryFailed: (options) => launch(() => Object.keys(engine.state).length ? engine.retryFailed(flow) : engine.runNew(flow), options, Object.keys(engine.state).length ? retryScope() : null),
     sendWriter: (id, options) => launch(() => engine.sendWriter(flow, id), options, downstreamOf(flow, id)),
     send: (id, options) => launch(() => engine.send(flow, id), options, downstreamOf(flow, id)),

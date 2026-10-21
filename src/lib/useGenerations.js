@@ -15,6 +15,7 @@ export function useGenerations() {
   const [items, setItems] = useState(load)
   const [error, setError] = useState(null)
   const [retryLast, setRetryLast] = useState(null)
+  const errorOwner = useRef(null)
   const sessions = useRef(new Map())
   const [, changed] = useState(0)
   const active = useRef(0)
@@ -30,6 +31,18 @@ export function useGenerations() {
     try { localStorage.setItem(KEY, JSON.stringify(items.filter((i) => !i.pending).slice(0, 300))) } catch {}
   }, [items])
 
+  const clearError = (owner) => {
+    if (errorOwner.current !== owner) return
+    errorOwner.current = null
+    setError(null)
+    setRetryLast(null)
+  }
+  const showError = (owner, message, retry) => {
+    errorOwner.current = owner
+    setError(message)
+    setRetryLast(() => retry)
+  }
+
   const pump = () => {
     while (active.current < MAX_PARALLEL && waiting.current.length) {
       const job = waiting.current.shift()
@@ -42,8 +55,8 @@ export function useGenerations() {
   // run that worked, so a follow-up such as Upscale also follows a retried take.
   function execute(model, opts, meta = {}, after, id = crypto.randomUUID(), retryStep) {
     const base = { aspect: opts.shape || opts.aspect, caption: opts.caption, model: model.name, kind: model.kind, provider: model.provider, ...meta }
-    setError(null)
-    setRetryLast(null)
+    const owner = meta.formatRunId || id
+    clearError(meta.formatRunId ? owner : errorOwner.current)
     setItems((xs) => [{ id, pending: true, ...base }, ...xs.filter((x) => x.id !== id)])
     return new Promise((resolve, reject) => {
       waiting.current.push(async () => {
@@ -68,8 +81,7 @@ export function useGenerations() {
             setItems((xs) => xs.filter((x) => x.id !== id))
             execute(model, opts, meta, after, id).catch(() => {})
           })
-          setError(e.message)
-          setRetryLast(() => retry)
+          showError(owner, e.message, retry)
           setItems((xs) => xs.map((x) => (x.id === id ? { ...base, id, failed: e.message, retry } : x)))
           reject(e)
         }
@@ -95,7 +107,9 @@ export function useGenerations() {
         if (session?.busy) sessions.current.set(session.id, session)
         else if (session) sessions.current.delete(session.id)
         changed((n) => n + 1)
-        setError(session?.error?.message || null)
+        if (session?.error && (!errorOwner.current || errorOwner.current === session.id)) {
+          showError(session.id, session.error.message, () => session.retryFailed().catch(() => {}))
+        } else if (session && !session.error) clearError(session.id)
         options.onChange?.(state, session)
       },
     })

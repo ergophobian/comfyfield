@@ -321,7 +321,7 @@ function mount(server, harness) {
       }
       if (url.pathname.startsWith('/comfy/')) return proxyComfy(req, res, url)
     } catch (e) {
-      return send(res, e.status || 500, { error: e.message, ...(e.requestId ? { requestId: e.requestId } : {}), ...(e.idempotencyKey ? { idempotencyKey: e.idempotencyKey } : {}), ...(e.code ? { code: e.code } : {}), ...(e.reason ? { reason: e.reason } : {}), ...(e.fit ? { fit: e.fit } : {}) })
+      return send(res, e.status || 500, { error: e.message, ...(e.requestId ? { requestId: e.requestId } : {}), ...(e.idempotencyKey ? { idempotencyKey: e.idempotencyKey } : {}), ...(e.code ? { code: e.code } : {}), ...(typeof e.retryable === 'boolean' ? { retryable: e.retryable } : {}), ...(e.reason ? { reason: e.reason } : {}), ...(e.fit ? { fit: e.fit } : {}) })
     }
     next()
   })

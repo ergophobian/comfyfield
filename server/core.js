@@ -268,9 +268,9 @@ export async function writePromptWithRouter({ instructions, note = '', images = 
   const data = await routerJson(response)
   const fail = (detail) => Object.assign(comfyError(response, detail), { idempotencyKey })
   if (!response.ok || data.error || data.error_type) throw fail(data)
-  if (data.status !== 'completed') throw fail({ message: 'Comfy Router did not finish the prompt. Retry with the same request key.' })
+  if (data.status !== 'completed') throw fail({ ...data, error_type: data.status ? 'prompt_failed' : 'invalid_response', retryable: !data.status, message: 'Comfy Router did not finish the prompt.' })
   const text = (data.output || []).filter((item) => item.type === 'message' && item.role === 'assistant').flatMap((item) => item.content || []).filter((part) => part.type === 'output_text').map((part) => part.text || '').join('').trim()
-  if (!text) throw fail({ message: 'Comfy Router returned no prompt. The request may have been filtered.' })
+  if (!text) throw fail({ ...data, error_type: 'prompt_filtered', retryable: false, message: 'Comfy Router returned no prompt. The request may have been filtered.' })
   return text
 }
 
@@ -518,7 +518,8 @@ function comfyError(response, data) {
   const message = response.status === 402 || code === 'insufficient_credits'
     ? 'Comfy has insufficient credits. Add credits to your Comfy workspace billing, then try again.'
     : `Comfy request failed (${code || response.status}): ${data.message || data.error?.message || (typeof data.detail === 'string' ? data.detail : '') || 'Check the request and your connection.'}`
-  return Object.assign(new Error(`${message}${requestId ? ` Request ${requestId}.` : ''}`), { status: response.status >= 400 ? response.status : 502, requestId })
+  return Object.assign(new Error(`${message}${requestId ? ` Request ${requestId}.` : ''}`), { status: response.status >= 400 ? response.status : 502, requestId, code,
+    retryable: data.retryable ?? (response.status === 408 || response.status === 429 || response.status >= 500) })
 }
 
 function retryAfter(response) {
@@ -577,7 +578,7 @@ export async function runComfyRouter({ model, input, idempotencyKey = randomUUID
   const response = await fetch(base, { method: 'POST', headers: { ...headers, 'Idempotency-Key': idempotencyKey }, body: JSON.stringify(await withRouterFiles(input)) })
   const job = await routerJson(response)
   if (!response.ok || job.error_type) throw Object.assign(comfyError(response, job), { idempotencyKey })
-  if (!job.request_id) throw new Error('Comfy Router did not return a request id.')
+  if (!job.request_id) throw Object.assign(new Error('Comfy Router did not return a request id.'), { code: 'invalid_response', retryable: true })
   // Derive URLs from the documented route so credentials never follow an arbitrary response URL.
   const resultUrl = `${base}/${encodeURIComponent(job.request_id)}`
   let previous = response
@@ -587,8 +588,9 @@ export async function runComfyRouter({ model, input, idempotencyKey = randomUUID
     previous = status
     if (status.status === 429 || status.status === 503) continue
     const update = await routerJson(status)
-    if (status.ok && !update.status && !update.error_type) throw comfyError(status, { request_id: job.request_id, message: 'Router returned an invalid status response. Retry with the same request key.' })
-    if (!status.ok || update.error_type) throw comfyError(status, { request_id: job.request_id, ...update })
+    if (status.ok && !update.status && !update.error_type) throw comfyError(status, { request_id: job.request_id, error_type: 'invalid_response', retryable: true, message: 'Router returned an invalid status response. Retry with the same request key.' })
+    if (['FAILED', 'CANCELLED', 'CANCELED'].includes(update.status)) throw comfyError(status, { request_id: job.request_id, ...update, error_type: update.error_type || 'job_failed', retryable: false })
+    if (!status.ok || update.error_type) throw comfyError(status, { request_id: job.request_id, ...update, ...(update.status === 'COMPLETED' && update.error_type ? { retryable: false } : {}) })
     if (update.status !== 'COMPLETED') continue
     const result = await fetch(resultUrl, { headers })
     previous = result
@@ -601,7 +603,7 @@ export async function runComfyRouter({ model, input, idempotencyKey = randomUUID
     }
     const data = await routerJson(result)
     if (!result.ok || data.error_type) throw comfyError(result, { request_id: job.request_id, ...data })
-    if (!Object.keys(data).length) throw comfyError(result, { request_id: job.request_id, message: 'Router returned an invalid result response. Retry with the same request key.' })
+    if (!Object.keys(data).length) throw comfyError(result, { request_id: job.request_id, error_type: 'invalid_response', retryable: true, message: 'Router returned an invalid result response. Retry with the same request key.' })
     return routerFiles(data, model)
   }
   throw new Error(`Comfy Router took too long. Request ${job.request_id} may still be running; do not submit again without checking it.`)
@@ -672,7 +674,10 @@ export function comfyRequirements(workflows = []) {
   })
 }
 
-export async function formatRequirements(workflows = [], { run = runType(), phase = pod().status().phase, vramGb = pod().vramGb(), arch = pod().arch(), local = comfyMode() === 'local' } = {}) {
+export async function formatRequirements(workflows = [], { run = runType(), phase, vramGb, arch, local = comfyMode() === 'local' } = {}) {
+  phase ??= await pod().phaseNow()
+  vramGb ??= pod().vramGb()
+  arch ??= pod().arch()
   const requirements = comfyRequirements(workflows)
   const connected = connections()
   for (const [index, entry] of workflows.entries()) {
@@ -698,7 +703,7 @@ export async function formatRequirements(workflows = [], { run = runType(), phas
     connections: Object.fromEntries(Object.entries(connected).map(([id, c]) => [id, { connected: c.connected }])),
     writerProviders: ['google', ...(config('comfy').key ? ['comfyRouter'] : [])],
     runType: run,
-    pod: { phase, vramGb, arch },
+    pod: { phase, vramGb, arch, auto: podAutoStart() },
     cloudConnected: Boolean(config('comfy').key),
     local,
   }

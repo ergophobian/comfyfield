@@ -8,6 +8,8 @@ import { allFormats } from '../src/lib/formats/index.js'
 // A separate Vite server with an in-process mock API never loads provider routes or keys.
 const requests = []
 let connected = true
+let failPrompt = false
+let failRender = false
 const svg = (label) => `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="750" viewBox="0 0 600 750"><rect width="600" height="750" fill="#e4e9ff"/><circle cx="300" cy="280" r="120" fill="#9b8cf5"/><path d="M100 680 Q100 380 300 390 Q500 380 500 680Z" fill="#6f7fd8"/><text x="300" y="720" text-anchor="middle" font-family="sans-serif" font-size="28" fill="#30384d">${label}</text></svg>`
 const server = await preview({ configFile: false, envFile: false, plugins: [{
   name: 'format-mock-api', configurePreviewServer(server) {
@@ -37,6 +39,12 @@ const server = await preview({ configFile: false, envFile: false, plugins: [{
         let body = ''
         for await (const chunk of req) body += chunk
         requests.push({ path: url.pathname, body: JSON.parse(body) })
+        if ((url.pathname === '/api/prompt' && failPrompt) || (url.pathname === '/api/comfy/run' && failRender)) {
+          failPrompt = false
+          failRender = false
+          res.statusCode = 402
+          return res.end(JSON.stringify({ error: 'Mock insufficient credits', code: 'insufficient_credits' }))
+        }
         if (url.pathname === '/api/prompt') return res.end(JSON.stringify({ text: 'Mock writer prompt for review' }))
         return res.end(JSON.stringify({ files: [{ url: '/mock-result.svg', kind: 'image' }] }))
       }
@@ -159,6 +167,28 @@ try {
   assert.equal(requests[4].body.vars.image, '/mock-photo.svg')
   await goto('/apps/podcast-clips')
   await wait('document.body.innerText.includes("Nothing lives at this address")')
+  // Both a failed writer and a failed render retain the app's session and review panel.
+  const beforeRecovery = requests.length
+  failPrompt = true
+  await goto('/apps/effect-aquarium-turn')
+  await wait('document.querySelector("input[type=file]")')
+  await evaluate(`(() => { const input = document.querySelector('input[type=file]'); const data = new DataTransfer(); data.items.add(new File(['mock'], 'retry.png', {type:'image/png'})); input.files = data.files; input.dispatchEvent(new Event('change', {bubbles:true})); })()`)
+  await wait('!document.querySelector(".app-go button").disabled')
+  await evaluate('document.querySelector(".app-go button").click()')
+  const retryVisible = '[...document.querySelectorAll(".format-review button")].some((b) => b.textContent === "Retry failed" && !b.disabled)'
+  await wait(retryVisible)
+  assert.equal(requests.length, beforeRecovery + 1)
+  await screenshot('mock-app-writer-failure-mobile')
+  await evaluate('[...document.querySelectorAll(".format-review button")].find((b) => b.textContent === "Retry failed").click()')
+  await wait(`document.querySelector('textarea[aria-label="Written prompt"]')`)
+  assert.equal(requests.length, beforeRecovery + 2, 'Writer retry must not render before Send')
+  failRender = true
+  await evaluate('[...document.querySelectorAll(".format-review button")].find((b) => b.textContent === "Send to render").click()')
+  await wait(retryVisible)
+  await evaluate('[...document.querySelectorAll(".format-review button")].find((b) => b.textContent === "Retry failed").click()')
+  await wait('!document.querySelector(".format-review [role=alert]") && !document.querySelector(".app-results .pending")')
+  assert.deepEqual(requests.slice(beforeRecovery).map((r) => r.path), ['/api/prompt', '/api/prompt', '/api/comfy/run', '/api/comfy/run'])
+  assert.equal(await evaluate('document.querySelector(".format-review button").textContent'), 'Prompt sent')
   connected = false
   await goto('/')
   await wait('document.querySelector(".notice[role=status] a")')
@@ -168,7 +198,7 @@ try {
   await evaluate('document.querySelector(".notice[role=status] a").click()')
   await wait('location.pathname === "/connections" && !document.querySelector(".notice[role=status]")')
   assert.deepEqual(errors, [], 'No browser runtime exceptions')
-  console.log('UI mock checks ok: app runner, shared sheet, Library after reload, 390px layout, Create generation/feed/camera presets and hidden invalid route. Four mocked generations and one reviewed writer request; no provider calls. First-run Connections notice and link checked at 390px. Seven screenshots saved.')
+  console.log('UI mock checks ok: app runner, shared sheet, Library after reload, 390px layout, Create generation/feed/camera presets and hidden invalid route. Failed writer and render sessions recover through Retry failed without repeating completed steps; no provider calls. First-run Connections notice and link checked at 390px. Eight screenshots saved.')
 } finally {
   await browser?.close()
   await server.close()

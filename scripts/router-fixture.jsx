@@ -1,6 +1,8 @@
-import React, { useRef } from 'react'
+import React, { useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { useGenerations } from '../src/lib/useGenerations.js'
+import { BrowserRouter } from 'react-router-dom'
+import { RecipeSheet } from '../src/components/Recipes.jsx'
 import { models } from '../src/lib/catalog.js'
 
 const format = {
@@ -12,10 +14,14 @@ const format = {
 
 function Fixture() {
   const gens = useGenerations()
+  const [sheet, setSheet] = useState(false)
   const session = useRef(null)
   const concurrent = useRef([])
   const model = models.find((m) => m.id === 'comfy-router-flux')
-  return <main>
+  return <main style={{ overflowWrap: 'anywhere' }}>
+    <button id="create-failure" onClick={() => gens.generate(model, { prompt: 'Create failure', aspect: '1:1' })}>Fail Create</button>
+    <button id="writer-sheet" onClick={() => setSheet(true)}>Open writer sheet</button>
+    {sheet && <RecipeSheet recipe={{ ...format, writer: 'Write a fixture prompt' }} gens={gens} connections={{ comfy: { connected: true } }} initial={{ subject: 'Sheet writer' }} onClose={() => setSheet(false)} />}
     <button id="batch" onClick={() => gens.generate(model, { prompt: 'A quiet field at sunrise', aspect: '1:1', count: 3 })}>Generate three</button>
     <button id="retry" disabled={!gens.retry} onClick={gens.retry}>Retry</button>
     <button id="concurrent" onClick={() => {
@@ -42,4 +48,4 @@ function Fixture() {
     <output id="error">{gens.error}</output>
   </main>
 }
-createRoot(document.getElementById('root')).render(<Fixture />)
+createRoot(document.getElementById('root')).render(<BrowserRouter><Fixture /></BrowserRouter>)

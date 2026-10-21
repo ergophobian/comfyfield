@@ -261,6 +261,27 @@ await test('Comfy Router explains credits and completed failures; never collects
   assert.equal(replies.length, 0)
 })
 
+await test('Router terminal answers and uncertain responses carry retry classification', async () => {
+  setup('cloud')
+  for (const [reply, retryable, code] of [
+    [json({ error_type: 'insufficient_credits', request_id: 'credits' }, 402), false, 'insufficient_credits'],
+    [json({ error_type: 'validation_error' }, 422), false, 'validation_error'],
+    [json({ error_type: 'rate_limited' }, 429), true, 'rate_limited'],
+    [json({ error_type: 'unavailable' }, 503), true, 'unavailable'],
+  ]) {
+    globalThis.fetch = async () => reply
+    await assert.rejects(core.runComfyRouter({ model: 'bfl/flux-2-pro', input: {} }, noWait), (e) => e.retryable === retryable && e.code === code)
+  }
+  for (const failed of [{ status: 'FAILED' }, { status: 'COMPLETED', error_type: 'provider_error' }]) {
+    const replies = [json(job, 201), json(failed)]
+    globalThis.fetch = async () => { assert(replies.length); return replies.shift() }
+    await assert.rejects(core.runComfyRouter({ model: 'bfl/flux-2-pro', input: {} }, noWait), (e) => e.retryable === false && e.requestId === job.request_id)
+  }
+  const replies = [json(job, 201), json({})]
+  globalThis.fetch = async () => replies.shift()
+  await assert.rejects(core.runComfyRouter({ model: 'bfl/flux-2-pro', input: {} }, noWait), (e) => e.retryable === true && e.code === 'invalid_response')
+})
+
 await test('Router discovery preserves pagination and encodes the cursor', async () => {
   globalThis.fetch = async (url, options) => {
     assert.equal(new URL(url).searchParams.get('cursor'), 'opaque+/cursor')

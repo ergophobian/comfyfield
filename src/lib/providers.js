@@ -50,7 +50,7 @@ export async function durationsFor(model) {
 async function post(url, payload) {
   const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
   const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw Object.assign(new Error(data.error || `Request failed (${res.status})`), { requestId: data.requestId, idempotencyKey: data.idempotencyKey })
+  if (!res.ok) throw Object.assign(new Error(data.error || `Request failed (${res.status})`), { status: res.status, code: data.code, retryable: data.retryable, requestId: data.requestId, idempotencyKey: data.idempotencyKey })
   return data
 }
 

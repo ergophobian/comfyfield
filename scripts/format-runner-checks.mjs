@@ -368,3 +368,97 @@ assert.equal(new Set(allFormats.map((format) => format.id)).size, allFormats.len
 assert.equal(allFormats.filter((f) => f.category === 'camera').length > 0, true, 'Keep Create prompt presets')
 assert(allFormats.filter((f) => !formats.includes(f)).every((f) => formatProblems.get(f.id).length))
 console.log(`Format runner checks ok: ${checked} recipe cases, approval and batching, concurrency, schema rejection, Comfy placeholders, writer handoff and provider failures. No network calls.`)
+
+// A writer edit changes the request even when the downstream text unit keeps its unit id.
+const editedCalls = []
+const editedSession = await runFormat({ ...routerFormat, writer: 'Write a prompt' }, { subject: 'A meadow' }, {
+  writePrompt: async () => 'Original prompt',
+  run: async (model, options) => {
+    options.routerBatch ||= createRouterBatch(model, options)
+    editedCalls.push(structuredClone(options))
+    if (editedCalls.length === 1) throw new Error('Lost render response')
+    return [{ url: 'https://example.test/edited.png' }]
+  },
+})
+await assert.rejects(editedSession.sendWriter('writer'))
+editedSession.engine.editWriter(editedSession.flow, 'writer', 'Edited prompt')
+await editedSession.sendWriter('writer')
+assert.equal(editedCalls[1].prompt, 'Edited prompt')
+assert.notEqual(editedCalls[0].routerBatch.calls[0].idempotencyKey, editedCalls[1].routerBatch.calls[0].idempotencyKey)
+
+// Terminal failures get a new key; uncertain requests reconcile with the same key.
+for (const [failure, keep] of [
+  [new TypeError('Network lost'), true],
+  [Object.assign(new Error('Timeout'), { status: 408 }), true],
+  [Object.assign(new Error('Rate limit'), { status: 429 }), true],
+  [Object.assign(new Error('Server error'), { status: 503 }), true],
+  [Object.assign(new Error('Invalid response'), { status: 502, code: 'invalid_response', retryable: true }), true],
+  [Object.assign(new Error('Credits'), { status: 402, code: 'insufficient_credits' }), false],
+  [Object.assign(new Error('Validation'), { status: 422 }), false],
+  [Object.assign(new Error('Job failed'), { status: 502, code: 'job_failed', retryable: false }), false],
+]) {
+  const model = (await import('../src/lib/catalog.js')).models.find((m) => m.id === 'comfy-router-flux')
+  const batch = createRouterBatch(model, { prompt: 'Retry', aspect: '1:1', count: 2 })
+  const keys = []
+  let failed = false
+  const submit = async (payload) => {
+    keys.push(payload.idempotencyKey)
+    if (keys.length === 2 && !failed) { failed = true; throw failure }
+    return [{ url: `https://example.test/${keys.length}.png` }]
+  }
+  await assert.rejects(runRouterBatch(batch, submit))
+  await runRouterBatch(batch, submit)
+  assert.equal(keys.length, 3, 'A completed batch call must not repeat')
+  assert.equal(keys[1] === keys[2], keep, failure.message)
+}
+for (const empty of [false, true]) {
+  const writerKeys = []
+  const failedWriter = await failedRun(writerFormat, valuesFor(writerFormat), {
+    writePrompt: async (input) => {
+      writerKeys.push(input.idempotencyKey)
+      if (writerKeys.length > 1) return 'Recovered prompt'
+      if (empty) return ''
+      throw Object.assign(new Error('Filtered prompt'), { status: 502, code: 'prompt_filtered', retryable: false })
+    },
+    run: async () => assert.fail('Writer review must remain closed'),
+  })
+  await failedWriter.retryFailed()
+  assert.notEqual(writerKeys[0], writerKeys[1], 'A terminal writer failure gets a new key')
+}
+
+for (const phase of ['none', 'stopped', 'starting']) {
+  const plan = await preflight(cloudMissing, { subject: 'A meadow' }, { requirements: offlineRequirements, runType: 'session', pod: { phase, auto: true } })
+  assert.equal(plan.ok, true, `Session ${phase} must reach the runtime Pod flow`)
+  if (phase !== 'starting') assert(plan.warnings.some((w) => w.code === 'needs_pod'))
+}
+const replacePlan = await preflight(tooBig, { subject: 'A meadow' }, { requirements: offlineRequirements, runType: 'session', pod: { phase: 'ready', vramGb: 24, auto: true } })
+assert.equal(replacePlan.ok, true)
+assert(replacePlan.warnings.some((w) => w.code === 'pod_too_small'))
+
+// Library retry waits for the current take instead of silently returning busy.
+let busySession
+let finishTake
+let takeStarted
+const taking = new Promise((resolve) => { takeStarted = resolve })
+const busyCalls = []
+const busyRun = runFormat({ ...routerFormat, steps: [{ ...routerFormat.steps[0], takes: 2 }] }, { subject: 'A meadow' }, {
+  concurrency: 1, onSession: (current) => { busySession = current },
+  run: async (_, options, meta) => {
+    busyCalls.push(meta.itemId)
+    if (busyCalls.length === 1) throw new Error('First take failed')
+    if (busyCalls.length === 2) { takeStarted(); await new Promise((resolve) => { finishTake = resolve }) }
+    return [{ url: `https://example.test/busy-${busyCalls.length}.png` }]
+  },
+})
+const initialFailure = assert.rejects(busyRun)
+await taking
+const queuedRetry = busySession.retry('generate')
+const duplicateRetry = busySession.retry('generate')
+assert.equal(busyCalls.length, 2)
+finishTake()
+await initialFailure
+await Promise.all([queuedRetry, duplicateRetry])
+assert.equal(busyCalls.length, 3)
+assert.equal(busySession.failures.length, 0)
+assert.equal(busySession.results().length, 2)
+console.log('Runner review regressions ok: edited options, terminal key rotation, Pod warnings and queued Library retries.')
