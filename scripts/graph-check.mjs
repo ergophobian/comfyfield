@@ -1,7 +1,8 @@
 // Every shipped ComfyUI graph against the node schema of the ComfyUI the Pod and Comfy Cloud run
 // (scripts/fixtures/comfy-nodes.json, built by scripts/node-schema.mjs): each node exists, in core or
 // in a listed pack; each input name exists; required inputs are set; links point at a real output of
-// a type the input takes; literal values fit their type and combo options. No ComfyUI runs here.
+// a type the input takes; literal values fit their type and combo options; no node is a paid partner
+// node (comfy_api_nodes), so every shipped graph, the picker's and the formats', is open weights. No ComfyUI runs here.
 import fs from 'node:fs'
 import { NODE_PACKS, RUNTIMES, LOADERS } from '../shared/modelFiles.js'
 
@@ -50,6 +51,8 @@ export function checkGraph(graph) {
     if (!n || typeof n.class_type !== 'string' || typeof n.inputs !== 'object') { problems.push(`node ${id}: needs class_type and inputs`); continue }
     const s = spec(n.class_type)
     if (s.error) bad(id, s.error)
+    // The Open Weights Only prize allows no partner nodes, and they spend Comfy credits and cannot run on a Pod.
+    if (s.node?.api) bad(id, 'is a paid Comfy partner node, not open weights; ship an open-weights graph instead')
     specs[id] = s
   }
   const outType = (link) => {

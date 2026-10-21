@@ -805,12 +805,6 @@ export const schemas = {
       "seed",
       "width"
     ],
-    "h3_i2v": [
-      "duration",
-      "image",
-      "prompt",
-      "seed"
-    ],
     "h3_i2v_audio": [
       "duration",
       "image",
