@@ -221,11 +221,13 @@ try {
     await wait(`document.querySelectorAll('.ref').length === ${i + 1}`)
     await evaluate(`document.querySelector('[aria-label="Add from Library"]').click()`)
   }
+  await evaluate(`document.querySelector('[aria-label="Add reference images"]').click()`)
+  await wait('document.querySelector(".mp input[type=file]")')
   await evaluate(`(() => {
     const bytes = Uint8Array.from(atob(${JSON.stringify(reference.split(',')[1])}), (c) => c.charCodeAt(0))
     const data = new DataTransfer()
     data.items.add(new File([bytes], 'reference.png', { type: 'image/png' }))
-    const input = document.querySelector('input[type=file]')
+    const input = document.querySelector('.mp input[type=file]')
     input.files = data.files
     input.dispatchEvent(new Event('change', { bubbles: true }))
   })()`)

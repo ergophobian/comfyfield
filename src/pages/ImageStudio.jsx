@@ -240,7 +240,10 @@ export default function ImageStudio() {
       {picking && (
         <MediaPicker multiple title="Add references" accept="image/png,image/jpeg,image/webp,image/gif" setError={setError}
           onClose={() => setPicking(false)}
-          onPick={(it) => { setPicking(false); setUploads((us) => (us.some((u) => u.url === it.url) ? us : [...us, it]).slice(0, Math.max(0, maxRefs - refs.length - uploading))) }} />
+          onPick={(it) => {
+            setPicking(false)
+            setUploads((us) => us.some((u) => u.url === it.url) || us.length + refs.flatMap((r) => r.images.slice(0, 1)).length + uploading >= maxRefs ? us : [...us, it])
+          }} />
       )}
     </main>
   )
