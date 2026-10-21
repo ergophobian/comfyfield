@@ -851,12 +851,6 @@ export const schemas = {
       "seed",
       "width"
     ],
-    "h3_i2v": [
-      "duration",
-      "image",
-      "prompt",
-      "seed"
-    ],
     "h3_i2v_audio": [
       "duration",
       "image",
@@ -1516,6 +1510,13 @@ export const schemas = {
       "upscale_factor"
     ],
     "seedvr2_video": [
+      "duration",
+      "seed",
+      "start",
+      "upscale_factor",
+      "video"
+    ],
+    "seedvr2_video_7b": [
       "duration",
       "seed",
       "start",
