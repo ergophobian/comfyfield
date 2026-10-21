@@ -3,7 +3,7 @@ import { spawn } from 'node:child_process'
 import { killProcessTree } from './browser.mjs'
 
 const checks = readdirSync('scripts').filter((file) => /-check.*\.mjs$/.test(file)).sort()
-const browserChecks = ['agent-ui-checks.mjs', 'format-ui-check.mjs', 'widget-browser-checks.mjs', 'router-ui-check.mjs']
+const browserChecks = ['agent-ui-checks.mjs', 'flow-image-ui-check.mjs', 'format-ui-check.mjs', 'upscale-ui-check.mjs', 'widget-browser-checks.mjs', 'router-ui-check.mjs']
 const ordered = [...checks.filter((file) => !browserChecks.includes(file)), ...browserChecks]
 let failed = 0
 // Await full process exit before starting the next check, especially Chrome checks.

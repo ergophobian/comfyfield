@@ -36,8 +36,9 @@ export function useGenerations() {
     }
   }
 
-  // meta can carry batch, row and prompt so the board can group results.
-  async function execute(model, opts, meta = {}, id = crypto.randomUUID()) {
+  // meta can carry batch, row and prompt so the board can group results. `after` gets the files of a
+  // run that worked, so a follow-up such as Upscale also follows a retried take.
+  function execute(model, opts, meta = {}, after, id = crypto.randomUUID()) {
     const base = { aspect: opts.shape || opts.aspect, caption: opts.caption, model: model.name, kind: model.kind, provider: model.provider, ...meta }
     setError(null)
     setRetryLast(null)
@@ -55,14 +56,16 @@ export function useGenerations() {
             ? files.map((f, i) => ({ id: `${id}-${i}`, ...base, ...f, created: Date.now() }))
             : [x])))
           resolve(files)
+          after?.(files)
         } catch (e) {
-          // Keep completed files and resume the original outstanding Router calls.
+          // Retry queues the same run again in place of the failed take, keeping completed files and
+          // resuming the original outstanding Router calls.
           let retried = false
           const retry = () => {
             if (retried) return
             retried = true
             setItems((xs) => xs.filter((x) => x.id !== id))
-            execute(model, opts, meta, id).catch(() => {})
+            execute(model, opts, meta, after, id).catch(() => {})
           }
           setError(e.message)
           setRetryLast(() => retry)
@@ -74,7 +77,7 @@ export function useGenerations() {
     })
   }
 
-  const generate = (model, opts, meta) => { execute(model, opts, meta).catch(() => {}) }
+  const generate = (model, opts, meta, after) => { execute(model, opts, meta, after).catch(() => {}) }
   const generateFormat = (format, values) => runFormat(format, values, { run: execute, writePrompt: ({ instructions, note, images, target }) => writePrompt({ instructions, note, images, target }) })
 
   const toggleApprove = (id) => setItems((xs) => xs.map((x) => (x.id === id ? { ...x, approved: !x.approved } : x)))

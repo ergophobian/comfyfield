@@ -1,5 +1,5 @@
 import { generate as runComfy } from './comfy.js'
-import { askPod, autoPod, refreshPod } from './usePod.js'
+import { askPod, autoPod, refreshPod, runTypeOf } from './usePod.js'
 import { comfyVars, falInput, durationsFromProps, hasImageInput, falEndpointFor } from '../../shared/mapping.js'
 import { createRouterBatch, runRouterBatch } from './routerBatch.js'
 
@@ -15,7 +15,7 @@ export async function falSchema(endpoint) {
 const num = (v) => parseFloat(String(v))
 
 export function acceptsImage(model, props) {
-  if (model.provider === 'comfy') return Boolean(model.imageWorkflow) || ['ltx_i2v', 'h3_i2v'].includes(model.workflow)
+  if (model.provider === 'comfy') return Boolean(model.imageWorkflow) || model.workflow === 'ltx_i2v'
   if (model.provider === 'comfyRouter') return Boolean(model.maxImages)
   if (model.provider === 'google') return true
   if (model.provider === 'fal') return hasImageInput(props || {})
@@ -61,18 +61,27 @@ export async function run(model, opts, hooks = {}) {
     return runRouterBatch(batch, async (payload) => (await post('/api/comfy/router', payload)).files, hooks.onFiles)
   }
   if (model.provider === 'comfy') {
-    // Comfy Cloud takes the run at once. When it cannot, the server says needs_pod. With auto-start on,
-    // the app starts a Pod sized for this workflow; with it off, the start sheet asks once. Then the
-    // same run goes again and waits for the Pod.
+    // Comfy Cloud takes the run at once. When it cannot, the server says needs_pod. On Instant the run
+    // fails there: Instant never starts a Pod, the person switches to Session (docs/adr/0001). Otherwise,
+    // with auto-start on, the app starts a Pod sized for this workflow; with it off, the start sheet
+    // asks once. Then the same run goes again and waits for the Pod.
+    // A Pod too small for the run (pod_too_small) is never replaced by itself, with auto-start on or off:
+    // terminating ends a billed Pod and its other runs, so the sheet asks first (docs/adr/0002).
     const vars = comfyVars(model.kind, opts, model.sizes)
     // A model with a start-image workflow uses it when an image is attached.
     const workflow = vars.image && model.imageWorkflow ? model.imageWorkflow : model.workflow
     try {
       return await runComfy(workflow, vars)
     } catch (e) {
-      if (e.code !== 'needs_pod') throw e
-      hooks.onPod?.()
+      if (e.code !== 'needs_pod' && e.code !== 'pod_too_small') throw e
       const s = await refreshPod()
+      if (runTypeOf(s) === 'instant') throw e
+      if (e.code === 'pod_too_small') {
+        await askPod(workflow, e.reason, e.fit || {})
+        hooks.onPod?.()
+        return runComfy(workflow, vars)
+      }
+      hooks.onPod?.()
       if (s?.auto && s?.connected) await autoPod(workflow)
       else await askPod(workflow, e.reason)
       return runComfy(workflow, vars)

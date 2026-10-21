@@ -81,7 +81,21 @@ try {
   await goto('/assets')
   await wait('document.querySelector(".lib-card img")?.complete')
   assert.equal(await evaluate('JSON.parse(localStorage.getItem("comfyfield.library"))[0].formatId'), 'relight')
+  assert.deepEqual(await evaluate('[...document.querySelectorAll(".bar-item.on")].map((e) => e.textContent.trim())'), ['Assets'], 'Only the current route is active')
   await screenshot('mock-library-desktop')
+  // A narrow desktop pushes Assets past the bar's edge; it must still show in full, clear of the fade.
+  await cdp('Emulation.setDeviceMetricsOverride', { width: 900, height: 1100, deviceScaleFactor: 1, mobile: false })
+  await goto('/assets')
+  await pause(300)
+  assert(await evaluate(`(() => {
+    const bar = document.querySelector('.bar-list'), on = bar.querySelector('.bar-item.on')
+    const fade = parseFloat(getComputedStyle(bar.parentElement, '::after').width) || 0
+    const b = bar.getBoundingClientRect(), r = on.getBoundingClientRect()
+    return bar.scrollWidth > bar.clientWidth && r.left >= b.left && r.right <= b.right - fade + 1
+  })()`), 'The active nav item must show in full, clear of the fade')
+  await cdp('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1100, deviceScaleFactor: 1, mobile: false })
+  await goto('/assets')
+  await wait('document.querySelector(".lib-card img")?.complete')
   await evaluate('document.querySelector(".lib-card").click()')
   await wait('document.querySelector(".viewer .use-in-btn")')
   await evaluate('document.querySelector(".use-in-btn").click()')

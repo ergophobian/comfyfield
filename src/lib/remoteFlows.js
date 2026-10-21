@@ -15,6 +15,10 @@ export async function api(url, method = 'GET', data) {
   return result
 }
 
+const MIGRATED = 'comfyfield.flows.migrated'
+const migrated = () => { try { return localStorage.getItem(MIGRATED) === '1' } catch { return false } }
+const markMigrated = () => { try { localStorage.setItem(MIGRATED, '1') } catch {} }
+
 const emit = (next) => { snapshot = { ...snapshot, ...next }; listeners.forEach((fn) => fn()) }
 export const flowSnapshot = () => snapshot
 export const subscribeFlows = (fn) => { listeners.add(fn); return () => listeners.delete(fn) }
@@ -33,11 +37,22 @@ export function initFlows(seed) {
   if (!snapshot.store) emit({ store: seed })
   if (!initialized) initialized = (async () => {
     let store = await api('/api/flows')
-    if (!store.flows.length) store = await api('/api/flows', 'PUT', { ...seed, revision: store.revision })
+    const { legacy, ...local } = seed
+    // One-time move of browser-only flows to the server. Flows already there (same id) win.
+    const moving = legacy && !migrated() ? local.flows.filter((f) => f.nodes.length && !store.flows.some((s) => s.id === f.id)) : []
+    if (moving.length || !store.flows.length) {
+      const flows = [...store.flows, ...(moving.length ? moving : local.flows)]
+      store = await api('/api/flows', 'PUT', { flows, current: store.current ?? local.current ?? flows[0].id, runs: local.runs, revision: store.revision })
+    }
+    if (legacy) markMigrated()
     accept(store)
     events = new EventSource('/api/agents/events')
     events.onmessage = (event) => { if (JSON.parse(event.data).type === 'flows') refreshFlows() }
     events.onopen = () => refreshFlows()
+    // A standalone MCP server (npx comfyfield mcp) writes flows.json without telling this page,
+    // so look again whenever the user comes back to the tab.
+    window.addEventListener('focus', () => refreshFlows())
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshFlows() })
   })().catch((e) => { emit({ ready: false, error: e.message }); initialized = null; throw e })
   return initialized
 }

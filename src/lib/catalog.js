@@ -21,7 +21,6 @@ export const models = [
   { id: 'comfy-router-speech', kind: 'audio', provider: 'comfyRouter', name: 'ElevenLabs v4 turbo', note: 'Low cost speech in the Rachel voice. Uses Comfy credits.', model: 'elevenlabs/eleven_v4_turbo', mode: 'speech', price: { amount: 0.0572, unit: '1000 characters' } },
   { id: 'comfy-router-sfx', kind: 'audio', provider: 'comfyRouter', name: 'ElevenLabs sound effects', note: 'Describe a sound. Creates a five second clip.', model: 'elevenlabs/eleven_sfx_v2', mode: 'sfx', price: { amount: 0.14 / 60, unit: 'second' } },
   { id: 'comfy-ltx-i2v', kind: 'video', provider: 'comfy', name: 'LTX image to video', note: 'LTX Video 2B on Comfy Cloud or a Pod. Attach a start image.', workflow: 'ltx_i2v', durations: [3, 5, 8] },
-  { id: 'comfy-h3-i2v', kind: 'video', provider: 'comfy', name: 'MiniMax H3 image to video', note: 'Comfy partner node. Attach a start image. Uses Comfy credits.', workflow: 'h3_i2v', durations: [5, 8, 10] },
   { id: 'comfy-flux', kind: 'image', provider: 'comfy', name: 'FLUX', note: 'On Comfy Cloud or a Pod', workflow: 'image_flux' },
   { id: 'comfy-sdxl', kind: 'image', provider: 'comfy', name: 'SDXL', note: 'On Comfy Cloud or a Pod', workflow: 'image_sdxl' },
   // Newest open image models. Comfy Cloud does not have their files yet, so they run on a Pod.
