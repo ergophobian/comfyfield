@@ -72,7 +72,9 @@ export function useGenerations() {
   // run that worked, so a follow-up such as Upscale also follows a retried take.
   function execute(model, opts, meta = {}, after) {
     const id = crypto.randomUUID()
-    const base = { aspect: opts.shape || opts.aspect, caption: opts.caption, model: model.name, kind: model.kind, provider: model.provider, ...meta, run: { model, opts, meta } }
+    // from: the page the run started on, so a toast elsewhere can link back to it.
+    const from = window.location.pathname + window.location.search
+    const base = { aspect: opts.shape || opts.aspect, caption: opts.caption, model: model.name, kind: model.kind, provider: model.provider, from, ...meta, run: { model, opts, meta } }
     setError(null)
     setRetryLast(null)
     setItems((xs) => [{ id, pending: true, ...base }, ...xs])
