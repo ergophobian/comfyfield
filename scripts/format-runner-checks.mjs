@@ -129,6 +129,15 @@ const briefSession = await runFormat(writerOnly, { ...valuesFor(writerOnly), bri
   run: async (_, opts) => { assert.equal(opts.prompt, 'Change the mood'); return [{ url: 'written.png' }] },
 })
 await briefSession.sendWriter('writer')
+// Edits and upscales carry the picture they started from, for the before and after slider.
+const sourceOf = async (f, extra) => {
+  let meta
+  await runFormat(f, { ...valuesFor(f), ...extra }, { run: async (_, __, m) => { meta = m; return [{ url: 'out.png' }] } })
+  return meta.source
+}
+assert.equal(await sourceOf(allFormats.find((f) => f.id === 'image-upscale')), photo.url)
+assert.equal(await sourceOf(allFormats.find((f) => f.id === 'erase'), { target: 'The sign' }), photo.url)
+assert.equal(await sourceOf(imageRecipe), undefined, 'Only edits and upscales carry a source')
 assert.equal(formats.length, 450)
 assert.equal(allFormats.length, 479, 'Do not delete planned formats')
 assert.equal(allFormats.filter((f) => f.category === 'camera').length > 0, true, 'Keep Create prompt presets')

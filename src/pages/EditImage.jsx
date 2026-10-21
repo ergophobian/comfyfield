@@ -2,7 +2,7 @@ import { useState } from 'react'
 import Segmented from '../components/Segmented.jsx'
 import { FormatGrid } from '../components/Recipes.jsx'
 import { Field } from '../components/formats/Fields.jsx'
-import { Hero, Box, Pills, NotWired, Empty, ErrorNote, IconEye, useParam, stagger } from '../components/studiob/Kit.jsx'
+import { Hero, Box, Pills, NotWired, Empty, ErrorNote, Compared, IconEye, useParam, stagger } from '../components/studiob/Kit.jsx'
 import { useApp } from '../lib/appContext.js'
 import { formatById, formatsFor } from '../lib/formats/index.js'
 
@@ -88,9 +88,11 @@ function Layers({ error, setError }) {
 }
 
 export default function EditImage() {
-  const { openFormat } = useApp()
+  const { openFormat, gens } = useApp()
   const [tab, setTab] = useParam('tab', ['inpaint', 'layers'])
   const [error, setError] = useState(null)
+  const edits = new Set(formatsFor({ kind: 'image', category: 'image-edit', openOnly: false }).map((f) => f.id))
+  const edited = gens.items.filter((it) => edits.has(it.formatId) && it.kind === 'image' && it.source && it.url && !it.pending).slice(0, 6)
   const more = formatsFor({ kind: 'image', category: 'image-edit' }).filter((f) => f.id !== 'inpaint' && f.id !== 'layers').slice(0, 12)
   return (
     <main className="sb-page">
@@ -100,6 +102,7 @@ export default function EditImage() {
       </Hero>
       {tab === 'inpaint' ? <Inpaint error={error} setError={setError} /> : <Layers error={error} setError={setError} />}
 
+      <Compared items={edited} note="Drag the divider to see what changed" />
       <section className="sb-section">
         <div className="studio-sub"><h2>More ways to edit</h2></div>
         <FormatGrid list={more} onOpen={(f) => openFormat(f)} />
