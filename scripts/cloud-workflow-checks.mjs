@@ -61,6 +61,11 @@ for (const [original, cloud] of Object.entries(cloudWorkflows)) {
       reset()
       await core.runComfy(original, values, options(run, phase, run === null && phase === 'ready' ? 0 : 200))
       assert.equal(path.basename(submitted.file), `${cloud}.json`)
+      const plan = await core.formatRequirements([{ workflow: original, vars: values }], {
+        run, phase, vramGb: run === null && phase === 'ready' ? 0 : 200, arch: 'blackwell',
+      })
+      assert.equal(plan.requirements[0].target, 'cloud')
+      assert.equal(plan.requirements[0].selectedWorkflow, cloud, 'Preflight and execution must use the same graph resolver')
       assert.deepEqual(submitted.json, expected(cloud, values))
       assert.equal(leased, null, `${original}: Cloud alternate leased a Pod`)
       assert.equal(clientBase, undefined, `${original}: Cloud alternate used a Pod URL`)

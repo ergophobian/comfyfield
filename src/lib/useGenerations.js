@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { run, writePrompt } from './providers.js'
-import { createRouterBatch } from './routerBatch.js'
+import { modelPrices } from './cost.js'
 import { runFormat } from './formats/runner.js'
 
 const KEY = 'comfyfield.library'
@@ -15,9 +15,12 @@ export function useGenerations() {
   const [items, setItems] = useState(load)
   const [error, setError] = useState(null)
   const [retryLast, setRetryLast] = useState(null)
+  const errorOwner = useRef(null)
+  const sessions = useRef(new Map())
+  const [, changed] = useState(0)
   const active = useRef(0)
   const waiting = useRef([])
-  const busy = items.some((i) => i.pending)
+  const busy = items.some((i) => i.pending) || [...sessions.current.values()].some((session) => session.busy)
 
   const add = (files) => setItems((xs) => [...files.filter((file) => !xs.some((item) => item.id === file.id)), ...xs])
   useEffect(() => {
@@ -27,6 +30,18 @@ export function useGenerations() {
   useEffect(() => {
     try { localStorage.setItem(KEY, JSON.stringify(items.filter((i) => !i.pending).slice(0, 300))) } catch {}
   }, [items])
+
+  const clearError = (owner) => {
+    if (errorOwner.current !== owner) return
+    errorOwner.current = null
+    setError(null)
+    setRetryLast(null)
+  }
+  const showError = (owner, message, retry) => {
+    errorOwner.current = owner
+    setError(message)
+    setRetryLast(() => retry)
+  }
 
   const pump = () => {
     while (active.current < MAX_PARALLEL && waiting.current.length) {
@@ -38,16 +53,15 @@ export function useGenerations() {
 
   // meta can carry batch, row and prompt so the board can group results. `after` gets the files of a
   // run that worked, so a follow-up such as Upscale also follows a retried take.
-  function execute(model, opts, meta = {}, after, id = crypto.randomUUID()) {
+  function execute(model, opts, meta = {}, after, id = crypto.randomUUID(), retryStep) {
     const base = { aspect: opts.shape || opts.aspect, caption: opts.caption, model: model.name, kind: model.kind, provider: model.provider, ...meta }
-    setError(null)
-    setRetryLast(null)
-    setItems((xs) => [{ id, pending: true, ...base }, ...xs])
+    const owner = meta.formatRunId || id
+    clearError(meta.formatRunId ? owner : errorOwner.current)
+    setItems((xs) => [{ id, pending: true, ...base }, ...xs.filter((x) => x.id !== id)])
     return new Promise((resolve, reject) => {
       waiting.current.push(async () => {
         setItems((xs) => xs.map((x) => (x.id === id ? { ...x, started: true } : x)))
         try {
-          if (model.provider === 'comfyRouter' && !opts.routerBatch) opts = { ...opts, routerBatch: createRouterBatch(model, opts) }
           const files = await run(model, opts, {
             onFiles: (files, index) => setItems((xs) => [...files.map((f, i) => ({ ...base, ...f, id: `${id}-${index}-${i}`, created: Date.now() })), ...xs]),
             onPod: () => setItems((xs) => xs.map((x) => (x.id === id ? { ...x, pod: true } : x))),
@@ -61,14 +75,13 @@ export function useGenerations() {
           // Retry queues the same run again in place of the failed take, keeping completed files and
           // resuming the original outstanding Router calls.
           let retried = false
-          const retry = () => {
+          const retry = retryStep || (() => {
             if (retried) return
             retried = true
             setItems((xs) => xs.filter((x) => x.id !== id))
             execute(model, opts, meta, after, id).catch(() => {})
-          }
-          setError(e.message)
-          setRetryLast(() => retry)
+          })
+          showError(owner, e.message, retry)
           setItems((xs) => xs.map((x) => (x.id === id ? { ...base, id, failed: e.message, retry } : x)))
           reject(e)
         }
@@ -78,7 +91,29 @@ export function useGenerations() {
   }
 
   const generate = (model, opts, meta, after) => { execute(model, opts, meta, after).catch(() => {}) }
-  const generateFormat = (format, values) => runFormat(format, values, { run: execute, writePrompt: ({ instructions, note, images, target }) => writePrompt({ instructions, note, images, target }) })
+  const generateFormat = (format, values, options = {}) => {
+    let session
+    return runFormat(format, values, {
+      prices: modelPrices,
+      ...options,
+      run: (model, opts, meta) => execute(model, opts, meta, undefined, meta.itemId, () => session.retry(meta.stepId).catch(() => {})),
+      writePrompt: ({ instructions, note, images, target, idempotencyKey }) => writePrompt({ instructions, note, images, target, idempotencyKey }),
+      onSession: (current) => {
+        session = current
+        sessions.current.set(session.id, session)
+        options.onSession?.(session)
+      },
+      onChange: (state, session) => {
+        if (session?.busy) sessions.current.set(session.id, session)
+        else if (session) sessions.current.delete(session.id)
+        changed((n) => n + 1)
+        if (session?.error && (!errorOwner.current || errorOwner.current === session.id)) {
+          showError(session.id, session.error.message, () => session.retryFailed().catch(() => {}))
+        } else if (session && !session.error) clearError(session.id)
+        options.onChange?.(state, session)
+      },
+    })
+  }
 
   const toggleApprove = (id) => setItems((xs) => xs.map((x) => (x.id === id ? { ...x, approved: !x.approved } : x)))
   const dismiss = (id) => {
