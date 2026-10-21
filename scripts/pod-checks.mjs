@@ -896,6 +896,44 @@ await test('suggestion: Cloud runs are logged with their GPU time, and a busy ho
 
 // ---- auto-start --------------------------------------------------------------------------------------
 
+await test('cancel: Pod refresh, auto-start and either start sheet never retry a cancelled workflow', async () => {
+  const { run } = await import('../src/lib/providers.js')
+  const usePod = await import('../src/lib/usePod.js')
+  const model = { provider: 'comfy', kind: 'image', workflow: 'flux3_klein_t2i' }
+  for (const stage of ['before-run', 'refresh', 'auto-refresh', 'auto-start', 'needs_pod', 'pod_too_small']) {
+    let cancelled = stage === 'before-run'
+    let runs = 0
+    let starts = 0
+    let refreshes = 0
+    let asked
+    const sheetReady = new Promise((resolve) => { asked = resolve })
+    globalThis.fetch = withJobs(async (url) => {
+      if (url === '/api/pod') {
+        refreshes++
+        if (stage === 'refresh' || (stage === 'auto-refresh' && refreshes === 2)) cancelled = true
+        if (['needs_pod', 'pod_too_small'].includes(stage) && refreshes === 2) asked()
+        return jsonReply({ phase: 'none', run: 'session', auto: !['needs_pod', 'pod_too_small'].includes(stage), connected: true })
+      }
+      if (url === '/api/pod/start') { starts++; cancelled = true; return jsonReply({ phase: 'starting' }) }
+      if (url === '/api/comfy/run') {
+        runs++
+        return jsonReply({ error: 'Needs a Pod', code: stage === 'pod_too_small' ? stage : 'needs_pod' }, 409)
+      }
+      throw new Error(`Unexpected ${url}`)
+    })
+    const running = run(model, { prompt: 'Cancel fixture', aspect: '1:1' }, { isCancelled: () => cancelled })
+    const rejected = assert.rejects(running, (e) => e.cancelled === true)
+    if (['needs_pod', 'pod_too_small'].includes(stage)) {
+      await sheetReady
+      cancelled = true
+      usePod.answerPod(true)
+    }
+    await rejected
+    assert.equal(runs, stage === 'before-run' ? 0 : 1, `${stage}: no workflow retry`)
+    assert.equal(starts, stage === 'auto-start' ? 1 : 0, `${stage}: no new Pod after cancellation`)
+  }
+})
+
 await test('auto-start: Generate starts, resumes or keeps the Pod by itself, once for several runs', async () => {
   const { run } = await import('../src/lib/providers.js')
   const usePod = await import('../src/lib/usePod.js')

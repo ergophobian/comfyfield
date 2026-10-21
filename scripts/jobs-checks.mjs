@@ -58,6 +58,16 @@ const ok = (name) => { passed++; console.log(`ok    ${name}`) }
   assert.deepEqual(states, ['cancelled', 'done', 'failed', 'failed'])
   const lost = JSON.parse(fs.readFileSync(file, 'utf8')).find((j) => j.status === 'running')
   assert.match(again.get(lost.id).error.message, /app stopped/)
+  assert.match(again.get(lost.id).error.message, /first run may already have been charged/)
+  assert.match(again.get(lost.id).error.message, /Retrying starts a new request and may charge again/)
+  assert.equal(again.get(lost.id).error.code, 'interrupted')
+  const restartFetch = globalThis.fetch
+  try {
+    globalThis.fetch = async () => Response.json(again.get(lost.id))
+    await assert.rejects(waitJob(lost.id), (error) => error.code === 'interrupted' && /may charge again/.test(error.message))
+    globalThis.fetch = async () => new Response('', { status: 404 })
+    await assert.rejects(waitJob('missing'), (error) => error.code === 'interrupted' && /may already have been charged/.test(error.message))
+  } finally { globalThis.fetch = restartFetch }
   ok('After a restart, finished jobs are still there and a running one is marked lost')
 }
 

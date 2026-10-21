@@ -25,7 +25,7 @@ function comfyFiles(files) {
 const runners = {
   '/api/fal': (b, ctx) => core.runFal(b, ctx),
   '/api/comfy/router': (b, ctx) => core.runComfyRouter(b, ctx),
-  '/api/comfy/run': async ({ workflow, vars }) => comfyFiles(await core.runComfy(workflow, vars)),
+  '/api/comfy/run': async ({ workflow, vars }, ctx) => comfyFiles(await core.runComfy(workflow, vars, ctx)),
   '/api/elevenlabs': (b) => core.runElevenLabs(b),
   '/api/google': (b) => core.runGoogle(b),
 }

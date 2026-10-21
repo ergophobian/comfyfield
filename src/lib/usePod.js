@@ -99,10 +99,11 @@ export function askPod(workflow, reason, replace = null) {
 // With auto-start on, a run Comfy Cloud cannot take starts, resumes or keeps the Pod itself, sized for
 // its workflow. The Generate click is the consent. Several runs at once share one start.
 let starting = null
-export function autoPod(workflow) {
+export function autoPod(workflow, isCancelled) {
   if (!starting) {
     starting = (async () => {
       const s = await refreshPod()
+      if (isCancelled?.()) return
       const action = s?.phase === 'paused' ? 'resume' : s?.phase === 'ending' ? 'keep' : s?.phase === 'none' ? 'start' : null
       if (action) await podAction(action, action === 'start' ? { workflow } : {})
     })().finally(() => { starting = null })

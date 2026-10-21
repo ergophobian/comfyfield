@@ -33,7 +33,7 @@ export default function Results({ items, onUse, size }) {
   return (
     <div className={`results${size === 'large' ? ' large' : ''}`}>
       {items.map((it) => (
-        <div key={it.id} className={`result glass${it.pending ? ' pending' : ''}${it.failed ? ' failed' : ''}${it.kind === 'audio' ? ' audio' : ''}${viewable(it) ? ' opens' : ''}`}
+        <div key={it.id} className={`result glass${it.pending ? ' pending' : ''}${it.failed ? ' failed' : ''}${it.kind === 'audio' ? ' audio' : ''}${viewable(it) ? ' opens' : ''}${it.restoreNote ? ' restored' : ''}`}
           style={{ '--ar': it.kind === 'audio' ? '2 / 1' : ratio(it.aspect) }}
           {...(viewable(it) && {
             role: 'button', tabIndex: 0, 'aria-label': `Open ${it.caption || 'result'}`, onClick: (e) => onTile(e, it),
@@ -42,21 +42,23 @@ export default function Results({ items, onUse, size }) {
           {it.pending ? (
             <span className="result-wait">
               {takeLabel(it, status) || (it.started || it.jobs ? `Rendering with ${it.model}` : 'Queued')}
+              {it.restoreNote && <small>{it.restoreNote}</small>}
               {app?.gens?.cancel && <button type="button" className="btn-soft xs" onClick={() => app.gens.cancel(it.id)}>Cancel</button>}
             </span>
           ) : it.failed ? (
             <span className="result-fail">
               <strong>{it.model} failed</strong>
               {typeof it.failed === 'string' && <small title={it.failed}>{it.failed}</small>}
+              {it.restoreNote && <small>{it.restoreNote}</small>}
               <span className="result-fail-acts">
-                {it.retry && <button type="button" className="btn-soft xs" onClick={it.retry}>Retry</button>}
+                {it.retry && <button type="button" className="btn-soft xs" onClick={it.retry}>{it.retry.label || 'Retry'}</button>}
                 {app?.gens && <button type="button" className="btn-soft xs" onClick={() => app.gens.dismiss(it.id)}>Dismiss</button>}
               </span>
             </span>
           ) : it.kind === 'video' ? <video src={it.url} autoPlay loop muted playsInline />
-            : it.kind === 'audio' ? <div className="audio-card"><p>{it.caption}</p><audio src={it.url} controls /></div>
+            : it.kind === 'audio' ? <div className="audio-card"><p>{it.caption}</p>{it.restoreNote && <small>{it.restoreNote}</small>}<audio src={it.url} controls /></div>
             : <img src={it.url} alt={it.caption} />}
-          {viewable(it) && <div className="result-cap">{it.model} · {it.caption}</div>}
+          {viewable(it) && <div className="result-cap">{it.model} · {it.caption}{it.restoreNote && <div>{it.restoreNote}</div>}</div>}
           {viewable(it) && app?.gens && (
             <div className="lib-acts">
               <Act label={it.approved ? 'Remove approval' : 'Approve'} on={it.approved} onClick={() => app.gens.toggleApprove(it.id)}><IconCheck /></Act>

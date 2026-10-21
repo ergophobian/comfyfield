@@ -362,7 +362,7 @@ export default function VideoStudio() {
         </div>
         <Banner />
         <Tip page="video" onLearn={() => setMain('how')} />
-        {gens.error && <div className="notice glass error gen-notice">{gens.error}{gens.retry && <button type="button" className="link-btn" onClick={gens.retry}>Retry</button>}</div>}
+        {gens.error && <div className="notice glass error gen-notice">{gens.error}{gens.retry && <button type="button" className="link-btn" onClick={gens.retry}>{gens.retry.label || 'Retry'}</button>}</div>}
         {main === 'how' ? explainer : <Feed kind="video" gens={gens} batches={batches} empty={explainer} />}
       </section>
 

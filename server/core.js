@@ -5,6 +5,7 @@ import { dataDirectory } from './startup-paths.js'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { randomUUID } from 'node:crypto'
+import { setTimeout as delay } from 'node:timers/promises'
 import { Comfy } from '@comfyorg/sdk'
 import { models as pinned, falCategories, podWorkflows, routerWriterModel } from '../src/lib/catalog.js'
 import { comfyVars, comfyRouterInput, falInput, estimate, fill, falEndpointFor, dropOptional } from '../shared/mapping.js'
@@ -923,13 +924,15 @@ async function resolveComfyRoute(original, vars, { run, podPhase, podVram, podAr
 }
 
 // Runs a bundled workflow on Comfy Cloud or the Pod, or in development on a local ComfyUI, and returns file URLs.
-export async function runComfy(workflow, vars = {}, { createClient = (key, baseUrl) => comfyClient(baseUrl, key), lease = (o) => pod().lease(o), podPhase = () => pod().phaseNow(), podVram = () => pod().vramGb(), podRoom = () => pod().room(), podArch = () => pod().arch(), run = runType() } = {}) {
+export async function runComfy(workflow, vars = {}, { createClient = (key, baseUrl) => comfyClient(baseUrl, key), lease = (o) => pod().lease(o), podPhase = () => pod().phaseNow(), podVram = () => pod().vramGb(), podRoom = () => pod().room(), podArch = () => pod().arch(), run = runType(), signal } = {}) {
+  signal?.throwIfAborted()
   const original = workflowGraph(workflow, vars)
   let { file, template, graph } = original
   const unset = unsetInput(template, vars)
   if (unset) throw new Error(`Workflow ${workflow} requires ${unset}.`)
   if (comfyMode() === 'cloud') {
     const route = await resolveComfyRoute(original, vars, { run, podPhase, podVram, podArch })
+    signal?.throwIfAborted()
     file = route.file
     template = route.template
     graph = route.graph
@@ -950,12 +953,13 @@ export async function runComfy(workflow, vars = {}, { createClient = (key, baseU
     }
     const uploads = uploadsOf(template)
     const media = await readUploads(uploads, vars)
+    signal?.throwIfAborted()
     // On the Pod the proxy token is the server credential; the Comfy key, when set, only pays partner nodes.
     let held = null
     let client
     let partner
     if (target === 'pod') {
-      held = await lease({ files: needs.filter((n) => !n.runtime), runtimes: needs.filter((n) => n.runtime).map((n) => n.runtime) })
+      held = await lease({ files: needs.filter((n) => !n.runtime), runtimes: needs.filter((n) => n.runtime).map((n) => n.runtime), ...(signal ? { signal } : {}) })
       if (held.sandbox) {
         held.release()
         throw new Error('This is the sandbox Pod, so nothing renders. Unset COMFYFIELD_POD_SANDBOX to run on a real Pod.')
@@ -968,11 +972,14 @@ export async function runComfy(workflow, vars = {}, { createClient = (key, baseU
     }
     const where = target === 'pod' ? 'The Pod' : 'Comfy Cloud'
     try {
+      signal?.throwIfAborted()
       const wf = await client.workflows.fromFile(file)
       wf.json = graph
       for (const { id, field, key } of uploads) wf.setInput(id, field, client.assets.fromBytes(media[key].buf, { filename: `input.${mimeExt(media[key].mime)}`, contentType: media[key].mime }))
       const t0 = Date.now()
-      const job = await client.run(wf, { apiKey: partner, timeoutMs: 30 * 60 * 1000, ...(held ? { signal: held.signal } : {}) })
+      signal?.throwIfAborted()
+      const runSignal = signal && held?.signal ? AbortSignal.any([signal, held.signal]) : signal || held?.signal
+      const job = await client.run(wf, { apiKey: partner, timeoutMs: 30 * 60 * 1000, ...(runSignal ? { signal: runSignal } : {}) })
       if (target === 'cloud') {
         try { logCloudRun({ seconds: gpuSeconds(job, t0), minVramGb: minVramOf(needs) }) } catch {}
       }
@@ -1001,12 +1008,13 @@ export async function runComfy(workflow, vars = {}, { createClient = (key, baseU
   const base = comfyBase()
   const uploads = uploadsOf(template)
   const media = await readUploads(uploads, vars)
+  signal?.throwIfAborted()
   // ComfyUI's upload route takes any input file, a video too.
   const names = {}
   for (const [key, file] of Object.entries(media)) {
     const form = new FormData()
     form.append('image', new Blob([file.buf], { type: file.mime }), `comfyfield-${randomUUID()}.${mimeExt(file.mime)}`)
-    const upload = await fetch(`${base}/upload/image`, { method: 'POST', headers: comfyHeaders(), body: form })
+    const upload = await fetch(`${base}/upload/image`, { method: 'POST', headers: comfyHeaders(), body: form, signal })
     if (!upload.ok) throw new Error(`ComfyUI upload failed (${upload.status}).`)
     const uploaded = await upload.json()
     names[key] = [uploaded.subfolder, uploaded.name].filter(Boolean).join('/')
@@ -1015,20 +1023,23 @@ export async function runComfy(workflow, vars = {}, { createClient = (key, baseU
   const headers = { 'Content-Type': 'application/json', ...comfyHeaders() }
   let res
   try {
-    res = await fetch(`${base}/prompt`, { method: 'POST', headers, body: JSON.stringify({ prompt: graph, client_id: 'comfyfield', ...(config('comfy').key ? { extra_data: { api_key_comfy_org: config('comfy').key } } : {}) }) })
+    signal?.throwIfAborted()
+    res = await fetch(`${base}/prompt`, { method: 'POST', headers, signal, body: JSON.stringify({ prompt: graph, client_id: 'comfyfield', ...(config('comfy').key ? { extra_data: { api_key_comfy_org: config('comfy').key } } : {}) }) })
   } catch {
+    signal?.throwIfAborted()
     throw new Error('Could not reach ComfyUI. Check the URL in Connections.')
   }
   if (!res.ok) throw new Error(`ComfyUI rejected the workflow (${res.status}). ${(await res.text().catch(() => '')).slice(0, 200)}`)
   const id = (await res.json()).prompt_id
   for (let i = 0; i < 1200; i++) {
-    const h = await fetch(`${base}/history/${id}`, { headers: comfyHeaders() })
+    signal?.throwIfAborted()
+    const h = await fetch(`${base}/history/${id}`, { headers: comfyHeaders(), signal })
     if (h.ok) {
       const entry = (await h.json())[id]
       if (entry?.status?.status_str === 'error') throw new Error('Generation failed in ComfyUI')
       if (entry?.outputs && Object.keys(entry.outputs).length) return collectComfy(base, entry.outputs)
     }
-    await sleep(1500)
+    await delay(1500, undefined, { signal })
   }
   throw new Error('ComfyUI took too long.')
 }

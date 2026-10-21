@@ -24,6 +24,8 @@ let planningDelay = 0
 let preflightConnected = true
 let failWriter = false
 let failCreate = true
+let failAmbiguous = true
+let cancelFormatRequests = 0
 const writerRequests = []
 const accepted = new Map()
 const reference = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aF1cAAAAASUVORK5CYII='
@@ -98,6 +100,14 @@ const server = await preview({ configFile: false, envFile: false, plugins: [{
         assert(model)
         assert.match(body.idempotencyKey, /^[a-f0-9-]{36}$/)
         requests.push(body)
+        if (body.input.prompt === 'Cancel format') holdJobs = cancelFormatRequests++ === 1
+        if (body.input.prompt === 'Ambiguous failure') {
+          if (failAmbiguous) {
+            failAmbiguous = false
+            return respond(503, { error: 'Mock ambiguous failure', retryable: true })
+          }
+          return respond(200, { files: [{ url: `/recovered-${body.idempotencyKey}.png`, kind: 'image' }] })
+        }
         if (body.input.prompt === 'Create failure' && failCreate) {
           failCreate = false
           return respond(402, { error: 'Mock Create credits', code: 'insufficient_credits', requestId: 'credits-request', idempotencyKey: body.idempotencyKey, retryable: false })
@@ -271,10 +281,11 @@ try {
   await screenshot('partial-batch-failure')
   // A fresh document has no retry closures. It must restore the failed batch and its keys from storage.
   await goto('/router-fixture')
-  await wait('!document.querySelector("#retry").disabled')
+  await wait('!document.querySelector("#retry-first-failed").disabled')
+  assert.equal(await evaluate('document.querySelector("#error").textContent'), '', 'Historical batch failures restore silently')
   assert.equal(requests.length - beforeBatch, 2, 'Reload never resubmits a failed batch until Retry')
   await screenshot('integration-batch-failure-after-reload')
-  await evaluate('document.querySelector("#retry").click(); document.querySelector("#retry").click()')
+  await evaluate('document.querySelector("#retry-first-failed").click(); document.querySelector("#retry-first-failed").click()')
   await wait('JSON.parse(document.querySelector("#items").textContent).filter((item) => item.url).length === 3 && !JSON.parse(document.querySelector("#items").textContent).some((item) => item.pending)')
   const batchCalls = requests.slice(beforeBatch)
   assert.equal(batchCalls.length, 4)
@@ -324,6 +335,42 @@ try {
   assert.equal(jobs.get(cancelledJobs[0]).files, undefined, 'Cancelled jobs discard late files')
   await screenshot('integration-cancelled-after-reload')
   assert.equal(jobRequests.length, requests.length, 'Every Router payload goes through the server job route')
+
+  partial = false
+  held = new Promise((resolve) => { releaseHeld = resolve })
+  const beforeFormatCancel = requests.length
+  await evaluate('document.querySelector("#cancel-format").click()')
+  await wait('JSON.parse(document.querySelector("#items").textContent).some((i) => i.pending && i.run?.opts.prompt === "Cancel format" && i.jobs?.length) && JSON.parse(document.querySelector("#items").textContent).some((i) => i.url && i.run?.opts.prompt === "Cancel format")')
+  const cancelFormatItems = await evaluate('JSON.parse(document.querySelector("#items").textContent).filter((i) => i.run?.opts.prompt === "Cancel format")')
+  await evaluate('document.querySelector("#cancel").click()')
+  await wait('JSON.parse(document.querySelector("#session").textContent)?.failed === 1 && !JSON.parse(document.querySelector("#session").textContent).busy')
+  holdJobs = false
+  releaseHeld()
+  await evaluate('document.querySelector("#format-retry").click()')
+  await wait('JSON.parse(document.querySelector("#session").textContent)?.failed === 0 && !JSON.parse(document.querySelector("#session").textContent).busy')
+  const cancelCalls = requests.slice(beforeFormatCancel)
+  assert.equal(cancelCalls.length, 3, 'Retry runs only the cancelled take')
+  assert.deepEqual(cancelCalls[1], cancelCalls[2], 'Cancel Retry retains the same Router reconciliation key')
+  assert(await evaluate(`JSON.parse(document.querySelector('#items').textContent).some((i) => i.id === ${JSON.stringify(cancelFormatItems.find((i) => i.url).id)})`), 'Cancel Retry keeps the successful take')
+
+  await evaluate('document.querySelector("#ambiguous-failure").click()')
+  await wait('JSON.parse(document.querySelector("#items").textContent).some((i) => i.failed === "Mock ambiguous failure")')
+  const ambiguousKey = requests.at(-1).idempotencyKey
+  holdJobs = true
+  held = new Promise((resolve) => { releaseHeld = resolve })
+  await evaluate('document.querySelector("#saturate").click()')
+  await wait('JSON.parse(document.querySelector("#items").textContent).filter((i) => i.pending && i.jobs?.length).length === 3')
+  await evaluate('document.querySelector("#retry-first-failed").click()')
+  await wait('JSON.parse(localStorage.getItem("comfyfield.library")).some((i) => i.pending && !i.jobs?.length && i.run?.opts.prompt === "Ambiguous failure")')
+  const queuedRetry = await evaluate('JSON.parse(localStorage.getItem("comfyfield.library")).find((i) => i.pending && !i.jobs?.length && i.run?.opts.prompt === "Ambiguous failure")')
+  assert.equal(queuedRetry.run.opts.routerBatch.calls[0].idempotencyKey, ambiguousKey)
+  await goto('/router-fixture')
+  holdJobs = false
+  releaseHeld()
+  await wait('!JSON.parse(document.querySelector("#items").textContent).some((i) => i.pending)')
+  assert.deepEqual(requests.filter((r) => r.input.prompt === 'Ambiguous failure').map((r) => r.idempotencyKey), [ambiguousKey, ambiguousKey], 'Queued Retry survives reload with its original key')
+  assert.equal(requests.filter((r) => r.input.prompt === 'Hold queue').length, 3, 'Reload reattaches the three occupied jobs without submitting replacements')
+  assert(await evaluate(`JSON.parse(document.querySelector('#items').textContent).some((i) => i.id.startsWith(${JSON.stringify(queuedRetry.id)}) && i.url)`))
 
   // Same format id with different values must produce two independent requests/sessions.
   partial = false
@@ -379,8 +426,10 @@ try {
   assert.equal(await evaluate('document.querySelector("#error").textContent'), 'Mock Create credits')
   assert.equal(await evaluate('document.querySelector("#retry").disabled'), false)
   await goto('/router-fixture')
-  await wait('!document.querySelector("#retry").disabled')
-  await evaluate('document.querySelector("#retry").click()')
+  await wait('!document.querySelector("#retry-first-failed").disabled')
+  assert.equal(await evaluate('document.querySelector("#error").textContent'), '', 'Saved failures do not show a live error on reload')
+  assert.equal(await evaluate('document.querySelector("#retry").disabled'), true, 'Saved failures do not own the live banner Retry')
+  await evaluate('document.querySelector("#retry-first-failed").click()')
   await wait('!JSON.parse(document.querySelector("#items").textContent).some((i) => i.pending) && document.querySelector("#error").textContent === ""')
   assert.notEqual(requests.at(-1).idempotencyKey, failedCreateKey, 'Provider forwards terminal status so Create rotates the key')
   assert.equal(requests.at(-1).input.prompt, 'Create failure', 'The preserved Retry belongs to Create')
@@ -390,6 +439,16 @@ try {
   await wait('JSON.parse(document.querySelector("#session").textContent)?.failed === 2 && !JSON.parse(document.querySelector("#session").textContent).busy')
   const reloadTakes = await evaluate('JSON.parse(document.querySelector("#items").textContent).filter((i) => i.formatRunId === JSON.parse(document.querySelector("#session").textContent).id)')
   const beforeTakeRetry = requests.length
+  await goto('/router-fixture')
+  await wait('!document.querySelector("#retry-first-failed").disabled')
+  assert.equal(await evaluate('document.querySelector("#error").textContent'), '', 'Historical format failures restore silently')
+  assert(await evaluate('[...document.querySelectorAll(".result small")].some((el) => el.textContent.includes("Remaining steps will not continue"))'), 'Restored format items explain the memory-only session limit')
+  await viewport(390)
+  await goto('/image')
+  await wait('[...document.querySelectorAll(".result small")].some((el) => el.textContent.includes("Remaining steps will not continue"))')
+  assert(await evaluate('document.documentElement.scrollWidth <= 390'), 'Restored format notes fit the phone layout')
+  await screenshot('integration-format-restored-note-390')
+  await viewport(1440)
   await goto('/router-fixture')
   await wait('!document.querySelector("#retry-first-failed").disabled')
   preflightConnected = false
@@ -423,8 +482,24 @@ try {
   await evaluate('[...document.querySelectorAll(".format-review button")].find((b) => b.textContent === "Send to render").click()')
   await wait('!JSON.parse(document.querySelector("#items").textContent).some((i) => i.pending) && document.querySelector(".format-review button")?.textContent === "Prompt sent"')
   assert.equal(requests.length, beforeSheet + 1)
+
+  // A non-Router job lost on restart must explain the possible charge at both Retry entry points.
+  const interrupted = { id: 'interrupted-run', pending: true, jobs: ['missing-non-router-job'], kind: 'image', model: 'Mock Google', from: '/image', run: { model: { provider: 'google', kind: 'image', name: 'Mock Google' }, opts: { prompt: 'Lost on restart' }, meta: {} } }
+  await evaluate(`localStorage.setItem('comfyfield.library', JSON.stringify([${JSON.stringify(interrupted)}]))`)
+  await goto('/router-fixture')
+  await wait('document.querySelector(".result-fail button")?.textContent === "Retry (may charge again)"')
+  assert.match(await evaluate('document.querySelector("#error").textContent'), /first run may already have been charged/)
+  assert.match(await evaluate('document.querySelector(".result-fail").textContent'), /Retrying starts a new request/)
+  await goto('/router-fixture')
+  await wait('document.querySelector(".result-fail button")?.textContent === "Retry (may charge again)"')
+  assert.equal(await evaluate('document.querySelector("#error").textContent'), '', 'Restart warning remains on the item without recreating the live banner')
+  await viewport(390)
+  await goto('/image')
+  await wait('document.querySelector(".result-fail button")?.textContent === "Retry (may charge again)"')
+  assert(await evaluate('document.documentElement.scrollWidth <= 390'))
+  await screenshot('integration-interrupted-charge-warning-390')
   assert.deepEqual(errors, [])
-  console.log(`Router UI checks passed: fake key gating, ${routerModels.length} picker selections and mocked generations, independent native payloads, combined reference limits, durable jobs, partial batch recovery and pending resumption after reload, cancellation, restored format preflight, stable keys and Library persistence, concurrent format shots, per-take Library failures and session retries, independent Create error ownership, shared-sheet writer recovery, desktop and 390px layouts. Mock screenshots saved.`)
+  console.log(`Router UI checks passed: fake key gating, ${routerModels.length} picker selections and mocked generations, independent native payloads, combined reference limits, durable jobs, partial batch recovery and pending resumption after reload, cancellation and cancelled-take Retry, queued Retry reload with stable keys, silent historical failures, restored format preflight and session-limit notes, interrupted-run charge warning and Retry copy, concurrent format shots, per-take Library failures and session retries, independent Create error ownership, shared-sheet writer recovery, desktop and 390px layouts. Mock screenshots saved.`)
 } finally {
   await browser?.close()
   await server.close()

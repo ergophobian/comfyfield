@@ -12,7 +12,7 @@ export function createJobs(file) {
   try {
     for (const j of JSON.parse(fs.readFileSync(file, 'utf8'))) {
       if (Date.now() - j.created > DAY) continue
-      jobs.set(j.id, j.status === 'running' ? { ...j, status: 'failed', error: { message: 'The app stopped while this ran. Run it again.' } } : j)
+      jobs.set(j.id, j.status === 'running' ? { ...j, status: 'failed', error: { code: 'interrupted', message: 'The app stopped while this ran. The first run may already have been charged. Retrying starts a new request and may charge again; check the provider history first.' } } : j)
     }
   } catch {}
 

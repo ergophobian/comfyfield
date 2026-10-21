@@ -4,12 +4,18 @@ import { modelPrices } from './cost.js'
 import { runFormat } from './formats/runner.js'
 import { preflightFlow } from './formats/preflight.js'
 import { waitJob, cancelJob, Cancelled } from './jobs.js'
+import { createRouterBatch } from './routerBatch.js'
 
 const KEY = 'comfyfield.library'
 const MAX_PARALLEL = 3
+const restorable = (item) => !item.pending || item.jobs?.length || item.run?.opts.routerBatch
+const formatReloadNote = 'Format session ended on reload. Remaining steps will not continue.'
 
 function load() {
-  try { return (JSON.parse(localStorage.getItem(KEY)) || []).filter((i) => !i.pending || i.jobs?.length) } catch { return [] }
+  try {
+    return (JSON.parse(localStorage.getItem(KEY)) || []).filter(restorable)
+      .map((item) => item.formatRunId ? { ...item, restoreNote: formatReloadNote } : item)
+  } catch { return [] }
 }
 
 // Generations, newest first. Jobs queue up and run three at a time; finished items persist for the Library.
@@ -35,7 +41,7 @@ export function useGenerations() {
   }, [])
 
   useEffect(() => {
-    try { localStorage.setItem(KEY, JSON.stringify(items.filter((i) => !i.pending || i.jobs?.length).slice(0, 300))) } catch {}
+    try { localStorage.setItem(KEY, JSON.stringify(items.filter(restorable).slice(0, 300))) } catch {}
   }, [items])
 
   const clearError = (owner) => {
@@ -68,7 +74,7 @@ export function useGenerations() {
     return [...results, ...xs.filter((x) => !results.some((f) => f.id === x.id))]
   })
 
-  const fail = (id, base, message, retryStep, after) => {
+  const fail = (id, base, message, retryStep, after, { silent = false } = {}) => {
     let retried = false
     const retry = retryStep || (base.run && (async () => {
       if (retried) return
@@ -86,7 +92,8 @@ export function useGenerations() {
         showError(meta.formatRunId || id, error.message, retry)
       }
     }))
-    showError(base.run?.meta.formatRunId || id, message, retry)
+    if (retry) retry.label = base.retryMayCharge ? 'Retry (may charge again)' : 'Retry'
+    if (!silent) showError(base.run?.meta.formatRunId || id, message, retry)
     patch(id, () => ({ ...base, id, failed: message, retry }))
   }
 
@@ -97,18 +104,19 @@ export function useGenerations() {
     restored.current = true
     for (const it of live.current) {
       const { id, pending, jobs, started, pod, retry, failed, ...base } = it
-      if (failed && base.run) fail(id, base, failed)
-      if (!pending || !jobs?.length) continue
+      if (failed && base.run) fail(id, base, failed, undefined, undefined, { silent: true })
+      if (!pending) continue
       if (base.run?.model.provider === 'comfyRouter' && base.run.opts.routerBatch) {
         execute(base.run.model, base.run.opts, base.run.meta, undefined, id).catch(() => {})
       } else {
+        if (!jobs?.length) continue
         // A Pod fallback supersedes the failed Cloud job in this same run.
         const currentJobs = base.run?.model.provider === 'comfyRouter' ? jobs : jobs.slice(-1)
         Promise.all(currentJobs.map(waitJob)).then(
           (files) => { if (!cancelled.current.has(id)) finish(id, base, files.flat()) },
           (e) => {
             if (e instanceof Cancelled || cancelled.current.has(id)) setItems((xs) => xs.filter((x) => x.id !== id))
-            else fail(id, base, e.message)
+            else fail(id, { ...base, retryMayCharge: e.code === 'interrupted' }, e.message)
           },
         )
       }
@@ -118,8 +126,11 @@ export function useGenerations() {
   // `after` also follows a retried take. Stable ids and the session retry adapter retain completed
   // format steps; the saved run retains outstanding Router calls and their request keys on reload.
   function execute(model, opts, meta = {}, after, id = crypto.randomUUID(), retryStep) {
-    const from = live.current.find((item) => item.id === id)?.from || window.location.pathname + window.location.search
-    const base = { aspect: opts.shape || opts.aspect, caption: opts.caption, model: model.name, kind: model.kind, provider: model.provider, from, ...meta, run: { model, opts, meta } }
+    cancelled.current.delete(id)
+    if (model.provider === 'comfyRouter') opts.routerBatch ||= createRouterBatch(model, opts)
+    const previous = live.current.find((item) => item.id === id)
+    const from = previous?.from || window.location.pathname + window.location.search
+    const base = { aspect: opts.shape || opts.aspect, caption: opts.caption, model: model.name, kind: model.kind, provider: model.provider, from, restoreNote: previous?.restoreNote, ...meta, run: { model, opts, meta } }
     const owner = meta.formatRunId || id
     clearError(meta.formatRunId ? owner : errorOwner.current)
     setItems((xs) => [{ id, pending: true, ...base, jobs: opts.routerBatch?.calls.map((call) => call.jobId).filter(Boolean) || [] }, ...xs.filter((x) => x.id !== id)])
@@ -149,7 +160,7 @@ export function useGenerations() {
             setItems((xs) => xs.filter((x) => x.id !== id))
             return reject(new Cancelled())
           }
-          fail(id, base, e.message, retryStep, after)
+          fail(id, { ...base, retryMayCharge: e.code === 'interrupted' }, e.message, retryStep, after)
           reject(e)
         }
       })

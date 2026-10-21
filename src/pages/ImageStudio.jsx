@@ -161,7 +161,7 @@ export default function ImageStudio() {
         <Feed kind="image" gens={gens} batches={batches} size={view} empty={hero} />
       </section>
 
-      {(referenceError || error || gens.error) && <div className="notice glass error gen-notice">{referenceError || error || gens.error}{!referenceError && !error && gens.retry && <button type="button" className="link-btn" onClick={gens.retry}>Retry</button>}</div>}
+      {(referenceError || error || gens.error) && <div className="notice glass error gen-notice">{referenceError || error || gens.error}{!referenceError && !error && gens.retry && <button type="button" className="link-btn" onClick={gens.retry}>{gens.retry.label || 'Retry'}</button>}</div>}
 
       <form className={`composer glass gen-bar${dragging ? ' dragging' : ''}`} onSubmit={(e) => { e.preventDefault(); go() }}
         onDragOver={(e) => { if (dropOk(e)) { e.preventDefault(); setDragging(true) } }}

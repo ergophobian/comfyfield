@@ -57,6 +57,8 @@ async function post(url, payload) {
 
 // hooks.onPod: the run is waiting for a Pod, after the start sheet. hooks.onJob: a server job started for this run.
 export async function run(model, opts, hooks = {}) {
+  const checkCancelled = () => { if (hooks.isCancelled?.()) throw new Cancelled() }
+  checkCancelled()
   const job = (route, payload) => {
     if (hooks.isCancelled?.()) throw new Cancelled()
     return runJob(route, payload, hooks)
@@ -87,15 +89,20 @@ export async function run(model, opts, hooks = {}) {
     } catch (e) {
       if (e.code !== 'needs_pod' && e.code !== 'pod_too_small') throw e
       const s = await refreshPod()
+      checkCancelled()
       if (runTypeOf(s) === 'instant') throw e
       if (e.code === 'pod_too_small') {
         await askPod(workflow, e.reason, e.fit || {})
+        checkCancelled()
         hooks.onPod?.()
+        checkCancelled()
         return runComfy(workflow, vars, hooks)
       }
       hooks.onPod?.()
-      if (s?.auto && s?.connected) await autoPod(workflow)
+      checkCancelled()
+      if (s?.auto && s?.connected) await autoPod(workflow, hooks.isCancelled)
       else await askPod(workflow, e.reason)
+      checkCancelled()
       return runComfy(workflow, vars, hooks)
     }
   }

@@ -16,7 +16,7 @@ export async function startJob(route, body) {
 export async function waitJob(id) {
   for (let wait = 800; ; wait = Math.min(wait * 1.5, 3000)) {
     const res = await fetch(`/api/jobs/${id}`).catch(() => null)
-    if (res?.status === 404) throw new Error('This run was lost when the app restarted. Run it again.')
+    if (res?.status === 404) throw Object.assign(new Error('This run was lost when the app restarted. The first run may already have been charged. Retrying starts a new request and may charge again; check the provider history first.'), { code: 'interrupted' })
     const job = res?.ok ? await res.json() : null
     if (job?.status === 'done') return job.files
     if (job?.status === 'cancelled') throw new Cancelled()
@@ -29,6 +29,7 @@ export const cancelJob = (id) => fetch(`/api/jobs/${id}`, { method: 'DELETE' }).
 
 // hooks.onJob(id) hears each job id as it starts, so the caller can save it and wait on it after a reload.
 export async function runJob(route, body, hooks = {}) {
+  if (hooks.isCancelled?.()) throw new Cancelled()
   const id = await startJob(route, body)
   hooks.onJob?.(id)
   return waitJob(id)
