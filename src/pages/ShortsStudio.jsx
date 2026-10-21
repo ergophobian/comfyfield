@@ -3,6 +3,7 @@ import Segmented from '../components/Segmented.jsx'
 import { Field } from '../components/formats/Fields.jsx'
 import { IconPlus, IconSearch } from '../components/Icons.jsx'
 import { Split, Box, Ratios, Pills, Tiles, Toggle, Steps, NotWired, Empty, ErrorNote, coverAt, slug } from '../components/studiob/Kit.jsx'
+import Tip from '../components/generate/Tip.jsx'
 import { covers } from '../lib/formats/parts.js'
 import { Pictures } from '../components/studiob/Inputs.jsx'
 import { formatById } from '../lib/formats/index.js'
@@ -107,6 +108,7 @@ export default function ShortsStudio() {
             </label>
           )}
         </div>
+        <Tip page="shorts" onLearn={() => setTab('how')} />
         {tab === 'presets' && (
           <Tiles tall items={shown} value={preset} onChange={setPreset} label="Looks"
             lead={!q && (
