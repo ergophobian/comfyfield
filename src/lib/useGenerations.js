@@ -14,7 +14,7 @@ const formatReloadNote = 'Format session ended on reload. Remaining steps will n
 function load() {
   try {
     return (JSON.parse(localStorage.getItem(KEY)) || []).filter(restorable)
-      .map((item) => item.formatRunId ? { ...item, restoreNote: formatReloadNote } : item)
+      .map((item) => item.formatRunId && (item.pending || item.failed) ? { ...item, restoreNote: formatReloadNote } : item)
   } catch { return [] }
 }
 
@@ -127,7 +127,11 @@ export function useGenerations() {
   // format steps; the saved run retains outstanding Router calls and their request keys on reload.
   function execute(model, opts, meta = {}, after, id = crypto.randomUUID(), retryStep) {
     cancelled.current.delete(id)
-    if (model.provider === 'comfyRouter') opts.routerBatch ||= createRouterBatch(model, opts)
+    // A Router input the model cannot take fails this item, not the caller's loop.
+    let setupError
+    if (model.provider === 'comfyRouter') {
+      try { opts.routerBatch ||= createRouterBatch(model, opts) } catch (e) { setupError = e }
+    }
     const previous = live.current.find((item) => item.id === id)
     const from = previous?.from || window.location.pathname + window.location.search
     const base = { aspect: opts.shape || opts.aspect, caption: opts.caption, model: model.name, kind: model.kind, provider: model.provider, from, restoreNote: previous?.restoreNote, ...meta, run: { model, opts, meta } }
@@ -139,6 +143,7 @@ export function useGenerations() {
         if (cancelled.current.has(id)) return reject(new Cancelled())
         patch(id, (x) => ({ ...x, started: true }))
         try {
+          if (setupError) throw setupError
           const files = await run(model, opts, {
             isCancelled: () => cancelled.current.has(id),
             onFiles: (files, index) => partial(id, base, files, index),

@@ -443,6 +443,7 @@ try {
   await wait('!document.querySelector("#retry-first-failed").disabled')
   assert.equal(await evaluate('document.querySelector("#error").textContent'), '', 'Historical format failures restore silently')
   assert(await evaluate('[...document.querySelectorAll(".result small")].some((el) => el.textContent.includes("Remaining steps will not continue"))'), 'Restored format items explain the memory-only session limit')
+  assert(await evaluate('JSON.parse(document.querySelector("#items").textContent).filter((i) => i.formatRunId && !i.pending && !i.failed).every((i) => !i.restoreNote)'), 'Finished format outputs carry no reload note')
   await viewport(390)
   await goto('/image')
   await wait('[...document.querySelectorAll(".result small")].some((el) => el.textContent.includes("Remaining steps will not continue"))')
