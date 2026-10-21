@@ -76,7 +76,7 @@ export async function preflightFlow(flow, { runType, pod, requirements = loadReq
     Object.assign(step, { notOnCloud: own.notOnCloud, minVramGb: own.minVramGb, arch: own.arch,
       cloud: own.cloud, target: own.target, selectedWorkflow: own.selectedWorkflow })
     if (own.reason) {
-      const runtimePod = runType !== 'instant' && (own.reason.code === 'needs_pod' || (own.reason.code === 'pod_too_small' && pod.auto))
+      const runtimePod = runType !== 'instant' && (own.reason.code === 'needs_pod' || own.reason.code === 'pod_too_small')
       if (runtimePod) warnings.push({ ...own.reason, stepId: step.stepId })
       else fail(own.reason.code, own.reason.message, { ...own.reason, stepId: step.stepId })
     } else if (!own.target) throw Object.assign(new Error(`Target missing for ${step.workflow}.`), { code: 'preflight_failed' })

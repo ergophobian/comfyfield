@@ -40,7 +40,7 @@ export default function FormatReview({ session }) {
         <button type="button" className="btn-blue sm" disabled={busy} onClick={() => act(() => session.send(node.id))}>Send</button>
       </div>
     })}
-    {failure && <button type="button" className="btn-blue sm" disabled={busy || session.busy} onClick={() => act(() => session.retryFailed())}>Retry failed</button>}
+    {failure && failure.code !== 'invalid_format' && <button type="button" className="btn-blue sm" disabled={busy || session.busy} onClick={() => act(() => session.retryFailed())}>Retry failed</button>}
     {(error || failure) && <p className="sheet-error" role="alert">{error || failure.message}</p>}
   </div>
 }

@@ -272,7 +272,6 @@ const ltx = (await import('../src/lib/catalog.js')).models.find((m) => m.workflo
 tooBig.steps[1].model = ltx.id
 const planningCases = [
   [cloudMissing, { subject: 'A meadow' }, { runType: 'instant' }, 'needs_pod'],
-  [tooBig, { subject: 'A meadow' }, { runType: 'session', pod: { phase: 'ready', vramGb: 24 } }, 'pod_too_small'],
   [chain, valuesFor(chain), { requirements: (w) => ({ ...offlineRequirements(w), connections: {} }) }, 'missing_key'],
 ]
 for (const [format, values, options, code] of planningCases) {
@@ -446,6 +445,10 @@ for (const phase of ['none', 'stopped', 'starting']) {
 const replacePlan = await preflight(tooBig, { subject: 'A meadow' }, { requirements: offlineRequirements, runType: 'session', pod: { phase: 'ready', vramGb: 24, auto: true } })
 assert.equal(replacePlan.ok, true)
 assert(replacePlan.warnings.some((w) => w.code === 'pod_too_small'))
+// With auto-start off the run still reaches the confirm sheet for a Pod that is too small (docs/adr/0002).
+const manualPlan = await preflight(tooBig, { subject: 'A meadow' }, { requirements: offlineRequirements, runType: 'session', pod: { phase: 'ready', vramGb: 24, auto: false } })
+assert.equal(manualPlan.ok, true)
+assert(manualPlan.warnings.some((w) => w.code === 'pod_too_small'))
 
 // Library retry waits for the current take instead of silently returning busy.
 let busySession
@@ -473,4 +476,10 @@ await Promise.all([queuedRetry, duplicateRetry])
 assert.equal(busyCalls.length, 3)
 assert.equal(busySession.failures.length, 0)
 assert.equal(busySession.results().length, 2)
+
+// Two Retry clicks on an idle session pay for one retry.
+let onceCalls = 0
+const once = await failedRun(routerFormat, { subject: 'A meadow' }, { run: async () => { if (++onceCalls === 1) throw new Error('First take failed'); return [{ url: 'https://example.test/once.png' }] } })
+await Promise.all([once.retry('generate'), once.retry('generate')])
+assert.equal(onceCalls, 2)
 console.log('Runner review regressions ok: edited options, terminal key rotation, Pod warnings and queued Library retries.')

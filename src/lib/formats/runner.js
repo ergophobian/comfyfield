@@ -178,7 +178,13 @@ export async function runFormat(format, inputs, { run, writePrompt, onChange = (
   const queuedRetries = new Map()
   const retry = (id, options) => {
     if (queuedRetries.has(id)) return queuedRetries.get(id)
-    if (!session.busy) return launch(() => engine.retryFailed(flow, [id]), options, retryScope([id]))
+    if (!session.busy) {
+      // Hold the step until this retry settles, so a second click cannot pay for it again.
+      const launched = launch(() => engine.retryFailed(flow, [id]), options, retryScope([id]))
+        .finally(() => { if (queuedRetries.get(id) === launched) queuedRetries.delete(id) })
+      queuedRetries.set(id, launched)
+      return launched
+    }
     if (!inFlight) return Promise.reject(Object.assign(new Error('This session is already running. Try again when it finishes.'), { session, code: 'busy' }))
     const queued = inFlight.catch(() => {}).then(() => {
       queuedRetries.delete(id)
