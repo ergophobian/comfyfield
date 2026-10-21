@@ -161,7 +161,8 @@ async function withFalFiles(value, key, cache = new Map()) {
 }
 
 // fal queue API: submit, poll status, then fetch the result.
-export async function runFal({ model, input }) {
+// ctx comes from a server job: a cancel asks fal to drop the request, which only works while it is still queued.
+export async function runFal({ model, input }, ctx = {}) {
   const { key } = config('fal')
   if (!key) throw Object.assign(new Error('Connect fal in Connections first.'), { status: 400 })
   const headers = { Authorization: `Key ${key}`, 'Content-Type': 'application/json' }
@@ -169,7 +170,9 @@ export async function runFal({ model, input }) {
   const submit = await fetch(`https://queue.fal.run/${model}`, { method: 'POST', headers, body: JSON.stringify(ready) })
   if (!submit.ok) throw new Error(`fal rejected the request (${submit.status}): ${(await submit.text()).slice(0, 300)}`)
   const job = await submit.json()
+  if (job.cancel_url) ctx.onCancel?.(() => fetch(job.cancel_url, { method: 'PUT', headers }))
   for (let i = 0; i < 600; i++) {
+    if (ctx.cancelled) throw new Error('Cancelled.')
     const s = await (await fetch(job.status_url, { headers })).json()
     if (s.status === 'COMPLETED') break
     if (s.status === 'FAILED' || s.error) throw new Error(`fal job failed: ${s.error || 'unknown error'}`)

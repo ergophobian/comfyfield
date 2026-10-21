@@ -293,6 +293,12 @@ input, textarea { font: inherit; color: inherit; }
 .result-cap { position: absolute; left: 8px; right: 8px; bottom: 8px; padding: 6px 10px; border-radius: var(--r-md); font-size: var(--text-xs); color: var(--ink);
   background: var(--glass-strong); backdrop-filter: var(--blur-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: 0; transition: opacity var(--dur-fast); }
 .result:hover .result-cap { opacity: 1; }
+.result-wait { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 12px; text-align: center; }
+.result.failed { display: grid; place-items: center; background: var(--danger-wash); }
+.result-fail { display: flex; flex-direction: column; align-items: center; gap: 4px; max-width: 100%; padding: 14px; text-align: center; }
+.result-fail strong { font-size: var(--text-md); font-weight: 600; color: var(--danger); }
+.result-fail small { font-size: var(--text-xs); color: var(--ink-2); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.result-fail-acts { display: flex; gap: 6px; margin-top: 6px; }
 .result.opens { cursor: zoom-in; transition: transform var(--dur-press) var(--spring); }
 .result.opens:active { transform: scale(.97); }
 .result.opens:focus-visible { outline: 2px solid var(--blue-hi); outline-offset: 2px; }

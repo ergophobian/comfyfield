@@ -10,8 +10,26 @@ import { archOf } from '../shared/modelFiles.js'
 import { upload } from './upload.js'
 import { serveMedia } from './serveMedia.js'
 import { agentRoutes } from './agent-routes.js'
+import { createJobs } from './jobs.js'
 
 export { providers } from './core.js'
+
+// ComfyUI hands back its own address; the browser reaches it through the /comfy proxy.
+function comfyFiles(files) {
+  const base = (core.config('comfy').url || 'http://127.0.0.1:8188').replace(/\/+$/, '')
+  return files.map(({ path: localPath, ...f }) => ({ ...f, url: f.url.startsWith(`${base}/`) ? `/comfy${f.url.slice(base.length)}` : f.url }))
+}
+
+// The generation routes the browser can run as jobs, keyed by the route it would otherwise call directly.
+const runners = {
+  '/api/fal': (b, ctx) => core.runFal(b, ctx),
+  '/api/comfy/router': (b) => core.runComfyRouter(b),
+  '/api/comfy/run': async ({ workflow, vars }) => comfyFiles(await core.runComfy(workflow, vars)),
+  '/api/elevenlabs': (b) => core.runElevenLabs(b),
+  '/api/google': (b) => core.runGoogle(b),
+}
+let jobs
+const jobStore = () => (jobs ||= createJobs(path.join(core.home(), 'jobs.json')))
 
 async function body(req) {
   let raw = ''
@@ -283,9 +301,18 @@ function mount(server, harness) {
       if (url.pathname === '/api/comfy/router' && req.method === 'POST') return send(res, 200, { files: await core.runComfyRouter(await body(req)) })
       if (url.pathname === '/api/comfy/run' && req.method === 'POST') {
         const { workflow, vars } = await body(req)
-        const files = await core.runComfy(workflow, vars)
-        const base = (core.config('comfy').url || 'http://127.0.0.1:8188').replace(/\/+$/, '')
-        return send(res, 200, { files: files.map(({ path: localPath, ...f }) => ({ ...f, url: f.url.startsWith(`${base}/`) ? `/comfy${f.url.slice(base.length)}` : f.url })) })
+        return send(res, 200, { files: comfyFiles(await core.runComfy(workflow, vars)) })
+      }
+      if (url.pathname === '/api/jobs' && req.method === 'POST') {
+        const { route, body: input } = await body(req)
+        const runner = runners[route]
+        if (!runner) return send(res, 404, { error: 'That run cannot be started as a job.' })
+        return send(res, 200, { id: jobStore().start((ctx) => runner(input || {}, ctx)) })
+      }
+      if (url.pathname.startsWith('/api/jobs/')) {
+        const id = url.pathname.slice('/api/jobs/'.length)
+        const job = req.method === 'DELETE' ? jobStore().cancel(id) : jobStore().get(id)
+        return job ? send(res, 200, job) : send(res, 404, { error: 'That run is gone. Run it again.' })
       }
       if (url.pathname === '/api/fal/schema') return send(res, 200, await core.falSchema(url.searchParams.get('id')))
       if (url.pathname === '/api/elevenlabs' && req.method === 'POST') {
