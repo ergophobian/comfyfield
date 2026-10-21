@@ -1,8 +1,8 @@
 # Cinema journey evidence
 
-Cinema plans an idea through the existing `/api/prompt` writer, validates 3–6 shots, and lets the creator edit prompts, camera moves, durations and continuity before Generate. The portal effect is the default example. An optional uploaded start frame uses the catalog model's image workflow.
+Cinema plans an idea through the existing `/api/prompt` writer, validates 2–6 shots, and lets the creator edit prompts, camera moves, durations and continuity before Generate. Try the portal effect loads a built-in three-shot plan without a writer request; all three shots use LTX-2.5 for five seconds each. An optional uploaded start frame uses the catalog model's image workflow.
 
-Generate saves a Flow through the shared server store before rendering. Every shot has a `comfy-ltx25` model node and its own Approve gate. Gate edges enter Stitch in shot order. Cinema's manual Stitch node waits for an explicit click. Shot Rerun closes its approval gate and marks downstream Stitch outputs stale, without rerendering other shots. Send preserves those outputs; re-stitch is explicit. The shared Stitch editor handles preview, trim, music, export to Library and download.
+Generate saves a Flow through the shared server store before rendering. Every shot has a `comfy-ltx25` model node and its own Approve gate. Gate edges enter Stitch in shot order. Cinema's manual Stitch node waits for an explicit click. Shot Rerun closes its approval gate and marks downstream Stitch outputs stale, without rerendering other shots. Send preserves those outputs; re-stitch is explicit. The canvas labels the old cut “Out of date, stitch again” and excludes it from downstream results until re-stitching. Export stays blocked. The shared Stitch editor handles preview, trim, music, export to Library and download.
 
 The neighboring lane's runner, preflight, Router batch, generation hook, app page and recipes files are unchanged relative to main. PR #117 is integrated; its retry behavior and checks are retained. Cinema does not use synthetic format model ids or the format runner.
 
@@ -10,7 +10,7 @@ The neighboring lane's runner, preflight, Router batch, generation hook, app pag
 
 `scripts/cinema-ui-check.mjs` serves the production build with an isolated mock API. The planner and LTX runner are mocked; video fixtures are half-second synthetic test patterns, not generated visual effects. Flow validation, disk persistence, engine actions, local ffmpeg Stitch, export and byte-verified downloads are real. A separate server-store instance verifies that the saved Flow is visible through the same storage used by MCP tools. No provider routes or environment file are loaded; outbound provider fetches are blocked. No paid calls were made.
 
-The journey runs independently at 1440px and 390px, with an invalid planner response, edited shot, optional image input, shot failure/retry, per-shot approval, replacement, blocked stale export, explicit re-stitch, Stitch failure/retry, Library persistence and Flow reopening. Every screenshot is labeled as a mock journey.
+The journey runs at 1440px and 390px. Desktop checks malformed plans, terminal writer failures (including successful HTTP responses and insufficient credits), and retryable failures with cached request keys. Mobile restarts the scene, verifies the old plan stays cleared after reload, and loads the built-in example with no writer call. Both cover edited shots, per-shot approval, replacement, stale canvas results, blocked export, explicit re-stitch, Library persistence and Flow reopening. Mobile also checks an optional image input and shot/Stitch failure recovery. Every screenshot is labeled as a mock journey.
 
 | Stage | Desktop | Mobile |
 | --- | --- | --- |
@@ -35,14 +35,24 @@ Exactly four video jobs: three text-to-video and one image-to-video. Estimated C
 
 Live writer JSON reliability, Comfy Cloud execution, actual generation duration, sound and visual continuity still require the runs above. Continuity notes repeat the subject and setting; independent text shots do not guarantee identical characters or scenery. Optional start frames are chosen before Generate. Cinema's still-image composer remains the existing scaffold. Existing build chunk-size warnings remain.
 
+## Review regressions
+
+- Planner failures retain their key only when `keepRequestKey` allows reconciliation; terminal failures start fresh. Completed malformed plans also start fresh.
+- Planner parsing extracts a balanced scene object from surrounding prose or code fences, respecting quoted braces and escaped quotes. Numeric durations snap to the nearest supported 5, 8 or 10 seconds. Two shots are accepted; fewer than two, missing fields and invalid durations fail with clear messages.
+- The planner sends `promptOnly: false` to omit the generation-prompt suffix in both Router and Google payloads. Other writers retain the suffix by default.
+- Plan another scene clears the plan and Flow reference. Stale Stitch output cannot appear as a current canvas result or be exported.
+
 ## Validation results
 
-Windows verification ran in `D:/comfyfield-lanes/cinema-33`; the Mac performed editing and lightweight Flow/theme checks only.
+Windows verification ran in `D:/comfyfield-lanes/cinema-regressions-bba702e0`. The Mac performed editing and evidence inspection only. Provider key variables were removed from the test process; the writer payload checks use isolated fake saved keys and intercepted network calls.
 
 - `npx vite build`: passes, with the existing chunk-size warning.
-- `node scripts/cinema-checks.mjs`: passes; planner validation, estimates, catalog resolution, image inputs, persistence and replacement safeguards.
-- `node scripts/flow-checks.mjs`: all 25 checks pass after integrating #117.
-- `node scripts/cinema-ui-check.mjs`: passes at 1440px and 390px, including the final cache-aware malformed-plan recovery check.
-- `node scripts/verify.mjs` after integrating #117: 27 of 28 scripts pass. Only `pod-checks.mjs` fails, with the seven known Windows bash/path failures; no Pod files changed in this branch. All seven browser check scripts pass.
+- `node scripts/cinema-checks.mjs`: passes; balanced JSON extraction, duration normalization, two-shot plans, the built-in example, both writer payloads, estimates, catalog resolution, image inputs, persistence and replacement safeguards.
+- `node scripts/flow-checks.mjs`: all 25 checks pass, including stale cut exclusion and restoration after re-stitching.
+- `node scripts/cinema-ui-check.mjs`: passes; covers desktop planner key recovery, the mobile built-in plan, persisted scene reset, stale canvas results, blocked export and the complete 1440px/390px journey.
 
-The complete suite ran on implementation commit `5de4746`. The final planner request-key correction in `90e7f0f` was separately rechecked with a production build and the Cinema unit/browser journey. Subsequent evidence commits contain documentation and screenshots only. The full local log is retained at `outputs/cinema-verify-windows.log` (ignored), with the remote copy at `D:/comfyfield-lanes/cinema-33/outputs/cinema-verify.log`.
+- `node scripts/verify.mjs`: 27 of 28 scripts pass. Only `pod-checks.mjs` fails, with the seven known Windows bash/path failures. All seven browser check scripts pass. No Pod files changed.
+
+The tested source diff on Windows matches the local source diff exactly.
+
+The current build and full verification logs are retained on Windows at `D:/comfyfield-lanes/cinema-bba702e0-build.log` and `D:/comfyfield-lanes/cinema-bba702e0-verify.log`, with local copies under the ignored `outputs/` directory.

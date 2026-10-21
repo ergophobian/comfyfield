@@ -3,9 +3,21 @@ import { mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { cinemaPlan } from './fixtures/cinema-plan.mjs'
-import { cinemaCost, cinemaFlow, cinemaPrompt, validateCinemaPlan } from '../src/lib/cinema.js'
+import { cinemaCost, cinemaExamplePlan, cinemaFlow, cinemaInstructions, cinemaPrompt, validateCinemaPlan } from '../src/lib/cinema.js'
 import { createFlows } from '../server/flows.js'
 import { comfyVars } from '../shared/mapping.js'
+import { spawnSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
+import { writeKeys, writePrompt } from '../server/core.js'
+
+// No saved keys or provider environment variables can reach the mocked writer checks.
+if (!process.argv.includes('--isolated')) {
+  const result = spawnSync(process.execPath, [fileURLToPath(import.meta.url), '--isolated'], {
+    stdio: 'inherit', env: { SystemRoot: process.env.SystemRoot || '', PATH: process.env.PATH || '' },
+  })
+  process.exit(result.status ?? 1)
+}
+process.env.COMFYFIELD_HOME = mkdtempSync(join(tmpdir(), 'comfyfield-cinema-writer-'))
 
 const network = global.fetch
 global.fetch = () => { throw new Error('Cinema unit checks must never call a provider') }
@@ -13,9 +25,42 @@ try {
   assert.deepEqual(validateCinemaPlan(JSON.stringify(cinemaPlan)), cinemaPlan)
   assert.deepEqual(validateCinemaPlan('```json\n' + JSON.stringify(cinemaPlan) + '\n```'), cinemaPlan)
   for (const value of ['', 'not json', 'null', '{}', JSON.stringify({ ...cinemaPlan, shots: [] }), JSON.stringify({ ...cinemaPlan, shots: Array(7).fill(cinemaPlan.shots[0]) })]) assert.throws(() => validateCinemaPlan(value))
-  for (const invalid of [null, {}, { ...cinemaPlan.shots[0], duration: '5' }, { ...cinemaPlan.shots[0], duration: 6 }, { ...cinemaPlan.shots[0], camera: '' }, { ...cinemaPlan.shots[0], prompt: 'x'.repeat(601) }, { ...cinemaPlan.shots[0], continuity: [] }, { ...cinemaPlan.shots[0], image: { url: 'https://example.org/frame.png' } }]) {
+  for (const invalid of [null, {}, ...[null, '', 'bad', true, {}, 0, -1, Infinity].map((duration) => ({ ...cinemaPlan.shots[0], duration })), { ...cinemaPlan.shots[0], camera: '' }, { ...cinemaPlan.shots[0], prompt: 'x'.repeat(601) }, { ...cinemaPlan.shots[0], continuity: [] }, { ...cinemaPlan.shots[0], image: { url: 'https://example.org/frame.png' } }]) {
     assert.throws(() => validateCinemaPlan({ ...cinemaPlan, shots: [invalid, ...cinemaPlan.shots.slice(1)] }))
   }
+  const quoted = { ...cinemaPlan, title: 'A "portal" {opens} \\ in rain' }
+  assert.deepEqual(validateCinemaPlan('Here is the plan:\n```json\n' + JSON.stringify(quoted) + '\n```\nReady to edit.'), quoted)
+  assert.throws(() => validateCinemaPlan('A partial plan: {"shots": ['), /invalid shot plan/)
+  assert.throws(() => validateCinemaPlan({ ...cinemaPlan, shots: cinemaPlan.shots.slice(0, 1) }), /2 to 6 shots/)
+  const twoShots = validateCinemaPlan({ ...cinemaPlan, shots: cinemaPlan.shots.slice(0, 2) })
+  assert.equal(cinemaFlow(twoShots).nodes.filter((node) => node.type === 'model').length, 2)
+  for (const [duration, expected] of [['5', 5], [6, 5], ['7', 8], [9.5, 10]]) {
+    const normalized = validateCinemaPlan({ ...cinemaPlan, shots: cinemaPlan.shots.map((shot) => ({ ...shot, duration })) })
+    assert(normalized.shots.every((shot) => shot.duration === expected))
+  }
+  assert.equal(validateCinemaPlan(cinemaExamplePlan).shots.length, 3)
+  assert(cinemaExamplePlan.shots.every((shot) => shot.duration === 5))
+  assert(cinemaFlow(cinemaExamplePlan).nodes.filter((node) => node.type === 'model').every((node) => node.data.model.id === 'comfy-ltx25'))
+
+  // Exercise both provider payloads with fake saved keys and a fully intercepted network.
+  for (const google of [false, true]) {
+    writeKeys({ comfy: { key: 'mock-comfy' }, google: { key: google ? 'mock-google' : '' } })
+    const payloads = []
+    global.fetch = async (url, options) => {
+      payloads.push(JSON.parse(options.body))
+      return { ok: true, json: async () => google
+        ? { candidates: [{ finishReason: 'STOP', content: { parts: [{ text: JSON.stringify(cinemaPlan) }] } }] }
+        : { status: 'completed', output: [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text: JSON.stringify(cinemaPlan) }] }] } }
+    }
+    const request = { instructions: cinemaInstructions, note: 'Fold the street', target: 'Shot plan' }
+    await writePrompt({ ...request, promptOnly: false })
+    await writePrompt(request)
+    const content = payloads.map((body) => google ? body.contents[0].parts[0].text : body.input[0].content[0].text)
+    assert(!content[0].includes('Write only the finished generation prompt.'), 'Planner opts out of the generation-prompt suffix')
+    assert(content[1].includes('Write only the finished generation prompt.'), 'Other writers keep their default suffix')
+    assert(payloads.every((body) => (google ? body.systemInstruction.parts[0].text : body.instructions) === cinemaInstructions))
+  }
+  global.fetch = () => { throw new Error('Cinema unit checks must never call a provider') }
   assert.throws(() => validateCinemaPlan({ ...cinemaPlan, title: '' }))
   assert.throws(() => validateCinemaPlan('x'.repeat(16001)), /too long/)
   assert.deepEqual(validateCinemaPlan({ ...cinemaPlan, malicious: true }).shots, cinemaPlan.shots, 'Only validated fields survive')
@@ -59,6 +104,7 @@ try {
   assert.equal(store.engine(flow.id).gate('shot-2-approve').status, 'reviewing')
   assert.equal(store.engine(flow.id).gate('shot-1-approve').status, 'sent')
   assert.equal(store.engine(flow.id).state['scene-stitch'].items[0].stale, true)
+  assert.deepEqual(store.engine(flow.id).reviewItems(flow, 'scene-output'), [], 'Stale cut is excluded from canvas results')
   assert.equal(store.read().runs[flow.id]['scene-stitch'].items[0].stale, true, 'Invalidation persists across app reloads')
   assert.equal((await store.perform(flow.id, 'rerun', 'scene-stitch')).ok, false, 'Replacement needs another approval')
   await store.perform(flow.id, 'send', 'shot-2-approve')

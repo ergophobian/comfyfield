@@ -23,6 +23,8 @@ const assemblies = []
 const exports = []
 let plannerCalls = 0
 const plannerReplies = new Map()
+const plannerRequests = []
+let plannerFailure = null
 let failPlan = false
 let failRender = false
 let failStitch = false
@@ -69,6 +71,20 @@ const server = await preview({ configFile: false, envFile: false, plugins: [{
         if (url.pathname === '/api/prompt') {
           plannerCalls++
           assert.match(data.instructions, /3 to 6 shots/)
+          assert.equal(data.promptOnly, false)
+          plannerRequests.push(data)
+          if (plannerFailure) {
+            const failure = plannerFailure
+            plannerFailure = null
+            if (failure.retryable === false || failure.status === 402) plannerReplies.set(data.idempotencyKey, failure)
+            res.statusCode = failure.status
+            return send(res, failure)
+          }
+          if (plannerReplies.has(data.idempotencyKey) && typeof plannerReplies.get(data.idempotencyKey) === 'object') {
+            const failure = plannerReplies.get(data.idempotencyKey)
+            res.statusCode = failure.status
+            return send(res, failure)
+          }
           if (!plannerReplies.has(data.idempotencyKey)) plannerReplies.set(data.idempotencyKey, failPlan ? '{"shots":[]}' : JSON.stringify(cinemaPlan))
           return send(res, { text: plannerReplies.get(data.idempotencyKey) })
         }
@@ -143,17 +159,45 @@ try {
     await goto('/cinema')
     if (width === 390) {
       await click('Plan another scene')
+      await wait('document.querySelector(".cinema-idea textarea") && !document.querySelector(".cinema-plan")')
+      assert(!await evaluate('[...document.querySelectorAll("button")].some((button) => button.textContent === "Generate scene")'), 'Starting another scene clears the old plan')
+      await goto('/cinema')
+      await wait('document.querySelector(".cinema-idea") && !document.querySelector(".cinema-plan")')
+      const planned = plannerCalls
       await click('Try the portal effect')
+      await wait('document.querySelectorAll(".cinema-plan .cinema-shot").length === 3')
+      assert.equal(plannerCalls, planned, 'Built-in example reaches Generate without any writer call')
+      assert(await evaluate('[...document.querySelectorAll("button")].some((button) => button.textContent === "Generate scene" && !button.disabled)'))
     }
     await wait(`document.querySelector('textarea[aria-label="Cinematic idea"]')`)
-    await fill('Cinematic idea', 'A portal materialises and folds a rainy street upward beside a courier in a silver raincoat.')
-    failPlan = width === 1440
-    await click('Plan shots')
-    if (failPlan) {
-      await wait('document.querySelector("[role=alert]")?.textContent.includes("3 to 6 shots")')
+    if (width === 1440) {
+      await fill('Cinematic idea', 'A portal materialises and folds a rainy street upward beside a courier in a silver raincoat.')
+      failPlan = true
+      await click('Plan shots')
+      await wait('document.querySelector("[role=alert]")?.textContent.includes("2 to 6 shots")')
       assert.equal(calls.length, start)
       failPlan = false
       await click('Plan shots')
+      await wait('document.querySelectorAll(".cinema-plan .cinema-shot").length === 3')
+      assert.notEqual(plannerRequests[0].idempotencyKey, plannerRequests[1].idempotencyKey, 'Malformed completed plan needs a fresh request')
+      for (const failure of [
+        { status: 200, code: 'prompt_failed', retryable: false },
+        { status: 200, code: 'prompt_filtered', retryable: false },
+        { status: 402, code: 'insufficient_credits' },
+        { status: 422, code: 'prompt_failed', retryable: false },
+        { status: 503, retryable: true },
+        { status: 429 },
+      ]) {
+        plannerFailure = { ...failure, error: 'Mock planner failure' }
+        await click('Plan again')
+        await wait('document.querySelector("[role=alert]") && [...document.querySelectorAll("button")].some((button) => button.textContent === "Plan again" && !button.disabled)')
+        const failedKey = plannerRequests.at(-1).idempotencyKey
+        await click('Plan again')
+        await wait('!document.querySelector("[role=alert]") && [...document.querySelectorAll("button")].some((button) => button.textContent === "Plan again" && !button.disabled)')
+        const retryKey = plannerRequests.at(-1).idempotencyKey
+        if (failure.retryable === true || failure.status === 429) assert.equal(retryKey, failedKey, 'Ambiguous failure keeps its request key')
+        else assert.notEqual(retryKey, failedKey, 'Terminal writer failure needs a fresh key')
+      }
     }
     await wait('document.querySelectorAll(".cinema-plan .cinema-shot").length === 3')
     assert.equal(calls.length, start, 'Planning never renders')
@@ -203,7 +247,13 @@ try {
     assert.equal(flows.engine(id).state['scene-stitch'].items[0].stale, true)
     assert(await evaluate('[...document.querySelectorAll("button")].find((button) => button.textContent === "Export to Library").disabled'))
     const count = assemblies.length
+    await evaluate('document.querySelector(".cinema-scene-heading a").click()')
+    await wait('document.querySelector(".f-stitch")?.textContent.includes("Out of date, stitch again") && document.querySelector(".f-output")')
+    assert.equal(await evaluate('document.querySelectorAll(".f-output .fcell").length'), 0, 'Canvas hides the stale scene result')
+    await evaluate('history.back()')
+    await wait('document.querySelectorAll(".cinema-shot video").length === 3')
     await click('Approve and Send shot 2')
+    await wait('document.querySelectorAll(".cinema-shot")[1]?.textContent.includes("Approved and sent")')
     assert.equal(assemblies.length, count, 'Replacement Send must preserve stale Stitch output')
     await screenshot(`mock-replace-${label}`)
     await click('Re-stitch')
@@ -231,10 +281,9 @@ try {
     assert(await evaluate(`document.documentElement.scrollWidth <= ${width}`), 'Library fits the viewport')
     await screenshot(`mock-library-${label}`)
   }
-  assert.equal(plannerCalls, 3, 'Two successful plans and one validation failure')
-  assert.equal(plannerReplies.size, 3, 'A malformed completed plan needs a fresh request key, not the cached invalid reply')
+  assert.equal(plannerCalls, 14, 'Desktop planner retry checks only; the mobile example makes no writer call')
   assert.deepEqual(errors, [], 'No browser runtime exceptions')
-  console.log('Cinema browser journey ok at 1440px and 390px: plan, invalid plan, edit, Generate, t2v/i2v, per-shot Send, isolated replacement, explicit re-stitch, export, byte-verified download, Library, saved Flow reload and MCP visibility. Shot and Stitch retry paths checked. Ten labelled mock screenshots; no paid calls or keys.')
+  console.log('Cinema browser journey ok at 1440px and 390px: plan, invalid plan, edit, Generate, t2v/i2v, per-shot Send, isolated replacement, explicit re-stitch, export, byte-verified download, Library, saved Flow reload and MCP visibility. Shot and Stitch retry paths checked. Ten refreshed labelled mock screenshots; terminal and ambiguous planner retries, built-in example and scene reset checked; no paid calls or keys.')
 } finally {
   global.fetch = network
   await browser?.close()

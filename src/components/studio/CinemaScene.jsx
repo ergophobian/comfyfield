@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Link } from 'react-router-dom'
-import { cinemaCost, cinemaExample, cinemaFlow, cinemaInstructions, cinemaModel, cinemaPrompt, validateCinemaPlan } from '../../lib/cinema.js'
+import { cinemaCost, cinemaExample, cinemaExamplePlan, cinemaFlow, cinemaInstructions, cinemaModel, cinemaPrompt, validateCinemaPlan } from '../../lib/cinema.js'
 import { engineFor, openFlow, useFlowStorage } from '../../lib/flowStore.js'
 import { reloadFlows } from '../../lib/remoteFlows.js'
+import { keepRequestKey } from '../../lib/routerBatch.js'
 import { writePrompt } from '../../lib/providers.js'
 import { useApp } from '../../lib/appContext.js'
 import { money } from '../../lib/cost.js'
@@ -122,13 +123,20 @@ export default function CinemaScene({ storageKey, initialIdea = '' }) {
     setWorking(true)
     setError('')
     try {
-      if (!request.current || request.current.note !== draft.idea) request.current = { instructions: cinemaInstructions, note: draft.idea, target: 'LTX-2.5 cinematic shot plan as JSON', idempotencyKey: crypto.randomUUID() }
+      if (!request.current || request.current.note !== draft.idea) request.current = { instructions: cinemaInstructions, note: draft.idea, target: 'LTX-2.5 cinematic shot plan as JSON', promptOnly: false, idempotencyKey: crypto.randomUUID() }
       const response = await writePrompt(request.current)
       request.current = null
       const result = validateCinemaPlan(response)
       setDraft((value) => ({ ...value, plan: result, flowId: null }))
-    } catch (value) { setError(value.message) }
-    finally { setWorking(false) }
+    } catch (value) {
+      if (!keepRequestKey(value)) request.current = null
+      setError(value.message)
+    } finally { setWorking(false) }
+  }
+  const loadExample = () => {
+    request.current = null
+    setError('')
+    setDraft({ idea: cinemaExample, plan: validateCinemaPlan(cinemaExamplePlan), flowId: null })
   }
   const generate = async () => {
     setWorking(true)
@@ -148,14 +156,14 @@ export default function CinemaScene({ storageKey, initialIdea = '' }) {
       {!flow && <>
         <section className="cinema-idea cs-composer glass">
           <div className="cinema-scene-heading"><h2>From idea to finished scene</h2><span className="muted">LTX-2.5</span></div>
-          <p className="muted">Plan 3–6 shots, shape each one, then render. Your director uses the prompt writer in Connections; a Comfy key is enough.</p>
+          <p className="muted">Plan 2–6 shots, shape each one, then render. Use the prompt writer in Connections or start with the portal example.</p>
           <label htmlFor={`${storageKey}-idea`}>Your cinematic idea</label>
           <div className="cs-write">
             <textarea id={`${storageKey}-idea`} aria-label="Cinematic idea" rows={4} maxLength={4000} value={draft.idea} onChange={(event) => setDraft((value) => ({ ...value, idea: event.target.value }))} />
             <button type="button" className="btn-blue" disabled={working || !draft.idea.trim()} onClick={plan}>{working ? 'Working' : draft.plan ? 'Plan again' : 'Plan shots'}</button>
           </div>
-          <button type="button" className="btn-soft sm" disabled={working} onClick={() => setDraft({ idea: cinemaExample, plan: null, flowId: null })}>Try the portal effect</button>
-          <p className="muted">Planning uses text credits. No video renders until you click Generate.</p>
+          <button type="button" className="btn-soft sm" disabled={working} onClick={loadExample}>Try the portal effect</button>
+          <p className="muted">Planning uses text credits. The example is free to load. Video renders when you click Generate.</p>
         </section>
         {draft.plan && <section className="cinema-plan" aria-label="Editable shot plan">
           <h2>Review your shot plan</h2>
@@ -177,7 +185,7 @@ export default function CinemaScene({ storageKey, initialIdea = '' }) {
       {draft.flowId && ready && !flow && <p role="status">This scene's Flow was deleted. Plan again to make a new one.</p>}
       {flow && <>
         <RenderedScene flow={flow} ready={ready} setStore={setStore} storageError={storageError} />
-        <button type="button" className="btn-soft sm" disabled={working} onClick={() => setDraft((value) => ({ ...value, flowId: null }))}>Plan another scene</button>
+        <button type="button" className="btn-soft sm" disabled={working} onClick={() => setDraft((value) => ({ ...value, plan: null, flowId: null }))}>Plan another scene</button>
       </>}
       {(error || storageError) && <p className="sheet-error" role="alert">{error || storageError}</p>}
       {storageError && <button type="button" className="btn-soft sm" onClick={() => reloadFlows().catch((value) => setError(value.message))}>Reload saved Flows</button>}

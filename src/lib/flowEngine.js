@@ -99,7 +99,8 @@ export function createEngine({ run, writePrompt, stitch, onChange = () => {}, co
       return widgetReady(n.type, value) ? [{ id: n.id, kind: n.type === 'video' ? 'video' : 'image', url: n.type === 'face' ? value.faceUrl || value.url : value.url, row: 0, take: 0, prompt: '', inputType: n.type, value }] : []
     }
     if (n.type === 'image') return n.data.url ? [{ id: n.id, kind: 'image', url: n.data.url, row: 0, take: 0, prompt: '' }] : []
-    if (['model', 'stitch'].includes(n.type)) return doneItems(id)
+    if (n.type === 'model') return doneItems(id)
+    if (n.type === 'stitch') return doneItems(id).filter((item) => !item.stale)
     if (n.type === 'writer') return S[id]?.sent ? doneItems(id) : null
     if (n.type === 'approve') return gate(id).status === 'sent' ? gate(id).sent : null
     return []
