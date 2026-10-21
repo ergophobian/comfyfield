@@ -7,7 +7,7 @@ import { spawn, spawnSync } from 'node:child_process'
 import { createHash, randomBytes } from 'node:crypto'
 import { gunzipSync } from 'node:zlib'
 import { test } from 'node:test'
-import { podBootScript, podStartCmd, podEnv, START_CMD_MAX } from '../server/podBoot.js'
+import { podBootScript, podStartCmd, podEnv, START_CMD_MAX, POD_IMAGE } from '../server/podBoot.js'
 import { podManager, GPU_LADDER, NO_POD } from '../server/pod.js'
 import { sandboxFetch } from '../server/podSandbox.js'
 import { modelFilesOf, minVramOf, volumeFor, runtimesOf, podNeedsOf, MODEL_FILES } from '../shared/modelFiles.js'
@@ -68,6 +68,12 @@ const until = async (fn, ms = 8000) => {
     await new Promise((r) => setTimeout(r, 100))
   }
 }
+
+await test('image: pinned to a commit tag or a digest, never :latest', () => {
+  assert(!/:latest$/.test(POD_IMAGE), `POD_IMAGE must not float on :latest: ${POD_IMAGE}`)
+  assert(/^ghcr\.io\/bchenner\/patchwork-comfy(:[0-9a-f]{40})?(@sha256:[0-9a-f]{64})?$/.test(POD_IMAGE)
+    && /[:@]/.test(POD_IMAGE.split('/').pop()), `POD_IMAGE needs a commit tag or an @sha256 digest: ${POD_IMAGE}`)
+})
 
 await test('boot script: start command fits, decodes and holds no secrets', () => {
   const script = podBootScript()

@@ -8,7 +8,13 @@ import { NODE_PACKS, MODEL_DIRS, PACK_DIRS, PACK_ROOTS } from '../shared/modelFi
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 
-export const POD_IMAGE = 'ghcr.io/bchenner/patchwork-comfy:latest'
+// Pinned, so a push to the image does not change every new Pod. PatchWork's pod-image workflow
+// (.github/workflows/pod-image.yml) builds ./docker and pushes :latest plus :<commit sha>. This is the
+// tag of PatchWork release 0.10.4, digest sha256:361ba1d24a1593de07d6af5c249b32e50f6a075bea19ef446b488a0b7482f7e6.
+// To move to a new image: change docker/ in PatchWork and let the workflow build and push it (or run it
+// by hand), read the new :<commit sha> tag and its digest from GHCR, set it here, then boot one Pod to
+// prove it. Never point this at :latest; scripts/pod-checks.mjs fails if you do.
+export const POD_IMAGE = 'ghcr.io/bchenner/patchwork-comfy:9a90879c745b00dc19511d1248b3c50dae4747d7'
 export const PROXY_PORT = 8189
 export const STATUS_PORT = 8190
 export const PROXY_VERSION = '0.1.6'
