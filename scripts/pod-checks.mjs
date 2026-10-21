@@ -802,7 +802,8 @@ await test('routing: a ready Pod too small for the run sends it to Cloud, or say
   assert.equal(leased, false, 'a 24 GB Pod does not take a 32 GB run; Cloud does')
   podMode({})
   await assert.rejects(core.runComfy('h3_open_t2v', h3, { createClient: () => client, lease, podPhase: async () => 'ready', podVram: () => 24 }),
-    (e) => e.code === 'pod_too_small' && /needs a 32 GB GPU; your Pod has 24 GB/.test(e.message))
+    (e) => e.code === 'pod_too_small' && /needs a 32 GB GPU; your Pod has 24 GB/.test(e.message)
+      && e.fit.needVramGb === 32 && e.fit.podVramGb === 24, 'the error carries the sizes for the replace sheet')
   podMode()
   leased = false
   await core.runComfy('h3_open_t2v', h3, { createClient: () => client, lease: async () => { leased = true; return { baseUrl: 'https://p-8189.proxy.runpod.net', token: 't', sandbox: false, signal: new AbortController().signal, reason: () => null, release() {} } }, podPhase: async () => 'ready', podVram: () => 32 })
@@ -939,6 +940,80 @@ await test('auto-start: Generate starts, resumes or keeps the Pod by itself, onc
   s.phase = 'starting' // the sheet's button starts it
   usePod.answerPod(true)
   assert.equal((await asked)[0].url, '/media/x.png')
+})
+
+// A Pod too small for the run: the sheet offers to replace it, with auto-start on or off (docs/adr/0002).
+await test('pod too small: Generate asks to replace the Pod, then terminates, starts one sized for the workflow and reruns', async () => {
+  const { run } = await import('../src/lib/providers.js')
+  const usePod = await import('../src/lib/usePod.js')
+  const model = { id: 'm', provider: 'comfy', kind: 'video', name: 'LTX 2.5', workflow: 'ltx25_t2v' }
+  const opts = { prompt: 'A fox', aspect: '16:9' }
+  const fit = { needVramGb: 32, podVramGb: 24, needArch: null, podArch: null }
+  const api = (start = {}) => {
+    const s = { phase: 'ready', vram: 24, auto: true, connected: true, run: 'session', posts: [], runs: 0, ...start }
+    globalThis.fetch = async (url, init = {}) => {
+      const reply = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } })
+      if (url === '/api/pod') return reply({ phase: s.phase, auto: s.auto, connected: s.connected, run: s.run ?? null, spend: { today: 0, cap: 20 } })
+      if (url.startsWith('/api/pod/')) {
+        const action = url.slice(9)
+        s.posts.push({ action, body: JSON.parse(init.body || '{}') })
+        if (action === 'terminate') { s.phase = 'none'; s.vram = null }
+        if (action === 'start') { s.phase = 'starting'; s.vram = 48 }
+        return reply({ phase: s.phase })
+      }
+      if (url === '/api/comfy/run') {
+        s.runs++
+        if (s.vram != null && s.vram < 32) return reply({ error: 'This run needs a 32 GB GPU; your Pod has 24 GB. Terminate it and start a new Pod.', code: 'pod_too_small', fit }, 409)
+        return reply({ files: [{ url: '/media/x.mp4', kind: 'video' }] })
+      }
+      throw new Error(`unexpected ${url}`)
+    }
+    return s
+  }
+  // Lets the run reach the sheet.
+  const sheet = () => new Promise((r) => setTimeout(r, 20))
+
+  for (const auto of [true, false]) {
+    const s = api({ auto })
+    let waited = 0
+    const pending = run(model, opts, { onPod: () => waited++ })
+    await sheet()
+    assert.deepEqual(s.posts, [], `with auto-start ${auto ? 'on' : 'off'} nothing ends or starts before the person confirms`)
+    assert.equal(waited, 0, 'the take is not waiting for a Pod yet')
+    // The sheet's confirm button does what PodSheet's replace does, then answers.
+    await usePod.podAction('terminate', { now: true })
+    await usePod.podAction('start', { workflow: 'ltx25_t2v', tier: 'balanced' })
+    usePod.answerPod(true)
+    assert.equal((await pending)[0].url, '/media/x.mp4', 'the take runs again on the new Pod')
+    assert.deepEqual(s.posts.map((p) => p.action), ['terminate', 'start'])
+    assert.deepEqual(s.posts[0].body, { now: true }, 'the old Pod ends now')
+    assert.equal(s.posts[1].body.workflow, 'ltx25_t2v', 'the new Pod is sized for the workflow')
+    assert.equal(s.runs, 2)
+    assert.equal(waited, 1, 'after the confirm the take waits for the Pod')
+  }
+
+  // Several runs too big for the Pod share one question.
+  let s = api()
+  const both = [run(model, opts), run(model, opts)]
+  await sheet()
+  s.vram = 48
+  usePod.answerPod(true)
+  await Promise.all(both)
+
+  // Cancel leaves the Pod alone, and the take fails.
+  s = api()
+  const cancelled = run(model, opts)
+  await sheet()
+  usePod.answerPod(false)
+  await assert.rejects(cancelled, /Cancelled\. Your Pod is still running\./)
+  assert.deepEqual(s.posts, [], 'no terminate, no start')
+  assert.equal(s.phase, 'ready')
+
+  // Instant never touches a Pod (docs/adr/0001): the error stands and nothing is asked.
+  s = api({ run: 'instant' })
+  await assert.rejects(run(model, opts), (e) => e.code === 'pod_too_small')
+  assert.deepEqual(s.posts, [])
+  assert.equal(s.runs, 1)
 })
 
 await test('auto-start: the RunPod switch is saved as on or off, and on by default', () => {
@@ -1489,7 +1564,8 @@ await test('tiers: Session tiers may start the faster cards, and an NVFP4 run st
   const client = { workflows: { fromFile: async () => ({ json: null, setInput() {} }) }, run: async () => ({ outputs: [] }) }
   podMode({})
   await assert.rejects(core.runComfy('h3_open_t2v', h3, { createClient: () => client, lease: async () => { throw new Error('no lease') }, podPhase: async () => 'ready', podVram: () => 141, podArch: () => 'hopper', run: 'session' }),
-    (e) => e.code === 'pod_too_small' && /needs a Blackwell GPU; your Pod has a Hopper one/.test(e.message))
+    (e) => e.code === 'pod_too_small' && /needs a Blackwell GPU; your Pod has a Hopper one/.test(e.message)
+      && e.fit.needArch === 'Blackwell' && e.fit.podArch === 'Hopper', 'the error names the GPU families for the replace sheet')
 })
 
 await test('generation type: approving a Session switches the user to it, on the tier they picked', async () => {

@@ -67,15 +67,22 @@ export async function run(model, opts, hooks = {}) {
     // fails there: Instant never starts a Pod, the person switches to Session (docs/adr/0001). Otherwise,
     // with auto-start on, the app starts a Pod sized for this workflow; with it off, the start sheet
     // asks once. Then the same run goes again and waits for the Pod.
+    // A Pod too small for the run (pod_too_small) is never replaced by itself, with auto-start on or off:
+    // terminating ends a billed Pod and its other runs, so the sheet asks first (docs/adr/0002).
     const vars = comfyVars(model.kind, opts, model.sizes)
     // A model with a start-image workflow uses it when an image is attached.
     const workflow = vars.image && model.imageWorkflow ? model.imageWorkflow : model.workflow
     try {
       return await runComfy(workflow, vars)
     } catch (e) {
-      if (e.code !== 'needs_pod') throw e
+      if (e.code !== 'needs_pod' && e.code !== 'pod_too_small') throw e
       const s = await refreshPod()
       if (runTypeOf(s) === 'instant') throw e
+      if (e.code === 'pod_too_small') {
+        await askPod(workflow, e.reason, e.fit || {})
+        hooks.onPod?.()
+        return runComfy(workflow, vars)
+      }
       hooks.onPod?.()
       if (s?.auto && s?.connected) await autoPod(workflow)
       else await askPod(workflow, e.reason)
