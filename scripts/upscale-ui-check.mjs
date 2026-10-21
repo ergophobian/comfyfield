@@ -125,7 +125,8 @@ try {
   await click('.gen-upscale-more .pills button', 'SeedVR2 7B')
   assert.equal(await hint(), 'Makes 1080p, then SeedVR2 7B upscales it to 4K on Comfy Cloud or a Pod. Hide advanced')
   await cdp('Page.reload')
-  await wait('document.querySelector(".gen-upscale")')
+  // The source size shows once the model's schema loads again, which can trail the panel on a slow machine.
+  await wait('document.querySelector(".gen-upscale .gen-hint")?.textContent.startsWith("Makes ")')
   assert.equal(await hint(), 'Makes 1080p, then SeedVR2 7B upscales it to 4K on Comfy Cloud or a Pod. Advanced')
   await generate('A lighthouse in a storm')
   await until(() => requests.filter((r) => r.path === '/api/comfy/run').length === 2, 'the second upscale run')
