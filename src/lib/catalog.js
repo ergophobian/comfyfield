@@ -9,8 +9,17 @@ export const wanSizes = { '16:9': [1280, 720], '9:16': [720, 1280], '1:1': [960,
 // Pinned models in the composer. Any other fal model can be picked from the Models page.
 // provider 'comfy' runs public/workflows/<workflow>.json; 'fal' fills inputs from the model's schema.
 export const models = [
-  { id: 'comfy-router-flux', kind: 'image', provider: 'comfyRouter', name: 'Flux 2 Pro', note: 'Hosted through Comfy Router', model: 'bfl/flux-2-pro' },
-  { id: 'comfy-router-seedance', kind: 'video', provider: 'comfyRouter', name: 'Seedance 2.5', note: 'Hosted through Comfy Router', model: 'byteplus/dreamina-seedance-2-5-260628', durations: [5, 8, 10] },
+  // Router prices: docs.comfy.org/development/comfy-router/pricing, checked 2026-10-19.
+  { id: 'comfy-router-flux', kind: 'image', provider: 'comfyRouter', name: 'Flux 2 Pro', note: 'Images and edits with up to nine references. Uses Comfy credits.', model: 'bfl/flux-2-pro', maxImages: 9, price: { amount: 0.266 / 211, unit: 'gpu-second' } },
+  { id: 'comfy-router-flux-max', kind: 'image', provider: 'comfyRouter', name: 'Flux 2 max', note: 'Detailed images and edits with up to nine references.', model: 'bfl/flux-2-max', maxImages: 9, price: { amount: 0.266 / 211, unit: 'gpu-second' } },
+  { id: 'comfy-router-kontext', kind: 'image', provider: 'comfyRouter', name: 'Flux Kontext pro', note: 'Prompted edits with up to four references.', model: 'bfl/flux-kontext-pro', maxImages: 4, aspects: ['1:1', '16:9', '9:16', '4:5'], price: { amount: 0.04, unit: 'image' } },
+  { id: 'comfy-router-photon', kind: 'image', provider: 'comfyRouter', name: 'Photon flash', note: 'Low cost images from a text prompt.', model: 'luma/photon-flash-1', aspects: ['1:1', '16:9', '9:16', '4:3', '3:4', '21:9'], price: { amount: 0.5733 / 211, unit: 'image' } },
+  { id: 'comfy-router-seedream', kind: 'image', provider: 'comfyRouter', name: 'Seedream 5.0 flash', note: 'Low cost images and edits with up to ten references.', model: 'byteplus/seedream-5-0-flash-260915', maxImages: 10, price: { amount: 5.4311 / 211, unit: 'image' } },
+  { id: 'comfy-router-seedance', kind: 'video', provider: 'comfyRouter', name: 'Seedance 2.5', note: 'Video from text, a start image or multiple references. Uses Comfy credits.', model: 'byteplus/dreamina-seedance-2-5-260628', maxImages: 9, aspects: ['16:9', '9:16', '1:1', '4:3', '3:4', '21:9'], durations: [5, 8, 10], price: { amount: 15.301, unit: '1m tokens', estimate: true } },
+  { id: 'comfy-router-seedance-fast', kind: 'video', provider: 'comfyRouter', name: 'Seedance 1.0 pro fast', note: 'Low cost video from text or a start image, at 720p.', model: 'byteplus/seedance-1-0-pro-fast-251015', maxImages: 1, aspects: ['16:9', '9:16', '1:1', '4:3', '3:4', '21:9'], durations: [5, 8, 10], price: { amount: 1, unit: '1m tokens', estimate: true } },
+  { id: 'comfy-router-ltx', kind: 'video', provider: 'comfyRouter', name: 'Ltx 2.5 fast', note: 'Video with sound from a text prompt, at 720p.', model: 'ltx/ltx-2-5-fast', aspects: ['16:9', '9:16'], durations: [2, 3, 4, 5, 6, 8, 10], price: { amount: 0.1287, unit: 'second' } },
+  { id: 'comfy-router-speech', kind: 'audio', provider: 'comfyRouter', name: 'ElevenLabs v4 turbo', note: 'Low cost speech in the Rachel voice. Uses Comfy credits.', model: 'elevenlabs/eleven_v4_turbo', mode: 'speech', price: { amount: 0.0572, unit: '1000 characters' } },
+  { id: 'comfy-router-sfx', kind: 'audio', provider: 'comfyRouter', name: 'ElevenLabs sound effects', note: 'Describe a sound. Creates a five second clip.', model: 'elevenlabs/eleven_sfx_v2', mode: 'sfx', price: { amount: 0.14 / 60, unit: 'second' } },
   { id: 'comfy-ltx-i2v', kind: 'video', provider: 'comfy', name: 'LTX image to video', note: 'LTX Video 2B on Comfy Cloud or a Pod. Attach a start image.', workflow: 'ltx_i2v', durations: [3, 5, 8] },
   { id: 'comfy-flux', kind: 'image', provider: 'comfy', name: 'FLUX', note: 'On Comfy Cloud or a Pod', workflow: 'image_flux' },
   { id: 'comfy-sdxl', kind: 'image', provider: 'comfy', name: 'SDXL', note: 'On Comfy Cloud or a Pod', workflow: 'image_sdxl' },
@@ -55,6 +64,9 @@ export const models = [
   { id: 'el-sfx', kind: 'audio', provider: 'elevenlabs', name: 'ElevenLabs sound effects', note: 'Describe a sound', mode: 'sfx' },
   { id: 'fal:minimax/music-3', kind: 'audio', provider: 'fal', name: 'MiniMax Music 3', note: 'Songs, via fal', model: 'minimax/music-3' },
 ]
+
+// A writer is a text service, separate from the media picker.
+export const routerWriterModel = 'openai/gpt-4.1-nano'
 
 // Format graphs a big enough Pod runs on FreeVideo instead, as the catalog's H3 rows do.
 export const podWorkflows = { h3_flf2v: 'h3_freevideo_flf2v' }

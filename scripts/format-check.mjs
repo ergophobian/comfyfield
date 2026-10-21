@@ -3,6 +3,7 @@ import { comfyPlaceholders } from './comfy-placeholders.mjs'
 import { allFormats, formats } from '../src/lib/formats/index.js'
 import { recipes } from '../src/lib/recipes.js'
 import { schemas } from '../src/lib/formats/schemas.js'
+import { models } from '../src/lib/catalog.js'
 import { validateFormat } from '../src/lib/formats/validate.js'
 
 const { comfy, comfyOptional } = comfyPlaceholders()
@@ -19,3 +20,14 @@ for (const format of allFormats) {
 }
 for (const recipe of recipes) assert.deepEqual(validateFormat(recipe), [], recipe.id)
 console.log(`Format check ok: ${formats.length} runnable, ${allFormats.length - formats.length} hidden, ${recipes.length} migrated recipes. No generation calls.`)
+
+for (const model of models.filter((m) => m.provider === 'comfyRouter')) {
+  const format = {
+    id: `check-${model.id}`, name: 'Router schema check', job: 'Check a mapped prompt', shape: 'tool', cover: 'sample', kind: model.kind,
+    inputs: [{ id: 'prompt', type: 'text', label: 'Prompt' }, ...(model.maxImages ? [{ id: 'image', type: 'image', label: 'Reference' }] : [])],
+    steps: [{ id: 'generate', model: model.id, prompt: '{prompt}', settings: { aspect: model.aspects?.[0] || '1:1', duration: 5 } }],
+    outputs: [{ step: 'generate', kind: model.kind }],
+  }
+  assert.deepEqual(validateFormat(format), [], model.id)
+}
+console.log('All pinned Router models validate as formats against public schema snapshots')
