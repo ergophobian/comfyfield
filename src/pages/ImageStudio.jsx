@@ -6,6 +6,7 @@ import PromptList, { newRows } from '../components/Batch.jsx'
 import Pop, { Stepper } from '../components/generate/Pop.jsx'
 import { LibraryPicks, RefTags, refOf } from '../components/generate/Library.jsx'
 import MentionText from '../components/generate/Mentions.jsx'
+import MediaPicker from '../components/generate/MediaPicker.jsx'
 import { Banner, Feed, GoButton, StatusNote, balanceText, canRun, costText, noun, useBatches, useView } from '../components/generate/parts.jsx'
 import { useGenModel } from '../components/generate/useGenModel.js'
 import EnhanceChip, { enhancePrompt, useEnhance } from '../components/generate/Enhance.jsx'
@@ -46,6 +47,7 @@ export default function ImageStudio() {
   const [view, setView] = useView()
   const [batches, addBatch] = useBatches('image')
   const fileRef = useRef(null)
+  const [picking, setPicking] = useState(false)
   const navigate = useNavigate()
   const balance = useBalance()
   const metaOf = useModelMeta([model])
@@ -190,7 +192,7 @@ export default function ImageStudio() {
             <div className="chips">
               <div className="chip gen-icon">
                 <button type="button" aria-label="Add reference images" title={attachTitle} disabled={!canAttach || uploads.length >= MAX_REFS}
-                  className={uploads.length ? 'lit' : ''} onClick={() => fileRef.current.click()}><IconPlus /></button>
+                  className={uploads.length ? 'lit' : ''} onClick={() => setPicking(true)}><IconPlus /></button>
               </div>
               <Pop up keep className="gen-icon" icon={<IconAt />} title="Add from Library" lit={refs.length > 0}>
                 <LibraryPicks refs={refs} setRefs={setRefs} />
@@ -232,6 +234,11 @@ export default function ImageStudio() {
         <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden
           onChange={(e) => { attach(e.target.files); e.target.value = '' }} />
       </form>
+      {picking && (
+        <MediaPicker multiple title="Add references" accept="image/png,image/jpeg,image/webp,image/gif" setError={setError}
+          onClose={() => setPicking(false)}
+          onPick={(it) => { setPicking(false); setUploads((us) => (us.some((u) => u.url === it.url) ? us : [...us, it]).slice(0, MAX_REFS)) }} />
+      )}
     </main>
   )
 }
