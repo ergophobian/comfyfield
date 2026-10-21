@@ -93,7 +93,7 @@ function AppView({ format, motion }) {
     setRunning(true)
     setError(null)
     setSession(null)
-    try { setSession(await gens.generateFormat(format, values)) } catch (e) { setError(e.message) }
+    try { setSession(await gens.generateFormat(format, values, { onSession: setSession })) } catch (e) { if (e.session) setSession(e.session); setError(e.message) }
     finally { setRunning(false) }
   }
   const use = (id, initial) => {
@@ -139,7 +139,7 @@ function AppView({ format, motion }) {
           )) : (
             <p className="sheet-note">Nothing else to set. Add your {(main?.label || 'media').toLowerCase()} and generate.</p>
           )}
-          {error && <p className="sheet-error">{error}</p>}
+          {error && !session && <p className="sheet-error">{error}</p>}
           {session && <FormatReview key={session.flow.id + session.flow.values.renderer} session={session} />}
           <div className="app-go">
             <button className="btn-blue" disabled={running || !wired || missing.length > 0 || !connected}>

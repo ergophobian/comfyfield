@@ -125,9 +125,9 @@ check('Router writer rejects empty, refused, truncated and failed output without
   response = routerReply('Partial', 'incomplete')
   await assert.rejects(writePrompt(input), /did not finish/)
   response = routerReply('')
-  await assert.rejects(writePrompt(input), /no prompt/)
+  await assert.rejects(writePrompt(input), (e) => /no prompt/.test(e.message) && e.retryable === false)
   response = { ok: true, json: async () => ({ status: 'completed', output: [{ type: 'message', role: 'assistant', content: [{ type: 'refusal', refusal: 'Refused' }] }] }) }
-  await assert.rejects(writePrompt(input), /no prompt/)
+  await assert.rejects(writePrompt(input), (e) => /no prompt/.test(e.message) && e.retryable === false)
   response = { ok: false, status: 429, json: async () => ({ error: { message: 'Quota exceeded' } }) }
   const count = calls.length
   await assert.rejects(writePrompt(input), /Quota exceeded/)
@@ -146,10 +146,10 @@ check('Router writer keeps the supplied logical key and exposes request ids on e
     assert.equal(calls.at(-1).headers['Idempotency-Key'], request.idempotencyKey)
   }
   response = { ok: true, status: 200, headers: new Headers({ 'X-Comfy-Request-Id': 'writer-invalid-json' }), json: async () => null }
-  await assert.rejects(writePrompt(request), (error) => error.requestId === 'writer-invalid-json' && error.idempotencyKey === request.idempotencyKey)
+  await assert.rejects(writePrompt(request), (error) => error.requestId === 'writer-invalid-json' && error.idempotencyKey === request.idempotencyKey && error.retryable === true)
   response = routerReply('Partial', 'incomplete')
   response.headers = new Headers({ 'X-Comfy-Request-Id': 'writer-incomplete' })
-  await assert.rejects(writePrompt(request), (error) => error.requestId === 'writer-incomplete' && error.idempotencyKey === request.idempotencyKey)
+  await assert.rejects(writePrompt(request), (error) => error.requestId === 'writer-incomplete' && error.idempotencyKey === request.idempotencyKey && error.retryable === false)
   response = routerReply('Recovered')
   assert.equal(await writePrompt(request), 'Recovered')
   assert.equal(calls.at(-1).headers['Idempotency-Key'], request.idempotencyKey)

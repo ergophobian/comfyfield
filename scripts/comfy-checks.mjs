@@ -12,6 +12,7 @@ import { schemas } from '../src/lib/formats/schemas.js'
 import { validateFormat, routerInputErrors } from '../src/lib/formats/validate.js'
 import { runFormat } from '../src/lib/formats/runner.js'
 import { expectedInputs, prompt } from './fixtures/router-payloads.mjs'
+import { offlineRequirements } from './fixtures/format-planning.mjs'
 import { comfyRouterInput } from '../shared/mapping.js'
 
 // No inherited provider configuration can reach these mocked checks.
@@ -91,7 +92,7 @@ await test('Router chains reject unsupported upstream images before any generati
   const product = { ...base, inputs: [{ id: 'product', type: 'product', label: 'Product' }], steps: [{ id: 'last', model: 'comfy-router-flux' }] }
   assert.deepEqual(validateFormat(product), [])
   let mapped = false
-  await runFormat(product, { product: { name: 'Cup', images: ['https://example.test/cup.png'] } }, { run: async (model, opts) => {
+  await runFormat(product, { product: { name: 'Cup', images: ['https://example.test/cup.png'] } }, { requirements: offlineRequirements, run: async (model, opts) => {
     mapped = true
     assert.equal(comfyRouterInput(model.model, opts).input_image, 'https://example.test/cup.png')
     return [{ url: 'https://example.test/output.png', kind: 'image' }]
@@ -258,6 +259,27 @@ await test('Comfy Router explains credits and completed failures; never collects
   globalThis.fetch = async () => { assert(replies.length); return replies.shift() }
   await assert.rejects(core.runComfyRouter({ model: 'bfl/flux-2-pro', input: {} }, noWait), /provider_error/)
   assert.equal(replies.length, 0)
+})
+
+await test('Router terminal answers and uncertain responses carry retry classification', async () => {
+  setup('cloud')
+  for (const [reply, retryable, code] of [
+    [json({ error_type: 'insufficient_credits', request_id: 'credits' }, 402), false, 'insufficient_credits'],
+    [json({ error_type: 'validation_error' }, 422), false, 'validation_error'],
+    [json({ error_type: 'rate_limited' }, 429), true, 'rate_limited'],
+    [json({ error_type: 'unavailable' }, 503), true, 'unavailable'],
+  ]) {
+    globalThis.fetch = async () => reply
+    await assert.rejects(core.runComfyRouter({ model: 'bfl/flux-2-pro', input: {} }, noWait), (e) => e.retryable === retryable && e.code === code)
+  }
+  for (const failed of [{ status: 'FAILED' }, { status: 'COMPLETED', error_type: 'provider_error' }]) {
+    const replies = [json(job, 201), json(failed)]
+    globalThis.fetch = async () => { assert(replies.length); return replies.shift() }
+    await assert.rejects(core.runComfyRouter({ model: 'bfl/flux-2-pro', input: {} }, noWait), (e) => e.retryable === false && e.requestId === job.request_id)
+  }
+  const replies = [json(job, 201), json({})]
+  globalThis.fetch = async () => replies.shift()
+  await assert.rejects(core.runComfyRouter({ model: 'bfl/flux-2-pro', input: {} }, noWait), (e) => e.retryable === true && e.code === 'invalid_response')
 })
 
 await test('Router discovery preserves pagination and encodes the cursor', async () => {
