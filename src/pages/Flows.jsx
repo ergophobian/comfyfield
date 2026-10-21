@@ -3,9 +3,8 @@ import { ReactFlow, ReactFlowProvider, Background, Controls, MiniMap, applyNodeC
 import '@xyflow/react/dist/style.css'
 import { nodeTypes, FlowCtx } from '../components/flow/nodes.jsx'
 import Panel from '../components/flow/Panel.jsx'
-import { widgetTypes } from '../../shared/widgetInputs.js'
 import { IconClose } from '../components/Icons.jsx'
-import { downstreamOf } from '../lib/flowEngine.js'
+import { connectionProblem } from '../../shared/flowRules.js'
 import { useFlowStorage, engineFor, starters, makeNode, blankFlow, exportJson, parseFlow, nodeLabels } from '../lib/flowStore.js'
 import { reloadFlows } from '../lib/remoteFlows.js'
 import AssistantPanel from '../components/AssistantPanel.jsx'
@@ -125,14 +124,7 @@ function Canvas({ picker }) {
   const onNodesChange = useCallback((c) => update((f) => ({ ...f, nodes: applyNodeChanges(c, f.nodes) })), [update])
   const onEdgesChange = useCallback((c) => update((f) => ({ ...f, edges: applyEdgeChanges(c, f.edges) })), [update])
   const onConnect = useCallback((c) => update((f) => ({ ...f, edges: addEdge({ ...c, id: `${c.source}-${c.target}` }, f.edges) })), [update])
-  const valid = useCallback((c) => {
-    const s = flow.nodes.find((n) => n.id === c.source)
-    const t = flow.nodes.find((n) => n.id === c.target)
-    if (!s || !t || s.id === t.id) return false
-    if (['output', 'note'].includes(s.type) || ['prompt', 'image', 'note', ...widgetTypes].includes(t.type)) return false
-    if (s.type === 'prompt' && !['model', 'writer'].includes(t.type)) return false
-    return !downstreamOf(flow, t.id).has(s.id) && !flow.edges.some((e) => e.source === s.id && e.target === t.id)
-  }, [flow])
+  const valid = useCallback((c) => !connectionProblem(flow, c.source, c.target), [flow])
 
   const add = (type) => {
     const c = rf.screenToFlowPosition({ x: window.innerWidth / 2 - 120, y: window.innerHeight / 2 - 80 })

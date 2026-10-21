@@ -32,6 +32,7 @@ Keys go in Connections (saved to `.comfyfield/keys.json`, gitignored) or `.env` 
 - `src/App.jsx`: route table, and the shared format sheet via `useApp().openFormat` (`src/lib/appContext.js`)
 - `src/pages/`: one page per tool (generators, studios, apps), plus Flows (Canvas), Library (Assets), Models and Connections
 - `src/lib/flowEngine.js`: Flows execution rules (see below)
+- `server/flows.js`, `shared/flowRules.js`: flows saved in `.comfyfield/flows.json`, shared by the app and the MCP flow tools; node types and connection rules (see `docs/flows-mcp.md`)
 - `src/lib/formats/`: formats as data (apps, presets, effects, looks, jobs). `index.js` holds categories, app hubs and helpers. `src/lib/recipes.js` keeps the teammate's fal recipes
 - `src/lib/skills.js`: the skill library on /skills (agent jobs, their prompts and the formats they run) and the agent setup snippets. Plain JS so `server/mcp.js` can import it
 - `public/workflows/`: ComfyUI workflows in API format with `{{placeholders}}`. Uploads: `{{image}}` to `{{image5}}`, `{{mask}}`, `{{video}}`, `{{audio}}`, `{{voice}}`; a node with `"_meta": { "optional": "<key>" }` drops out, with its links, when the run has no such file. `node scripts/graph-check.mjs` checks every graph against `scripts/fixtures/comfy-nodes.json` (rebuild it with `scripts/node-schema.mjs` after moving the ComfyUI pin or adding a pack; a pack the Comfy registry has no node scan for takes a hand schema from `scripts/fixtures/pack-nodes.json`)
