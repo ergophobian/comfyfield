@@ -11,6 +11,7 @@ import { reloadFlows } from '../lib/remoteFlows.js'
 import AssistantPanel from '../components/AssistantPanel.jsx'
 import { AgentPresence, useAgentPresence } from '../components/flow/AgentPresence.jsx'
 import { getConnections } from '../lib/providers.js'
+import { uploadFlowImage, legacyImages, migrateDataUrl, patchNode } from '../lib/flowImage.js'
 
 const addable = [
   ['prompt', 'Text or a list of prompts'],
@@ -66,11 +67,30 @@ function Canvas({ picker }) {
     ...s, flows: s.flows.map((f) => (f.id === s.current ? { ...fn(f), updated: Date.now() } : f)),
   })), [])
   const patch = useCallback((id, data) => update((f) => ({ ...f, nodes: f.nodes.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...data } } : n)) })), [update])
-  const upload = useCallback((id, file) => {
-    const r = new FileReader()
-    r.onload = () => patch(id, { url: r.result, name: file.name })
-    r.readAsDataURL(file)
-  }, [patch])
+  const [uploads, setUploads] = useState({})
+  const upload = useCallback(async (id, file) => {
+    const flowId = flow.id
+    setUploads((u) => ({ ...u, [id]: { busy: true } }))
+    try {
+      const data = await uploadFlowImage(file)
+      setStore((s) => patchNode(s, flowId, id, data))
+      setUploads((u) => { const { [id]: _, ...rest } = u; return rest })
+    } catch (e) {
+      setUploads((u) => ({ ...u, [id]: { error: e.message } }))
+    }
+  }, [flow.id])
+
+  // Older flows kept image nodes as data URLs. Move them to /media once; on failure the data URL stays and still works.
+  const migrated = useRef(new Set())
+  useEffect(() => {
+    if (!ready) return
+    for (const n of legacyImages(flow)) {
+      if (migrated.current.has(n.id)) continue
+      migrated.current.add(n.id)
+      const from = n.data.url
+      migrateDataUrl(from).then((url) => setStore((s) => patchNode(s, flow.id, n.id, { url }, from)), () => {})
+    }
+  }, [ready, flow])
 
   const say = (r) => setNote(r?.reason || null)
   const act = {
@@ -143,7 +163,7 @@ function Canvas({ picker }) {
     } catch (e) { setNote(e.message) }
   }
 
-  const ctx = { flow, engine, state, act, patch, upload }
+  const ctx = { flow, engine, state, act, patch, upload, uploads }
 
   return (
     <FlowCtx.Provider value={ctx}>
@@ -200,7 +220,7 @@ function Canvas({ picker }) {
         )}
 
         {assistant && <aside className="agent-canvas-panel glass"><button type="button" className="btn-soft" onClick={() => setAssistant(false)}>Close assistant</button><AssistantPanel /></aside>}
-        {node && !assistant && ready && <Panel node={node} patch={patch} picker={picker} connections={connections} upload={upload} remove={remove} />}
+        {node && !assistant && ready && <Panel node={node} patch={patch} picker={picker} connections={connections} upload={upload} uploading={uploads[node.id]} remove={remove} />}
       </div>
     </FlowCtx.Provider>
   )
