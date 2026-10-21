@@ -43,9 +43,11 @@ Cursor and ChatGPT desktop take the same command: `npx comfyfield mcp`. Keys are
 
 Tools: `list_models`, `generate`, `get_model_schema`, `balance`, `write_prompts`, `stitch`, `export_stitch`. Any fal endpoint works as `fal:<endpoint>`.
 
+Flow tools: `list_flows`, `get_flow`, `create_flow`, `add_node`, `connect_nodes`, `update_node`, `remove_node`, `run_flow`. Flows are saved in `.comfyfield/flows.json`, so the app shows what an agent builds (switch back to the tab to reload). `run_flow` fills gaps and stops at Approve gates; only you can press Send in Flows. See [docs/flows-mcp.md](docs/flows-mcp.md).
+
 The Skills page (`/skills`) lists ready-made jobs to run from your agent, each with a prompt to copy. Their slash commands are not wired into the MCP server yet.
 
-Recipes and flows are not in this tree yet. TODO: add `list_recipes`, `run_recipe` and `run_flow` once `src/lib/recipes.js` and flows land.
+Recipes are not wired into the MCP server yet. TODO: add `list_recipes` and `run_recipe`.
 
 CLI:
 

@@ -49,7 +49,7 @@ How the user's ComfyUI runs execute: Instant or Session, picked in the top bar.
 _Avoid_: mode, backend (for the user's choice)
 
 **Instant**:
-The generation type that sends ComfyUI runs to Comfy Cloud at once. It runs only the models and LoRAs Cloud has installed.
+The generation type that sends ComfyUI runs to Comfy Cloud at once. It runs only the models and LoRAs Cloud has installed. It never starts a Pod: a run Cloud cannot take fails until the user switches to Session.
 _Avoid_: cloud mode
 
 **Session**:
@@ -59,6 +59,18 @@ _Avoid_: pod mode, long session
 **Session tier**:
 Budget, Balanced or Performance: the rule that picks a Session's GPU from its estimated cost and time per job.
 _Avoid_: size (that is GPU memory), plan
+
+**Upscale**:
+A second run that raises a finished clip's resolution with SeedVR2. In Create video it follows every take while its switch is on, and the take stays in the Library beside the upscaled copy.
+_Avoid_: enhance (that is a format category), super resolution
+
+**Source resolution**:
+The resolution the video model makes before Upscale, named by its short side (720p is 1280 × 720 at 16:9). Auto picks the largest one under the target.
+_Avoid_: input size, base resolution
+
+**Target resolution**:
+The resolution Upscale delivers: 1080p, 1440p or 4K. Auto picks 1080p, or 4K when the source is already 1080p.
+_Avoid_: output size, final resolution
 
 ## Flows
 

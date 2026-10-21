@@ -6,6 +6,6 @@ export async function generate(workflow, vars) {
     body: JSON.stringify({ workflow, vars }),
   })
   const data = await res.json()
-  if (!res.ok) throw Object.assign(new Error(data.error || `Comfy request failed (${res.status})`), { code: data.code, reason: data.reason })
+  if (!res.ok) throw Object.assign(new Error(data.error || `Comfy request failed (${res.status})`), { code: data.code, reason: data.reason, fit: data.fit })
   return data.files
 }
