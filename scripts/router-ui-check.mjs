@@ -21,6 +21,7 @@ let partial = false
 let failedSecond = false
 let failedTakes = 0
 let planningDelay = 0
+let preflightConnected = true
 let failWriter = false
 let failCreate = true
 const writerRequests = []
@@ -56,7 +57,7 @@ const server = await preview({ configFile: false, envFile: false, plugins: [{
       if (url.pathname === '/api/connections/test') return res.end('{"ok":true}')
       if (url.pathname === '/api/comfy/requirements') {
         if (planningDelay) await new Promise((resolve) => setTimeout(resolve, planningDelay))
-        return res.end(JSON.stringify({ connections: { comfyRouter: { connected: true } }, writerProviders: ['comfyRouter'], requirements: [] }))
+        return res.end(JSON.stringify({ connections: { comfyRouter: { connected: preflightConnected } }, writerProviders: ['comfyRouter'], requirements: [] }))
       }
       if (url.pathname === '/api/prompt') {
         writerRequests.push(body)
@@ -270,6 +271,7 @@ try {
   await goto('/router-fixture')
   await wait('!document.querySelector("#retry").disabled')
   assert.equal(requests.length - beforeBatch, 2, 'Reload never resubmits a failed batch until Retry')
+  await screenshot('integration-batch-failure-after-reload')
   await evaluate('document.querySelector("#retry").click(); document.querySelector("#retry").click()')
   await wait('JSON.parse(document.querySelector("#items").textContent).filter((item) => item.url).length === 3 && !JSON.parse(document.querySelector("#items").textContent).some((item) => item.pending)')
   const batchCalls = requests.slice(beforeBatch)
@@ -281,6 +283,7 @@ try {
   await wait('JSON.parse(localStorage.getItem("comfyfield.library")).filter((item) => item.url).length === 3')
   assert.deepEqual(await evaluate('JSON.parse(localStorage.getItem("comfyfield.library")).filter((item) => item.url).map((item) => item.url).sort()'), ['/batch-1.png', '/batch-2.png', '/batch-3.png'])
   await screenshot('partial-batch-recovered')
+  await screenshot('integration-batch-recovered')
   await goto('/router-fixture')
   await wait('JSON.parse(document.querySelector("#items").textContent).filter((item) => item.url).length === 3')
   partial = false
@@ -293,6 +296,7 @@ try {
   await goto('/router-fixture')
   await wait('JSON.parse(document.querySelector("#items").textContent).some((i) => i.pending)')
   assert.equal(requests.length - beforeReload, 1, 'Reload waits on the accepted job instead of resubmitting')
+  await screenshot('integration-pending-after-reload')
   holdJobs = false
   releaseHeld()
   await wait('!JSON.parse(document.querySelector("#items").textContent).some((i) => i.pending)')
@@ -316,6 +320,7 @@ try {
   await pause(1000)
   assert.equal(requests.length - beforeCancel, 1, 'Cancel prevents the remaining batch calls')
   assert.equal(jobs.get(cancelledJobs[0]).files, undefined, 'Cancelled jobs discard late files')
+  await screenshot('integration-cancelled-after-reload')
   assert.equal(jobRequests.length, requests.length, 'Every Router payload goes through the server job route')
 
   // Same format id with different values must produce two independent requests/sessions.
@@ -371,10 +376,31 @@ try {
   await wait('JSON.parse(document.querySelector("#sessions").textContent).length === 4 && JSON.parse(document.querySelector("#sessions").textContent).every((s) => !s.busy)')
   assert.equal(await evaluate('document.querySelector("#error").textContent'), 'Mock Create credits')
   assert.equal(await evaluate('document.querySelector("#retry").disabled'), false)
+  await goto('/router-fixture')
+  await wait('!document.querySelector("#retry").disabled')
   await evaluate('document.querySelector("#retry").click()')
   await wait('!JSON.parse(document.querySelector("#items").textContent).some((i) => i.pending) && document.querySelector("#error").textContent === ""')
   assert.notEqual(requests.at(-1).idempotencyKey, failedCreateKey, 'Provider forwards terminal status so Create rotates the key')
   assert.equal(requests.at(-1).input.prompt, 'Create failure', 'The preserved Retry belongs to Create')
+
+  failedTakes = 0
+  await evaluate('document.querySelector("#format-failure").click()')
+  await wait('JSON.parse(document.querySelector("#session").textContent)?.failed === 2 && !JSON.parse(document.querySelector("#session").textContent).busy')
+  const reloadTakes = await evaluate('JSON.parse(document.querySelector("#items").textContent).filter((i) => i.formatRunId === JSON.parse(document.querySelector("#session").textContent).id)')
+  const beforeTakeRetry = requests.length
+  await goto('/router-fixture')
+  await wait('!document.querySelector("#retry-first-failed").disabled')
+  preflightConnected = false
+  await evaluate('document.querySelector("#retry-first-failed").click()')
+  await wait('document.querySelector("#error").textContent.includes("Connect comfyRouter")')
+  assert.equal(requests.length, beforeTakeRetry, 'Reloaded format Retry checks requirements before spending')
+  preflightConnected = true
+  for (const failedCount of [1, 0]) {
+    await evaluate('document.querySelector("#retry-first-failed").click()')
+    await wait(`JSON.parse(document.querySelector('#items').textContent).filter((i) => i.failed).length === ${failedCount} && !JSON.parse(document.querySelector('#items').textContent).some((i) => i.pending)`)
+  }
+  assert.equal(requests.length, beforeTakeRetry + 2, 'Reloaded Retry runs only the two failed takes')
+  assert(await evaluate(`JSON.parse(document.querySelector('#items').textContent).some((i) => i.id === ${JSON.stringify(reloadTakes.find((i) => i.url).id)})`), 'Reloaded Retry retains the successful format take')
 
   failWriter = true
   const beforeSheet = requests.length
@@ -396,7 +422,7 @@ try {
   await wait('!JSON.parse(document.querySelector("#items").textContent).some((i) => i.pending) && document.querySelector(".format-review button")?.textContent === "Prompt sent"')
   assert.equal(requests.length, beforeSheet + 1)
   assert.deepEqual(errors, [])
-  console.log(`Router UI checks passed: fake key gating, ${routerModels.length} picker selections and mocked generations, independent native payloads, combined reference limits, partial batch recovery with stable keys and Library persistence, concurrent format shots, per-take Library failures and session retries, independent Create error ownership, shared-sheet writer recovery, desktop and 390px layouts. Nine mock screenshots saved.`)
+  console.log(`Router UI checks passed: fake key gating, ${routerModels.length} picker selections and mocked generations, independent native payloads, combined reference limits, durable jobs, partial batch recovery and pending resumption after reload, cancellation, restored format preflight, stable keys and Library persistence, concurrent format shots, per-take Library failures and session retries, independent Create error ownership, shared-sheet writer recovery, desktop and 390px layouts. Mock screenshots saved.`)
 } finally {
   await browser?.close()
   await server.close()

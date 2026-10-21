@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { run, writePrompt } from './providers.js'
 import { modelPrices } from './cost.js'
 import { runFormat } from './formats/runner.js'
+import { preflightFlow } from './formats/preflight.js'
 import { waitJob, cancelJob, Cancelled } from './jobs.js'
 
 const KEY = 'comfyfield.library'
@@ -69,11 +70,21 @@ export function useGenerations() {
 
   const fail = (id, base, message, retryStep, after) => {
     let retried = false
-    const retry = retryStep || (base.run && (() => {
+    const retry = retryStep || (base.run && (async () => {
       if (retried) return
       retried = true
       const { model, opts, meta } = base.run
-      execute(model, opts, meta, after, id).catch(() => {})
+      try {
+        // The session was in memory; after reload, check only the saved failed step before spending.
+        if (meta.formatRunId) {
+          const plan = await preflightFlow({ nodes: [{ id: meta.stepId, type: 'model', data: { model: { ...model, formatStep: { options: opts } } } }], edges: [] })
+          if (!plan.ok) throw new Error(plan.reason.message)
+        }
+        execute(model, opts, meta, after, id).catch(() => {})
+      } catch (error) {
+        retried = false
+        showError(meta.formatRunId || id, error.message, retry)
+      }
     }))
     showError(base.run?.meta.formatRunId || id, message, retry)
     patch(id, () => ({ ...base, id, failed: message, retry }))
@@ -91,7 +102,9 @@ export function useGenerations() {
       if (base.run?.model.provider === 'comfyRouter' && base.run.opts.routerBatch) {
         execute(base.run.model, base.run.opts, base.run.meta, undefined, id).catch(() => {})
       } else {
-        Promise.all(jobs.map(waitJob)).then(
+        // A Pod fallback supersedes the failed Cloud job in this same run.
+        const currentJobs = base.run?.model.provider === 'comfyRouter' ? jobs : jobs.slice(-1)
+        Promise.all(currentJobs.map(waitJob)).then(
           (files) => { if (!cancelled.current.has(id)) finish(id, base, files.flat()) },
           (e) => {
             if (e instanceof Cancelled || cancelled.current.has(id)) setItems((xs) => xs.filter((x) => x.id !== id))
@@ -105,7 +118,7 @@ export function useGenerations() {
   // `after` also follows a retried take. Stable ids and the session retry adapter retain completed
   // format steps; the saved run retains outstanding Router calls and their request keys on reload.
   function execute(model, opts, meta = {}, after, id = crypto.randomUUID(), retryStep) {
-    const from = window.location.pathname + window.location.search
+    const from = live.current.find((item) => item.id === id)?.from || window.location.pathname + window.location.search
     const base = { aspect: opts.shape || opts.aspect, caption: opts.caption, model: model.name, kind: model.kind, provider: model.provider, from, ...meta, run: { model, opts, meta } }
     const owner = meta.formatRunId || id
     clearError(meta.formatRunId ? owner : errorOwner.current)

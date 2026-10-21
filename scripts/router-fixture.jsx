@@ -41,6 +41,7 @@ function Fixture() {
       }).catch(() => {})
     }}>Write a prompt</button>
     <button id="writer-send" onClick={() => session.current?.sendWriter('writer').catch(() => {})}>Send writer</button>
+    <button id="retry-first-failed" disabled={!gens.items.some((i) => i.failed && i.retry)} onClick={() => gens.items.find((i) => i.failed && i.retry)?.retry()}>Retry failed item</button>
     <button id="format-retry" onClick={() => session.current?.retryFailed().catch(() => {})}>Retry failed takes</button>
     <output id="sessions">{JSON.stringify(concurrent.current.map((current) => ({ id: current.id, busy: current.busy, files: current.results().length })))}</output>
     <output id="session">{JSON.stringify(session.current && { id: session.current.id, busy: session.current.busy, failed: session.current.failures.length })}</output>
