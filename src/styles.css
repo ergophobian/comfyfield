@@ -530,6 +530,40 @@ code { font-size: .92em; }
 .lib-toast { position: absolute; left: 50%; top: 50%; translate: -50% -50%; padding: 6px 12px; border-radius: var(--r-pill); font-size: var(--text-xs); font-weight: 600; background: var(--surface); box-shadow: var(--shadow); }
 .audio .lib-acts { top: auto; bottom: 8px; }
 .audio .lib-act { background: var(--scrim-strong); }
+/* Search, folders and the bulk bar for picking several takes at once */
+.lib-tools { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.lib-tools .seg { margin: 0; }
+.lib-search { flex: 1 1 240px; max-width: 360px; }
+.lib-select { margin-left: auto; }
+.lib-select.on { background: var(--blue-select); color: var(--blue); }
+.lib-folders { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.lib-count { font-size: var(--text-xs); color: var(--muted); }
+.pills button.on .lib-count { color: var(--blue); }
+.lib-new { display: inline-flex; align-items: center; gap: 4px; font-size: var(--text-sm); }
+.lib-new svg { width: 14px; height: 14px; }
+.lib-folder-acts { display: flex; gap: 6px; margin-left: auto; }
+.lib-pick { position: absolute; top: 8px; left: 8px; z-index: 2; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%; color: transparent;
+  background: var(--scrim); border: 2px solid var(--on-fill); opacity: 0; transition: opacity var(--dur-fast), background var(--dur-fast), color var(--dur-fast), transform var(--dur-press) var(--spring); }
+.lib-pick svg { width: 14px; height: 14px; }
+.lib-pick:active { transform: scale(.9); }
+.lib-card:hover .lib-pick, .lib-pick:focus-visible, .lib-grid.selecting .lib-pick { opacity: 1; }
+.lib-pick:hover { color: var(--on-fill); }
+.lib-pick.on { background: var(--blue); border-color: var(--blue); color: var(--on-fill); }
+.lib-grid.selecting .lib-card { cursor: pointer; }
+.lib-card.picked { border-color: var(--blue); }
+.lib-bulk { position: sticky; bottom: 16px; z-index: 20; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 16px; padding: 8px 8px 8px 16px; border-radius: var(--r-xl); }
+.lib-bulk-count { font-size: var(--text-md); font-weight: 600; }
+.lib-bulk-grow { flex: 1; }
+.lib-move > button { height: 30px; border-color: transparent; background: var(--ink-fill); }
+.lib-move > button:hover { background: var(--ink-fill-hover); border-color: transparent; }
+.lib-move > button:disabled { opacity: var(--disabled); transform: none; }
+@media (max-width: 720px) {
+  /* Five tabs do not fit a phone; the row scrolls sideways instead of widening the page */
+  .page-head .seg { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .lib-search { flex-basis: 100%; max-width: none; }
+  .lib-tools .seg { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .lib-bulk .lib-move.right > .menu { left: 0; right: auto; transform-origin: bottom left; }
+}
 
 .viewer { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; gap: 14px; padding: 24px;
   background: var(--scrim); backdrop-filter: var(--blur-scrim); animation: fadein var(--dur-pop) ease backwards; }
