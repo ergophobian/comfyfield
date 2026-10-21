@@ -129,6 +129,8 @@ base = dict(now=10000, booted=10000 - 1000, ready_at=9500, hb=9990, idle=0, busy
 def d(**k): return m.decide(dict(base, **k), cfg)
 print(json.dumps({
   'healthy': d(),
+  'proofDeadline': m.decide(dict(base, busy=True), dict(cfg, terminate_at=9999)),
+  'proofBeforeDeadline': m.decide(dict(base, busy=True), dict(cfg, terminate_at=10001)),
   'fatalEarly': d(fatal='model download', fatal_at=9900),
   'fatalLate': d(fatal='model download', fatal_at=9800),
   'bootDeadline': d(ready_at=None, booted=10000 - 900),
@@ -145,6 +147,8 @@ print(json.dumps({
   assert.equal(r.status, 0, r.stderr)
   const out = JSON.parse(r.stdout)
   assert.equal(out.healthy, null)
+  assert.equal(out.proofDeadline, 'proof deadline reached', 'hard proof deadline bypasses busy drain grace')
+  assert.equal(out.proofBeforeDeadline, null)
   assert.equal(out.fatalEarly, null, 'a fatal stays readable during its grace')
   assert.equal(out.fatalLate, 'fatal: model download')
   assert.match(out.bootDeadline, /not ready after 15 minutes/)

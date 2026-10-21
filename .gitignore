@@ -6,3 +6,5 @@ __pycache__/
 dist/
 .comfyfield/
 .env
+research_notes/live-runs/*.lock
+research_notes/live-runs/*.tmp

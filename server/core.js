@@ -236,6 +236,32 @@ export function saveMedia(buf, ext) {
   return { url: `/media/${name}`, path: file }
 }
 
+// CLI proofs use the same local media URLs and item shape as browser generations.
+const importsFile = () => path.join(home(), 'generation-imports.json')
+export function libraryImports() {
+  if (!fs.existsSync(importsFile())) return []
+  return JSON.parse(fs.readFileSync(importsFile(), 'utf8'))
+}
+export function dismissLibraryImport(id) {
+  fs.writeFileSync(importsFile(), JSON.stringify(libraryImports().filter((item) => item.id !== id)))
+}
+export async function saveToLibrary(files, metadata = {}) {
+  const items = []
+  for (const f of files) {
+    let local = f
+    if (!f.url?.startsWith('/media/')) {
+      const r = await fetch(f.url)
+      if (!r.ok) throw new Error(`Library download failed (${r.status}).`)
+      local = { ...f, ...saveMedia(Buffer.from(await r.arrayBuffer()), mimeExt(r.headers.get('content-type') || (f.kind === 'video' ? 'video/mp4' : 'image/png'))) }
+    }
+    const { path: localPath, ...file } = local
+    items.push({ ...metadata, ...file, id: randomUUID(), created: Date.now(), imported: true })
+  }
+  fs.mkdirSync(home(), { recursive: true })
+  fs.writeFileSync(importsFile(), JSON.stringify([...items, ...libraryImports()], null, 2))
+  return items
+}
+
 // Gemini TTS returns raw 16-bit PCM at 24 kHz; wrap it in a WAV header so browsers can play it.
 function pcmToWav(pcm, rate = 24000) {
   const h = Buffer.alloc(44)
@@ -537,7 +563,7 @@ async function withRouterFiles(value) {
   return value
 }
 
-export async function runComfyRouter({ model, input, idempotencyKey = randomUUID() }, { pause = sleep } = {}) {
+export async function runComfyRouter({ model, input, idempotencyKey = randomUUID() }, { pause = sleep, onSubmitted = () => {}, onComplete = () => {} } = {}) {
   if (!/^[\w.-]+\/[\w./-]+$/.test(model) || model.split('/').includes('..')) throw new Error('Use a Comfy Router provider/model id.')
   const headers = { 'X-API-Key': comfyKey(), 'Content-Type': 'application/json' }
   const base = `${ROUTER}/${model}/requests`
@@ -545,6 +571,7 @@ export async function runComfyRouter({ model, input, idempotencyKey = randomUUID
   const job = await response.json()
   if (!response.ok || job.error_type) throw comfyError(response, job)
   if (!job.request_id) throw new Error('Comfy Router did not return a request id.')
+  await onSubmitted({ id: job.request_id })
   // Derive URLs from the documented route so credentials never follow an arbitrary response URL.
   const resultUrl = `${base}/${encodeURIComponent(job.request_id)}`
   let previous = response
@@ -561,6 +588,7 @@ export async function runComfyRouter({ model, input, idempotencyKey = randomUUID
     previous = result
     if (result.status === 202 || result.status === 429 || result.status === 503) continue
     if (!result.ok || data.error_type) throw comfyError(result, data)
+    await onComplete({ id: job.request_id, actualCost: data.cost_usd ?? null })
     return routerFiles(data)
   }
   throw new Error(`Comfy Router took too long. Request ${job.request_id} may still be running; do not submit again without checking it.`)
@@ -775,13 +803,13 @@ async function comfyTarget(files, podPhase, podVram, label, run = null, podArch 
 }
 
 // Runs a bundled workflow on Comfy Cloud or the Pod, or in development on a local ComfyUI, and returns file URLs.
-export async function runComfy(workflow, vars = {}, { createClient = (key, baseUrl) => comfyClient(baseUrl, key), lease = (o) => pod().lease(o), podPhase = () => pod().phaseNow(), podVram = () => pod().vramGb(), podRoom = () => pod().room(), podArch = () => pod().arch(), run = runType() } = {}) {
+export async function runComfy(workflow, vars = {}, { createClient = (key, baseUrl) => comfyClient(baseUrl, key), lease = (o) => pod().lease(o), podPhase = () => pod().phaseNow(), podVram = () => pod().vramGb(), podRoom = () => pod().room(), podArch = () => pod().arch(), run = runType(), patchGraph = (g) => g, onSubmitted, onComplete = () => {}, timeoutMs = 30 * 60 * 1000 } = {}) {
   let { file, template } = readWorkflow(workflow)
   // Nodes for a file the run did not attach (a second garment, an optional reference) drop out first.
   template = dropOptional(template, vars)
   const unset = unsetInput(template, vars)
   if (unset) throw new Error(`Workflow ${workflow} requires ${unset}.`)
-  let graph = fill(template, vars)
+  let graph = patchGraph(fill(template, vars))
   if (comfyMode() === 'cloud') {
     let needs = podNeedsOf(graph)
     // Errors name the model as the picker shows it.
@@ -824,7 +852,20 @@ export async function runComfy(workflow, vars = {}, { createClient = (key, baseU
       wf.json = graph
       for (const { id, field, key } of uploads) wf.setInput(id, field, client.assets.fromBytes(media[key].buf, { filename: `input.${mimeExt(media[key].mime)}`, contentType: media[key].mime }))
       const t0 = Date.now()
-      const job = await client.run(wf, { apiKey: partner, timeoutMs: 30 * 60 * 1000, ...(held ? { signal: held.signal } : {}) })
+      const options = { apiKey: partner, timeoutMs, ...(held ? { signal: held.signal } : {}) }
+      let job
+      if (onSubmitted) {
+        job = await client.submit(wf, { apiKey: partner, signal: held?.signal })
+        try {
+          await onSubmitted({ id: job.id })
+          await job.wait(timeoutMs, held?.signal)
+          await job.result(held?.signal)
+        } catch (e) {
+          await job.cancel().catch(() => null)
+          throw e
+        }
+      } else job = await client.run(wf, options)
+      await onComplete({ id: job.id, actualCost: job.metrics?.cost_usd ?? null, seconds: gpuSeconds(job, t0) })
       if (target === 'cloud') {
         try { logCloudRun({ seconds: gpuSeconds(job, t0), minVramGb: minVramOf(needs) }) } catch {}
       }

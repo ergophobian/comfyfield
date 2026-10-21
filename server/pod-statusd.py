@@ -59,6 +59,7 @@ def read_packs():
 
 PACKS = read_packs()
 CFG = {
+  'terminate_at': int(E.get('CF_TERMINATE_AT', '0')),
   'idle_after': int(E.get('IDLE_AFTER', '780')),
   'heartbeat_deadline': int(E.get('HEARTBEAT_DEADLINE', '600')),
   'max_life': int(E.get('MAX_LIFE', '7200')),
@@ -103,6 +104,8 @@ def save_used():
 def decide(s, cfg):
   """Why the Pod must terminate itself now, or None. Pure, so the rules can be tested."""
   now, age = s['now'], s['now'] - s['booted']
+  if cfg.get('terminate_at') and now >= cfg['terminate_at']:
+    return 'proof deadline reached'
   busy = s['busy']
   if s['fatal'] and now - s['fatal_at'] >= cfg['fatal_grace']:
     return 'fatal: %s' % s['fatal']
@@ -377,6 +380,8 @@ def snapshot():
       'stage': S['stage'], 'ready': S['stage'] == 'ready', 'everReady': S['ready_at'] is not None, 'fatal': S['fatal'],
       'idleSec': int(S['idle']), 'uptimeSec': int(now - BOOTED), 'queue': S['queue'],
       'heartbeatAgeSec': None if hb is None else int(now - hb), 'gpu': S['gpu'],
+      'selfTerminateReady': bool(E.get('RUNPOD_POD_ID') and E.get('RUNPOD_API_KEY')),
+      'proofDeadline': CFG.get('terminate_at'),
       'diskFreeGb': None if free is None else round(free, 1), 'diskTotalGb': None if total is None else round(total, 1), 'ending': S['ending'],
       'models': models(), 'downloads': {k: dict(v) for k, v in DOWNLOADS.items()}, 'runtimes': runtimes(), 'evicted': list(S['evicted']),
     }

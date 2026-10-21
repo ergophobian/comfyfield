@@ -41,10 +41,12 @@ export const statusUrl = (id) => `https://${id}-${STATUS_PORT}.proxy.runpod.net`
 // Timers the Pod's own watchdog enforces. The app's guards fire first; these catch a closed app.
 // Models download after ready, so the boot deadline covers only ComfyUI and the proxy coming up.
 // `runtimes` start installing at boot, for a Pod started for a graph that needs them.
-export function podEnv({ token, idleMin = 10, bootDeadlineSec = 900, runtimes = [] }) {
+export function podEnv({ token, idleMin = 10, bootDeadlineSec = 900, runtimes = [], terminateAt = null }) {
   if (!token) throw new Error('A Pod needs its own token.')
   if (!runtimes.every((e) => /^[a-z0-9]+$/.test(e))) throw new Error('Unknown runtime.')
+  if (terminateAt != null && (!Number.isSafeInteger(terminateAt) || terminateAt <= 0)) throw new Error('Invalid Pod termination deadline.')
   return {
+    ...(terminateAt ? { CF_TERMINATE_AT: String(Math.floor(terminateAt / 1000)) } : {}),
     ...(runtimes.length ? { CF_RUNTIMES: runtimes.join(' ') } : {}),
     POD_TOKEN: token,
     IDLE_AFTER: String(idleMin * 60 + 180),

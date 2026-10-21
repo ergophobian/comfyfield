@@ -7,6 +7,7 @@ import { allFormats } from '../src/lib/formats/index.js'
 
 // A separate Vite server with an in-process mock API never loads provider routes or keys.
 const requests = []
+let generationImports = []
 const svg = (label) => `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="750" viewBox="0 0 600 750"><rect width="600" height="750" fill="#e4e9ff"/><circle cx="300" cy="280" r="120" fill="#9b8cf5"/><path d="M100 680 Q100 380 300 390 Q500 380 500 680Z" fill="#6f7fd8"/><text x="300" y="720" text-anchor="middle" font-family="sans-serif" font-size="28" fill="#30384d">${label}</text></svg>`
 const server = await preview({ configFile: false, envFile: false, plugins: [{
   name: 'format-mock-api', configurePreviewServer(server) {
@@ -14,12 +15,21 @@ const server = await preview({ configFile: false, envFile: false, plugins: [{
       const url = new URL(req.url, 'http://localhost')
       if (url.pathname.startsWith('/mock-')) {
         res.setHeader('Content-Type', 'image/svg+xml')
-        res.end(svg(url.pathname === '/mock-photo.svg' ? 'Mock input' : 'Mock result'))
+        res.end(svg(url.pathname === '/mock-photo.svg' ? 'Mock input' : url.pathname === '/mock-proof.svg' ? 'Mock proof import' : 'Mock result'))
         return
       }
       if (!url.pathname.startsWith('/api/')) return next()
       res.setHeader('Content-Type', 'application/json')
       if (url.pathname === '/api/stitch/exports') return res.end('[]')
+      if (url.pathname === '/api/library/generations') {
+        if (req.method === 'DELETE') {
+          let raw = ''
+          for await (const chunk of req) raw += chunk
+          generationImports = generationImports.filter((item) => item.id !== JSON.parse(raw).id)
+          return res.end('{}')
+        }
+        return res.end(JSON.stringify(generationImports))
+      }
       if (url.pathname === '/api/connections') return res.end(JSON.stringify({ fal: { connected: true }, google: { connected: true } }))
       if (url.pathname === '/api/fal/schema') return res.end(JSON.stringify(schemas.fal[url.searchParams.get('id')] || { properties: { prompt: { type: 'string' } } }))
       if (url.pathname === '/api/upload') { req.resume(); return res.end(JSON.stringify({ url: '/mock-photo.svg' })) }
@@ -149,8 +159,26 @@ try {
   assert.equal(requests[4].body.vars.image, '/mock-photo.svg')
   await goto('/apps/podcast-clips')
   await wait('document.body.innerText.includes("Nothing lives at this address")')
+  generationImports = [{ id: 'mock-proof-import', url: '/mock-proof.svg', kind: 'image', model: 'Mock proof import', aspect: '4:5', caption: 'Mock imported proof; no paid run', created: Date.now(), imported: true }]
+  await evaluate('localStorage.removeItem("comfyfield.library")')
+  await cdp('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1100, deviceScaleFactor: 1, mobile: false })
+  await goto('/assets')
+  await wait('document.querySelector(".lib-card img")?.complete')
+  await wait('JSON.parse(localStorage.getItem("comfyfield.library") || "[]")[0]?.id === "mock-proof-import"')
+  assert.equal(await evaluate('document.querySelectorAll(".lib-card").length'), 1)
+  const proofScreenshot = await cdp('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true })
+  mkdirSync('research_notes/live-runs', { recursive: true })
+  writeFileSync('research_notes/live-runs/mock-library-import.png', Buffer.from(proofScreenshot.data, 'base64'))
+  await goto('/assets')
+  await wait('document.querySelector(".lib-card img")?.complete')
+  assert.equal(await evaluate('JSON.parse(localStorage.getItem("comfyfield.library")).length'), 1, 'Server import is deduplicated on reload')
+  await evaluate('document.querySelector(".lib-card [aria-label=Delete]").click()')
+  await wait('document.querySelectorAll(".lib-card").length === 0')
+  await goto('/assets')
+  await wait('JSON.parse(localStorage.getItem("comfyfield.library") || "[]").length === 0')
+  assert.equal(generationImports.length, 0, 'Delete persists to server imports')
   assert.deepEqual(errors, [], 'No browser runtime exceptions')
-  console.log('UI mock checks ok: app runner, shared sheet, Library after reload, 390px layout, Create generation/feed/camera presets and hidden invalid route. Four mocked generations and one reviewed writer request; no provider calls. Six screenshots saved.')
+  console.log('UI mock checks ok: app runner, shared sheet, Library after reload, 390px layout, Create generation/feed/camera presets and hidden invalid route. Four mocked generations and one reviewed writer request; no provider calls. Seven screenshots saved, including a labeled mock proof import.')
 } finally {
   await browser?.close()
   await server.close()
