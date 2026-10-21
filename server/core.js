@@ -256,7 +256,7 @@ function pcmToWav(pcm, rate = 24000) {
 
 const GEMINI = 'https://generativelanguage.googleapis.com/v1beta'
 
-export async function writePromptWithRouter({ instructions, note = '', images = [], target = '', idempotencyKey = randomUUID() }) {
+export async function writePromptWithRouter({ instructions, note = '', images = [], target = '', promptOnly = true, idempotencyKey = randomUUID() }) {
   const content = images.map((url) => {
     const { buf, mime } = readLocal(url)
     if (!/^image\/(png|jpeg|webp|gif)$/.test(mime)) {
@@ -264,7 +264,7 @@ export async function writePromptWithRouter({ instructions, note = '', images = 
     }
     return { type: 'input_image', image_url: dataUri(buf, mime) }
   })
-  content.push({ type: 'input_text', text: [target && `Target model or medium: ${target}`, note && `User note: ${note}`, 'Write only the finished generation prompt.'].filter(Boolean).join('\n\n') })
+  content.push({ type: 'input_text', text: [target && `Target model or medium: ${target}`, note && `User note: ${note}`, promptOnly && 'Write only the finished generation prompt.'].filter(Boolean).join('\n\n') })
   const response = await fetch(`${ROUTER}/${routerWriterModel}`, {
     method: 'POST', headers: { 'X-API-Key': comfyKey(), 'Content-Type': 'application/json', 'Idempotency-Key': idempotencyKey },
     body: JSON.stringify({ instructions, input: [{ role: 'user', content }], max_output_tokens: 2048, store: false }),
@@ -278,14 +278,14 @@ export async function writePromptWithRouter({ instructions, note = '', images = 
   return text
 }
 
-export async function writePrompt({ instructions, note = '', images = [], target = '', idempotencyKey }) {
+export async function writePrompt({ instructions, note = '', images = [], target = '', promptOnly = true, idempotencyKey }) {
   if (typeof instructions !== 'string' || !instructions.trim()) {
     throw Object.assign(new Error('Add writer instructions first.'), { status: 400 })
   }
-  if (typeof note !== 'string' || typeof target !== 'string' || !Array.isArray(images) || images.some((u) => typeof u !== 'string' || !/^(data:image\/|\/media\/)/.test(u))) {
+  if (typeof promptOnly !== 'boolean' || typeof note !== 'string' || typeof target !== 'string' || !Array.isArray(images) || images.some((u) => typeof u !== 'string' || !/^(data:image\/|\/media\/)/.test(u))) {
     throw Object.assign(new Error('Writer needs a note, a target and local or inline images.'), { status: 400 })
   }
-  const request = { instructions, note, images, target, idempotencyKey }
+  const request = { instructions, note, images, target, promptOnly, idempotencyKey }
   const { key } = config('google')
   if (!key) return writePromptWithRouter(request)
   const parts = images.map((url) => {
@@ -295,7 +295,7 @@ export async function writePrompt({ instructions, note = '', images = [], target
     }
     return { inlineData: { mimeType: mime, data: buf.toString('base64') } }
   })
-  parts.push({ text: [target && `Target model or medium: ${target}`, note && `User note: ${note}`, 'Write only the finished generation prompt.'].filter(Boolean).join('\n\n') })
+  parts.push({ text: [target && `Target model or medium: ${target}`, note && `User note: ${note}`, promptOnly && 'Write only the finished generation prompt.'].filter(Boolean).join('\n\n') })
   const r = await fetch(`${GEMINI}/models/gemini-flash-latest:generateContent`, {
     method: 'POST', headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' },
     body: JSON.stringify({ systemInstruction: { parts: [{ text: instructions }] }, contents: [{ role: 'user', parts }] }),

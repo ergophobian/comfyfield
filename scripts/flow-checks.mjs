@@ -389,6 +389,38 @@ check('Stitch retries failures, waits for every input, and preserves outputs on 
   assert.equal(eng.plan(partial, 's').blocked, true, 'Wait until all clips in the upstream run finish')
 })
 
+check('manual Cinema stitch and replacement invalidation across approval gates', async () => {
+  let renders = 0
+  let stitches = 0
+  const f = { nodes: [n('v', 'model', { model: vid, prompt: 'portal' }), n('a', 'approve'), n('s', 'stitch', { manual: true }), n('o', 'output')], edges: [e('v', 'a'), e('a', 's'), e('s', 'o')] }
+  // Reuse the same URL and item id to prove signatures alone cannot detect replacement.
+  const eng = createEngine({ run: async () => { renders++; return [{ kind: 'video', url: 'mock://same-clip' }] }, stitch: async () => { stitches++; return { kind: 'video', url: 'mock://scene' } } })
+  await eng.runNew(f)
+  await eng.send(f, 'a')
+  assert.equal(stitches, 0, 'Manual Stitch waits for its own explicit Rerun')
+  await eng.rerun(f, 's')
+  const signature = eng.state.s.items[0].signature
+  assert.equal(eng.reviewItems(f, 'o').length, 1)
+  await eng.rerun(f, 'v')
+  assert.equal(eng.state.s.items[0].stale, true)
+  assert.deepEqual(eng.itemsOf(f, 's'), [], 'Stale cut cannot pass downstream')
+  assert.deepEqual(eng.reviewItems(f, 'o'), [], 'Canvas results exclude stale cut')
+  assert.equal(eng.gate('a').status, 'reviewing')
+  assert.equal((await eng.rerun(f, 's')).ok, false)
+  await eng.send(f, 'a')
+  assert.equal(renders, 2)
+  assert.equal(stitches, 1, 'Send does not replace an existing Stitch output')
+  await eng.runNew(f)
+  assert.equal(stitches, 1, 'Run cannot silently re-stitch a Cinema scene')
+  await eng.rerun(f, 's')
+  assert.equal(stitches, 2)
+  assert.equal(eng.state.s.items[0].signature, signature)
+  assert.equal(eng.reviewItems(f, 'o').length, 1, 'Re-stitch restores the canvas result')
+  assert(!eng.state.s.items[0].stale, 'Explicit re-stitch clears stale even when the signature matches')
+  await eng.rerunGate(f, 'a')
+  assert.equal(eng.state.s.items[0].stale, true, 'Rerunning through an approval gate invalidates Stitch too')
+})
+
 check('partial failures block downstream; scoped retries preserve successful units and closed gates', async () => {
   let fail = true
   const calls = []

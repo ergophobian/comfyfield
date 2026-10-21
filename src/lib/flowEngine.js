@@ -99,7 +99,8 @@ export function createEngine({ run, writePrompt, stitch, onChange = () => {}, co
       return widgetReady(n.type, value) ? [{ id: n.id, kind: n.type === 'video' ? 'video' : 'image', url: n.type === 'face' ? value.faceUrl || value.url : value.url, row: 0, take: 0, prompt: '', inputType: n.type, value }] : []
     }
     if (n.type === 'image') return n.data.url ? [{ id: n.id, kind: 'image', url: n.data.url, row: 0, take: 0, prompt: '' }] : []
-    if (['model', 'stitch'].includes(n.type)) return doneItems(id)
+    if (n.type === 'model') return doneItems(id)
+    if (n.type === 'stitch') return doneItems(id).filter((item) => !item.stale)
     if (n.type === 'writer') return S[id]?.sent ? doneItems(id) : null
     if (n.type === 'approve') return gate(id).status === 'sent' ? gate(id).sent : null
     return []
@@ -219,6 +220,14 @@ export function createEngine({ run, writePrompt, stitch, onChange = () => {}, co
     walk(id)
   }
 
+  // A replacement can reuse its item id or URL. Mark existing assemblies stale explicitly,
+  // including across approval gates; Send still keeps all existing downstream outputs.
+  function invalidateStitchesBelow(flow, id) {
+    for (const target of downstreamOf(flow, id)) {
+      if (byId(flow, target).type === 'stitch') edit(target, (s) => ({ items: (s.items || []).map((item) => ({ ...item, stale: true })) }))
+    }
+  }
+
   async function runNode(flow, id) {
     const n = byId(flow, id)
     const units = todo(flow, id)
@@ -259,6 +268,7 @@ export function createEngine({ run, writePrompt, stitch, onChange = () => {}, co
       const ready = topoOrder(flow).filter((id) => {
         const n = byId(flow, id)
         return executable(n) && !ran.has(id) && (!only || only.has(id)) && !running(id)
+          && !(n.type === 'stitch' && n.data.manual)
           && !(skipWithOutput && !retryIds.has(id) && doneItems(id).length) && todo(flow, id).length > 0
       })
       if (!ready.length) break
@@ -351,6 +361,7 @@ export function createEngine({ run, writePrompt, stitch, onChange = () => {}, co
       if (p.blocked) return { ok: false, reason: 'Waiting on an upstream node or approval' }
       if (running(id)) return { ok: false, reason: 'Already running' }
       edit(id, () => ({ items: [] }))
+      invalidateStitchesBelow(flow, id)
       resetGatesBelow(flow, id)
       const ran = await runNode(flow, id)
       return { ok: true, ran }
@@ -363,6 +374,7 @@ export function createEngine({ run, writePrompt, stitch, onChange = () => {}, co
       for (const s of sources(flow, id)) {
         if (!executable(byId(flow, s)) || running(s) || plan(flow, s).blocked) continue
         edit(s, () => ({ items: [] }))
+        invalidateStitchesBelow(flow, s)
         ran += await runNode(flow, s)
       }
       return { ok: true, ran }
