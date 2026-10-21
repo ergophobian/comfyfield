@@ -81,7 +81,6 @@ All ComfyUI work goes through the Comfy Developer Platform with your Comfy API k
 | Open models in the composer (FLUX, SDXL, Z-Image Turbo, HiDream-O1, Qwen-Image Edit 2511, LTX Video, LTX-2.5, Wan 2.2, MiniMax H3) | Comfy Cloud | The app fills a bundled API-format workflow and runs it with the Comfy SDK (`@comfyorg/sdk`). Results are saved to your data folder. |
 | The ComfyUI formats in Apps, Effects and Motion presets, and ComfyUI model nodes in Flows | Comfy Cloud | Same path as above. A format that needs a model or node pack Comfy Cloud lacks runs on a Pod. |
 | Flux 2 Pro and Seedance 2.5 | Comfy Router | `runComfyRouter` posts to `api.comfy.org/v2/models/<provider>/<model>/requests` with an idempotency key and polls for the result. These models show in the picker once a Comfy key is saved. |
-| MiniMax H3 partner node workflows | Comfy Cloud | The workflow uses Comfy's MiniMax partner node, paid with Comfy credits. |
 | Testing the key in Connections | Comfy Cloud | One read-only account request. It never generates. |
 | Models Comfy Cloud does not have yet (FLUX 3 Klein, Qwen-Image 2.1) and long sessions | A Pod | ComfyUI on your own RunPod GPU, driven by the same Comfy SDK. Set a daily cap and idle shutdown on the **Pods** page. Pick **Instant** (Comfy Cloud) or **Session** (Pod) in the top bar. |
 
@@ -99,7 +98,7 @@ claude mcp add comfyfield -- node /path/to/comfyfield/bin/comfyfield.js mcp
 
 After the npm package is published, the same works with `npx comfyfield mcp`; the Skills page shows the config for each agent.
 
-MCP tools: `list_models`, `generate`, `get_model_schema`, `balance`, `write_prompts`, `stitch`, `export_stitch`, `list_flows`, `get_flow`, `add_node`, `connect_nodes`, `update_node` and `run_flow`. Any fal endpoint works as `fal:<endpoint>`. `run_flow` fills gaps only and never opens an Approve gate.
+MCP tools: `list_models`, `generate`, `get_model_schema`, `balance`, `write_prompts`, `stitch`, `export_stitch`, `list_flows`, `get_flow`, `create_flow`, `add_node`, `connect_nodes`, `update_node`, `remove_node` and `run_flow`. Any fal endpoint works as `fal:<endpoint>`. Flows an agent builds are saved in your data folder, so the app shows them. `run_flow` fills gaps only and never opens an Approve gate; only you press Send in Flows.
 
 CLI:
 
