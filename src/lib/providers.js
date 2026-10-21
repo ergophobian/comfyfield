@@ -1,4 +1,5 @@
 import { generate as runComfy } from './comfy.js'
+import { runJob, waitJob, Cancelled } from './jobs.js'
 import { askPod, autoPod, refreshPod, runTypeOf } from './usePod.js'
 import { comfyVars, falInput, durationsFromProps, hasImageInput, falEndpointFor } from '../../shared/mapping.js'
 import { createRouterBatch, runRouterBatch } from './routerBatch.js'
@@ -54,11 +55,24 @@ async function post(url, payload) {
   return data
 }
 
-// hooks.onPod: the run is waiting for a Pod, after the start sheet.
+// hooks.onPod: the run is waiting for a Pod, after the start sheet. hooks.onJob: a server job started for this run.
 export async function run(model, opts, hooks = {}) {
+  const checkCancelled = () => { if (hooks.isCancelled?.()) throw new Cancelled() }
+  checkCancelled()
+  const job = (route, payload) => {
+    if (hooks.isCancelled?.()) throw new Cancelled()
+    return runJob(route, payload, hooks)
+  }
   if (model.provider === 'comfyRouter') {
     const batch = opts.routerBatch ||= createRouterBatch(model, opts)
-    return runRouterBatch(batch, async (payload) => (await post('/api/comfy/router', payload)).files, hooks.onFiles)
+    return runRouterBatch(batch, (payload, call) => {
+      if (hooks.isCancelled?.()) throw new Cancelled()
+      if (call.jobId) return waitJob(call.jobId)
+      return runJob('/api/comfy/router', payload, { ...hooks, onJob: (id) => {
+        call.jobId = id
+        hooks.onJob?.(id)
+      } })
+    }, hooks.onFiles)
   }
   if (model.provider === 'comfy') {
     // Comfy Cloud takes the run at once. When it cannot, the server says needs_pod. On Instant the run
@@ -71,32 +85,37 @@ export async function run(model, opts, hooks = {}) {
     // A model with a start-image workflow uses it when an image is attached.
     const workflow = vars.image && model.imageWorkflow ? model.imageWorkflow : model.workflow
     try {
-      return await runComfy(workflow, vars)
+      return await runComfy(workflow, vars, hooks)
     } catch (e) {
       if (e.code !== 'needs_pod' && e.code !== 'pod_too_small') throw e
       const s = await refreshPod()
+      checkCancelled()
       if (runTypeOf(s) === 'instant') throw e
       if (e.code === 'pod_too_small') {
         await askPod(workflow, e.reason, e.fit || {})
+        checkCancelled()
         hooks.onPod?.()
-        return runComfy(workflow, vars)
+        checkCancelled()
+        return runComfy(workflow, vars, hooks)
       }
       hooks.onPod?.()
-      if (s?.auto && s?.connected) await autoPod(workflow)
+      checkCancelled()
+      if (s?.auto && s?.connected) await autoPod(workflow, hooks.isCancelled)
       else await askPod(workflow, e.reason)
-      return runComfy(workflow, vars)
+      checkCancelled()
+      return runComfy(workflow, vars, hooks)
     }
   }
   if (model.provider === 'fal') {
     const endpoint = await endpointFor(model, Boolean(opts.images?.length))
     const { properties } = await falSchema(endpoint)
-    return (await post('/api/fal', { model: endpoint, input: falInput(properties, opts) })).files
+    return job('/api/fal', { model: endpoint, input: falInput(properties, opts) })
   }
   if (model.provider === 'google') {
-    return (await post('/api/google', { model: model.model, mode: model.mode, prompt: opts.prompt, aspect: opts.aspect, count: opts.count, duration: opts.duration, images: opts.images || (opts.image ? [opts.image] : []) })).files
+    return job('/api/google', { model: model.model, mode: model.mode, prompt: opts.prompt, aspect: opts.aspect, count: opts.count, duration: opts.duration, images: opts.images || (opts.image ? [opts.image] : []) })
   }
   if (model.provider === 'elevenlabs') {
-    return (await post('/api/elevenlabs', { mode: model.mode, text: opts.prompt })).files
+    return job('/api/elevenlabs', { mode: model.mode, text: opts.prompt })
   }
   throw new Error(`${model.provider} is not wired up yet.`)
 }

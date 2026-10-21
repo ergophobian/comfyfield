@@ -29,6 +29,25 @@ const python = findPython()
 // Later checks stub globalThis.fetch; checks that talk to a real local server keep this one.
 const netFetch = globalThis.fetch
 
+// The app runs generations as server jobs: POST /api/jobs {route, body}, then GET /api/jobs/:id.
+// This turns a stub of the direct routes into those job routes, keeping its codes for needs_pod and pod_too_small.
+const withJobs = (direct) => {
+  const jobs = new Map()
+  const reply = (data) => new Response(JSON.stringify(data), { status: 200, headers: { 'Content-Type': 'application/json' } })
+  return async (url, init = {}) => {
+    if (url === '/api/jobs' && init.method === 'POST') {
+      const { route, body } = JSON.parse(init.body)
+      const res = await direct(route, { method: 'POST', headers: init.headers, body: JSON.stringify(body) })
+      const data = await res.json()
+      const id = `job-${jobs.size + 1}`
+      jobs.set(id, res.ok ? { id, status: 'done', files: data.files } : { id, status: 'failed', error: { message: data.error, code: data.code, reason: data.reason, fit: data.fit } })
+      return reply({ id })
+    }
+    if (typeof url === 'string' && url.startsWith('/api/jobs/')) return reply(jobs.get(url.slice('/api/jobs/'.length)))
+    return direct(url, init)
+  }
+}
+
 const listen = (handler) => new Promise((resolve) => {
   const server = http.createServer(handler).listen(0, '127.0.0.1', () => resolve(server))
 })
@@ -877,6 +896,44 @@ await test('suggestion: Cloud runs are logged with their GPU time, and a busy ho
 
 // ---- auto-start --------------------------------------------------------------------------------------
 
+await test('cancel: Pod refresh, auto-start and either start sheet never retry a cancelled workflow', async () => {
+  const { run } = await import('../src/lib/providers.js')
+  const usePod = await import('../src/lib/usePod.js')
+  const model = { provider: 'comfy', kind: 'image', workflow: 'flux3_klein_t2i' }
+  for (const stage of ['before-run', 'refresh', 'auto-refresh', 'auto-start', 'needs_pod', 'pod_too_small']) {
+    let cancelled = stage === 'before-run'
+    let runs = 0
+    let starts = 0
+    let refreshes = 0
+    let asked
+    const sheetReady = new Promise((resolve) => { asked = resolve })
+    globalThis.fetch = withJobs(async (url) => {
+      if (url === '/api/pod') {
+        refreshes++
+        if (stage === 'refresh' || (stage === 'auto-refresh' && refreshes === 2)) cancelled = true
+        if (['needs_pod', 'pod_too_small'].includes(stage) && refreshes === 2) asked()
+        return jsonReply({ phase: 'none', run: 'session', auto: !['needs_pod', 'pod_too_small'].includes(stage), connected: true })
+      }
+      if (url === '/api/pod/start') { starts++; cancelled = true; return jsonReply({ phase: 'starting' }) }
+      if (url === '/api/comfy/run') {
+        runs++
+        return jsonReply({ error: 'Needs a Pod', code: stage === 'pod_too_small' ? stage : 'needs_pod' }, 409)
+      }
+      throw new Error(`Unexpected ${url}`)
+    })
+    const running = run(model, { prompt: 'Cancel fixture', aspect: '1:1' }, { isCancelled: () => cancelled })
+    const rejected = assert.rejects(running, (e) => e.cancelled === true)
+    if (['needs_pod', 'pod_too_small'].includes(stage)) {
+      await sheetReady
+      cancelled = true
+      usePod.answerPod(true)
+    }
+    await rejected
+    assert.equal(runs, stage === 'before-run' ? 0 : 1, `${stage}: no workflow retry`)
+    assert.equal(starts, stage === 'auto-start' ? 1 : 0, `${stage}: no new Pod after cancellation`)
+  }
+})
+
 await test('auto-start: Generate starts, resumes or keeps the Pod by itself, once for several runs', async () => {
   const { run } = await import('../src/lib/providers.js')
   const usePod = await import('../src/lib/usePod.js')
@@ -885,7 +942,7 @@ await test('auto-start: Generate starts, resumes or keeps the Pod by itself, onc
   // A stub of the app's API: runs need a Pod until one exists.
   const api = (start = {}) => {
     const s = { phase: 'none', auto: true, connected: true, run: 'session', posts: [], ...start }
-    globalThis.fetch = async (url, init = {}) => {
+    globalThis.fetch = withJobs(async (url, init = {}) => {
       const reply = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } })
       if (url === '/api/pod') return reply({ phase: s.phase, auto: s.auto, connected: s.connected, run: s.run ?? null, spend: { today: 0, cap: 20 } })
       if (url.startsWith('/api/pod/')) {
@@ -899,7 +956,7 @@ await test('auto-start: Generate starts, resumes or keeps the Pod by itself, onc
         return reply({ files: [{ url: '/media/x.png', kind: 'image' }] })
       }
       throw new Error(`unexpected ${url}`)
-    }
+    })
     return s
   }
 
@@ -951,7 +1008,7 @@ await test('pod too small: Generate asks to replace the Pod, then terminates, st
   const fit = { needVramGb: 32, podVramGb: 24, needArch: null, podArch: null }
   const api = (start = {}) => {
     const s = { phase: 'ready', vram: 24, auto: true, connected: true, run: 'session', posts: [], runs: 0, ...start }
-    globalThis.fetch = async (url, init = {}) => {
+    globalThis.fetch = withJobs(async (url, init = {}) => {
       const reply = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } })
       if (url === '/api/pod') return reply({ phase: s.phase, auto: s.auto, connected: s.connected, run: s.run ?? null, spend: { today: 0, cap: 20 } })
       if (url.startsWith('/api/pod/')) {
@@ -967,7 +1024,7 @@ await test('pod too small: Generate asks to replace the Pod, then terminates, st
         return reply({ files: [{ url: '/media/x.mp4', kind: 'video' }] })
       }
       throw new Error(`unexpected ${url}`)
-    }
+    })
     return s
   }
   // Lets the run reach the sheet.

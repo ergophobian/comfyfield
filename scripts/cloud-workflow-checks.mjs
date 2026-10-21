@@ -99,6 +99,46 @@ assert(alternateVram < originalVram, 'fixture must fit the alternate but not the
 await core.runComfy('flux_look', vars, options(undefined, 'ready', alternateVram))
 assert.deepEqual(submitted.json, expected('flux_look_cloud'))
 assert.equal(leased, null, 'a smaller alternate must not change automatic Pod eligibility')
+// Cancellation reaches the lease while waiting, and guards both Pod and Cloud submission.
+for (const stage of ['before-run', 'lease-wait', 'after-lease', 'pod-upload', 'cloud-upload', 'pod-run', 'cloud-run']) {
+  reset()
+  const controller = new AbortController()
+  const isCloud = stage.startsWith('cloud')
+  const opts = { ...options(isCloud ? 'instant' : 'session'), signal: controller.signal }
+  let started = 0
+  let leaseStarted
+  const waiting = new Promise((resolve) => { leaseStarted = resolve })
+  const held = { baseUrl: 'https://synthetic-pod.invalid', token: 'synthetic', signal: new AbortController().signal, reason: () => null, release() { released++ } }
+  opts.lease = async ({ signal }) => {
+    assert.equal(signal, controller.signal)
+    leaseStarted()
+    if (stage === 'lease-wait') await new Promise((_, reject) => signal.addEventListener('abort', () => reject(signal.reason), { once: true }))
+    if (stage === 'after-lease') controller.abort()
+    return held
+  }
+  opts.createClient = () => ({
+    ...client,
+    workflows: { fromFile: async () => {
+      if (stage.endsWith('upload')) controller.abort()
+      return { json: null, setInput() {} }
+    } },
+    run: async (wf, { signal }) => {
+      started++
+      assert(signal, 'Every submitted run must receive the cancel signal')
+      controller.abort()
+      assert(signal.aborted, 'Cancellation reaches Cloud and the combined Pod signal')
+      signal.throwIfAborted()
+    },
+  })
+  if (stage === 'before-run') controller.abort()
+  const running = core.runComfy('flux_look', vars, opts)
+  const rejected = assert.rejects(running, (e) => e.name === 'AbortError')
+  if (stage === 'lease-wait') { await waiting; controller.abort() }
+  await rejected
+  assert.equal(started, stage.endsWith('run') && stage !== 'before-run' ? 1 : 0, stage)
+  assert.equal(released, isCloud || ['before-run', 'lease-wait'].includes(stage) ? 0 : 1, stage)
+}
+console.log('Cancelled Pod waits stop; pre-submit guards, Cloud/Pod signals and lease cleanup pass.')
 core.writeKeys({ comfy: { key: '' } })
 reset()
 for (const [original] of Object.entries(cloudWorkflows)) {

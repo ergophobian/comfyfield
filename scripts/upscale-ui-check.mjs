@@ -8,6 +8,7 @@ import { startBrowser, uiTimeout } from './browser.mjs'
 const model = 'bytedance/seedance-2.5/text-to-video'
 const schema = { properties: { prompt: { type: 'string' }, duration: { enum: ['5', '10'], default: '5' }, resolution: { enum: ['480p', '720p', '1080p'], default: '720p' } } }
 const requests = []
+const jobs = new Map()
 const server = await preview({ configFile: false, envFile: false, plugins: [{
   name: 'upscale-mock-api', configurePreviewServer(server) {
     server.middlewares.use(async (req, res, next) => {
@@ -19,12 +20,21 @@ const server = await preview({ configFile: false, envFile: false, plugins: [{
       if (url.pathname === '/api/stitch/exports') return res.end('[]')
       if (url.pathname === '/api/connections') return res.end(JSON.stringify({ fal: { connected: true } }))
       if (url.pathname === '/api/fal/schema') return res.end(JSON.stringify(schema))
+      if (url.pathname.startsWith('/api/jobs/')) return res.end(JSON.stringify(jobs.get(url.pathname.slice('/api/jobs/'.length))))
       if (req.method === 'POST') {
         let body = ''
         for await (const chunk of req) body += chunk
-        requests.push({ path: url.pathname, body: JSON.parse(body) })
-        const file = url.pathname === '/api/comfy/run' ? '/mock-upscaled.mp4' : '/mock-take.mp4'
-        return res.end(JSON.stringify({ files: [{ url: file, kind: 'video' }] }))
+        // Generations run as server jobs; record the route the job runs, as a direct call would show it.
+        let path = url.pathname
+        let data = JSON.parse(body)
+        const job = path === '/api/jobs'
+        if (job) ({ route: path, body: data } = data)
+        requests.push({ path, body: data })
+        const files = [{ url: path === '/api/comfy/run' ? '/mock-upscaled.mp4' : '/mock-take.mp4', kind: 'video' }]
+        if (!job) return res.end(JSON.stringify({ files }))
+        const id = `job-${jobs.size + 1}`
+        jobs.set(id, { id, status: 'done', files })
+        return res.end(JSON.stringify({ id }))
       }
       res.end('{}')
     })

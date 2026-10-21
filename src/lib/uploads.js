@@ -18,9 +18,30 @@ export const kindOf = (file) => (file.type || '').split('/')[0]
 export async function uploadFile(file) {
   const kind = kindOf(file)
   const up = kind === 'image' ? await uploadImage(file) : await uploadMedia(file)
-  const out = { url: up.url, name: file.name, kind, ...(up.ratio && { ratio: up.ratio }) }
+  const out = await withRatio({ url: up.url, name: file.name, kind, ...(up.ratio && { ratio: up.ratio }) })
   remember(out)
   return out
+}
+
+// Adds the pixel ratio ('1024:768') to a picked image or video that lacks one; crop, mask and video fields need it.
+export function withRatio(it) {
+  if (/^\d+:\d+$/.test(it.ratio || '') && Number(it.ratio.split(':')[0]) > 32) return Promise.resolve(it)
+  if (it.kind !== 'image' && it.kind !== 'video') return Promise.resolve(it)
+  return new Promise((resolve) => {
+    const done = (w, h) => resolve(w && h ? { ...it, ratio: `${w}:${h}` } : it)
+    if (it.kind === 'image') {
+      const img = new Image()
+      img.onload = () => done(img.naturalWidth, img.naturalHeight)
+      img.onerror = () => done()
+      img.src = it.url
+    } else {
+      const v = document.createElement('video')
+      v.preload = 'metadata'
+      v.onloadedmetadata = () => done(v.videoWidth, v.videoHeight)
+      v.onerror = () => done()
+      v.src = it.url
+    }
+  })
 }
 
 // The first file on the clipboard, if any. Screenshots paste as image files.

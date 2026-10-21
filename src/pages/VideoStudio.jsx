@@ -8,14 +8,17 @@ import Slot from '../components/generate/Slot.jsx'
 import Tip from '../components/generate/Tip.jsx'
 import ShotList, { newShot, shotsPrompt, shotsTotal, snapDuration } from '../components/generate/Shots.jsx'
 import AutoUpscale, { useUpscalePrefs } from '../components/generate/AutoUpscale.jsx'
-import { LibraryPicks, RefTags } from '../components/generate/Library.jsx'
+import { LibraryPicks, RefTags, refOf } from '../components/generate/Library.jsx'
+import MentionText from '../components/generate/Mentions.jsx'
 import { PresetCard, PresetPicker, PresetRow, cameraPresets, general, presetText } from '../components/generate/Presets.jsx'
 import { Banner, Feed, GoButton, PanelTabs, StatusNote, Steps, balanceText, canRun, costText, noun, useBatches, useSticky } from '../components/generate/parts.jsx'
 import { asOpen, useDurations, useGenModel } from '../components/generate/useGenModel.js'
+import EnhanceChip, { enhancePrompt, useEnhance } from '../components/generate/Enhance.jsx'
 import { label, paramsFor, useModelInputs } from '../components/generate/useModelInputs.js'
 import { IconAt, IconBook, IconFolder, IconMute, IconPlay, IconSound } from '../components/generate/icons.jsx'
 import { IconAspect, IconClock, IconImage, IconSpark, IconStack, IconVideo } from '../components/Icons.jsx'
 import { useApp } from '../lib/appContext.js'
+import { chooseModel, useHandoff } from '../lib/handoff.js'
 import { usePod } from '../lib/usePod.js'
 import { acceptsImage } from '../lib/providers.js'
 import { openModels } from '../lib/tools.js'
@@ -36,7 +39,7 @@ const mainTabs = [
 const animate = asOpen(openModels.find((m) => m.id === 'wan-animate-2'))
 
 function CreateVideo({ preset, onPresets, setError, onRan, addBatch }) {
-  const { gens, connections } = useApp()
+  const { gens, connections, picker } = useApp()
   const { status: pod } = usePod()
   const pick = useGenModel('video')
   const { model } = pick
@@ -53,6 +56,8 @@ function CreateVideo({ preset, onPresets, setError, onRan, addBatch }) {
   const [resolution, setResolution] = useState(null)
   const [sound, setSound] = useState(null)
   const [takes, setTakes] = useState(1)
+  const [enhance, setEnhance] = useEnhance('video')
+  const [enhancing, setEnhancing] = useState(false)
   const [up, setUp] = useUpscalePrefs()
   const [upSource, setUpSource] = useState(null)
   const navigate = useNavigate()
@@ -60,6 +65,14 @@ function CreateVideo({ preset, onPresets, setError, onRan, addBatch }) {
   const metaOf = useModelMeta([model])
   const durations = useDurations(model)
   const inputs = useModelInputs(model, Boolean(start))
+  useHandoff((h) => {
+    chooseModel(picker, h.model)
+    if (h.prompt != null) { setMulti(false); setBatchMode(false); setPrompt(h.prompt) }
+    if (h.aspect) setAspect(h.aspect)
+    if (h.duration) setDuration(h.duration)
+    if (h.start !== undefined) setStart(h.start)
+    if (h.refs) setRefs(h.refs)
+  })
 
   const canAttach = model.open || (!['comfy', 'comfyRouter'].includes(model.provider)) || acceptsImage(model)
   const needsFrame = model.workflow === 'ltx_i2v'
@@ -87,9 +100,19 @@ function CreateVideo({ preset, onPresets, setError, onRan, addBatch }) {
   const cost = each && prompts.length ? { usd: each.usd * prompts.length, approx: each.approx } : null
   const bal = !model.open && balanceText(balance, model.provider)
 
-  const go = (e) => {
+  const go = async (e) => {
     e?.preventDefault()
-    if (!prompts.length || !connected || (needsFrame && !start)) return
+    if (!prompts.length || !connected || (needsFrame && !start) || enhancing) return
+    // Enhance rewrites each prompt before the camera move is added; a multi-shot prompt is already written shot by shot.
+    let ready = prompts
+    if (enhance && !model.open && !multi) {
+      setEnhancing(true)
+      setError(null)
+      const failed = []
+      ready = await Promise.all(prompts.map((p) => enhancePrompt(p, 'video', model).catch((err) => { failed.push(err.message); return p })))
+      setEnhancing(false)
+      if (failed.length) setError(`Enhance did not run: ${failed[0]} Your prompt ran as written.`)
+    }
     const batch = { id: crypto.randomUUID(), prompts, total, model: model.name, kind: 'video' }
     if (batching) addBatch(batch)
     // With Upscale on, the plan's source replaces the Resolution chip: a fal resolution or a smaller canvas.
@@ -104,10 +127,10 @@ function CreateVideo({ preset, onPresets, setError, onRan, addBatch }) {
         if (job) gens.generate(upscaler, { prompt: '', caption, aspect: ratio, count: 1, video: f.url, duration: job.duration, params: { upscale_factor: job.factor } }, { ...meta, upscaled: target.label })
       }
     }
-    prompts.forEach((p, r) => {
+    ready.forEach((p, r) => {
       const full = withMove(p)
       const caption = multi ? shots.map((s) => s.text.trim()).filter(Boolean).join(' / ') : p
-      const meta = batching ? { batch: batch.id, row: r } : {}
+      const meta = { ...(batching && { batch: batch.id, row: r }), ...(p !== prompts[r] && { original: prompts[r] }) }
       for (let t = 0; t < perPrompt; t++) {
         gens.generate(model, {
           prompt: full, caption, aspect: ratio, count: 1, duration: dur, images, ...(scale && { scale }),
@@ -141,14 +164,16 @@ function CreateVideo({ preset, onPresets, setError, onRan, addBatch }) {
         {multi ? <ShotList shots={shots} setShots={setShots} /> : batching ? (
           <div className="gen-box-list"><PromptList rows={rows} setRows={setRows} kind="video" /></div>
         ) : (
-          <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={4} aria-label="Prompt"
-            placeholder={start ? 'Describe how the frame should move' : 'Describe a shot, e.g. a cyclist racing through a rainy night market'}
+          <MentionText value={prompt} onChange={setPrompt} rows={4} aria-label="Prompt"
+            onPick={(type, item, text) => { setPrompt(text); setRefs((rs) => (rs.some((r) => r.id === item.id) ? rs : [...rs, refOf(type, item)])) }}
+            placeholder={start ? 'Describe how the frame should move' : 'Describe a shot, e.g. a cyclist racing through a rainy night market. Type @ for a saved element'}
             onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), go())} />
         )}
         <div className="chips">
           <Pop keep icon={<IconAt />} label={refs.length ? `${refs.length} ${refs.length === 1 ? 'element' : 'elements'}` : 'Elements'} lit={refs.length > 0} title="Elements from Library">
             <LibraryPicks refs={refs} setRefs={setRefs} />
           </Pop>
+          {!model.open && !multi && <EnhanceChip on={enhance} setOn={setEnhance} busy={enhancing} />}
           {inputs.sound && (
             <div className="chip">
               <button type="button" className={soundOn ? 'lit' : ''} aria-pressed={soundOn} disabled={inputs.sound.fixed}
@@ -201,7 +226,7 @@ function CreateVideo({ preset, onPresets, setError, onRan, addBatch }) {
       <StatusNote model={model} connected={connected} />
       <div className="gen-go-row">
         {batching && prompts.length > 0 && !model.open && <button type="button" className="btn-soft" onClick={openAsFlow}>Open as flow</button>}
-        <GoButton total={total} cost={costText(cost)} disabled={!total || !connected || (needsFrame && !start)} />
+        <GoButton total={total} cost={costText(cost)} disabled={!total || !connected || (needsFrame && !start) || enhancing} />
       </div>
       {connected && (
         <p className="gen-sum">
@@ -337,7 +362,7 @@ export default function VideoStudio() {
         </div>
         <Banner />
         <Tip page="video" onLearn={() => setMain('how')} />
-        {gens.error && <div className="notice glass error gen-notice">{gens.error}{gens.retry && <button type="button" className="link-btn" onClick={gens.retry}>Retry</button>}</div>}
+        {gens.error && <div className="notice glass error gen-notice">{gens.error}{gens.retry && <button type="button" className="link-btn" onClick={gens.retry}>{gens.retry.label || 'Retry'}</button>}</div>}
         {main === 'how' ? explainer : <Feed kind="video" gens={gens} batches={batches} empty={explainer} />}
       </section>
 

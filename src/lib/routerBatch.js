@@ -22,8 +22,9 @@ export async function runRouterBatch(batch, submit, onFiles) {
   for (const [index, call] of batch.calls.entries()) {
     if (call.files) continue
     try {
-      call.files = await submit({ model: batch.model, input: batch.input, idempotencyKey: call.idempotencyKey })
+      call.files = await submit({ model: batch.model, input: batch.input, idempotencyKey: call.idempotencyKey }, call)
     } catch (error) {
+      delete call.jobId
       if (!keepRequestKey(error)) call.idempotencyKey = crypto.randomUUID()
       throw error
     }

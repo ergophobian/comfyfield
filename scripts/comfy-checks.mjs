@@ -282,6 +282,22 @@ await test('Router terminal answers and uncertain responses carry retry classifi
   await assert.rejects(core.runComfyRouter({ model: 'bfl/flux-2-pro', input: {} }, noWait), (e) => e.retryable === true && e.code === 'invalid_response')
 })
 
+await test('A cancelled Router job aborts polling and keeps its request identity', async () => {
+  setup('cloud')
+  const controller = new AbortController()
+  let calls = 0
+  globalThis.fetch = async (url, options) => {
+    assert.equal(options.signal, controller.signal)
+    calls++
+    return json(job, 201)
+  }
+  await assert.rejects(core.runComfyRouter({ model: 'bfl/flux-2-pro', input: {}, idempotencyKey: 'cancel-key' }, {
+    signal: controller.signal,
+    pause: async () => controller.abort(),
+  }), (error) => error.name === 'AbortError' && error.idempotencyKey === 'cancel-key' && error.requestId === job.request_id)
+  assert.equal(calls, 1, 'No status or result requests follow cancellation')
+})
+
 await test('Router discovery preserves pagination and encodes the cursor', async () => {
   globalThis.fetch = async (url, options) => {
     assert.equal(new URL(url).searchParams.get('cursor'), 'opaque+/cursor')

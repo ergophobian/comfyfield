@@ -7,6 +7,7 @@ import { allFormats } from '../src/lib/formats/index.js'
 
 // A separate Vite server with an in-process mock API never loads provider routes or keys.
 const requests = []
+const jobs = new Map()
 let connected = true
 let failPrompt = false
 let failRender = false
@@ -35,18 +36,31 @@ const server = await preview({ configFile: false, envFile: false, plugins: [{
       if (url.pathname === '/api/connections') return res.end(JSON.stringify({ fal: { connected }, google: { connected } }))
       if (url.pathname === '/api/fal/schema') return res.end(JSON.stringify(schemas.fal[url.searchParams.get('id')] || { properties: { prompt: { type: 'string' } } }))
       if (url.pathname === '/api/upload') { req.resume(); return res.end(JSON.stringify({ url: '/mock-photo.svg' })) }
+      if (url.pathname.startsWith('/api/jobs/')) return res.end(JSON.stringify(jobs.get(url.pathname.slice('/api/jobs/'.length))))
       if (req.method === 'POST') {
         let body = ''
         for await (const chunk of req) body += chunk
-        requests.push({ path: url.pathname, body: JSON.parse(body) })
-        if ((url.pathname === '/api/prompt' && failPrompt) || (url.pathname === '/api/comfy/run' && failRender)) {
+        // Generations run as server jobs; record the route the job runs, as a direct call would show it.
+        let path = url.pathname
+        let data = JSON.parse(body)
+        const job = path === '/api/jobs'
+        if (job) ({ route: path, body: data } = data)
+        requests.push({ path, body: data })
+        const failed = (path === '/api/prompt' && failPrompt) || (path === '/api/comfy/run' && failRender)
+        if (failed) {
           failPrompt = false
           failRender = false
-          res.statusCode = 402
-          return res.end(JSON.stringify({ error: 'Mock insufficient credits', code: 'insufficient_credits' }))
+          if (!job) {
+            res.statusCode = 402
+            return res.end(JSON.stringify({ error: 'Mock insufficient credits', code: 'insufficient_credits' }))
+          }
         }
-        if (url.pathname === '/api/prompt') return res.end(JSON.stringify({ text: 'Mock writer prompt for review' }))
-        return res.end(JSON.stringify({ files: [{ url: '/mock-result.svg', kind: 'image' }] }))
+        if (path === '/api/prompt') return res.end(JSON.stringify({ text: 'Mock writer prompt for review' }))
+        const files = [{ url: '/mock-result.svg', kind: 'image' }]
+        if (!job) return res.end(JSON.stringify({ files }))
+        const id = `job-${jobs.size + 1}`
+        jobs.set(id, failed ? { id, status: 'failed', error: { message: 'Mock insufficient credits', status: 402, code: 'insufficient_credits' } } : { id, status: 'done', files })
+        return res.end(JSON.stringify({ id }))
       }
       res.end('{}')
     })
