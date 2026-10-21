@@ -7,6 +7,7 @@ import { allFormats } from '../src/lib/formats/index.js'
 
 // A separate Vite server with an in-process mock API never loads provider routes or keys.
 const requests = []
+const jobs = new Map()
 const svg = (label) => `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="750" viewBox="0 0 600 750"><rect width="600" height="750" fill="#e4e9ff"/><circle cx="300" cy="280" r="120" fill="#9b8cf5"/><path d="M100 680 Q100 380 300 390 Q500 380 500 680Z" fill="#6f7fd8"/><text x="300" y="720" text-anchor="middle" font-family="sans-serif" font-size="28" fill="#30384d">${label}</text></svg>`
 const server = await preview({ configFile: false, envFile: false, plugins: [{
   name: 'format-mock-api', configurePreviewServer(server) {
@@ -23,12 +24,22 @@ const server = await preview({ configFile: false, envFile: false, plugins: [{
       if (url.pathname === '/api/connections') return res.end(JSON.stringify({ fal: { connected: true }, google: { connected: true } }))
       if (url.pathname === '/api/fal/schema') return res.end(JSON.stringify(schemas.fal[url.searchParams.get('id')] || { properties: { prompt: { type: 'string' } } }))
       if (url.pathname === '/api/upload') { req.resume(); return res.end(JSON.stringify({ url: '/mock-photo.svg' })) }
+      if (url.pathname.startsWith('/api/jobs/')) return res.end(JSON.stringify(jobs.get(url.pathname.slice('/api/jobs/'.length))))
       if (req.method === 'POST') {
         let body = ''
         for await (const chunk of req) body += chunk
-        requests.push({ path: url.pathname, body: JSON.parse(body) })
-        if (url.pathname === '/api/prompt') return res.end(JSON.stringify({ text: 'Mock writer prompt for review' }))
-        return res.end(JSON.stringify({ files: [{ url: '/mock-result.svg', kind: 'image' }] }))
+        // Generations run as server jobs; record the route the job runs, as a direct call would show it.
+        let path = url.pathname
+        let data = JSON.parse(body)
+        const job = path === '/api/jobs'
+        if (job) ({ route: path, body: data } = data)
+        requests.push({ path, body: data })
+        if (path === '/api/prompt') return res.end(JSON.stringify({ text: 'Mock writer prompt for review' }))
+        const files = [{ url: '/mock-result.svg', kind: 'image' }]
+        if (!job) return res.end(JSON.stringify({ files }))
+        const id = `job-${jobs.size + 1}`
+        jobs.set(id, { id, status: 'done', files })
+        return res.end(JSON.stringify({ id }))
       }
       res.end('{}')
     })
