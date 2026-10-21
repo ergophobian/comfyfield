@@ -1,5 +1,11 @@
 /* Theme tokens. Raw colors, sizes and timings live here and nowhere else in the app. */
 :root {
+  --cinema-gap: 16px;
+  --cinema-pad: 20px;
+  --cinema-border: 1px;
+  --cinema-field-pad: 10px;
+  --cinema-video-ratio: 16 / 9;
+
   /* Text and lines */
   --ink: #0f1222;
   --ink-2: #4a4f66;
@@ -2796,4 +2802,27 @@ a.skill-chip:active { transform: scale(.96); }
   .skill-flow { position: static; flex-direction: column; align-items: flex-start; }
   .skill-steps > li { grid-template-columns: 28px minmax(0, 1fr); padding: 16px; }
   .skill-steps > li > .copy-btn { grid-column: 2; justify-self: start; }
+}
+
+/* Cinema shares the saved Flow engine and the Stitch editor. */
+.cinema-journey, .cinema-scene, .cinema-plan, .cinema-idea, .cinema-shot-fields, .cinema-assembly { display: flex; flex-direction: column; gap: var(--cinema-gap); min-width: 0; }
+.cinema-idea, .cinema-shot, .cinema-assembly, .cinema-budget { padding: var(--cinema-pad); border-radius: var(--r-lg); }
+.cinema-scene-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--cinema-gap); }
+.cinema-scene-heading h2, .cinema-scene-heading h3 { margin: 0; }
+.cinema-shots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--cinema-gap); }
+.cinema-shot { min-width: 0; display: flex; flex-direction: column; gap: var(--cinema-gap); }
+.cinema-shot h3 { font-size: var(--text-lg); margin: 0; }
+.cinema-fields { border: 0; padding: 0; margin: 0; min-width: 0; }
+.cinema-shot-fields label, .cinema-title { display: flex; flex-direction: column; gap: var(--cinema-field-pad); font-size: var(--text-sm); color: var(--ink-2); }
+.cinema-shot-fields textarea, .cinema-shot-fields input, .cinema-shot-fields select, .cinema-title input { width: 100%; min-width: 0; border: var(--cinema-border) solid var(--line); border-radius: var(--r-sm); padding: var(--cinema-field-pad); background: var(--glass-strong); font-size: var(--text-md); color: var(--ink); }
+.cinema-shot-fields textarea { resize: vertical; }
+.cinema-shot-settings { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--cinema-gap); }
+.cinema-shot video { width: 100%; aspect-ratio: var(--cinema-video-ratio); object-fit: contain; border-radius: var(--r-sm); background: var(--ink); }
+.cinema-actions { display: flex; flex-wrap: wrap; gap: var(--cinema-field-pad); margin-top: auto; }
+.cinema-journey > .btn-soft, .cinema-scene > .btn-soft, .cinema-idea > .btn-soft { align-self: flex-start; }
+.cinema-budget p { margin-block: var(--cinema-gap); }
+@media (max-width: 720px) {
+  .cinema-shots { grid-template-columns: minmax(0, 1fr); }
+  .cinema-scene-heading { align-items: flex-start; }
+  .cinema-actions { flex-direction: column; }
 }
