@@ -124,7 +124,7 @@ try {
     fs.writeFileSync(`research_notes/cinema/${name}.png`, Buffer.from(shot.data, 'base64'))
   }
   const goto = async (route) => {
-    await cdp('Page.navigate', { url: `${origin}${route}` })
+    await cdp('Page.navigate', { url: `${origin}${route}` }, 60000)
     await wait('document.querySelector("main, .flows") && document.readyState === "complete"')
   }
   await cdp('Runtime.enable')
