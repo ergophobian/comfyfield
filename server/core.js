@@ -15,6 +15,9 @@ import { DEFAULT_TIER, TIER_IDS } from '../shared/gpuTiers.js'
 import { podManager, GPU_LADDER, IDLE_CHOICES, POD_VOLUMES, STOPPED_DISK_USD_GB_MONTH, idleMinutes } from './pod.js'
 import { sandboxFetch } from './podSandbox.js'
 
+// Instant workflow variants (kept separate from provider imports).
+import { cloudWorkflows } from '../src/lib/catalog.js'
+
 export { podBootScript, podStartCmd } from './podBoot.js'
 export { GPU_LADDER, NO_POD } from './pod.js'
 
@@ -647,6 +650,11 @@ function podWorkflowOf(workflow) {
   return (m && (workflow === m.imageWorkflow ? m.podImageWorkflow : m.podWorkflow)) || podWorkflows[workflow] || null
 }
 
+function cloudWorkflowOf(workflow) {
+  const m = modelOf(workflow)
+  return (m && (workflow === m.imageWorkflow ? m.cloudImageWorkflow : m.cloudWorkflow)) || cloudWorkflows[workflow] || null
+}
+
 // A Pod started for a workflow is sized for its Pod graph, so H3 gets the GPU FreeVideo runs on.
 export const podNeedsFor = (workflow) => workflowNeeds(podWorkflowOf(workflow) || workflow)
 
@@ -822,9 +830,37 @@ export async function runComfy(workflow, vars = {}, { createClient = (key, baseU
   let graph = fill(template, vars)
   if (comfyMode() === 'cloud') {
     let needs = podNeedsOf(graph)
+    // Instant workflow variants: resolve compatible files before the existing target policy.
+    // Session and a ready Pod that fits the original keep its graph and model files.
+    let targetPhase = podPhase
+    let targetRun = run
+    const cloudWorkflow = run !== 'session' && cloudWorkflowOf(workflow)
+    if (cloudWorkflow && config('comfy').key) {
+      const phase = await podPhase()
+      targetPhase = () => phase
+      const vram = podVram()
+      const arch = podArch()
+      const readyPod = phase === 'ready' && (vram == null || vram >= minVramOf(needs)) && (!archOf(needs) || !arch || arch === archOf(needs))
+      if (run === 'instant' || !readyPod) {
+        const alternate = readWorkflow(cloudWorkflow)
+        alternate.template = dropOptional(alternate.template, vars)
+        if (!unsetInput(alternate.template, vars)) {
+          const alternateGraph = fill(alternate.template, vars)
+          const alternateNeeds = podNeedsOf(alternateGraph)
+          if (!notOnCloud(alternateNeeds).length) {
+            ({ file, template } = alternate)
+            graph = alternateGraph
+            needs = alternateNeeds
+            // An original that cannot use this Pod must not send its smaller alternate there.
+            targetRun = 'instant'
+          }
+        }
+      }
+    }
+    // End Instant workflow variants.
     // Errors name the model as the picker shows it.
     const label = modelOf(workflow)?.name
-    const target = await comfyTarget(needs, podPhase, podVram, label, run, podArch)
+    const target = await comfyTarget(needs, targetPhase, podVram, label, targetRun, podArch)
     // A run that goes to a Pod big enough for the model's Pod graph runs that graph: H3 on FreeVideo.
     const alt = target === 'pod' && podWorkflowOf(workflow)
     if (alt) {

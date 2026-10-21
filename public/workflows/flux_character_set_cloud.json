@@ -1,0 +1,315 @@
+{
+  "1": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "flux-2-klein-4b-fp8.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "2": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "qwen_3_4b.safetensors",
+      "type": "flux2",
+      "device": "default"
+    }
+  },
+  "3": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "flux2-vae.safetensors"
+    }
+  },
+  "10": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "{{image}}"
+    },
+    "_meta": {
+      "title": "Character"
+    }
+  },
+  "12": {
+    "class_type": "PrimitiveStringMultiline",
+    "inputs": {
+      "value": "{{prompt}}"
+    }
+  },
+  "13": {
+    "class_type": "PrimitiveString",
+    "inputs": {
+      "value": ""
+    }
+  },
+  "14": {
+    "class_type": "EmptyFlux2LatentImage",
+    "inputs": {
+      "width": "{{width}}",
+      "height": "{{height}}",
+      "batch_size": 1
+    }
+  },
+  "15": {
+    "class_type": "PrimitiveInt",
+    "inputs": {
+      "value": "{{seed}}"
+    }
+  },
+  "40": {
+    "class_type": "StartLoop",
+    "inputs": {
+      "mode": "simple",
+      "mode.num_iterations": "{{count}}",
+      "cache_iterations": true,
+      "initial_iteration_value": [
+        "13",
+        0
+      ]
+    }
+  },
+  "41": {
+    "class_type": "ComfyMathExpression",
+    "inputs": {
+      "expression": "a + 1",
+      "values.a": [
+        "40",
+        0
+      ]
+    }
+  },
+  "42": {
+    "class_type": "ComfyMathExpression",
+    "inputs": {
+      "expression": "a + b",
+      "values.a": [
+        "15",
+        0
+      ],
+      "values.b": [
+        "40",
+        0
+      ]
+    }
+  },
+  "43": {
+    "class_type": "StringFormat",
+    "inputs": {
+      "values.a": [
+        "41",
+        1
+      ],
+      "values.b": [
+        "40",
+        4
+      ],
+      "values.c": [
+        "12",
+        0
+      ],
+      "f_string": "Reference images follow in order (the first image, the second image, ...).\nUser request: {c}\n\nCaption post {a} of this set only: one single photo of the person in the first image, not a grid or a collage. Give it a moment, setting and outfit that differ from the earlier posts in this set, and keep the same face, hair and build. Earlier posts in this set, in order (none for the first post):{b}\nOutput the caption."
+    }
+  },
+  "44": {
+    "class_type": "PrimitiveStringMultiline",
+    "inputs": {
+      "value": [
+        "43",
+        0
+      ]
+    }
+  },
+  "45": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": [
+        "44",
+        0
+      ],
+      "clip": [
+        "2",
+        0
+      ]
+    }
+  },
+  "46": {
+    "class_type": "ConditioningZeroOut",
+    "inputs": {
+      "conditioning": [
+        "45",
+        0
+      ]
+    }
+  },
+  "48": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": [
+        "59",
+        0
+      ],
+      "guider": [
+        "60",
+        0
+      ],
+      "sampler": [
+        "61",
+        0
+      ],
+      "sigmas": [
+        "62",
+        0
+      ],
+      "latent_image": [
+        "14",
+        0
+      ]
+    }
+  },
+  "49": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "48",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ]
+    }
+  },
+  "50": {
+    "class_type": "StringFormat",
+    "inputs": {
+      "values.a": [
+        "40",
+        4
+      ],
+      "values.b": [
+        "41",
+        1
+      ],
+      "values.c": [
+        "44",
+        0
+      ],
+      "f_string": "{a}\nPost {b}: {c}"
+    }
+  },
+  "51": {
+    "class_type": "EndLoop",
+    "inputs": {
+      "output_value": [
+        "49",
+        0
+      ],
+      "next_iteration_value": [
+        "50",
+        0
+      ],
+      "accumulate": true
+    }
+  },
+  "52": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "filename_prefix": "comfyfield/flux_character_set",
+      "images": [
+        "51",
+        0
+      ]
+    }
+  },
+  "53": {
+    "class_type": "ImageScaleToTotalPixels",
+    "inputs": {
+      "image": [
+        "10",
+        0
+      ],
+      "upscale_method": "lanczos",
+      "megapixels": 1.0,
+      "resolution_steps": 16
+    }
+  },
+  "54": {
+    "class_type": "VAEEncode",
+    "inputs": {
+      "pixels": [
+        "53",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ]
+    }
+  },
+  "55": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "45",
+        0
+      ],
+      "latent": [
+        "54",
+        0
+      ]
+    }
+  },
+  "56": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "46",
+        0
+      ],
+      "latent": [
+        "54",
+        0
+      ]
+    }
+  },
+  "59": {
+    "class_type": "RandomNoise",
+    "inputs": {
+      "noise_seed": [
+        "42",
+        1
+      ]
+    }
+  },
+  "60": {
+    "class_type": "CFGGuider",
+    "inputs": {
+      "model": [
+        "1",
+        0
+      ],
+      "positive": [
+        "55",
+        0
+      ],
+      "negative": [
+        "56",
+        0
+      ],
+      "cfg": 1
+    }
+  },
+  "61": {
+    "class_type": "KSamplerSelect",
+    "inputs": {
+      "sampler_name": "euler"
+    }
+  },
+  "62": {
+    "class_type": "Flux2Scheduler",
+    "inputs": {
+      "steps": 4,
+      "width": "{{width}}",
+      "height": "{{height}}"
+    }
+  }
+}
