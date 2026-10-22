@@ -1,9 +1,12 @@
 import { useState } from 'react'
 import Segmented from '../components/Segmented.jsx'
 import { Field } from '../components/formats/Fields.jsx'
-import { Hero, Box, Cards, Pills, Toggle, NotWired, ErrorNote, useParam } from '../components/studiob/Kit.jsx'
+import { Hero, Box, Cards, Pills, Toggle, NotWired, ErrorNote, Compared, useParam } from '../components/studiob/Kit.jsx'
+import { useApp } from '../lib/appContext.js'
 import { formatById } from '../lib/formats/index.js'
 
+// Image upscales from the format sheet, shown on a before and after slider.
+const upscales = ['image-upscale', 'upscale']
 const models = [
   { id: 'seedvr2-3b', label: 'SeedVR2 3B', note: 'Faster and lighter' },
   { id: 'seedvr2-7b', label: 'SeedVR2 7B', note: 'The most detail' },
@@ -33,6 +36,8 @@ export default function Upscale() {
   const [fps, setFps] = useState('keep')
   const [deflicker, setDeflicker] = useState(true)
   const [error, setError] = useState(null)
+  const { gens } = useApp()
+  const upscaled = gens.items.filter((it) => upscales.includes(it.formatId) && it.kind === 'image' && it.source && it.url && !it.pending).slice(0, 6)
 
   const value = media[kind]
   const k = Number(scale)
@@ -90,6 +95,7 @@ export default function Upscale() {
           <NotWired label="Upscale" runsOn={modelName} summary={`${modelName}, ${mode}, ${scale}x${to ? `, out at ${to}` : ''}`} />
         </aside>
       </div>
+      {!video && <Compared items={upscaled} note="Drag the divider to see the detail it added" />}
     </main>
   )
 }

@@ -125,6 +125,14 @@ def decide(s, cfg):
   return None
 
 
+LEASE_FRESH = 60
+
+
+def is_busy(queue, work, leased_at, now):
+  """A queued job, an unknown queue, a download or install, or a run the app leased in the last minute."""
+  return (queue or 0) > 0 or queue is None or bool(work) or (leased_at is not None and now - leased_at < LEASE_FRESH)
+
+
 def next_idle(idle, util, queue, downloading, tick):
   # An unanswered probe counts as busy: failing closed costs money, failing open loses a run.
   if util is None or queue is None or downloading:
@@ -356,6 +364,27 @@ def load_packs(comfy, queue, now):
     restart_comfy()
 
 
+def recheck_packs(comfy, now):
+  """A ready pack must still load after each ComfyUI start: a later install (FreeVideo's shared Python env,
+  another pack's requirements) can break its import, and runs would then fail with its nodes missing while
+  it still shows as ready. A broken pack is marked failed, so the next run that needs it installs it again."""
+  started = comfy_started()
+  if not comfy or not started or now - started < RESTART_GRACE:
+    return
+  with LOCK:
+    due = [k for k, v in RUNTIMES.items() if k in PACKS and v['state'] == 'ready' and v.get('checkedStart') != started]
+  for k in due:
+    ok = lists_classes(PACKS[k]['classes'])
+    with LOCK:
+      if RUNTIMES[k]['state'] != 'ready':
+        continue
+      RUNTIMES[k]['checkedStart'] = started
+      if not ok:
+        RUNTIMES[k].update(state='failed', error=comfy_error(PACKS[k]['folder']) or 'ComfyUI no longer loads it')
+    if not ok:
+      log('%s no longer loads' % k)
+
+
 def comfy_error(folder):
   # ComfyUI logs a failed custom node import with the folder name.
   try:
@@ -430,7 +459,7 @@ def watchdog():
       # An install downloads and compiles with the GPU idle, so it counts as work.
       work = downloading() or installing()
       S['idle'] = next_idle(S['idle'], gpu and gpu['util'], queue, work, TICK)
-      busy = (queue or 0) > 0 or queue is None or work
+      busy = is_busy(queue, work, S.get('leased_at'), time.time())
       state = dict(S, now=time.time(), booted=BOOTED, busy=busy)
       done = S['ending']
     reason = None if done else decide(state, CFG)
@@ -438,6 +467,7 @@ def watchdog():
       terminate(reason)
     elif not done:
       load_packs(comfy, queue, time.time())
+      recheck_packs(comfy, time.time())
 
 
 SAFE_NAME = re.compile(r'^[\w.+-]+$')
@@ -588,10 +618,12 @@ class Handler(BaseHTTPRequestHandler):
       return
     if self.path == '/status':
       return self.reply(200, snapshot())
-    if self.path == '/log':
+    if self.path in ('/log', '/log/comfy'):
+      # The boot log, or ComfyUI's own log, where a node's import error or traceback lands.
+      name, keep = ('comfy.log', 300) if self.path == '/log/comfy' else ('boot.log', 200)
       try:
-        with open(os.path.join(BASE, 'boot.log'), errors='replace') as f:
-          lines = f.readlines()[-200:]
+        with open(os.path.join(BASE, name), errors='replace') as f:
+          lines = f.readlines()[-keep:]
       except OSError:
         lines = []
       return self.reply(200, {'lines': [l.rstrip('\n') for l in lines]})
@@ -601,8 +633,16 @@ class Handler(BaseHTTPRequestHandler):
     if not self.authorized():
       return
     if self.path == '/heartbeat':
+      # The app sends how many runs it has leased to this Pod; an older app sends no body.
+      leases = 0
+      try:
+        size = int(self.headers.get('Content-Length') or 0)
+        leases = int((json.loads(self.rfile.read(size).decode() or '{}') if size else {}).get('leases') or 0)
+      except Exception:
+        pass
       with LOCK:
         S['hb'] = time.time()
+        S['leased_at'] = S['hb'] if leases > 0 else None
       return self.reply(204)
     if self.path == '/download':
       try:

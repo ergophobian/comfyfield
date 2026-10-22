@@ -66,6 +66,19 @@ const DIRS = MODEL_DIRS.join(' ')
 // The status server downloads into, lists and removes from these: ComfyUI's folders and the packs' own.
 const STATUS_DIRS = [...new Set([...MODEL_DIRS, ...PACK_DIRS])].join(' ')
 
+// ComfyField's fixes to a pinned pack: server/pack-patches/<pack id>/<path in the pack>, each base64-encoded.
+export const PATCH_DIR = path.join(HERE, 'pack-patches')
+export function packPatches(id) {
+  const root = path.join(PATCH_DIR, id)
+  if (!fs.existsSync(root)) return []
+  const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]))
+  return walk(root).map((file) => {
+    const rel = path.relative(root, file).split(path.sep).join('/')
+    if (!safePath(rel)) throw new Error(`Pack patch ${id}/${rel} has an unsafe path.`)
+    return { rel, b64: fs.readFileSync(file).toString('base64') }
+  })
+}
+
 // One case per pack for the installer, and the list the status server reads: id, folder, the classes to
 // look for, and the files it waits for before ComfyUI loads the pack.
 function packCases(packs) {
@@ -76,8 +89,14 @@ function packCases(packs) {
     }
   }
   const extra = (p) => `${p.pip?.length ? ` pip="${p.pip.join(' ')}";` : ''}${p.skip?.length ? ` skip="${p.skip.join('|')}";` : ''}`
+  // Files under server/pack-patches/<id>/ replace the pack's own after checkout, as cf_patch.
+  const patch = (id) => {
+    const files = packPatches(id)
+    if (!files.length) return ''
+    return ` cf_patch() { ${files.map(({ rel, b64 }) => `mkdir -p "$d/${path.posix.dirname(rel)}" && echo ${b64} | base64 -d > "$d/${rel}"`).join(' && ')}; };`
+  }
   return {
-    cases: Object.entries(packs).map(([id, p]) => `  ${id}) repo=https://github.com/${p.repo}.git; commit=${p.commit}; folder=${p.folder};${extra(p)} ;;`).join('\n'),
+    cases: Object.entries(packs).map(([id, p]) => `  ${id}) repo=https://github.com/${p.repo}.git; commit=${p.commit}; folder=${p.folder};${extra(p)}${patch(id)} ;;`).join('\n'),
     list: Object.entries(packs).map(([id, p]) => `${id}\t${p.folder}\t${p.classes.join(',')}\t${(p.before || []).join(',')}`).join('\n'),
   }
 }
@@ -155,6 +174,7 @@ if [ "$(git -C "$d" rev-parse HEAD 2>/dev/null)" != "$commit" ]; then
   { git clone --quiet --filter=blob:none --no-checkout "$repo" "$d" && git -C "$d" fetch --quiet --depth 1 origin "$commit" && git -C "$d" checkout --quiet --force "$commit"; } \\
     || { echo "could not fetch $folder at $commit"; rm -rf "$d"; exit 1; }
 fi
+if declare -F cf_patch >/dev/null; then cf_patch || { echo "could not patch $folder"; exit 1; }; fi
 [ -L "$C/custom_nodes/$folder" ] || rm -rf "$C/custom_nodes/$folder"
 ln -sfn "$d" "$C/custom_nodes/$folder" || { echo "could not link $folder into ComfyUI"; exit 1; }
 "$V" -m pip freeze 2>/dev/null | grep -iE '^(torch|torchvision|torchaudio|numpy|xformers|triton|sageattention|nvidia-[a-z0-9-]+)==' > /root/cf/constraints.txt

@@ -63,7 +63,7 @@
         "4",
         0
       ],
-      "prompt": "{{prompt}}\n\nCaption shot 1 of this storyboard only: one single frame, not a grid or a sheet of panels.",
+      "prompt": "{{prompt}}\n\nCaption shot 1 of this storyboard only: one single frame, not a grid or a sheet of panels. Draw no text, labels, shot numbers or captions in the frame.",
       "max_length": 3584,
       "sampling_mode": "on",
       "sampling_mode.temperature": 1,
@@ -216,7 +216,7 @@
         "16",
         0
       ],
-      "f_string": "Reference images follow in order (the first image, the second image, ...).\nUser request: {c}\n\nThe first image is shot 1 of this storyboard. Caption shot {a} only: one single frame, not a grid or a sheet of panels. Show the next moment of the story with the same characters, outfits, setting, lighting and style as the first image, and a shot size and camera angle that suit this shot. The earlier shots, in order:{b}\nOutput the caption."
+      "f_string": "Reference images follow in order (the first image, the second image, ...).\nUser request: {c}\n\nThe first image is shot 1 of this storyboard. Caption shot {a} only: one single frame, not a grid or a sheet of panels. Draw no text, labels, shot numbers or captions in the frame. Show the next moment of the story with the same characters, outfits, setting, lighting and style as the first image, and a shot size and camera angle that suit this shot. The earlier shots, in order:{b}\nOutput the caption."
     }
   },
   "44": {

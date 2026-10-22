@@ -229,6 +229,8 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
     }
     if (paused) { m.status = null; return record() }
     const s = await call(`${statusUrl(cur.id)}/status`, { token: cur.token, timeoutMs: 8000 })
+    // The Pod may have ended, or another started, while the status was on its way.
+    if (record()?.id !== cur.id) return record()
     if (s.ok && s.data && typeof s.data === 'object') {
       m.status = s.data
       m.seenAt = now()
@@ -236,7 +238,9 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
     return record()
   }
 
-  const heartbeat = (rec = record()) => rec && !rec.pausedAt && call(`${statusUrl(rec.id)}/heartbeat`, { method: 'POST', token: rec.token, timeoutMs: 8000 })
+  // `leases` tells the Pod's watchdog a run is on its way, so it does not end the Pod at its lifetime
+  // limit in the gap before the run's downloads or queue start.
+  const heartbeat = (rec = record()) => rec && !rec.pausedAt && call(`${statusUrl(rec.id)}/heartbeat`, { method: 'POST', token: rec.token, timeoutMs: 8000, body: { leases: m.leases.size } })
 
   function phase() {
     const rec = record()
@@ -393,6 +397,11 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
           save({ id: r.data.id, name, token, gpuTypeId: rung.gpuTypeId, gpu: rung.name, vramGb: rung.vramGb, cloudType: rung.cloudType, arch: rung.arch || null, costPerHr: r.data.costPerHr || 0, volumeGb: volume, idleMin, createdAt: t, startedAt: t, pausedAt: null,
             tier: tier || null, fellBack: Boolean(order && refused > 0),
             ...(ready && (ready.files?.length || ready.runtimes?.length) ? { prepare: { files: ready.files || [], runtimes: ready.runtimes || [] } } : {}) })
+          // The last Pod's status (ready, models, disk) says nothing about this one, and a lease that
+          // trusted it would send a run to a Pod still booting.
+          m.status = null
+          m.remote = null
+          m.seenAt = null
           charge(t)
           m.placing = false
           kick()
@@ -486,18 +495,30 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
   const wire = (files) => files.map(({ repo, path: p, dir, name, sha256, gb, bytes }) => ({ repo, path: p, dir, name, ...(sha256 ? { sha256 } : {}),
     ...(Number.isInteger(bytes) ? { bytes } : gb ? { bytes: Math.round(gb * 1e9) } : {}) }))
 
+  // RunPod's proxy can answer 404 or 502 for a few seconds after the Pod's status server opens its port.
+  const unreachable = (r) => [0, 404, 502, 503].includes(r.status)
+  async function askPod(url, init) {
+    let r
+    for (let i = 0; i < 10; i++) {
+      r = await call(url, init)
+      if (r.ok || !unreachable(r)) return r
+      await wait(3000)
+    }
+    return r
+  }
+
   // Asks the Pod for files and runtimes it lacks. A failed install starts again on this request.
   async function ask(rec, files, need, except) {
     const have = new Set((m.status?.models || []).map((f) => `${f.dir}/${f.name}`))
     const missing = files.filter((f) => !have.has(`${f.dir}/${f.name}`))
     const pending = need.filter((e) => m.status?.runtimes?.[e]?.state !== 'ready')
     if (missing.length) {
-      const r = await call(`${statusUrl(rec.id)}/download`, { method: 'POST', token: rec.token, body: { files: wire(missing), keep: kept(except) } })
+      const r = await askPod(`${statusUrl(rec.id)}/download`, { method: 'POST', token: rec.token, body: { files: wire(missing), keep: kept(except) } })
       if (!r.ok) throw fail(`The Pod refused the model download: ${errorText(r.data) || `HTTP ${r.status}`}`, 502)
       if (r.data?.downloads && m.status) m.status = { ...m.status, downloads: { ...m.status.downloads, ...r.data.downloads } }
     }
     for (const e of pending) {
-      const r = await call(`${statusUrl(rec.id)}/runtime/${e}`, { method: 'POST', token: rec.token })
+      const r = await askPod(`${statusUrl(rec.id)}/runtime/${e}`, { method: 'POST', token: rec.token })
       if (!r.ok) throw fail(`The Pod could not start installing ${runtimeName(e)}: ${errorText(r.data) || `HTTP ${r.status}`}`, 502)
       if (r.data?.runtime && m.status) m.status = { ...m.status, runtimes: { ...m.status.runtimes, [e]: r.data.runtime } }
     }
@@ -562,6 +583,7 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
       if (m.ending) throw fail('The Pod is ending after its queue. Keep it from the Pod chip in the top bar.', 409, { code: 'ending' })
     }
     m.leases.add(l)
+    heartbeat()
     const beat = setInterval(() => heartbeat(), 20_000)
     beat.unref?.()
     const release = () => { clearInterval(beat); m.leases.delete(l); signal?.removeEventListener('abort', stop) }
