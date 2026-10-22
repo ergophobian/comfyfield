@@ -6,7 +6,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { randomUUID } from 'node:crypto'
 import { setTimeout as delay } from 'node:timers/promises'
-import { Comfy } from '@comfyorg/sdk'
+import { Comfy, JobFailed } from '@comfyorg/sdk'
 import { models as pinned, falCategories, podWorkflows, routerWriterModel } from '../src/lib/catalog.js'
 import { comfyVars, comfyRouterInput, falInput, estimate, fill, falEndpointFor, dropOptional } from '../shared/mapping.js'
 import { renderStitch } from './stitch.js'
@@ -632,12 +632,36 @@ async function comfyMedia(source) {
 
 // The SDK reads COMFY_BASE_URL only when a client is made, so scope it to one `new Comfy()`.
 // Always pass apiKey: a key left in the environment would otherwise go to whatever URL is set.
+// The Pod's comfy-api-proxy answers with job links on the Pod's private address (urls.self, events,
+// cancel), which only RunPod's network reaches, and the SDK follows them. Pod runs send those links to
+// the public proxy instead, with the Pod token the SDK holds back from a link to another host. An
+// injected fetch loses the SDK's own long-call limits, so this one sets undici's inactivity timers past
+// the 30 minute run deadline, as the SDK does.
+const privateHost = (h) => /^(10\.|127\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.)/.test(h)
+const LONG_CALL_MS = 35 * 60 * 1000
+export function podFetch(baseUrl, token, net = (...a) => globalThis.fetch(...a)) {
+  const pub = new URL(baseUrl)
+  return (input, init = {}) => {
+    const url = new URL(typeof input === 'string' || input instanceof URL ? input : input.url)
+    if (url.host !== pub.host && privateHost(url.hostname)) {
+      url.protocol = pub.protocol; url.hostname = pub.hostname; url.port = pub.port
+      const headers = new Headers(init.headers)
+      if (token && !headers.has('Authorization')) headers.set('Authorization', `Bearer ${token}`)
+      init = { ...init, headers }
+    }
+    // Node installs its dispatcher on the first read of the global fetch.
+    const inner = init.dispatcher || (globalThis.fetch && globalThis[Symbol.for('undici.globalDispatcher.1')])
+    const limits = inner?.dispatch ? { dispatcher: { dispatch: (o, h) => inner.dispatch({ ...o, headersTimeout: LONG_CALL_MS, bodyTimeout: LONG_CALL_MS }, h) } } : {}
+    return net(url.href, { ...init, ...limits })
+  }
+}
+
 export function comfyClient(baseUrl, apiKey, options = {}) {
   const saved = process.env.COMFY_BASE_URL
   if (baseUrl) process.env.COMFY_BASE_URL = baseUrl
   else delete process.env.COMFY_BASE_URL
   try {
-    return new Comfy({ apiKey: apiKey || undefined, clientInfo: 'comfyfield', ...options })
+    return new Comfy({ apiKey: apiKey || undefined, clientInfo: 'comfyfield', ...(baseUrl && { fetch: podFetch(baseUrl, apiKey) }), ...options })
   } finally {
     if (saved === undefined) delete process.env.COMFY_BASE_URL
     else process.env.COMFY_BASE_URL = saved
@@ -923,8 +947,19 @@ async function resolveComfyRoute(original, vars, { run, podPhase, podVram, podAr
   return { ...selected, target }
 }
 
+// On a Pod, submits and then waits, so a retry knows whether the job reached the Pod before a failure.
+async function submitAndWait(client, wf, { apiKey, timeoutMs, signal, pod }, onSubmitted) {
+  if (!pod || !client.submit) return client.run(wf, { apiKey, timeoutMs, ...(signal ? { signal } : {}) })
+  const job = await client.submit(wf, { apiKey, ...(signal ? { signal } : {}) })
+  onSubmitted()
+  await job.wait(timeoutMs, signal)
+  if (job.status !== 'succeeded') throw new JobFailed(`job ${job.id} ended ${job.status}`, { error: job.error })
+  return job
+}
+
 // Runs a bundled workflow on Comfy Cloud or the Pod, or in development on a local ComfyUI, and returns file URLs.
-export async function runComfy(workflow, vars = {}, { createClient = (key, baseUrl) => comfyClient(baseUrl, key), lease = (o) => pod().lease(o), podPhase = () => pod().phaseNow(), podVram = () => pod().vramGb(), podRoom = () => pod().room(), podArch = () => pod().arch(), run = runType(), signal } = {}) {
+export async function runComfy(workflow, vars = {}, opts = {}) {
+  const { createClient = (key, baseUrl) => comfyClient(baseUrl, key), lease = (o) => pod().lease(o), podPhase = () => pod().phaseNow(), podVram = () => pod().vramGb(), podRoom = () => pod().room(), podArch = () => pod().arch(), run = runType(), signal, retried = 0, pause = (ms, s) => delay(ms, undefined, s ? { signal: s } : undefined) } = opts
   signal?.throwIfAborted()
   const original = workflowGraph(workflow, vars)
   let { file, template, graph } = original
@@ -971,6 +1006,7 @@ export async function runComfy(workflow, vars = {}, { createClient = (key, baseU
       client = createClient(partner)
     }
     const where = target === 'pod' ? 'The Pod' : 'Comfy Cloud'
+    let submitted = false
     try {
       signal?.throwIfAborted()
       const wf = await client.workflows.fromFile(file)
@@ -979,7 +1015,9 @@ export async function runComfy(workflow, vars = {}, { createClient = (key, baseU
       const t0 = Date.now()
       signal?.throwIfAborted()
       const runSignal = signal && held?.signal ? AbortSignal.any([signal, held.signal]) : signal || held?.signal
-      const job = await client.run(wf, { apiKey: partner, timeoutMs: 30 * 60 * 1000, ...(runSignal ? { signal: runSignal } : {}) })
+      // A Pod is paid by the hour and runs one job at a time, so its runs may take longer: a talking head of
+      // 10 to 20 seconds on InfiniteTalk renders for more than 30 minutes.
+      const job = await submitAndWait(client, wf, { apiKey: partner, timeoutMs: (target === 'pod' ? 90 : 30) * 60 * 1000, signal: runSignal, pod: Boolean(held) }, () => { submitted = true })
       if (target === 'cloud') {
         try { logCloudRun({ seconds: gpuSeconds(job, t0), minVramGb: minVramOf(needs) }) } catch {}
       }
@@ -1000,6 +1038,17 @@ export async function runComfy(workflow, vars = {}, { createClient = (key, baseU
       // A Pod paused or terminated mid-run says why, instead of an abort error.
       if (held?.reason()) throw Object.assign(new Error(held.reason()), { status: 409 })
       if (e.httpStatus === 402 || e.code === 'insufficient_credits') throw comfyError({ status: 402 }, {})
+      // The Pod's proxy answers 405, 502 or 503 while ComfyUI restarts to load a node pack the run just
+      // installed, and a second pack can restart it again. Each retry waits, then takes a fresh lease.
+      // Only a job the Pod never accepted is sent again: a failed poll would otherwise queue and pay for a copy.
+      if (held && !submitted && retried < 2 && [405, 502, 503].includes(e.httpStatus)) {
+        held.release()
+        held = null
+        signal?.throwIfAborted()
+        await pause(20_000, signal)
+        signal?.throwIfAborted()
+        return runComfy(workflow, vars, { ...opts, retried: retried + 1 })
+      }
       throw e
     } finally {
       held?.release()

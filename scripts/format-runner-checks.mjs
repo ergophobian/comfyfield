@@ -378,6 +378,19 @@ assert.equal(formats.length, 450)
 assert.equal(allFormats.length, 479, 'Do not delete planned formats')
 assert.equal(allFormats.filter((f) => f.category === 'camera').length > 0, true, 'Keep Create prompt presets')
 assert(allFormats.filter((f) => !formats.includes(f)).every((f) => formatProblems.get(f.id).length))
+
+// An optional start image picks the image graph; without one the format runs its text graph.
+const anime = formats.find((f) => f.id === 'anime-video')
+const animeGraph = (values) => compileFormat(anime, { ...valuesFor(anime), scene: 'Two friends race downhill', ...values }).nodes.find((n) => n.type === 'model').data.model
+assert.equal(animeGraph({ image: null }).workflow, 'h3_open_t2v')
+assert.equal(animeGraph({ image: { url: '/media/a.png', name: 'a.png', ratio: '16:9' } }).imageWorkflow, 'h3_open_i2v')
+assert.deepEqual(comfyVars('video', { prompt: 'p', aspect: '16:9' }).image, undefined, 'a text start sends no image')
+
+// A motion drawing is ready only once its arrows are drawn, since the graph reads them as its mask.
+const motion = formats.find((f) => f.inputs.some((i) => i.type === 'draw' && i.mode === 'motion'))
+const frame = { url: '/media/frame.png', name: 'frame.png', ratio: '16:9' }
+assert.throws(() => compileFormat(motion, { ...valuesFor(motion), image: frame }), /Still needed/)
+assert.doesNotThrow(() => compileFormat(motion, { ...valuesFor(motion), image: { ...frame, strokes: 'data:image/png;base64,AA==' } }))
 console.log(`Format runner checks ok: ${checked} recipe cases, approval and batching, concurrency, schema rejection, Comfy placeholders, writer handoff and provider failures. No network calls.`)
 
 // A writer edit changes the request even when the downstream text unit keeps its unit id.
