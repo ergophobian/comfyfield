@@ -7,6 +7,7 @@ import { IconAt, IconFilm, IconCamera, IconFrame, IconSound, IconMute, IconMinus
 import { LightArt, Swatches } from './Art.jsx'
 import DirectorPanel, { panelSummary } from './DirectorPanel.jsx'
 import { GoButton, NotWired } from './Shell.jsx'
+import MentionText from '../generate/Mentions.jsx'
 import { useLibrary, toRef } from '../../lib/useLibrary.js'
 import {
   byId, versions, stillVersions, modes, palettes, lights, durations, resolutions, videoRatios, stillRatios, emotions, runsOn,
@@ -51,13 +52,14 @@ export default function CinemaComposer({ still, onKind, shot, set, setRefs }) {
       cast: shot.cast.slice(0, next.cast),
     })
   }
-  const cast = (item) => {
-    if (shot.cast.some((m) => m.ref.id === item.id)) return
-    if (shot.cast.length >= Math.min(version.cast, version.refs - shot.refs.length)) return
+  // typed: the prompt with @Name already written where it was typed, from the mention list.
+  const cast = (item, typed) => {
+    const full = shot.cast.some((m) => m.ref.id === item.id) || shot.cast.length >= Math.min(version.cast, version.refs - shot.refs.length)
+    if (full) { if (typed != null) set({ prompt: typed }); return }
     const tag = `@${item.name}`
     set({
       cast: [...shot.cast, { ref: toRef('character', item), emotion: null, intensity: 'clear' }],
-      prompt: shot.prompt.includes(tag) ? shot.prompt : `${shot.prompt}${shot.prompt && !shot.prompt.endsWith(' ') ? ' ' : ''}${tag} `,
+      prompt: typed ?? (shot.prompt.includes(tag) ? shot.prompt : `${shot.prompt}${shot.prompt && !shot.prompt.endsWith(' ') ? ' ' : ''}${tag} `),
     })
   }
   const uncast = (refId) => set({ cast: shot.cast.filter((m) => m.ref.id !== refId) })
@@ -131,8 +133,8 @@ export default function CinemaComposer({ still, onKind, shot, set, setRefs }) {
         )}
 
         <div className="cs-write">
-          <textarea value={shot.prompt} onChange={(e) => set({ prompt: e.target.value })} rows={2} aria-label="Prompt"
-            placeholder={still ? 'Describe the frame. Type @ to cast a character' : mode.placeholder} />
+          <MentionText up types={['character']} value={shot.prompt} onChange={(prompt) => set({ prompt })} onPick={(type, item, text) => cast(item, text)}
+            rows={2} aria-label="Prompt" placeholder={still ? 'Describe the frame. Type @ to cast a character' : mode.placeholder} />
           <GoButton />
         </div>
 

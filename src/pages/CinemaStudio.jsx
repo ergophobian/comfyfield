@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import CinemaSide from '../components/studio/CinemaSide.jsx'
 import CinemaComposer from '../components/studio/CinemaComposer.jsx'
+import CinemaScene from '../components/studio/CinemaScene.jsx'
 import Segmented from '../components/Segmented.jsx'
 import { IconTrash } from '../components/Icons.jsx'
 import { load, save, useStored } from '../components/studio/Shell.jsx'
@@ -164,7 +165,7 @@ export default function CinemaStudio() {
           <Posters onStart={newProject} />
           <h1 className="rise">{still ? 'Frame every still like a cinematographer' : 'Direct your story shot by shot'}</h1>
         </div>
-        <CinemaComposer still={still} onKind={onKind} shot={home} set={h.set} setRefs={h.setRefs} />
+        {still ? <CinemaComposer still={still} onKind={onKind} shot={home} set={h.set} setRefs={h.setRefs} /> : <CinemaScene key="home" storageKey="comfyfield.cinema.scene.home" initialIdea={home.prompt} />}
       </>
     )
   } else if (project) {
@@ -181,9 +182,7 @@ export default function CinemaStudio() {
           <textarea id={`brief-${project.id}`} rows={2} value={project.brief} onChange={(e) => editProject(project.id, { brief: e.target.value })}
             placeholder="What the film is about, who is in it and how it should feel. The look you set below holds for every shot." />
         </div>
-        <CinemaComposer still={still} onKind={onKind} shot={project.shot} set={h.set} setRefs={h.setRefs} />
-        <div className="studio-sub"><h2>Shots</h2><span className="muted">Every shot made in this project lands here.</span></div>
-        <div className="empty glass">No shots yet. Generating is not wired yet, so this stays empty for now.</div>
+        {still ? <CinemaComposer still={still} onKind={onKind} shot={project.shot} set={h.set} setRefs={h.setRefs} /> : <CinemaScene key={project.id} storageKey={`comfyfield.cinema.scene.${project.id}`} initialIdea={project.brief || project.shot.prompt} />}
       </>
     )
   } else if (view === 'generations') {

@@ -11,7 +11,7 @@ function Take({ it, onApprove, onDismiss }) {
           Failed
           {typeof it.failed === 'string' && <small title={it.failed}>{it.failed}</small>}
           <span className="take-acts">
-            {it.retry && <button type="button" onClick={it.retry}>Retry</button>}
+            {it.retry && <button type="button" onClick={it.retry}>{it.retry.label || 'Retry'}</button>}
             <button type="button" onClick={() => onDismiss(it.id)}>Dismiss</button>
           </span>
         </span>

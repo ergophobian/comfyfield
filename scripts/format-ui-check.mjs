@@ -7,6 +7,10 @@ import { allFormats } from '../src/lib/formats/index.js'
 
 // A separate Vite server with an in-process mock API never loads provider routes or keys.
 const requests = []
+const jobs = new Map()
+let connected = true
+let failPrompt = false
+let failRender = false
 const svg = (label) => `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="750" viewBox="0 0 600 750"><rect width="600" height="750" fill="#e4e9ff"/><circle cx="300" cy="280" r="120" fill="#9b8cf5"/><path d="M100 680 Q100 380 300 390 Q500 380 500 680Z" fill="#6f7fd8"/><text x="300" y="720" text-anchor="middle" font-family="sans-serif" font-size="28" fill="#30384d">${label}</text></svg>`
 const server = await preview({ configFile: false, envFile: false, plugins: [{
   name: 'format-mock-api', configurePreviewServer(server) {
@@ -19,16 +23,44 @@ const server = await preview({ configFile: false, envFile: false, plugins: [{
       }
       if (!url.pathname.startsWith('/api/')) return next()
       res.setHeader('Content-Type', 'application/json')
+      if (url.pathname === '/api/comfy/requirements') {
+        let body = ''
+        for await (const chunk of req) body += chunk
+        return res.end(JSON.stringify({
+          connections: { fal: { connected: true }, google: { connected: true }, comfyRouter: { connected: true } },
+          cloudConnected: true, pod: { phase: 'none' },
+          requirements: JSON.parse(body).workflows.map(({ workflow }) => ({ workflow, notOnCloud: [], minVramGb: 0, target: 'cloud', selectedWorkflow: workflow })),
+        }))
+      }
       if (url.pathname === '/api/stitch/exports') return res.end('[]')
-      if (url.pathname === '/api/connections') return res.end(JSON.stringify({ fal: { connected: true }, google: { connected: true } }))
+      if (url.pathname === '/api/connections') return res.end(JSON.stringify({ fal: { connected }, google: { connected } }))
       if (url.pathname === '/api/fal/schema') return res.end(JSON.stringify(schemas.fal[url.searchParams.get('id')] || { properties: { prompt: { type: 'string' } } }))
       if (url.pathname === '/api/upload') { req.resume(); return res.end(JSON.stringify({ url: '/mock-photo.svg' })) }
+      if (url.pathname.startsWith('/api/jobs/')) return res.end(JSON.stringify(jobs.get(url.pathname.slice('/api/jobs/'.length))))
       if (req.method === 'POST') {
         let body = ''
         for await (const chunk of req) body += chunk
-        requests.push({ path: url.pathname, body: JSON.parse(body) })
-        if (url.pathname === '/api/prompt') return res.end(JSON.stringify({ text: 'Mock writer prompt for review' }))
-        return res.end(JSON.stringify({ files: [{ url: '/mock-result.svg', kind: 'image' }] }))
+        // Generations run as server jobs; record the route the job runs, as a direct call would show it.
+        let path = url.pathname
+        let data = JSON.parse(body)
+        const job = path === '/api/jobs'
+        if (job) ({ route: path, body: data } = data)
+        requests.push({ path, body: data })
+        const failed = (path === '/api/prompt' && failPrompt) || (path === '/api/comfy/run' && failRender)
+        if (failed) {
+          failPrompt = false
+          failRender = false
+          if (!job) {
+            res.statusCode = 402
+            return res.end(JSON.stringify({ error: 'Mock insufficient credits', code: 'insufficient_credits' }))
+          }
+        }
+        if (path === '/api/prompt') return res.end(JSON.stringify({ text: 'Mock writer prompt for review' }))
+        const files = [{ url: '/mock-result.svg', kind: 'image' }]
+        if (!job) return res.end(JSON.stringify({ files }))
+        const id = `job-${jobs.size + 1}`
+        jobs.set(id, failed ? { id, status: 'failed', error: { message: 'Mock insufficient credits', status: 402, code: 'insufficient_credits' } } : { id, status: 'done', files })
+        return res.end(JSON.stringify({ id }))
       }
       res.end('{}')
     })
@@ -149,8 +181,38 @@ try {
   assert.equal(requests[4].body.vars.image, '/mock-photo.svg')
   await goto('/apps/podcast-clips')
   await wait('document.body.innerText.includes("Nothing lives at this address")')
+  // Both a failed writer and a failed render retain the app's session and review panel.
+  const beforeRecovery = requests.length
+  failPrompt = true
+  await goto('/apps/effect-aquarium-turn')
+  await wait('document.querySelector("input[type=file]")')
+  await evaluate(`(() => { const input = document.querySelector('input[type=file]'); const data = new DataTransfer(); data.items.add(new File(['mock'], 'retry.png', {type:'image/png'})); input.files = data.files; input.dispatchEvent(new Event('change', {bubbles:true})); })()`)
+  await wait('!document.querySelector(".app-go button").disabled')
+  await evaluate('document.querySelector(".app-go button").click()')
+  const retryVisible = '[...document.querySelectorAll(".format-review button")].some((b) => b.textContent === "Retry failed" && !b.disabled)'
+  await wait(retryVisible)
+  assert.equal(requests.length, beforeRecovery + 1)
+  await screenshot('mock-app-writer-failure-mobile')
+  await evaluate('[...document.querySelectorAll(".format-review button")].find((b) => b.textContent === "Retry failed").click()')
+  await wait(`document.querySelector('textarea[aria-label="Written prompt"]')`)
+  assert.equal(requests.length, beforeRecovery + 2, 'Writer retry must not render before Send')
+  failRender = true
+  await evaluate('[...document.querySelectorAll(".format-review button")].find((b) => b.textContent === "Send to render").click()')
+  await wait(retryVisible)
+  await evaluate('[...document.querySelectorAll(".format-review button")].find((b) => b.textContent === "Retry failed").click()')
+  await wait('!document.querySelector(".format-review [role=alert]") && !document.querySelector(".app-results .pending")')
+  assert.deepEqual(requests.slice(beforeRecovery).map((r) => r.path), ['/api/prompt', '/api/prompt', '/api/comfy/run', '/api/comfy/run'])
+  assert.equal(await evaluate('document.querySelector(".format-review button").textContent'), 'Prompt sent')
+  connected = false
+  await goto('/')
+  await wait('document.querySelector(".notice[role=status] a")')
+  assert.match(await evaluate('document.querySelector(".notice[role=status]").innerText'), /No keys yet/)
+  assert(await evaluate('document.documentElement.scrollWidth <= 390'), 'First-run notice must fit 390px')
+  await screenshot('mock-startup-mobile')
+  await evaluate('document.querySelector(".notice[role=status] a").click()')
+  await wait('location.pathname === "/connections" && !document.querySelector(".notice[role=status]")')
   assert.deepEqual(errors, [], 'No browser runtime exceptions')
-  console.log('UI mock checks ok: app runner, shared sheet, Library after reload, 390px layout, Create generation/feed/camera presets and hidden invalid route. Four mocked generations and one reviewed writer request; no provider calls. Six screenshots saved.')
+  console.log('UI mock checks ok: app runner, shared sheet, Library after reload, 390px layout, Create generation/feed/camera presets and hidden invalid route. Failed writer and render sessions recover through Retry failed without repeating completed steps; no provider calls. First-run Connections notice and link checked at 390px. Eight screenshots saved.')
 } finally {
   await browser?.close()
   await server.close()
