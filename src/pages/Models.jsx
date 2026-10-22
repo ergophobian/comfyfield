@@ -1,3 +1,5 @@
+import { ArtImage } from '../components/Art.jsx'
+import { modelArt } from '../lib/formats/art.js'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { falCategories } from '../lib/catalog.js'
@@ -73,7 +75,7 @@ export default function Models({ picker }) {
         {!items.length && !error && Array.from({ length: 6 }, (_, i) => <div key={i} className="model-row skeleton" />)}
         {shown.map((m, i) => (
           <button key={m.endpoint_id} className="model-row" style={{ '--i': Math.min(i, 12) }} onClick={() => use(m)}>
-            <span className="model-logo"><Logo brand={m.brand} size={20} /></span>
+            <span className="model-logo"><ArtImage src={modelArt(falCategories.find((c) => c.id === category)?.kind)} alt="" /><Logo brand={m.brand} size={20} /></span>
             <span className="model-text">
               <strong>{m.metadata.display_name.trim()}</strong>
               <span>{brands[m.brand]?.name || 'fal'}</span>

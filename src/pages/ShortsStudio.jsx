@@ -1,3 +1,4 @@
+import { PageArt } from '../components/Art.jsx'
 import { useEffect, useState } from 'react'
 import Segmented from '../components/Segmented.jsx'
 import { Field } from '../components/formats/Fields.jsx'
@@ -99,6 +100,7 @@ export default function ShortsStudio() {
     <main className="sb-page">
       <Split name="Shorts studio" panel={panel}
         foot={<NotWired runsOn="Qwen3-VL, Wan VACE and Chatterbox" summary={`${current?.label}, ${ratio}, captions ${captions ? 'on' : 'off'}. Output at 720p.`} />}>
+        <PageArt id="shorts" />
         <div className="sb-bar">
           <Segmented value={tab} onChange={setTab} options={[{ value: 'presets', label: 'Presets' }, { value: 'history', label: 'History' }, { value: 'how', label: 'How it works' }]} />
           {tab === 'presets' && (

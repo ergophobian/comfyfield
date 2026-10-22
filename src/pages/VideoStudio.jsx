@@ -1,3 +1,4 @@
+import { PageArt } from '../components/Art.jsx'
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import Segmented from '../components/Segmented.jsx'
@@ -316,6 +317,7 @@ export default function VideoStudio() {
   const explainer = tab === 'motion' ? (
     <div className="gen-explain">
       <div className="gen-explain-head rise">
+        <PageArt id="video" />
         <h1>Put your character in any move</h1>
         <p>Take the motion from one video and play it back with the character from your photo.</p>
       </div>
@@ -328,6 +330,7 @@ export default function VideoStudio() {
   ) : (
     <div className="gen-explain">
       <div className="gen-explain-head rise">
+        <PageArt id="video" />
         <h1>Turn a still into a shot</h1>
         <p>{presets.length} camera moves to start from, or General for full control with your own prompt.</p>
       </div>

@@ -1,0 +1,3560 @@
+{
+  "inventory": {
+    "total": 479,
+    "valid": 450,
+    "featured": [
+      "storyboard",
+      "look-phone-flash",
+      "expand",
+      "product-shot",
+      "cinema-shot",
+      "swap-element",
+      "talking-head",
+      "product-ad",
+      "tts",
+      "voice-clone",
+      "music",
+      "sound-effect",
+      "image-to-3d",
+      "text-to-3d",
+      "character-to-3d",
+      "turntable"
+    ],
+    "explicit": [
+      "cinema-shot",
+      "storyboard",
+      "look-phone-flash",
+      "expand",
+      "product-shot",
+      "swap-element",
+      "character-scene",
+      "talking-head",
+      "tts",
+      "voice-clone",
+      "music",
+      "sound-effect",
+      "product-ad",
+      "game-style",
+      "image-to-3d"
+    ],
+    "hubs": [
+      {
+        "id": "professional",
+        "top": [
+          "transition",
+          "expand",
+          "behind-the-scenes",
+          "angles",
+          "shots"
+        ]
+      },
+      {
+        "id": "enhance",
+        "top": [
+          "try-on",
+          "skin-retouch",
+          "sticker",
+          "ai-stylist",
+          "relight-photo"
+        ]
+      },
+      {
+        "id": "face",
+        "top": [
+          "face-swap-video",
+          "face-swap",
+          "character-swap",
+          "headshot",
+          "video-character-swap"
+        ]
+      },
+      {
+        "id": "video-edit",
+        "top": [
+          "video-bg-remove",
+          "game-show",
+          "edit-video",
+          "video-erase",
+          "video-remove-text"
+        ]
+      },
+      {
+        "id": "ads",
+        "top": [
+          "product-shot",
+          "packshot",
+          "billboard",
+          "truck-ad",
+          "asmr-classic"
+        ]
+      },
+      {
+        "id": "games",
+        "top": [
+          "sketch-to-image",
+          "plush-toy",
+          "figure-box",
+          "game-style",
+          "life-sim"
+        ]
+      },
+      {
+        "id": "extras",
+        "top": [
+          "meme",
+          "paint-app",
+          "mural",
+          "micro-beasts",
+          "image-bg-remove"
+        ]
+      },
+      {
+        "id": "trending",
+        "top": [
+          "roller-coaster",
+          "cloud-surfing",
+          "all-fine",
+          "surprise-kiss",
+          "glossy-vinyl"
+        ]
+      }
+    ],
+    "rail": [
+      {
+        "kind": "image",
+        "category": "story",
+        "top": [
+          "storyboard"
+        ]
+      },
+      {
+        "kind": "image",
+        "category": "looks",
+        "top": [
+          "look-phone-flash"
+        ]
+      },
+      {
+        "kind": "image",
+        "category": "image-edit",
+        "top": [
+          "expand"
+        ]
+      },
+      {
+        "kind": "image",
+        "category": "characters",
+        "top": [
+          "character-sheet"
+        ]
+      },
+      {
+        "kind": "image",
+        "category": "ads",
+        "top": [
+          "ad-variants"
+        ]
+      },
+      {
+        "kind": "image",
+        "category": "fun",
+        "top": [
+          "plush-toy"
+        ]
+      },
+      {
+        "kind": "image",
+        "category": "enhance",
+        "top": [
+          "skin-retouch"
+        ]
+      },
+      {
+        "kind": "video",
+        "category": "camera",
+        "top": [
+          "cam-dolly-in"
+        ]
+      },
+      {
+        "kind": "video",
+        "category": "effects",
+        "top": [
+          "turn-to-sand"
+        ]
+      },
+      {
+        "kind": "video",
+        "category": "cinema",
+        "top": [
+          "cinema-shot"
+        ]
+      },
+      {
+        "kind": "video",
+        "category": "story",
+        "top": [
+          "transition"
+        ]
+      },
+      {
+        "kind": "video",
+        "category": "video-edit",
+        "top": [
+          "swap-element"
+        ]
+      },
+      {
+        "kind": "video",
+        "category": "characters",
+        "top": [
+          "human-video"
+        ]
+      },
+      {
+        "kind": "video",
+        "category": "voice",
+        "top": [
+          "talking-head"
+        ]
+      },
+      {
+        "kind": "video",
+        "category": "ads",
+        "top": [
+          "product-ad"
+        ]
+      },
+      {
+        "kind": "video",
+        "category": "fun",
+        "top": [
+          "cloud-surfing"
+        ]
+      },
+      {
+        "kind": "video",
+        "category": "mixed",
+        "top": [
+          "mm-acid"
+        ]
+      },
+      {
+        "kind": "video",
+        "category": "enhance",
+        "top": [
+          "video-upscale"
+        ]
+      },
+      {
+        "kind": "audio",
+        "category": "voice",
+        "top": [
+          "tts"
+        ]
+      },
+      {
+        "kind": "audio",
+        "category": "sound",
+        "top": [
+          "music"
+        ]
+      },
+      {
+        "kind": "3d",
+        "category": "models3d",
+        "top": [
+          "image-to-3d"
+        ]
+      }
+    ],
+    "formats": [
+      {
+        "id": "cam-dolly-in",
+        "name": "Dolly in",
+        "blurb": "The camera glides slowly toward your subject.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-dolly-out",
+        "name": "Dolly out",
+        "blurb": "The camera pulls back to reveal the whole scene.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-pan-left",
+        "name": "Pan left",
+        "blurb": "The camera turns to sweep left across the scene.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-pan-right",
+        "name": "Pan right",
+        "blurb": "The camera turns to sweep right across the scene.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-tilt-up",
+        "name": "Tilt up",
+        "blurb": "The camera tilts up from your subject to what is above.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-tilt-down",
+        "name": "Tilt down",
+        "blurb": "The camera tilts down from above to land on your subject.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-tilt-reveal",
+        "name": "Tilt reveal",
+        "blurb": "The camera tilts up from the ground to reveal the subject.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-zoom-in",
+        "name": "Zoom in",
+        "blurb": "The lens zooms in slowly on your subject.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-zoom-out",
+        "name": "Zoom out",
+        "blurb": "The lens zooms out to show the wider scene.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-tracking",
+        "name": "Tracking shot",
+        "blurb": "The camera moves alongside your subject.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-handheld",
+        "name": "Handheld",
+        "blurb": "A loose camera that feels shot on the spot.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-static",
+        "name": "Still camera",
+        "blurb": "The camera holds still while the scene comes alive.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-crane-up",
+        "name": "Crane up",
+        "blurb": "The camera rises high above the scene.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-boom-down",
+        "name": "Boom down",
+        "blurb": "The camera drops from high above to eye level.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-fpv-dive",
+        "name": "FPV dive",
+        "blurb": "A drone dives down and races through the scene.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-drone-flyover",
+        "name": "Drone flyover",
+        "blurb": "A drone sweeps over the scene from high above.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-orbit",
+        "name": "Orbit",
+        "blurb": "The camera circles around your subject.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-bullet-time",
+        "name": "Bullet time",
+        "blurb": "Time freezes while the camera sweeps around.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-crash-zoom",
+        "name": "Crash zoom",
+        "blurb": "A sudden punch in on your subject.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-dolly-zoom",
+        "name": "Dolly zoom",
+        "blurb": "The background stretches while the subject stays put.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-robo-arm",
+        "name": "Robo arm",
+        "blurb": "A fast robotic sweep that stops dead on a new angle.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-spiral-up",
+        "name": "Spiral up",
+        "blurb": "The camera circles and rises above your subject.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-roll-360",
+        "name": "360 roll",
+        "blurb": "The frame rolls a full turn as the camera pushes in.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-sky-pullback",
+        "name": "Sky pull back",
+        "blurb": "The camera rockets back until your subject is a speck.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-whip-pan",
+        "name": "Whip pan",
+        "blurb": "A fast pan that streaks into the next moment.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-snorricam",
+        "name": "Snorricam",
+        "blurb": "The camera rides on your subject as the world sways.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-pov-walk",
+        "name": "POV walk",
+        "blurb": "See the scene through the eyes of someone walking in.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-car-mount",
+        "name": "Car mount",
+        "blurb": "A camera rigged to a car with the world streaming past.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-earthquake",
+        "name": "Earthquake shake",
+        "blurb": "The ground rumbles and the frame shakes hard.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-hyperlapse",
+        "name": "Hyperlapse",
+        "blurb": "The camera moves forward while time races past.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-rack-focus",
+        "name": "Rack focus",
+        "blurb": "Focus shifts from the foreground onto your subject.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-turntable",
+        "name": "Turntable",
+        "blurb": "Your subject turns in place as if on a lazy susan.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-window-push",
+        "name": "Through the window",
+        "blurb": "The camera pushes through a window into the scene.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-slow-shutter",
+        "name": "Slow shutter",
+        "blurb": "Motion smears into dreamy streaks around your subject.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-mix",
+        "name": "Mix two moves",
+        "blurb": "Chain two camera moves into one continuous shot.",
+        "category": "camera"
+      },
+      {
+        "id": "turn-to-sand",
+        "name": "Turn to sand",
+        "blurb": "Your subject crumbles into drifting sand.",
+        "category": "effects"
+      },
+      {
+        "id": "origami-fold",
+        "name": "Origami fold",
+        "blurb": "The scene folds itself into paper origami.",
+        "category": "effects"
+      },
+      {
+        "id": "snow-globe",
+        "name": "Snow globe",
+        "blurb": "The scene shrinks into a snow globe.",
+        "category": "effects"
+      },
+      {
+        "id": "time-lapse",
+        "name": "Time lapse",
+        "blurb": "Hours pass in seconds around your subject.",
+        "category": "effects"
+      },
+      {
+        "id": "burst-into-petals",
+        "name": "Burst into petals",
+        "blurb": "The subject bursts into a swirl of flower petals.",
+        "category": "effects"
+      },
+      {
+        "id": "paint-splash",
+        "name": "Paint splash",
+        "blurb": "Bright paint splashes across the frame.",
+        "category": "effects"
+      },
+      {
+        "id": "floating-fall",
+        "name": "Floating fall",
+        "blurb": "Your subject drifts down through the sky like a feather.",
+        "category": "effects"
+      },
+      {
+        "id": "high-flip",
+        "name": "High flip",
+        "blurb": "Your subject springs up into a high backflip.",
+        "category": "effects"
+      },
+      {
+        "id": "studio-slide",
+        "name": "Studio slide",
+        "blurb": "The background slides away to reveal a photo studio.",
+        "category": "effects"
+      },
+      {
+        "id": "eyes-in",
+        "name": "Eyes in",
+        "blurb": "The camera dives into an eye and out into another world.",
+        "category": "effects"
+      },
+      {
+        "id": "street-giant",
+        "name": "Street giant",
+        "blurb": "Your subject towers over a busy street.",
+        "category": "effects"
+      },
+      {
+        "id": "world-morph",
+        "name": "World morph",
+        "blurb": "The world around your subject changes again and again.",
+        "category": "effects"
+      },
+      {
+        "id": "selfception",
+        "name": "Selfception",
+        "blurb": "The camera pulls back to find the photo inside itself.",
+        "category": "effects"
+      },
+      {
+        "id": "roller-coaster",
+        "name": "Roller coaster",
+        "blurb": "Your subject rides the front car of a roller coaster.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "glitch-out",
+        "name": "Glitch out",
+        "blurb": "The frame breaks into digital glitches.",
+        "category": "effects"
+      },
+      {
+        "id": "turn-to-hologram",
+        "name": "Hologram",
+        "blurb": "Your subject flickers into a glowing hologram.",
+        "category": "effects"
+      },
+      {
+        "id": "turn-to-ice",
+        "name": "Turn to ice",
+        "blurb": "Frost creeps over your subject until it freezes solid.",
+        "category": "effects"
+      },
+      {
+        "id": "shatter",
+        "name": "Shatter",
+        "blurb": "The picture cracks like glass and bursts apart.",
+        "category": "effects"
+      },
+      {
+        "id": "portal",
+        "name": "Portal",
+        "blurb": "A glowing portal opens and your subject steps through.",
+        "category": "effects"
+      },
+      {
+        "id": "pixel-dissolve",
+        "name": "Pixel dissolve",
+        "blurb": "Your subject breaks apart into floating pixels.",
+        "category": "effects"
+      },
+      {
+        "id": "balloon-lift",
+        "name": "Balloon lift",
+        "blurb": "A bunch of balloons lifts your subject into the sky.",
+        "category": "effects"
+      },
+      {
+        "id": "cinema-shot",
+        "name": "Cinema shot",
+        "blurb": "Pick the camera, lens and move, then describe the scene.",
+        "category": "cinema",
+        "featured": true
+      },
+      {
+        "id": "first-last-frame",
+        "name": "First and last frame",
+        "blurb": "Set the first and last frame, get the shot in between.",
+        "category": "cinema"
+      },
+      {
+        "id": "draw-to-video",
+        "name": "Draw to video",
+        "blurb": "Draw arrows on a frame to show what moves where.",
+        "category": "cinema"
+      },
+      {
+        "id": "multi-shot",
+        "name": "Multi-shot scene",
+        "blurb": "Describe a scene and get one video cut into several shots.",
+        "category": "cinema"
+      },
+      {
+        "id": "storyboard",
+        "name": "Storyboard",
+        "blurb": "Turn a story idea into a set of consistent shots.",
+        "category": "story",
+        "featured": true
+      },
+      {
+        "id": "transition",
+        "name": "Transition",
+        "blurb": "Carry one shot into the next without a hard cut.",
+        "category": "story",
+        "hub": "professional"
+      },
+      {
+        "id": "explainer",
+        "name": "Explainer video",
+        "blurb": "Type a topic and get a narrated explainer.",
+        "category": "explainer"
+      },
+      {
+        "id": "faceless",
+        "name": "Faceless video",
+        "blurb": "Turn a topic into a narrated short with no one on camera.",
+        "category": "explainer"
+      },
+      {
+        "id": "motion-graphics",
+        "name": "Motion graphics",
+        "blurb": "Describe animated titles, charts or shapes and get them rendered.",
+        "category": "explainer"
+      },
+      {
+        "id": "cam-arc-left",
+        "name": "Arc left",
+        "blurb": "The camera curves around your subject to the left.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-arc-right",
+        "name": "Arc right",
+        "blurb": "The camera curves around your subject to the right.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-dolly-left",
+        "name": "Dolly left",
+        "blurb": "The camera slides sideways to the left.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-dolly-right",
+        "name": "Dolly right",
+        "blurb": "The camera slides sideways to the right.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-overhead",
+        "name": "Overhead",
+        "blurb": "A top down camera that follows your subject.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-lazy-susan",
+        "name": "Lazy susan",
+        "blurb": "The camera turns around your subject while they hold still.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-orbit-360",
+        "name": "360 orbit",
+        "blurb": "The camera circles all the way around your subject.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-crash-zoom-out",
+        "name": "Crash zoom out",
+        "blurb": "A sudden snap back that reveals the whole scene.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-dolly-zoom-out",
+        "name": "Dolly zoom out",
+        "blurb": "Pull back while zooming in for a vertigo warp.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-earth-zoom-out",
+        "name": "Zoom out to space",
+        "blurb": "Pull back from your subject all the way out to the planet.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-glam",
+        "name": "Glam sweep",
+        "blurb": "A high speed sweep around your subject in slow motion.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-yoyo-zoom",
+        "name": "Zoom bounce",
+        "blurb": "A rapid zoom in and straight back out.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-glass-floor",
+        "name": "Glass floor",
+        "blurb": "Look up at your subject from beneath a glass floor.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-through-and-out",
+        "name": "Through and out",
+        "blurb": "The camera backs out through an object to reveal the scene.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-double-dolly",
+        "name": "Double dolly",
+        "blurb": "You and the camera travel together as the world slides by.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-car-chase",
+        "name": "Car chase",
+        "blurb": "Chase a speeding car from dynamic angles.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-object-pov",
+        "name": "Object POV",
+        "blurb": "See the scene from the point of view of an object.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-roll-transition",
+        "name": "Roll transition",
+        "blurb": "Roll from one frame into the next like a turning wheel.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-rap-flex",
+        "name": "Rap video moves",
+        "blurb": "Low angles, slides and slow zooms like a rap video.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-wiggle",
+        "name": "Wiggle push",
+        "blurb": "A playful little shake on a slow push in.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-mouth-in",
+        "name": "Into the mouth",
+        "blurb": "A quick zoom into the mouth for a comic beat.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-head-lock",
+        "name": "Head lock",
+        "blurb": "The camera locks onto the head while the world shifts.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-dutch-angle",
+        "name": "Dutch angle",
+        "blurb": "A tilted horizon that adds tension.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-incline",
+        "name": "Tilted world",
+        "blurb": "The world tilts steeply around your subject.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-dirty-lens",
+        "name": "Dirty lens",
+        "blurb": "Smudges, dust and water drops on the lens.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-lens-crack",
+        "name": "Lens crack",
+        "blurb": "The lens cracks across the shot.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-lens-flare",
+        "name": "Lens flare",
+        "blurb": "Bright streaks and flares sweep across the lens.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-fast-people",
+        "name": "People in fast forward",
+        "blurb": "People race by while the setting stays calm.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-downhill-pov",
+        "name": "Downhill POV",
+        "blurb": "Ride down a slope in first person.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-mix-fpv-timelapse",
+        "name": "FPV over a time lapse",
+        "blurb": "A drone races over the land as time speeds up.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-mix-snorricam-shutter",
+        "name": "Snorricam slow shutter",
+        "blurb": "You stay locked in frame while the world smears.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-mix-zoom-tentacles",
+        "name": "Crash zoom tentacles",
+        "blurb": "A fast zoom in as tentacles curl out of the eyes.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-mix-zoom-punch",
+        "name": "Crash zoom punch",
+        "blurb": "The camera punches in as a stage punch lands.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-mix-chrome-eyes",
+        "name": "Chrome eyes in",
+        "blurb": "Chrome spreads as the camera dives into mirror eyes.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-mix-run-fire",
+        "name": "Run while on fire",
+        "blurb": "Sprint through the scene wrapped in flames.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-mix-fly-fire",
+        "name": "Fly while on fire",
+        "blurb": "Soar through the sky like a comet.",
+        "category": "camera"
+      },
+      {
+        "id": "cam-mix-chase-blast",
+        "name": "Chase and blast",
+        "blurb": "A car chase as a building explodes beside the road.",
+        "category": "camera"
+      },
+      {
+        "id": "agent-reveal",
+        "name": "Suited agent",
+        "blurb": "Glitch, then morph into a sharp suited agent.",
+        "category": "effects"
+      },
+      {
+        "id": "angel-wings",
+        "name": "Angel wings",
+        "blurb": "Feathered wings unfold behind your shoulders.",
+        "category": "effects"
+      },
+      {
+        "id": "black-tears",
+        "name": "Black tears",
+        "blurb": "Dark ink streams from the eyes.",
+        "category": "effects"
+      },
+      {
+        "id": "bloom-mouth",
+        "name": "Flower mouth",
+        "blurb": "Petals and flowers spill from an open mouth.",
+        "category": "effects"
+      },
+      {
+        "id": "building-explosion",
+        "name": "Building explosion",
+        "blurb": "A building blows up in the scene.",
+        "category": "effects"
+      },
+      {
+        "id": "car-explosion",
+        "name": "Car explosion",
+        "blurb": "A car bursts into flames and debris.",
+        "category": "effects"
+      },
+      {
+        "id": "clone-burst",
+        "name": "Clone burst",
+        "blurb": "You split into copies that burst outward.",
+        "category": "effects"
+      },
+      {
+        "id": "turn-to-diamond",
+        "name": "Turn to diamond",
+        "blurb": "Your body turns into faceted, sparkling diamond.",
+        "category": "effects"
+      },
+      {
+        "id": "duplicate",
+        "name": "Duplicate",
+        "blurb": "You split into identical copies side by side.",
+        "category": "effects"
+      },
+      {
+        "id": "fire-breath",
+        "name": "Fire breath",
+        "blurb": "Breathe out a blast of flame.",
+        "category": "effects"
+      },
+      {
+        "id": "floating-fish",
+        "name": "Air fish",
+        "blurb": "A pale blue fish swims through the air around you.",
+        "category": "effects"
+      },
+      {
+        "id": "flood",
+        "name": "Flood",
+        "blurb": "Water spreads and rises to fill the space.",
+        "category": "effects"
+      },
+      {
+        "id": "floral-eyes",
+        "name": "Flower face",
+        "blurb": "Flowers blossom out of your face.",
+        "category": "effects"
+      },
+      {
+        "id": "glowing-fish",
+        "name": "Glow fish school",
+        "blurb": "Glowing fish swim around you in the dark.",
+        "category": "effects"
+      },
+      {
+        "id": "glowshift",
+        "name": "Glow change",
+        "blurb": "A soft glow surrounds you as you become someone new.",
+        "category": "effects"
+      },
+      {
+        "id": "confetti-head",
+        "name": "Confetti head",
+        "blurb": "Your head pops into a burst of confetti.",
+        "category": "effects"
+      },
+      {
+        "id": "floating-head",
+        "name": "Floating head",
+        "blurb": "Your head lifts off and floats away like a balloon.",
+        "category": "effects"
+      },
+      {
+        "id": "inner-light",
+        "name": "Light from within",
+        "blurb": "Light builds and shines from inside you.",
+        "category": "effects"
+      },
+      {
+        "id": "invisible",
+        "name": "Invisible body",
+        "blurb": "You vanish, leaving only your movement behind.",
+        "category": "effects"
+      },
+      {
+        "id": "jelly-drift",
+        "name": "Sky jellyfish",
+        "blurb": "Glowing jellyfish float in the air around you.",
+        "category": "effects"
+      },
+      {
+        "id": "stone-skin",
+        "name": "Stone skin",
+        "blurb": "Your skin hardens and cracks into grey stone.",
+        "category": "effects"
+      },
+      {
+        "id": "melting",
+        "name": "Melting",
+        "blurb": "You soften and drip as if in great heat.",
+        "category": "effects"
+      },
+      {
+        "id": "morph-skin",
+        "name": "Ripple morph",
+        "blurb": "Your skin ripples as you morph into someone new.",
+        "category": "effects"
+      },
+      {
+        "id": "paparazzi",
+        "name": "Paparazzi",
+        "blurb": "Camera flashes burst all around you.",
+        "category": "effects"
+      },
+      {
+        "id": "sandstorm",
+        "name": "Sandstorm",
+        "blurb": "Sand blasts through and engulfs the scene.",
+        "category": "effects"
+      },
+      {
+        "id": "set-on-fire",
+        "name": "Set on fire",
+        "blurb": "You burst into stylized flames.",
+        "category": "effects"
+      },
+      {
+        "id": "skin-surge",
+        "name": "Under the skin",
+        "blurb": "Shapes push out through the surface of your skin.",
+        "category": "effects"
+      },
+      {
+        "id": "spirit-leap",
+        "name": "Spirit leap",
+        "blurb": "Your spirit leaps out of your body.",
+        "category": "effects"
+      },
+      {
+        "id": "tentacle-eyes",
+        "name": "Tentacles",
+        "blurb": "Tentacles writhe out of the eyes.",
+        "category": "effects"
+      },
+      {
+        "id": "lightning-eyes",
+        "name": "Lightning eyes",
+        "blurb": "Your eyes glow as lightning crackles around you.",
+        "category": "effects"
+      },
+      {
+        "id": "turn-to-metal",
+        "name": "Chrome body",
+        "blurb": "Your skin turns into chrome, silver or gold.",
+        "category": "effects"
+      },
+      {
+        "id": "wind-blast",
+        "name": "Headwind",
+        "blurb": "Fierce wind whips your hair and clothes.",
+        "category": "effects"
+      },
+      {
+        "id": "garden-bloom",
+        "name": "Overgrown",
+        "blurb": "Flowers and greenery grow all over you.",
+        "category": "effects"
+      },
+      {
+        "id": "levitation",
+        "name": "Levitation",
+        "blurb": "You rise slowly off the ground.",
+        "category": "effects"
+      },
+      {
+        "id": "powder-burst",
+        "name": "Powder burst",
+        "blurb": "Colored powder erupts around you.",
+        "category": "effects"
+      },
+      {
+        "id": "datamosh",
+        "name": "Datamosh",
+        "blurb": "Glitchy pixels smear and bleed between frames.",
+        "category": "effects"
+      },
+      {
+        "id": "blast-to-dust",
+        "name": "Blast to dust",
+        "blurb": "A blast, then the building crumbles to dust.",
+        "category": "effects"
+      },
+      {
+        "id": "invisible-float",
+        "name": "Invisible float",
+        "blurb": "You vanish and rise, leaving only your clothes floating.",
+        "category": "effects"
+      },
+      {
+        "id": "storm-rise",
+        "name": "Storm rise",
+        "blurb": "Lift into the air amid crackling lightning.",
+        "category": "effects"
+      },
+      {
+        "id": "storm-metal",
+        "name": "Storm metal",
+        "blurb": "Lightning strikes turn you to metal.",
+        "category": "effects"
+      },
+      {
+        "id": "storm-wind",
+        "name": "Storm wind",
+        "blurb": "Lightning eyes while a gale blasts your face.",
+        "category": "effects"
+      },
+      {
+        "id": "molten-metal",
+        "name": "Molten metal",
+        "blurb": "Turn to chrome, then melt into liquid metal.",
+        "category": "effects"
+      },
+      {
+        "id": "action-run",
+        "name": "Action run",
+        "blurb": "Sprint through the scene with a shaky action camera.",
+        "category": "effects"
+      },
+      {
+        "id": "high-kick",
+        "name": "High kick",
+        "blurb": "A powerful high kick with fast leg motion.",
+        "category": "effects"
+      },
+      {
+        "id": "slam-dunk",
+        "name": "Slam dunk",
+        "blurb": "Leap and slam a basketball home.",
+        "category": "effects"
+      },
+      {
+        "id": "boxing",
+        "name": "Boxing combo",
+        "blurb": "Quick jabs, hooks and head movement.",
+        "category": "effects"
+      },
+      {
+        "id": "catwalk",
+        "name": "Catwalk",
+        "blurb": "Strut a confident runway walk.",
+        "category": "effects"
+      },
+      {
+        "id": "stage-punch",
+        "name": "Stage punch",
+        "blurb": "A comic stage punch lands in slow motion.",
+        "category": "effects"
+      },
+      {
+        "id": "kiss",
+        "name": "Kiss",
+        "blurb": "A tender kiss in soft focus and slow motion.",
+        "category": "effects"
+      },
+      {
+        "id": "moonwalk-left",
+        "name": "Moonwalk left",
+        "blurb": "Glide backward to the left in a moonwalk.",
+        "category": "effects"
+      },
+      {
+        "id": "moonwalk-right",
+        "name": "Moonwalk right",
+        "blurb": "Glide backward to the right in a moonwalk.",
+        "category": "effects"
+      },
+      {
+        "id": "pressed-to-glass",
+        "name": "Pressed to glass",
+        "blurb": "Squashed against an invisible pane of glass.",
+        "category": "effects"
+      },
+      {
+        "id": "skate-cruise",
+        "name": "Skate cruise",
+        "blurb": "Cruise down the street on a skateboard.",
+        "category": "effects"
+      },
+      {
+        "id": "skate-glide",
+        "name": "Skate glide",
+        "blurb": "Roll along in one smooth skateboard glide.",
+        "category": "effects"
+      },
+      {
+        "id": "skate-ollie",
+        "name": "Skate ollie",
+        "blurb": "Pop an ollie off the ground.",
+        "category": "effects"
+      },
+      {
+        "id": "ski-carve",
+        "name": "Ski carving",
+        "blurb": "Carve clean, fast turns on skis.",
+        "category": "effects"
+      },
+      {
+        "id": "ski-powder",
+        "name": "Ski powder",
+        "blurb": "Cut through deep powder on skis.",
+        "category": "effects"
+      },
+      {
+        "id": "snowboard-carve",
+        "name": "Snowboard carving",
+        "blurb": "Deep snowboard turns that throw up spray.",
+        "category": "effects"
+      },
+      {
+        "id": "snowboard-powder",
+        "name": "Snowboard powder",
+        "blurb": "Float through fresh powder on a snowboard.",
+        "category": "effects"
+      },
+      {
+        "id": "burning-figure",
+        "name": "Burning figure",
+        "blurb": "Flames catch and spread until you glow like a living fire.",
+        "category": "effects"
+      },
+      {
+        "id": "scrapbook",
+        "name": "Scrapbook page",
+        "blurb": "Your photo becomes a cut and paste scrapbook page.",
+        "category": "effects"
+      },
+      {
+        "id": "pigeon-street",
+        "name": "Pigeon street",
+        "blurb": "An absurd crowd of pigeons takes over the street.",
+        "category": "effects"
+      },
+      {
+        "id": "pearl-portrait",
+        "name": "Pearl portrait",
+        "blurb": "Become a Dutch golden age portrait, split with your photo.",
+        "category": "effects"
+      },
+      {
+        "id": "act-natural",
+        "name": "Straight face",
+        "blurb": "Keep a straight face while chaos unfolds behind you.",
+        "category": "effects"
+      },
+      {
+        "id": "monster-dab",
+        "name": "Dab with a monster",
+        "blurb": "A friendly monster pops in and dabs with you.",
+        "category": "effects"
+      },
+      {
+        "id": "clones",
+        "name": "Clones",
+        "blurb": "You multiply into a row of copies.",
+        "category": "effects"
+      },
+      {
+        "id": "cutout",
+        "name": "Paper puppet",
+        "blurb": "You become a flat paper cutout puppet.",
+        "category": "effects"
+      },
+      {
+        "id": "mighty-fighter",
+        "name": "Power up fighter",
+        "blurb": "Power up into a fighting game hero.",
+        "category": "effects"
+      },
+      {
+        "id": "moonwalk",
+        "name": "Moonwalk",
+        "blurb": "Moonwalk all the way across the frame.",
+        "category": "effects"
+      },
+      {
+        "id": "architecture-wave",
+        "name": "Rippling city",
+        "blurb": "The buildings ripple like a wave.",
+        "category": "effects"
+      },
+      {
+        "id": "out-of-the-screen",
+        "name": "Out of the screen",
+        "blurb": "Step out of a cinema screen as an ancient army follows.",
+        "category": "effects"
+      },
+      {
+        "id": "one-eyed-giant",
+        "name": "One-eyed giant",
+        "blurb": "A gentle one-eyed giant peers at you in a dreamy painting.",
+        "category": "effects"
+      },
+      {
+        "id": "blue-depth",
+        "name": "Deep blue sink",
+        "blurb": "Sink slowly into a deep blue ocean.",
+        "category": "effects"
+      },
+      {
+        "id": "wild-ride",
+        "name": "Breakneck ride",
+        "blurb": "Hang on through a wild, breakneck ride.",
+        "category": "effects"
+      },
+      {
+        "id": "infinite-clones",
+        "name": "Endless clones",
+        "blurb": "Endless copies of you stretch to the horizon.",
+        "category": "effects"
+      },
+      {
+        "id": "superstar",
+        "name": "Stadium star",
+        "blurb": "Step into the spotlight to a roaring crowd.",
+        "category": "effects"
+      },
+      {
+        "id": "skate-dog",
+        "name": "Skateboarding dog",
+        "blurb": "A little dog rolls past you on a skateboard.",
+        "category": "effects"
+      },
+      {
+        "id": "smash-and-grab",
+        "name": "Giant hand grab",
+        "blurb": "A giant hand smashes in and whisks you away.",
+        "category": "effects"
+      },
+      {
+        "id": "lacewalker",
+        "name": "Lace body",
+        "blurb": "You turn into delicate white lace.",
+        "category": "effects"
+      },
+      {
+        "id": "boarding-pass",
+        "name": "Boarding pass",
+        "blurb": "Your photo becomes a boarding pass, then off you fly.",
+        "category": "effects"
+      },
+      {
+        "id": "lidar-scan",
+        "name": "Lidar scan",
+        "blurb": "A point cloud scan sweeps through your scene.",
+        "category": "effects"
+      },
+      {
+        "id": "fallen-angel",
+        "name": "Winged painting",
+        "blurb": "Become a brooding winged figure in a classical painting.",
+        "category": "effects"
+      },
+      {
+        "id": "fairytale-castle",
+        "name": "Castle at twilight",
+        "blurb": "Arrive at a fairytale castle at twilight.",
+        "category": "effects"
+      },
+      {
+        "id": "frozen-in-motion",
+        "name": "Frozen moment",
+        "blurb": "The moment freezes as the camera drifts through it.",
+        "category": "effects"
+      },
+      {
+        "id": "vanish",
+        "name": "Puff of smoke",
+        "blurb": "You disappear from the shot in a puff of smoke.",
+        "category": "effects"
+      },
+      {
+        "id": "stop-world",
+        "name": "Everyone freezes",
+        "blurb": "Time stops for everything but you.",
+        "category": "effects"
+      },
+      {
+        "id": "look-phone-flash",
+        "name": "Phone flash at night",
+        "blurb": "Light a candid night shot with a harsh phone flash.",
+        "category": "looks",
+        "featured": true
+      },
+      {
+        "id": "look-golden-hour",
+        "name": "Golden hour editorial",
+        "blurb": "Warm low sun and polished magazine framing.",
+        "category": "looks"
+      },
+      {
+        "id": "look-studio-fashion",
+        "name": "Studio fashion",
+        "blurb": "Shoot on a clean backdrop with crisp fashion lighting.",
+        "category": "looks"
+      },
+      {
+        "id": "look-street-style",
+        "name": "Street style",
+        "blurb": "Catch the subject mid stride on a busy sidewalk.",
+        "category": "looks"
+      },
+      {
+        "id": "look-magazine-90s",
+        "name": "90s magazine",
+        "blurb": "Put the subject on a glossy 1990s cover, masthead and all.",
+        "category": "looks"
+      },
+      {
+        "id": "look-cctv",
+        "name": "CCTV still",
+        "blurb": "Turn the scene into a grainy security camera frame.",
+        "category": "looks"
+      },
+      {
+        "id": "look-drone-top-down",
+        "name": "Drone top down",
+        "blurb": "Look straight down from high above.",
+        "category": "looks"
+      },
+      {
+        "id": "look-tilt-shift",
+        "name": "Tilt shift miniature",
+        "blurb": "Make a real scene look like a tiny model.",
+        "category": "looks"
+      },
+      {
+        "id": "look-disposable",
+        "name": "Disposable camera",
+        "blurb": "Add point and shoot flash and cheap film grain.",
+        "category": "looks"
+      },
+      {
+        "id": "look-film-noir",
+        "name": "Film noir",
+        "blurb": "Hard shadows and smoky black and white.",
+        "category": "looks"
+      },
+      {
+        "id": "look-film-70s",
+        "name": "70s film stock",
+        "blurb": "Warm faded color and soft grain from the seventies.",
+        "category": "looks"
+      },
+      {
+        "id": "look-instant",
+        "name": "Instant photo",
+        "blurb": "Print the moment as an instant photo with a white border.",
+        "category": "looks"
+      },
+      {
+        "id": "look-fisheye-skate",
+        "name": "Fisheye skate video",
+        "blurb": "Get low, close and warped like an old skate tape.",
+        "category": "looks"
+      },
+      {
+        "id": "look-watercolor",
+        "name": "Watercolor",
+        "blurb": "Paint in soft washes and blooms on textured paper.",
+        "category": "looks"
+      },
+      {
+        "id": "look-oil-painting",
+        "name": "Oil painting",
+        "blurb": "Rich color and thick, visible brush strokes.",
+        "category": "looks"
+      },
+      {
+        "id": "look-ink-sketch",
+        "name": "Ink sketch",
+        "blurb": "Draw it in loose pen lines and hatching.",
+        "category": "looks"
+      },
+      {
+        "id": "look-anime-cel",
+        "name": "Anime cel",
+        "blurb": "A hand painted frame from a classic anime film.",
+        "category": "looks"
+      },
+      {
+        "id": "look-comic-book",
+        "name": "Comic book",
+        "blurb": "Bold inks, halftone dots and a speech bubble.",
+        "category": "looks"
+      },
+      {
+        "id": "look-claymation",
+        "name": "Claymation still",
+        "blurb": "Sculpt the scene as handmade clay figures on a tiny set.",
+        "category": "looks"
+      },
+      {
+        "id": "look-pixel-art",
+        "name": "Pixel art",
+        "blurb": "Crisp pixels and a limited retro palette.",
+        "category": "looks"
+      },
+      {
+        "id": "look-low-poly",
+        "name": "Low poly",
+        "blurb": "Build it from faceted 3D shapes with soft flat shading.",
+        "category": "looks"
+      },
+      {
+        "id": "look-vaporwave",
+        "name": "Vaporwave",
+        "blurb": "Neon pink, teal sunsets and retro computer dreams.",
+        "category": "looks"
+      },
+      {
+        "id": "moodboard",
+        "name": "Match a moodboard",
+        "blurb": "Borrow the look of your own reference images.",
+        "category": "looks"
+      },
+      {
+        "id": "brand-colors",
+        "name": "Brand colors",
+        "blurb": "Put your brand palette into any picture.",
+        "category": "looks"
+      },
+      {
+        "id": "expand",
+        "name": "Expand",
+        "blurb": "Extend the picture past its edges.",
+        "category": "image-edit",
+        "hub": "professional",
+        "featured": true
+      },
+      {
+        "id": "inpaint",
+        "name": "Paint to change",
+        "blurb": "Paint over part of a picture and say what it should become.",
+        "category": "image-edit"
+      },
+      {
+        "id": "erase",
+        "name": "Erase an object",
+        "blurb": "Remove anything and fill the gap naturally.",
+        "category": "image-edit"
+      },
+      {
+        "id": "replace",
+        "name": "Replace an object",
+        "blurb": "Swap one thing in a picture for another.",
+        "category": "image-edit"
+      },
+      {
+        "id": "layers",
+        "name": "Split into layers",
+        "blurb": "Pull each object and the background onto its own layer.",
+        "category": "image-edit"
+      },
+      {
+        "id": "try-on",
+        "name": "Try on outfits",
+        "blurb": "Dress the person in a photo in clothes from other photos.",
+        "category": "image-edit",
+        "hub": "enhance"
+      },
+      {
+        "id": "restyle",
+        "name": "Restyle",
+        "blurb": "Redraw a picture in a new art style.",
+        "category": "image-edit"
+      },
+      {
+        "id": "copy-style",
+        "name": "Copy a style",
+        "blurb": "Redraw your picture in the look of another one.",
+        "category": "image-edit"
+      },
+      {
+        "id": "sketch-to-image",
+        "name": "Sketch to image",
+        "blurb": "Turn a rough drawing into a finished picture.",
+        "category": "image-edit",
+        "hub": "games"
+      },
+      {
+        "id": "product-shot",
+        "name": "Product shot",
+        "blurb": "Put your product in a clean, styled scene.",
+        "category": "image-edit",
+        "hub": "ads",
+        "featured": true
+      },
+      {
+        "id": "place-product",
+        "name": "Place a product",
+        "blurb": "Drop your product into a photo you already have.",
+        "category": "image-edit"
+      },
+      {
+        "id": "swap-element",
+        "name": "Swap an element",
+        "blurb": "Change one thing in a video and keep the rest.",
+        "category": "video-edit",
+        "featured": true
+      },
+      {
+        "id": "motion-transfer",
+        "name": "Motion transfer",
+        "blurb": "Make the character in a photo copy the moves in a video.",
+        "category": "video-edit"
+      },
+      {
+        "id": "face-swap-video",
+        "name": "Video face swap",
+        "blurb": "Swap the face in a video for your own face or a saved character.",
+        "category": "video-edit",
+        "hub": "face"
+      },
+      {
+        "id": "restyle-video",
+        "name": "Restyle video",
+        "blurb": "Redraw a whole video in a new style.",
+        "category": "video-edit"
+      },
+      {
+        "id": "video-relight",
+        "name": "Relight video",
+        "blurb": "Change the lighting of a video after it was shot.",
+        "category": "video-edit"
+      },
+      {
+        "id": "color-grade",
+        "name": "Color grade",
+        "blurb": "Give a video a film look in one click.",
+        "category": "video-edit"
+      },
+      {
+        "id": "clone-edit",
+        "name": "Clone an edit",
+        "blurb": "Copy the cuts and pacing of any edit with your own cast.",
+        "category": "video-edit"
+      },
+      {
+        "id": "reshoot",
+        "name": "Re-shoot from a new angle",
+        "blurb": "See the same take from another camera position.",
+        "category": "video-edit"
+      },
+      {
+        "id": "extend-video",
+        "name": "Extend video",
+        "blurb": "Keep a video going past its last frame.",
+        "category": "video-edit"
+      },
+      {
+        "id": "video-upscale",
+        "name": "Video upscale",
+        "blurb": "More resolution and detail, same video.",
+        "category": "enhance"
+      },
+      {
+        "id": "slow-motion",
+        "name": "Slow motion",
+        "blurb": "Add in-between frames for smooth slow motion.",
+        "category": "enhance"
+      },
+      {
+        "id": "video-bg-remove",
+        "name": "Video background remove",
+        "blurb": "Cut the subject out of every frame of a video.",
+        "category": "enhance",
+        "hub": "video-edit"
+      },
+      {
+        "id": "skin-retouch",
+        "name": "Skin retouch",
+        "blurb": "Even out skin and keep the face true to life.",
+        "category": "enhance",
+        "hub": "enhance"
+      },
+      {
+        "id": "character-sheet",
+        "name": "Character sheet",
+        "blurb": "Turn one photo into a sheet of angles and expressions.",
+        "category": "characters"
+      },
+      {
+        "id": "character-scene",
+        "name": "Character in any scene",
+        "blurb": "Put your character anywhere and keep their face.",
+        "category": "characters",
+        "featured": true
+      },
+      {
+        "id": "face-swap",
+        "name": "Face swap",
+        "blurb": "Swap the face in a photo for your own face or a saved character.",
+        "category": "characters",
+        "hub": "face"
+      },
+      {
+        "id": "character-swap",
+        "name": "Character swap",
+        "blurb": "Replace the main person with your own face or a saved character, same pose and scene.",
+        "category": "characters",
+        "hub": "face"
+      },
+      {
+        "id": "headshot",
+        "name": "Professional headshot",
+        "blurb": "Turn a casual photo of you into a polished headshot.",
+        "category": "characters",
+        "hub": "face"
+      },
+      {
+        "id": "influencer-post",
+        "name": "AI influencer post",
+        "blurb": "A ready-to-post set of photos of your character.",
+        "category": "characters"
+      },
+      {
+        "id": "ai-influencer-video",
+        "name": "AI influencer video",
+        "blurb": "Your character talks to camera in a ready-to-post video.",
+        "category": "characters"
+      },
+      {
+        "id": "talking-head",
+        "name": "Talking head",
+        "blurb": "Make a face in a photo speak your script.",
+        "category": "voice",
+        "featured": true
+      },
+      {
+        "id": "lipsync",
+        "name": "Lipsync",
+        "blurb": "Match the lips in a video to new audio.",
+        "category": "voice"
+      },
+      {
+        "id": "dub",
+        "name": "Dub into another language",
+        "blurb": "Translate the speech, keep the voice and match the lips.",
+        "category": "voice"
+      },
+      {
+        "id": "add-sound",
+        "name": "Add sound to video",
+        "blurb": "Generate sound that matches what happens on screen.",
+        "category": "voice"
+      },
+      {
+        "id": "tts",
+        "name": "Text to speech",
+        "blurb": "Read any script aloud in a natural voice.",
+        "category": "voice",
+        "featured": true
+      },
+      {
+        "id": "voice-clone",
+        "name": "Voice clone",
+        "blurb": "Turn a short sample of your voice into a reusable voice.",
+        "category": "voice",
+        "featured": true
+      },
+      {
+        "id": "voice-change",
+        "name": "Voice change",
+        "blurb": "Make a recording sound like another voice, same timing and emotion.",
+        "category": "voice"
+      },
+      {
+        "id": "music",
+        "name": "Music",
+        "blurb": "Make a song or instrumental from a short brief.",
+        "category": "sound",
+        "featured": true
+      },
+      {
+        "id": "sound-effect",
+        "name": "Sound effect",
+        "blurb": "Describe a sound and hear it.",
+        "category": "sound",
+        "featured": true
+      },
+      {
+        "id": "product-ad",
+        "name": "Product to ad",
+        "blurb": "Turn a product into a short vertical ad.",
+        "category": "ads",
+        "featured": true
+      },
+      {
+        "id": "ugc-ad",
+        "name": "UGC ad",
+        "blurb": "Your character talks about your product to camera.",
+        "category": "ads"
+      },
+      {
+        "id": "ad-variants",
+        "name": "Ad variants",
+        "blurb": "Spin one ad into many versions to test.",
+        "category": "ads"
+      },
+      {
+        "id": "link-to-ads",
+        "name": "Ads from a link",
+        "blurb": "Paste a product page and get a set of ready ads.",
+        "category": "ads",
+        "hub": "ads"
+      },
+      {
+        "id": "recreate-ad",
+        "name": "Recreate an ad",
+        "blurb": "Remake an ad shot for shot with your own product.",
+        "category": "ads"
+      },
+      {
+        "id": "product-spin",
+        "name": "Product spin",
+        "blurb": "A smooth 360 degree turn of your product.",
+        "category": "ads"
+      },
+      {
+        "id": "packshot",
+        "name": "Bullet time packshot",
+        "blurb": "Freeze time and sweep the camera around your product.",
+        "category": "ads",
+        "hub": "ads"
+      },
+      {
+        "id": "billboard",
+        "name": "Billboard mockup",
+        "blurb": "See your ad out in the world before you print it.",
+        "category": "ads",
+        "hub": "ads"
+      },
+      {
+        "id": "truck-ad",
+        "name": "Truck ad",
+        "blurb": "Watch your ad roll down a city street on the side of a truck.",
+        "category": "ads",
+        "hub": "ads"
+      },
+      {
+        "id": "hook-check",
+        "name": "Hook check",
+        "blurb": "Score the first three seconds of your ad and learn how to fix them.",
+        "category": "ads",
+        "hub": "professional"
+      },
+      {
+        "id": "plush-toy",
+        "name": "Plush toy",
+        "blurb": "Turn anyone or anything into a soft plush toy.",
+        "category": "fun",
+        "hub": "games"
+      },
+      {
+        "id": "figure-box",
+        "name": "Boxed figure",
+        "blurb": "Make your photo a collectible figure in its box.",
+        "category": "fun",
+        "hub": "games"
+      },
+      {
+        "id": "sticker",
+        "name": "Die-cut sticker",
+        "blurb": "Turn your photo into a sticker with a white edge.",
+        "category": "fun",
+        "hub": "enhance"
+      },
+      {
+        "id": "signboard",
+        "name": "Signboard",
+        "blurb": "Put your words on a sign in the picture.",
+        "category": "fun"
+      },
+      {
+        "id": "game-style",
+        "name": "Video game style",
+        "blurb": "See your photo as a scene from a video game.",
+        "category": "fun",
+        "hub": "games",
+        "featured": true
+      },
+      {
+        "id": "meme",
+        "name": "Meme maker",
+        "blurb": "Add top and bottom captions to any photo.",
+        "category": "fun",
+        "hub": "extras"
+      },
+      {
+        "id": "tiny-creature",
+        "name": "Tiny creature",
+        "blurb": "Shrink a pet or toy into a palm-sized creature.",
+        "category": "fun"
+      },
+      {
+        "id": "behind-the-scenes",
+        "name": "Behind the scenes",
+        "blurb": "Pull back to reveal your photo was shot on a film set.",
+        "category": "fun",
+        "hub": "professional"
+      },
+      {
+        "id": "life-sim",
+        "name": "Life sim game",
+        "blurb": "Drop yourself into a cozy life simulation game.",
+        "category": "fun",
+        "hub": "games"
+      },
+      {
+        "id": "game-show",
+        "name": "Game show contestant",
+        "blurb": "Put yourself behind a podium on a bright TV game show.",
+        "category": "fun",
+        "hub": "video-edit"
+      },
+      {
+        "id": "cloud-surfing",
+        "name": "Cloud surfing",
+        "blurb": "Surf across a sea of clouds high in the sky.",
+        "category": "fun",
+        "hub": "trending"
+      },
+      {
+        "id": "photocard",
+        "name": "Idol photocard",
+        "blurb": "Turn a portrait into a glossy pop idol photocard.",
+        "category": "fun"
+      },
+      {
+        "id": "all-fine",
+        "name": "Everything is fine",
+        "blurb": "Sip calmly while the room goes up in cartoon flames.",
+        "category": "fun",
+        "hub": "trending"
+      },
+      {
+        "id": "brick-toy",
+        "name": "Brick toy",
+        "blurb": "Rebuild your photo out of plastic toy bricks.",
+        "category": "fun",
+        "hub": "games"
+      },
+      {
+        "id": "coloring-page",
+        "name": "Coloring book page",
+        "blurb": "Turn your photo into line art ready to color in.",
+        "category": "fun"
+      },
+      {
+        "id": "angles",
+        "name": "Any angle",
+        "blurb": "See your photo from any camera position, even from behind.",
+        "category": "image-edit",
+        "hub": "professional"
+      },
+      {
+        "id": "whats-next",
+        "name": "What happens next",
+        "blurb": "Eight ideas for the next moment of your scene.",
+        "category": "image-edit",
+        "hub": "professional"
+      },
+      {
+        "id": "shots",
+        "name": "Shot grid",
+        "blurb": "Nine cinematic angles of one scene on a single sheet.",
+        "category": "story",
+        "hub": "professional"
+      },
+      {
+        "id": "zooms",
+        "name": "Zoom grid",
+        "blurb": "Nine framings of one image, from a tiny detail to a wide view.",
+        "category": "image-edit",
+        "hub": "professional"
+      },
+      {
+        "id": "photo-grade",
+        "name": "Photo grade",
+        "blurb": "Grade a photo with film looks, then fine tune it.",
+        "category": "image-edit",
+        "hub": "professional"
+      },
+      {
+        "id": "ai-stylist",
+        "name": "Virtual stylist",
+        "blurb": "Dress yourself in a full look or piece by piece, then set the pose and backdrop.",
+        "category": "image-edit",
+        "hub": "enhance"
+      },
+      {
+        "id": "relight-photo",
+        "name": "Move the light",
+        "blurb": "Move a light around your photo and redraw the shadows.",
+        "category": "image-edit",
+        "hub": "enhance"
+      },
+      {
+        "id": "style-snap",
+        "name": "Ready-made outfits",
+        "blurb": "Swap your outfit for a ready-made look, same pose and light.",
+        "category": "image-edit",
+        "hub": "enhance"
+      },
+      {
+        "id": "outfit-vending",
+        "name": "Vending machine outfit",
+        "blurb": "Every piece you wear on display in a glowing vending machine.",
+        "category": "fun",
+        "hub": "enhance"
+      },
+      {
+        "id": "outfit-shot",
+        "name": "Garment photoshoot",
+        "blurb": "Put up to three garments on a model for a quick photoshoot clip.",
+        "category": "ads",
+        "hub": "enhance"
+      },
+      {
+        "id": "video-character-swap",
+        "name": "Video character swap",
+        "blurb": "Replace the person in a video with your character, same moves and timing.",
+        "category": "video-edit",
+        "hub": "face"
+      },
+      {
+        "id": "likeness-record",
+        "name": "Likeness consent",
+        "blurb": "Record how your face may be used, saved with your character.",
+        "category": "characters",
+        "hub": "face"
+      },
+      {
+        "id": "outfit-reel",
+        "name": "Outfit reel",
+        "blurb": "One selfie in, a beat-cut reel of different outfits out.",
+        "category": "video-edit",
+        "hub": "video-edit"
+      },
+      {
+        "id": "beat-cut-outfits",
+        "name": "Beat cut outfits",
+        "blurb": "A 10 second outfit video cut to the beat of a track.",
+        "category": "video-edit",
+        "hub": "video-edit"
+      },
+      {
+        "id": "sticker-match-cut",
+        "name": "Sticker pop cuts",
+        "blurb": "Turn the person in a clip into a glittering sticker that pops on each cut.",
+        "category": "video-edit",
+        "hub": "video-edit"
+      },
+      {
+        "id": "breakdown",
+        "name": "Labeled flat lay",
+        "blurb": "Lay out everything in a photo with labels, like a flat lay.",
+        "category": "image-edit",
+        "hub": "video-edit"
+      },
+      {
+        "id": "asmr-add-on",
+        "name": "ASMR product whisper",
+        "blurb": "Your character whispers your line about your product, ASMR style.",
+        "category": "ads",
+        "hub": "ads"
+      },
+      {
+        "id": "asmr-classic",
+        "name": "ASMR moment",
+        "blurb": "Bring a photo to life with soft whispers and tingly sounds, picture unchanged.",
+        "category": "ads",
+        "hub": "ads"
+      },
+      {
+        "id": "poster",
+        "name": "Promo poster",
+        "blurb": "Recast your product as a bold promo poster that comes alive.",
+        "category": "ads",
+        "hub": "ads"
+      },
+      {
+        "id": "bullet-time-scene",
+        "name": "Frozen product scene",
+        "blurb": "Freeze time and orbit your product in a scene built around it.",
+        "category": "ads",
+        "hub": "ads"
+      },
+      {
+        "id": "chameleon",
+        "name": "Color match chameleon",
+        "blurb": "A chameleon shifts its skin to match your product.",
+        "category": "ads",
+        "hub": "ads"
+      },
+      {
+        "id": "asmr-host",
+        "name": "ASMR studio host",
+        "blurb": "Turn a photo into a host whispering to camera in an ASMR studio.",
+        "category": "ads",
+        "hub": "ads"
+      },
+      {
+        "id": "macro-scene",
+        "name": "Macro lifestyle set",
+        "blurb": "Your product in macro detail inside a lifestyle set.",
+        "category": "ads",
+        "hub": "ads"
+      },
+      {
+        "id": "magic-button",
+        "name": "Button press reveal",
+        "blurb": "Drop your product into a whimsical commercial moment.",
+        "category": "ads",
+        "hub": "ads"
+      },
+      {
+        "id": "giant-product",
+        "name": "Skyline giant",
+        "blurb": "Your product towers over a city skyline.",
+        "category": "ads",
+        "hub": "ads"
+      },
+      {
+        "id": "kick-ad",
+        "name": "Rival kick",
+        "blurb": "Your product wins as a plain rival gets kicked out of frame.",
+        "category": "ads",
+        "hub": "ads"
+      },
+      {
+        "id": "graffiti-ad",
+        "name": "Graffiti wall",
+        "blurb": "Your product sprayed onto a city wall as graffiti.",
+        "category": "ads",
+        "hub": "ads"
+      },
+      {
+        "id": "bullet-time-splash",
+        "name": "Product burst",
+        "blurb": "Your product bursts apart in slow motion bullet time.",
+        "category": "ads",
+        "hub": "ads"
+      },
+      {
+        "id": "fridge-ad",
+        "name": "Fridge grab",
+        "blurb": "A fridge opens and a hand reaches for your product.",
+        "category": "ads",
+        "hub": "ads"
+      },
+      {
+        "id": "volcano-ad",
+        "name": "Volcano hero",
+        "blurb": "Your product stands firm before an erupting volcano.",
+        "category": "ads",
+        "hub": "ads"
+      },
+      {
+        "id": "macroshot-product",
+        "name": "Extreme close up",
+        "blurb": "Film your product in extreme close up.",
+        "category": "ads",
+        "hub": "ads"
+      },
+      {
+        "id": "asmr-promo",
+        "name": "ASMR product scene",
+        "blurb": "A scripted ASMR studio scene built around your product.",
+        "category": "ads",
+        "hub": "ads"
+      },
+      {
+        "id": "squad-strike",
+        "name": "Squad strike",
+        "blurb": "Turn up to five people into a tactical game squad.",
+        "category": "fun",
+        "hub": "games"
+      },
+      {
+        "id": "open-world-hero",
+        "name": "Open world hero",
+        "blurb": "See yourself as the hero of an open world city game.",
+        "category": "fun",
+        "hub": "games"
+      },
+      {
+        "id": "render-3d",
+        "name": "3D viewport render",
+        "blurb": "Render your photo as a 3D object inside a modeling scene.",
+        "category": "fun",
+        "hub": "games"
+      },
+      {
+        "id": "pixel-game",
+        "name": "8-bit runner",
+        "blurb": "Your character runs through a retro 8-bit world.",
+        "category": "fun",
+        "hub": "games"
+      },
+      {
+        "id": "paint-app",
+        "name": "Retro paint program",
+        "blurb": "Frame your photo inside an old paint program on a CRT.",
+        "category": "fun",
+        "hub": "extras"
+      },
+      {
+        "id": "mural",
+        "name": "Wall mural",
+        "blurb": "See your photo as a huge mural on a city wall.",
+        "category": "fun",
+        "hub": "extras"
+      },
+      {
+        "id": "micro-beasts",
+        "name": "Tiny animal crowd",
+        "blurb": "Surround yourself with tiny animals of your choice.",
+        "category": "fun",
+        "hub": "extras"
+      },
+      {
+        "id": "image-bg-remove",
+        "name": "Cut out the background",
+        "blurb": "Cut out a person, product or pet on a clean background.",
+        "category": "enhance",
+        "hub": "extras"
+      },
+      {
+        "id": "surprise-kiss",
+        "name": "Surprise kiss",
+        "blurb": "Someone pops into frame and plants a quick kiss on your cheek.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "glossy-vinyl",
+        "name": "Glossy vinyl",
+        "blurb": "Restyle your look in sleek, glossy black vinyl.",
+        "category": "fun",
+        "hub": "trending"
+      },
+      {
+        "id": "tokyo-cover",
+        "name": "Tokyo magazine",
+        "blurb": "Put yourself on the cover of a Japanese street fashion magazine.",
+        "category": "fun",
+        "hub": "trending"
+      },
+      {
+        "id": "cafe-60s",
+        "name": "1960s coffee shop",
+        "blurb": "Step into a 1960s coffee shop.",
+        "category": "fun",
+        "hub": "trending"
+      },
+      {
+        "id": "victory-card",
+        "name": "Winning card",
+        "blurb": "Print yourself on the winning card of a poker hand.",
+        "category": "fun",
+        "hub": "trending"
+      },
+      {
+        "id": "sand-worm",
+        "name": "Desert worms",
+        "blurb": "Giant worms rise out of the dunes behind you.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "toilet-pop",
+        "name": "Toilet pop up",
+        "blurb": "Your head pops up out of a toilet, meme style.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "japanese-poster",
+        "name": "Japanese poster",
+        "blurb": "Turn your photo into a Japanese style poster with bold type.",
+        "category": "fun",
+        "hub": "trending"
+      },
+      {
+        "id": "mascot",
+        "name": "Team mascot",
+        "blurb": "Become the mascot of a made-up sports team.",
+        "category": "fun",
+        "hub": "trending"
+      },
+      {
+        "id": "storm-creature",
+        "name": "Lightning monster",
+        "blurb": "A huge creature looms behind you in a lightning storm.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "burning-sunset",
+        "name": "Ember sunset",
+        "blurb": "Sit in a fiery sunset full of drifting sparks.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "comic-story",
+        "name": "Comic story",
+        "blurb": "Star in a short comic story with panels and speech bubbles.",
+        "category": "fun",
+        "hub": "trending"
+      },
+      {
+        "id": "mukbang",
+        "name": "Eating show",
+        "blurb": "Eat on camera mukbang style with snappy crash zooms.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "melting-doodle",
+        "name": "Doodle melt",
+        "blurb": "Your face melts away into hand-drawn doodle lines.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "giallo-scene",
+        "name": "70s thriller",
+        "blurb": "A 1970s Italian thriller scene with a mysterious figure behind you.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "renaissance",
+        "name": "Gallery masterpiece",
+        "blurb": "Hang as a classical painting in a busy gallery.",
+        "category": "fun",
+        "hub": "trending"
+      },
+      {
+        "id": "rap-video",
+        "name": "Rap video",
+        "blurb": "Your photo performs a rap with fresh lyrics and a beat.",
+        "category": "fun",
+        "hub": "trending"
+      },
+      {
+        "id": "open-world",
+        "name": "Open world run",
+        "blurb": "Run, jump and drive through an open world game as yourself.",
+        "category": "fun",
+        "hub": "trending"
+      },
+      {
+        "id": "booking-photo",
+        "name": "Booking photo",
+        "blurb": "A tongue-in-cheek police booking photo, height chart and all.",
+        "category": "fun",
+        "hub": "trending"
+      },
+      {
+        "id": "ghoul-night",
+        "name": "Ghoul night",
+        "blurb": "Pale ghouls creep out of the dark around you.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "social-icons",
+        "name": "Notification swarm",
+        "blurb": "Surround your photo with floating app-style icons.",
+        "category": "fun",
+        "hub": "trending"
+      },
+      {
+        "id": "idol-stage",
+        "name": "Idol stage",
+        "blurb": "Take the stage as a pop idol.",
+        "category": "fun",
+        "hub": "trending"
+      },
+      {
+        "id": "banana-snack",
+        "name": "Banana break",
+        "blurb": "Calmly eat a banana in a plain scene.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "mm-acid",
+        "name": "Acid",
+        "blurb": "Psychedelic neon color that warps and bleeds.",
+        "category": "mixed"
+      },
+      {
+        "id": "mm-cold-vision",
+        "name": "Icy neon",
+        "blurb": "Cold neon light and deep shadow.",
+        "category": "mixed"
+      },
+      {
+        "id": "mm-lava",
+        "name": "Lava",
+        "blurb": "Molten lava color flowing through the shot.",
+        "category": "mixed"
+      },
+      {
+        "id": "mm-color-trip",
+        "name": "Color trip",
+        "blurb": "Waves of shifting rainbow color.",
+        "category": "mixed"
+      },
+      {
+        "id": "mm-noir",
+        "name": "Noir",
+        "blurb": "Hard, cinematic black and white.",
+        "category": "mixed"
+      },
+      {
+        "id": "mm-ocean",
+        "name": "Ocean",
+        "blurb": "Liquid sea color washing over the footage.",
+        "category": "mixed"
+      },
+      {
+        "id": "mm-overexposed",
+        "name": "Overexposed",
+        "blurb": "Blown out, extreme exposure.",
+        "category": "mixed"
+      },
+      {
+        "id": "mm-random-glow",
+        "name": "Glow bursts",
+        "blurb": "Bursts of glow pop across the frame.",
+        "category": "mixed"
+      },
+      {
+        "id": "mm-toxic",
+        "name": "Toxic",
+        "blurb": "Radioactive neon color blasts.",
+        "category": "mixed"
+      },
+      {
+        "id": "mm-two-color",
+        "name": "Duotone",
+        "blurb": "A bold, high contrast two-tone print.",
+        "category": "mixed"
+      },
+      {
+        "id": "mm-ultraviolet",
+        "name": "Ultraviolet",
+        "blurb": "A neon blacklight glow.",
+        "category": "mixed"
+      },
+      {
+        "id": "mm-acrylic",
+        "name": "Acrylic blocks",
+        "blurb": "Layered blocks of acrylic color.",
+        "category": "mixed"
+      },
+      {
+        "id": "mm-canvas",
+        "name": "Canvas",
+        "blurb": "Hand-drawn artwork on canvas.",
+        "category": "mixed"
+      },
+      {
+        "id": "mm-comic",
+        "name": "Comic",
+        "blurb": "An illustrated comic book look.",
+        "category": "mixed"
+      },
+      {
+        "id": "mm-flash-comic",
+        "name": "Comic panels",
+        "blurb": "Punchy, high energy comic panels.",
+        "category": "mixed"
+      },
+      {
+        "id": "mm-hand-paint",
+        "name": "Gouache",
+        "blurb": "Loose, freehand brushwork.",
+        "category": "mixed"
+      },
+      {
+        "id": "mm-palette",
+        "name": "Palette knife",
+        "blurb": "Hand-painted blocks of color.",
+        "category": "mixed"
+      },
+      {
+        "id": "mm-sketch",
+        "name": "Sketch",
+        "blurb": "Textured hand-drawn line work.",
+        "category": "mixed"
+      },
+      {
+        "id": "mm-vintage",
+        "name": "Inked vintage",
+        "blurb": "A hand-inked vintage illustration.",
+        "category": "mixed"
+      },
+      {
+        "id": "mm-broken-mirror",
+        "name": "Shattered mirror",
+        "blurb": "Shattered mirror reflections.",
+        "category": "mixed"
+      },
+      {
+        "id": "mm-bubbles",
+        "name": "Bubbles",
+        "blurb": "A dreamy soap bubble texture.",
+        "category": "mixed"
+      },
+      {
+        "id": "mm-fragments",
+        "name": "Fragments",
+        "blurb": "Abstract fragments layered over the footage.",
+        "category": "mixed"
+      },
+      {
+        "id": "mm-multiverse",
+        "name": "Layered worlds",
+        "blurb": "Layers of reality colliding.",
+        "category": "mixed"
+      },
+      {
+        "id": "mm-particles",
+        "name": "Light particles",
+        "blurb": "Glowing particles moving through the shot.",
+        "category": "mixed"
+      },
+      {
+        "id": "mm-tracking",
+        "name": "Motion tracking",
+        "blurb": "Tracking lines lock onto moving objects.",
+        "category": "mixed"
+      },
+      {
+        "id": "mm-windows",
+        "name": "Pop-up windows",
+        "blurb": "Overlapping computer interface windows.",
+        "category": "mixed"
+      },
+      {
+        "id": "mm-smoke-poster",
+        "name": "Smoke poster",
+        "blurb": "A smoky psychedelic poster look.",
+        "category": "mixed"
+      },
+      {
+        "id": "mm-collage",
+        "name": "Layered collage",
+        "blurb": "A stacked collage of mixed materials.",
+        "category": "mixed"
+      },
+      {
+        "id": "mm-magazine",
+        "name": "Magazine",
+        "blurb": "A printed magazine page.",
+        "category": "mixed"
+      },
+      {
+        "id": "mm-marble",
+        "name": "Marble",
+        "blurb": "A sculpted marble finish.",
+        "category": "mixed"
+      },
+      {
+        "id": "mm-modern",
+        "name": "Swiss minimal",
+        "blurb": "Clean, geometric minimalism.",
+        "category": "mixed"
+      },
+      {
+        "id": "mm-origami",
+        "name": "Origami",
+        "blurb": "Crisp folded paper geometry.",
+        "category": "mixed"
+      },
+      {
+        "id": "mm-paper",
+        "name": "Paper",
+        "blurb": "Handmade paper texture over the footage.",
+        "category": "mixed"
+      },
+      {
+        "id": "hairstyle",
+        "name": "Hairstyle changer",
+        "blurb": "Try a new cut, color or beard on your own photo.",
+        "category": "image-edit",
+        "hub": "enhance"
+      },
+      {
+        "id": "age-progression",
+        "name": "Age progression",
+        "blurb": "See yourself younger or older, still clearly you.",
+        "category": "characters",
+        "hub": "face"
+      },
+      {
+        "id": "remove-text",
+        "name": "Remove text from a photo",
+        "blurb": "Erase captions, signs, date stamps or your own watermark.",
+        "category": "image-edit",
+        "hub": "extras"
+      },
+      {
+        "id": "new-background",
+        "name": "Background changer",
+        "blurb": "Put your subject in a new place with matching light.",
+        "category": "image-edit",
+        "hub": "enhance"
+      },
+      {
+        "id": "unblur",
+        "name": "Unblur a photo",
+        "blurb": "Sharpen a blurry photo and bring faces back into focus.",
+        "category": "enhance",
+        "hub": "extras"
+      },
+      {
+        "id": "image-upscale",
+        "name": "Image upscale",
+        "blurb": "More resolution and detail, same picture.",
+        "category": "enhance",
+        "hub": "extras"
+      },
+      {
+        "id": "photo-restore",
+        "name": "Restore an old photo",
+        "blurb": "Repair scratches and fading, and bring back the color.",
+        "category": "enhance",
+        "hub": "enhance"
+      },
+      {
+        "id": "logo",
+        "name": "Logo",
+        "blurb": "Turn a business name into a logo.",
+        "category": "ads"
+      },
+      {
+        "id": "banner",
+        "name": "Banner",
+        "blurb": "Web banners, display ads and social covers with a headline.",
+        "category": "ads"
+      },
+      {
+        "id": "thumbnail",
+        "name": "Thumbnail",
+        "blurb": "A video thumbnail with bold words and your face.",
+        "category": "ads"
+      },
+      {
+        "id": "slide-visuals",
+        "name": "Slide visuals",
+        "blurb": "Title art and backgrounds for your slides.",
+        "category": "ads"
+      },
+      {
+        "id": "design-graphic",
+        "name": "Posters and social graphics",
+        "blurb": "Posters, social posts and mockups from a short brief.",
+        "category": "ads"
+      },
+      {
+        "id": "profile-picture",
+        "name": "Profile picture",
+        "blurb": "Turn a selfie into a profile picture in any style.",
+        "category": "characters",
+        "hub": "face"
+      },
+      {
+        "id": "portrait",
+        "name": "Portrait styles",
+        "blurb": "Turn a selfie into a studio, editorial or painted portrait.",
+        "category": "characters",
+        "hub": "face"
+      },
+      {
+        "id": "cartoon-me",
+        "name": "Cartoon yourself",
+        "blurb": "Turn selfies, family photos and pets into cartoon characters.",
+        "category": "fun",
+        "hub": "games"
+      },
+      {
+        "id": "anime-me",
+        "name": "Anime yourself",
+        "blurb": "Redraw your photo as anime or a manga panel.",
+        "category": "fun",
+        "hub": "games"
+      },
+      {
+        "id": "drawing",
+        "name": "Drawing",
+        "blurb": "Illustrations, comic pages and tattoo designs from a description.",
+        "category": "looks"
+      },
+      {
+        "id": "sketch",
+        "name": "Sketch",
+        "blurb": "Pencil, charcoal, ink or marker sketches from a description.",
+        "category": "looks"
+      },
+      {
+        "id": "wallpaper",
+        "name": "Wallpaper",
+        "blurb": "Phone and desktop wallpapers with room for the clock.",
+        "category": "looks"
+      },
+      {
+        "id": "animal",
+        "name": "Animal",
+        "blurb": "Pets, wildlife and creatures that do not exist.",
+        "category": "fun"
+      },
+      {
+        "id": "ai-human",
+        "name": "AI human",
+        "blurb": "Create a person who does not exist, ready to save as a character.",
+        "category": "characters"
+      },
+      {
+        "id": "edit-video",
+        "name": "Edit a video by text",
+        "blurb": "Describe a change and get the same video with it made.",
+        "category": "video-edit",
+        "hub": "video-edit"
+      },
+      {
+        "id": "video-erase",
+        "name": "Remove an object from a video",
+        "blurb": "Name what to erase and the gap fills in on every frame.",
+        "category": "video-edit",
+        "hub": "video-edit"
+      },
+      {
+        "id": "video-remove-text",
+        "name": "Remove text from a video",
+        "blurb": "Erase subtitles, captions and your own logos from a clip.",
+        "category": "video-edit",
+        "hub": "video-edit"
+      },
+      {
+        "id": "video-bg-change",
+        "name": "Video background changer",
+        "blurb": "Put yourself somewhere new without a green screen.",
+        "category": "video-edit",
+        "hub": "video-edit"
+      },
+      {
+        "id": "add-text-video",
+        "name": "Add text to a video",
+        "blurb": "Captions, titles, lower thirds and calls to action.",
+        "category": "video-edit",
+        "hub": "video-edit"
+      },
+      {
+        "id": "human-video",
+        "name": "AI human video",
+        "blurb": "Lifelike people on camera with real sound.",
+        "category": "characters"
+      },
+      {
+        "id": "brand-video",
+        "name": "Brand film",
+        "blurb": "Brand films, logo reveals and campaign spots.",
+        "category": "ads"
+      },
+      {
+        "id": "url-to-video",
+        "name": "Link to video ad",
+        "blurb": "Paste a product page and get a short video ad.",
+        "category": "ads",
+        "hub": "ads"
+      },
+      {
+        "id": "story-video",
+        "name": "Story video",
+        "blurb": "An idea in, a written, illustrated and narrated story out.",
+        "category": "explainer"
+      },
+      {
+        "id": "script-to-video",
+        "name": "Script to video",
+        "blurb": "Paste a script and get scenes, a narrator and subtitles.",
+        "category": "explainer"
+      },
+      {
+        "id": "animation",
+        "name": "Animation",
+        "blurb": "2D, 3D, anime or clay animation with a steady cast.",
+        "category": "cinema"
+      },
+      {
+        "id": "anime-video",
+        "name": "Anime video",
+        "blurb": "A prompt or a photo becomes an anime scene with voices and sound.",
+        "category": "cinema"
+      },
+      {
+        "id": "podcast-clips",
+        "name": "Podcast to clips",
+        "blurb": "Turn an episode into vertical clips, captions and a cover.",
+        "category": "video-edit",
+        "hub": "video-edit"
+      },
+      {
+        "id": "clip-to-shorts",
+        "name": "Long video to shorts",
+        "blurb": "Find the best moments of a long video and cut them into shorts.",
+        "category": "video-edit",
+        "hub": "video-edit"
+      },
+      {
+        "id": "event-video",
+        "name": "Event video",
+        "blurb": "A narrated birthday, wedding or holiday video from your photos.",
+        "category": "explainer"
+      },
+      {
+        "id": "anniversary-video",
+        "name": "Anniversary video",
+        "blurb": "Your years together as a narrated picture story.",
+        "category": "explainer"
+      },
+      {
+        "id": "invitation-video",
+        "name": "Invitation video",
+        "blurb": "An animated invite for a wedding, birthday or party.",
+        "category": "fun"
+      },
+      {
+        "id": "animal-video",
+        "name": "Pet video",
+        "blurb": "Your pet photo becomes a cute or talking clip with sound.",
+        "category": "fun"
+      },
+      {
+        "id": "car-video",
+        "name": "Car video",
+        "blurb": "One car photo becomes rolling shots, orbits or drifts.",
+        "category": "ads"
+      },
+      {
+        "id": "nature-video",
+        "name": "Nature scene",
+        "blurb": "A landscape photo becomes a living scene with sound.",
+        "category": "cinema"
+      },
+      {
+        "id": "sketch-to-video",
+        "name": "Sketch to video",
+        "blurb": "Animate a drawing and keep its hand-drawn look.",
+        "category": "cinema"
+      },
+      {
+        "id": "loop-background",
+        "name": "Looping background",
+        "blurb": "Seamless motion backdrops for sites, streams and slides.",
+        "category": "cinema"
+      },
+      {
+        "id": "voice-over-video",
+        "name": "Voice over a video",
+        "blurb": "Narrate a video with your script, or let it write one.",
+        "category": "voice"
+      },
+      {
+        "id": "image-to-3d",
+        "name": "Photo to 3D model",
+        "blurb": "Turn a photo of one object into a 3D model.",
+        "category": "models3d",
+        "featured": true
+      },
+      {
+        "id": "text-to-3d",
+        "name": "Text to 3D model",
+        "blurb": "Describe an object and get a 3D model of it.",
+        "category": "models3d"
+      },
+      {
+        "id": "character-to-3d",
+        "name": "Character figure",
+        "blurb": "Turn a saved character into a 3D figure.",
+        "category": "models3d"
+      },
+      {
+        "id": "turntable",
+        "name": "3D turntable video",
+        "blurb": "Spin a product or object a full turn in 3D.",
+        "category": "models3d",
+        "hub": "trending"
+      },
+      {
+        "id": "scene-3d",
+        "name": "3D scene",
+        "blurb": "Describe a place and get a 3D scene you can edit.",
+        "category": "scenes3d"
+      },
+      {
+        "id": "game",
+        "name": "Game from a prompt",
+        "blurb": "Describe a game idea and play it in your browser.",
+        "category": "scenes3d"
+      },
+      {
+        "id": "world-3d",
+        "name": "Explorable world",
+        "blurb": "Describe a place and look around it in 360 degrees.",
+        "category": "scenes3d"
+      },
+      {
+        "id": "melt",
+        "name": "Melt",
+        "blurb": "Your subject slowly melts into liquid chrome.",
+        "category": "effects"
+      },
+      {
+        "id": "zero-gravity",
+        "name": "Zero gravity",
+        "blurb": "Everything in the frame floats weightlessly upward.",
+        "category": "effects"
+      },
+      {
+        "id": "city-giant",
+        "name": "City giant",
+        "blurb": "The subject grows into a giant towering over a city.",
+        "category": "effects"
+      },
+      {
+        "id": "claymation",
+        "name": "Claymation",
+        "blurb": "The scene turns into handmade stop motion clay.",
+        "category": "effects"
+      },
+      {
+        "id": "nine-shots",
+        "name": "9 shots from one image",
+        "blurb": "A 3 by 3 contact sheet of cinematic angles of the same scene.",
+        "category": "story"
+      },
+      {
+        "id": "new-angle",
+        "name": "New angle",
+        "blurb": "See the same image from another camera position.",
+        "category": "image-edit"
+      },
+      {
+        "id": "relight",
+        "name": "Relight",
+        "blurb": "Keep everything, change only the light.",
+        "category": "image-edit"
+      },
+      {
+        "id": "outfit-swap",
+        "name": "Outfit swap",
+        "blurb": "Put a garment from one photo onto the person in another.",
+        "category": "image-edit"
+      },
+      {
+        "id": "remove-background",
+        "name": "Background remove",
+        "blurb": "A clean cutout with a transparent background.",
+        "category": "enhance"
+      },
+      {
+        "id": "upscale",
+        "name": "Upscale",
+        "blurb": "More resolution and detail, same picture.",
+        "category": "enhance"
+      },
+      {
+        "id": "effect-airborne-belongings",
+        "name": "Airborne belongings",
+        "blurb": "Turn your references into airborne belongings. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-studio-cross-wipe",
+        "name": "Studio cross-wipe",
+        "blurb": "Turn your references into studio cross-wipe. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-dive-into-the-eye",
+        "name": "Dive into the eye",
+        "blurb": "Turn your references into dive into the eye. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-intersection-drift",
+        "name": "Intersection drift",
+        "blurb": "Turn your references into intersection drift. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-beer-thief-chase",
+        "name": "Beer thief chase",
+        "blurb": "Turn your references into beer thief chase. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-calm-in-the-chaos",
+        "name": "Calm in the chaos",
+        "blurb": "Turn your references into calm in the chaos. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-two-scenes-one-crane",
+        "name": "Two scenes, one crane",
+        "blurb": "Turn your references into two scenes, one crane. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-giant-in-the-city",
+        "name": "Giant in the city",
+        "blurb": "Turn your references into giant in the city. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-exploded-building",
+        "name": "Exploded building",
+        "blurb": "Turn your references into exploded building. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-droste-hand",
+        "name": "Droste hand",
+        "blurb": "Turn your references into droste hand. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-frozen-fashion-pose",
+        "name": "Frozen fashion pose",
+        "blurb": "Turn your references into frozen fashion pose. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-folding-city",
+        "name": "Folding city",
+        "blurb": "Turn your references into folding city. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-shoelace-tightrope",
+        "name": "Shoelace tightrope",
+        "blurb": "Turn your references into shoelace tightrope. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-handshake-with-fire",
+        "name": "Handshake with fire",
+        "blurb": "Turn your references into handshake with fire. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-wax-melt",
+        "name": "Wax melt",
+        "blurb": "Turn your references into wax melt. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-ticket-carpet",
+        "name": "Ticket carpet",
+        "blurb": "Turn your references into ticket carpet. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-titan-double",
+        "name": "Titan double",
+        "blurb": "Turn your references into titan double. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-neon-scan-landing",
+        "name": "Neon scan landing",
+        "blurb": "Turn your references into neon scan landing. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-building-becomes-a-wave",
+        "name": "Building becomes a wave",
+        "blurb": "Turn your references into building becomes a wave. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-street-clones",
+        "name": "Street clones",
+        "blurb": "Turn your references into street clones. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-paper-scrap-doodles",
+        "name": "Paper scrap doodles",
+        "blurb": "Turn your references into paper scrap doodles. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-time-split-walk",
+        "name": "Time-split walk",
+        "blurb": "Turn your references into time-split walk. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-screen-rip",
+        "name": "Screen rip",
+        "blurb": "Turn your references into screen rip. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-orbit-to-street",
+        "name": "Orbit to street",
+        "blurb": "Turn your references into orbit to street. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-painting-mirror",
+        "name": "Painting mirror",
+        "blurb": "Turn your references into painting mirror. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-frozen-diner-orbit",
+        "name": "Frozen diner orbit",
+        "blurb": "Turn your references into frozen diner orbit. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-comic-freefall",
+        "name": "Comic freefall",
+        "blurb": "Turn your references into comic freefall. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-painting-to-cinema",
+        "name": "Painting to cinema",
+        "blurb": "Turn your references into painting to cinema. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-car-clown-swarm",
+        "name": "Car clown swarm",
+        "blurb": "Turn your references into car clown swarm. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-frozen-mid-leap",
+        "name": "Frozen mid-leap",
+        "blurb": "Turn your references into frozen mid-leap. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-poof-only-clothes",
+        "name": "Poof, only clothes",
+        "blurb": "Turn your references into poof, only clothes. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-sticker-doodle-sprint",
+        "name": "Sticker doodle sprint",
+        "blurb": "Turn your references into sticker doodle sprint. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-detection-overlay",
+        "name": "Detection overlay",
+        "blurb": "Turn your references into detection overlay. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-photocopy-glitch-aisle",
+        "name": "Photocopy glitch aisle",
+        "blurb": "Turn your references into photocopy glitch aisle. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-error-storm-slurp",
+        "name": "Error storm slurp",
+        "blurb": "Turn your references into error storm slurp. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-point-cloud-performance",
+        "name": "Point-cloud performance",
+        "blurb": "Turn your references into point-cloud performance. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-oil-paint-barrel-roll",
+        "name": "Oil paint barrel roll",
+        "blurb": "Turn your references into oil paint barrel roll. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-living-portrait",
+        "name": "Living portrait",
+        "blurb": "Turn your references into living portrait. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-pigeon-skates",
+        "name": "Pigeon skates",
+        "blurb": "Turn your references into pigeon skates. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-dachshund-surf",
+        "name": "Dachshund surf",
+        "blurb": "Turn your references into dachshund surf. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-stadium-phone-cam",
+        "name": "Stadium phone-cam",
+        "blurb": "Turn your references into stadium phone-cam. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-aquarium-turn",
+        "name": "Aquarium turn",
+        "blurb": "Turn your references into aquarium turn. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-field-to-castle",
+        "name": "Field to castle",
+        "blurb": "Turn your references into field to castle. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-knight-collapse",
+        "name": "Knight collapse",
+        "blurb": "Turn your references into knight collapse. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      },
+      {
+        "id": "effect-paper-stage-walk",
+        "name": "Paper stage walk",
+        "blurb": "Turn your references into paper stage walk. Review the prompt before rendering.",
+        "category": "effects",
+        "hub": "trending"
+      }
+    ],
+    "tools": [
+      {
+        "id": "create-image",
+        "route": "/image"
+      },
+      {
+        "id": "cinematic-cameras",
+        "route": "/cinema?mode=image"
+      },
+      {
+        "id": "canvas",
+        "route": "/flows"
+      },
+      {
+        "id": "moodboard",
+        "route": "/moodboard"
+      },
+      {
+        "id": "character",
+        "route": "/character"
+      },
+      {
+        "id": "influencer",
+        "route": "/influencer"
+      },
+      {
+        "id": "photodump",
+        "route": "/photodump"
+      },
+      {
+        "id": "relight",
+        "route": "/apps/relight"
+      },
+      {
+        "id": "inpaint",
+        "route": "/edit"
+      },
+      {
+        "id": "image-upscale",
+        "route": "/upscale"
+      },
+      {
+        "id": "face-swap",
+        "route": "/apps/face-swap"
+      },
+      {
+        "id": "character-swap",
+        "route": "/apps/character-swap"
+      },
+      {
+        "id": "fashion-factory",
+        "route": "/fashion"
+      },
+      {
+        "id": "create-video",
+        "route": "/video"
+      },
+      {
+        "id": "cinema-studio",
+        "route": "/cinema"
+      },
+      {
+        "id": "faceless",
+        "route": "/faceless"
+      },
+      {
+        "id": "3d-studio",
+        "route": "/3d"
+      },
+      {
+        "id": "shorts",
+        "route": "/shorts"
+      },
+      {
+        "id": "explainer",
+        "route": "/explainer"
+      },
+      {
+        "id": "mixed-media",
+        "route": "/mixed-media"
+      },
+      {
+        "id": "edit-video",
+        "route": "/video/edit"
+      },
+      {
+        "id": "video-upscale",
+        "route": "/upscale?kind=video"
+      },
+      {
+        "id": "reframe",
+        "route": "/reframe"
+      },
+      {
+        "id": "click-to-ad",
+        "route": "/ads"
+      },
+      {
+        "id": "color-palette",
+        "route": "/apps/color-grade"
+      },
+      {
+        "id": "motion-control",
+        "route": "/video?tab=motion"
+      },
+      {
+        "id": "lipsync",
+        "route": "/lipsync"
+      },
+      {
+        "id": "text-to-speech",
+        "route": "/audio?mode=speech"
+      },
+      {
+        "id": "voice-change",
+        "route": "/audio?mode=change"
+      },
+      {
+        "id": "translate",
+        "route": "/audio?mode=translate"
+      },
+      {
+        "id": "explore",
+        "route": "/"
+      },
+      {
+        "id": "apps",
+        "route": "/apps"
+      },
+      {
+        "id": "effects",
+        "route": "/effects"
+      },
+      {
+        "id": "motion",
+        "route": "/motion"
+      },
+      {
+        "id": "marketing",
+        "route": "/marketing"
+      },
+      {
+        "id": "ads",
+        "route": "/ads"
+      },
+      {
+        "id": "assistant",
+        "route": "/assistant"
+      },
+      {
+        "id": "skills",
+        "route": "/skills"
+      },
+      {
+        "id": "assets",
+        "route": "/assets"
+      }
+    ],
+    "models": [
+      "flux-3-klein",
+      "qwen-image-2-1",
+      "qwen-image-edit-2511",
+      "z-image-turbo",
+      "hidream-o1",
+      "minimax-h3",
+      "ltx-2-5",
+      "wan-2-2",
+      "wan-animate-2",
+      "bernini-r",
+      "infinitetalk",
+      "chatterbox-multilingual",
+      "fish-drama-3",
+      "qwen3-tts",
+      "minimax-music-3",
+      "stable-audio-3"
+    ]
+  },
+  "priorityFormats": [
+    "ad-variants",
+    "ai-stylist",
+    "all-fine",
+    "angles",
+    "asmr-classic",
+    "behind-the-scenes",
+    "billboard",
+    "cam-dolly-in",
+    "character-scene",
+    "character-sheet",
+    "character-swap",
+    "character-to-3d",
+    "cinema-shot",
+    "cloud-surfing",
+    "edit-video",
+    "expand",
+    "face-swap",
+    "face-swap-video",
+    "figure-box",
+    "game-show",
+    "game-style",
+    "glossy-vinyl",
+    "headshot",
+    "human-video",
+    "image-bg-remove",
+    "image-to-3d",
+    "life-sim",
+    "look-phone-flash",
+    "meme",
+    "micro-beasts",
+    "mm-acid",
+    "mural",
+    "music",
+    "packshot",
+    "paint-app",
+    "plush-toy",
+    "product-ad",
+    "product-shot",
+    "relight-photo",
+    "roller-coaster",
+    "shots",
+    "sketch-to-image",
+    "skin-retouch",
+    "sound-effect",
+    "sticker",
+    "storyboard",
+    "surprise-kiss",
+    "swap-element",
+    "talking-head",
+    "text-to-3d",
+    "transition",
+    "truck-ad",
+    "try-on",
+    "tts",
+    "turn-to-sand",
+    "turntable",
+    "video-bg-remove",
+    "video-character-swap",
+    "video-erase",
+    "video-remove-text",
+    "video-upscale",
+    "voice-clone"
+  ],
+  "generated": []
+}

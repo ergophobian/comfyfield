@@ -1,3 +1,4 @@
+import { ArtImage } from '../components/Art.jsx'
 import { useState } from 'react'
 import Segmented from '../components/Segmented.jsx'
 import { Chip, Option } from '../components/Composer.jsx'
@@ -175,7 +176,7 @@ function ModelTab({ id, others }) {
   return (
     <>
       <div className="sb-launch glass rise">
-        <span className="sb-launch-cover" style={{ background: f.cover }} />
+        <span className="sb-launch-cover" style={{ background: f.cover }}><ArtImage id={f.id} alt={`${f.name} example`} /></span>
         <div>
           <h2>{f.name}</h2>
           <p>{f.blurb}</p>

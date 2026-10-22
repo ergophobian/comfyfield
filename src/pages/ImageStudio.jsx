@@ -1,3 +1,4 @@
+import { ArtImage } from '../components/Art.jsx'
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Segmented from '../components/Segmented.jsx'
@@ -140,7 +141,7 @@ export default function ImageStudio() {
   const hero = (
     <div className="gen-hero">
       <div className="gen-fan" aria-hidden="true">
-        {fan.map((c, i) => <i key={i} style={{ background: c, '--i': i }} />)}
+        {fan.map((c, i) => <i key={i} style={{ background: c, '--i': i }}><ArtImage id={['expand', 'character-scene', 'product-shot', 'look-phone-flash', 'game-style'][i % 5]} /></i>)}
       </div>
       <h1 className="rise">Start with {model.name}</h1>
       <p className="rise">Describe a scene, a character, a mood or a style in the bar below. Add references with the plus button, or pull a saved character in with @.</p>

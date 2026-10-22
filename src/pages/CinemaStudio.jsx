@@ -1,3 +1,4 @@
+import { ArtImage } from '../components/Art.jsx'
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import CinemaSide from '../components/studio/CinemaSide.jsx'
@@ -31,6 +32,7 @@ function Posters({ onStart }) {
         const g = byId(genres, s.genre)
         return (
           <button key={s.genre} type="button" className={`cs-poster${i === 1 ? ' mid' : ''}`} style={{ background: s.cover, '--n': i }} onClick={() => onStart(s.genre)}>
+            <ArtImage id={{ noir: 'look-phone-flash', epic: 'cinema-shot', comedy: 'roller-coaster' }[s.genre]} />
             <small>New project</small>
             <strong>{g.label}</strong>
             <span>{g.note}</span>

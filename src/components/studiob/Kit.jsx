@@ -1,3 +1,4 @@
+import { PageArt, ArtImage } from '../Art.jsx'
 import { useEffect, useId, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { covers } from '../../lib/formats/parts.js'
@@ -43,6 +44,7 @@ export function Hero({ badge, title, sub, level = 1, children }) {
   const H = level === 2 ? 'h2' : 'h1'
   return (
     <header className="sb-hero rise">
+      <PageArt />
       {badge && <span className="sb-badge">{badge}</span>}
       <H>{title}</H>
       {sub && <p>{sub}</p>}
@@ -173,7 +175,7 @@ export function Tiles({ items, value, onChange, label, tall, lead }) {
         return (
           <button key={t.id} type="button" aria-pressed={on} className={`sb-tile rise${on ? ' on' : ''}`}
             style={{ ...stagger(i), background: t.image ? undefined : t.cover || coverAt(i) }} onClick={() => onChange(t.id)}>
-            {t.image && <img src={t.image} alt="" />}
+            {t.image ? <img src={t.image} alt="" /> : <ArtImage id={t.id} alt={`${t.label} example`} />}
             <span>{t.label}{t.note && <small>{t.note}</small>}</span>
           </button>
         )

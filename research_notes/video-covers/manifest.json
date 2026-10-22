@@ -1,0 +1,632 @@
+[
+  {
+    "id": "professional",
+    "slot": "hub",
+    "label": "Professional",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A runner bursts through a curtain of rain into an amber flare, droplets exploding off her burgundy jacket. The original fictional Arab woman, around forty, races across a deserted concrete loading bay toward the lens. A low anamorphic tracking camera retreats at her speed, with a dark doorway rushing past in the foreground. Rain machines, hard backlight and wet reflections give the finished action shot the weight of a night exterior from a thriller.",
+    "status": "todo",
+    "file": "professional.mp4"
+  },
+  {
+    "id": "enhance",
+    "slot": "hub",
+    "label": "Enhance and style",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A plum silk wrap snaps across the lens and reveals a dramatic finished evening look on the same woman: sculptural jacket, silver curls and luminous, textured skin. The fictional Black adult strides through an ochre conservatory as the cloth trails behind her. Shoot with a short handheld fashion push, catching actual folds, stray hairs and a slightly missed focus pull. One bold wardrobe reveal, grounded by cloudy skylight and warm terracotta reflections.",
+    "status": "todo",
+    "file": "enhance.mp4"
+  },
+  {
+    "id": "face",
+    "slot": "hub",
+    "label": "Face and identity",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A boxing glove flashes past the lens, exposing a sweat-speckled face with a distinctive cheek scar and crooked smile. This fictional Korean adult boxer pivots close to camera, ducks, then grins at his near miss. An intimate shoulder-mounted camera follows his head through the move; his features stay unmistakably consistent at every angle. Cold gym windows rake the sweat while one amber work light catches the glove's worn red leather.",
+    "status": "todo",
+    "file": "face.mp4"
+  },
+  {
+    "id": "video-edit",
+    "slot": "hub",
+    "label": "Video editing",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A crimson parasol snaps open, filling the foreground as a fictional adult mestiza performer spins beneath it. The dull concrete courtyard around her transforms in a clean moving wipe into a lush courtyard of oversized tropical leaves, preserving her silhouette and wet pavement reflection. A gimbal sweeps sideways with the parasol, making the finished background edit visible through parallax. Real rain beads on the paper ribs; copper afternoon light glows through the canopy.",
+    "status": "todo",
+    "file": "video-edit.mp4"
+  },
+  {
+    "id": "ads",
+    "slot": "hub",
+    "label": "Ads and products",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "An unmarked amber glass fragrance bottle drops onto a shallow pool of water, sending a crown of golden droplets around its squared shoulders. Track low across the wet black stone toward the product as the splash peaks in 120fps slow motion. A hard strip of afternoon sun refracts through the liquid, painting honey-colored caustics across the tabletop. The bottle remains large and legible as an object, with tactile glass seams and tiny trapped bubbles.",
+    "status": "todo",
+    "file": "ads.mp4"
+  },
+  {
+    "id": "games",
+    "slot": "hub",
+    "label": "Games and characters",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A brass clockwork beetle launches off a broken miniature bridge just as the little stone arch collapses behind it. Shoot at tabletop height with a fast tracking macro camera, racing alongside the articulated legs through red clay canyon scenery. Practical dust and chipped painted rocks tumble into darkness below. The beetle has an original asymmetrical shell and a tiny spinning flywheel; hard workshop light makes the kinetic game-world scene feel physically constructed.",
+    "status": "todo",
+    "file": "games.mp4"
+  },
+  {
+    "id": "extras",
+    "slot": "hub",
+    "label": "Extras",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A lopsided moss-green felt creature sneezes an enormous cloud of mustard and coral wool fibers, then tumbles sideways off a cushion. Photograph the miniature puppet at sofa height with a quick handheld tilt following its fall. Its stitched paws scrabble against worn velvet while loose fibers drift through slanting window light. Visible seams, compressed stuffing and tangible fuzzy edges make this odd little character feel like a practical craft-film gag.",
+    "status": "todo",
+    "file": "extras.mp4"
+  },
+  {
+    "id": "trending",
+    "slot": "hub",
+    "label": "Trending templates",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A surfboard slices through a low cloud bank, throwing a curling wake of mist instead of water. A fictional adult Pacific Islander woman in a coral windbreaker leans into the carve above an empty coastal cliff, her face exhilarated and windblown. A wide action camera banks beside the board as the fog parts to reveal dark ocean far below. Early sun catches airborne moisture and wet board wax, giving the impossible ride documentary conviction.",
+    "status": "todo",
+    "file": "trending.mp4"
+  },
+  {
+    "id": "create-image",
+    "slot": "tool",
+    "label": "Create image",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A scarlet umbrella snaps open in a white salt flat, instantly filling the frame with a graphic burst of color. Beneath it, a fictional older Japanese woman laughs into a sudden gust, her indigo coat lifting sharply around her knees. A low wide camera pushes through windblown salt toward her, creating a finished editorial photograph in motion. Harsh midday shadows, weathered hands and uneven salt crystals keep the spectacular composition physically believable.",
+    "status": "todo",
+    "file": "create-image.mp4"
+  },
+  {
+    "id": "cinematic-cameras",
+    "slot": "tool",
+    "label": "Cinematic cameras",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "The lens glides beneath a swinging row of ferry seats and rises to a tense passenger gripping the cabin rail as spray hits the glass behind her. The fictional South Asian woman in her forties wears a tobacco leather coat. One continuous low-to-high dolly move reveals foreground, face and stormy harbor in layered depth. Tungsten cabin lamps sway across cool wet windows, with restrained anamorphic flare and convincing boat vibration.",
+    "status": "todo",
+    "file": "cinematic-cameras.mp4"
+  },
+  {
+    "id": "moodboard",
+    "slot": "tool",
+    "label": "Moodboard",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A blood orange strikes a cobalt ceramic plate and splits, spraying juice across terracotta linen and a polished copper cup. Locked overhead camera, tightly art-directed tabletop composition, one coherent palette of rust, blue and citrus. The action begins on impact; droplets catch a shaft of hard sun and spread into the fabric weave. Tiny chips in the glaze and crushed fruit pulp make the richly coordinated mood feel photographed rather than assembled digitally.",
+    "status": "todo",
+    "file": "moodboard.mp4"
+  },
+  {
+    "id": "character",
+    "slot": "tool",
+    "label": "Character",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A courier vaults a waist-high rail straight toward camera, lands hard and breaks into a crooked grin. He is an original fictional Ethiopian adult with close curls and a crescent scar through one eyebrow, wearing a faded teal jacket. A handheld wide lens drops with his landing, then catches the same recognizable face in close-up. Concrete dust, tugging jacket seams and uneven late-day light sell a specific character under physical movement.",
+    "status": "todo",
+    "file": "character.mp4"
+  },
+  {
+    "id": "photodump",
+    "slot": "tool",
+    "label": "Photodump",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A huge lake splash hits the lower half of a phone selfie as two fictional adult friends leap from a low wooden jetty. A red-haired white woman holds the camera at arm's length; a Latino man is already airborne beside her, laughing with his knees tucked. The wide phone lens pitches toward glittering water, briefly losing focus through droplets. Sunburned shoulders, wet hair and clipped summer highlights create a spontaneous holiday-roll moment.",
+    "status": "todo",
+    "file": "photodump.mp4"
+  },
+  {
+    "id": "relight",
+    "slot": "tool",
+    "label": "Relight",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A narrow beam of warm light sweeps across a woman's eyes, nose and cheek, instantly carving her face out of cool darkness. The fictional Bengali woman, in her fifties, watches a passing vehicle through rain-streaked glass. Hold an intimate locked portrait as the moving headlight travels from one side to the other, leaving a bright edge on individual hairs. Raindrop refractions and subtle cheek texture make the relighting feel optically motivated.",
+    "status": "todo",
+    "file": "relight.mp4"
+  },
+  {
+    "id": "inpaint",
+    "slot": "tool",
+    "label": "Inpaint",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A vacant plaster niche acquires a cobalt stoneware vase in a fast, clean reveal; tall yellow flowers spill outward as though just released. The camera slides laterally past the niche, proving the inserted object's volume, occlusion and grounded shadow. A gust bends the stems across a chipped arch while warm hallway light catches the glaze. Keep the domestic space tangible: cracked limewash, dust on the shelf and tiny water droplets beneath the vase.",
+    "status": "todo",
+    "file": "inpaint.mp4"
+  },
+  {
+    "id": "image-upscale",
+    "slot": "tool",
+    "label": "Image upscale",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A burst of grapefruit juice fills the foreground as the camera pushes into the torn fruit, resolving glistening pulp sacs and individual grains of flaky salt on the rind. Begin with the fruit large enough to recognize, then move into extreme macro at a measured speed. Hard breakfast sunlight passes through the translucent pink flesh. Tiny droplets, porous peel and a real optical focus falloff make the enhanced detail tactile and astonishing.",
+    "status": "todo",
+    "file": "image-upscale.mp4"
+  },
+  {
+    "id": "face-swap",
+    "slot": "tool",
+    "label": "Face swap",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A red folding fan whips downward, revealing a smiling face that fits seamlessly into a velvet-jacketed performer's moving head and neck. The original fictional Vietnamese adult has a small mole beside her nose and expressive dark eyes. She tilts toward a backstage mirror as a handheld portrait camera arcs just enough to show coherent facial perspective and reflection. Warm dressing-room bulbs reveal pores, soft jaw shadows and loose hairs caught in the fan's breeze.",
+    "status": "todo",
+    "file": "face-swap.mp4"
+  },
+  {
+    "id": "character-swap",
+    "slot": "tool",
+    "label": "Character swap",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A wicker chair spins across the foreground and reveals a fictional Jamaican man in a cream linen suit stepping decisively into an orange orchard. He catches a falling orange and lifts it with a delighted grin, his whole body integrated into the dappled setting. A waist-height gimbal circles past low branches, testing natural occlusion and contact shadows. Linen creases, red soil on his shoes and bouncing leaf light give the replacement character physical presence.",
+    "status": "todo",
+    "file": "character-swap.mp4"
+  },
+  {
+    "id": "fashion-factory",
+    "slot": "tool",
+    "label": "Fashion factory",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "An oversized saffron coat flares like a sail as a fictional Turkish adult model takes a forceful runway stride across a bare rooftop. The camera whips with the fabric, then catches her cropped dark hair and direct, unsmiling gaze. Slate pleated trousers and heavy boots anchor the original outfit. Low autumn sun cuts through the moving coat, exposing stitching and layered folds; a rough concrete parapet streaks behind the tight fashion framing.",
+    "status": "todo",
+    "file": "fashion-factory.mp4"
+  },
+  {
+    "id": "create-video",
+    "slot": "tool",
+    "label": "Create video",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A bicycle's front wheel hits a puddle and throws a broad silver sheet of water toward the lens. Its rider, a fictional Indigenous Mexican adult woman in a brick-red raincoat, pedals through river mist with a fierce grin. A low tracking camera accelerates alongside her, moving from spinning spokes to her face in one uninterrupted pass. Sunrise pierces the spray; chain grease, road vibration and dragging coat fabric make the motion feel captured live.",
+    "status": "todo",
+    "file": "create-video.mp4"
+  },
+  {
+    "id": "faceless",
+    "slot": "tool",
+    "label": "Faceless studio",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "Steam suddenly billows from a battered enamel kettle above a small blue stove flame, revealing a pine valley as the camera cranes upward from the granite ledge. No people occupy the campsite. A folded rust blanket and a plain metal cup anchor the foreground while sunrise breaks through moving cloud, turning the steam gold. Shoot like an immersive outdoor story insert, with soot, condensation and a faint gust shaking the kettle's loose lid.",
+    "status": "todo",
+    "file": "faceless.mp4"
+  },
+  {
+    "id": "3d-studio",
+    "slot": "tool",
+    "label": "3d studio",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A sculpted ivory ceramic dragon rotates on a dark motorized turntable, its open spiral body and pierced wings throwing intricate moving shadows. Start close on a claw, then slide outward as the sculpture turns to expose its full silhouette and hollow interior. A single raking workshop spotlight catches fingerprints, glaze pooling and small firing cracks. The original creature feels like a photographed gallery maquette, with visible depth and weight from every changing angle.",
+    "status": "todo",
+    "file": "3d-studio.mp4"
+  },
+  {
+    "id": "shorts",
+    "slot": "tool",
+    "label": "Shorts studio",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A roller skater pops over a puddle, lands with a bright splash and sweeps within inches of the phone lens, laughing. The fictional Black adult woman wears a lavender sweatshirt and scuffed orange skates on an empty seaside promenade. Track backward at knee height, tilting up to catch her expression while keeping the jump central for a portrait crop. Sunset rims flying curls, and ordinary phone compression adds spontaneous social-video energy.",
+    "status": "todo",
+    "file": "shorts.mp4"
+  },
+  {
+    "id": "explainer",
+    "slot": "tool",
+    "label": "Explainer",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A red wooden cam snaps forward and a folded copper flower opens in one crisp mechanical bloom. Locked overhead macro reveals the whole causal chain: a small motor turns three interlocking wooden gears, lifts a pushrod and spreads the petals. All components remain visible against pale plywood. Slanting afternoon light picks out sawdust and hammer marks, making the explanatory result understandable through movement alone, with the flower filling the upper half of frame.",
+    "status": "todo",
+    "file": "explainer.mp4"
+  },
+  {
+    "id": "mixed-media",
+    "slot": "tool",
+    "label": "Mixed media",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A dancer punches through a hanging sheet of cream paper, scattering torn scraps that briefly attach to her moving silhouette as animated collage shapes. The fictional white adult woman in an indigo work dress keeps dancing across a disused tiled bathhouse. A close handheld camera follows the decisive burst; ochre brush strokes trail one arm while her skin and fabric remain photographic. High window light catches damp tiles, paper fibers and sharp moving shadows.",
+    "status": "todo",
+    "file": "mixed-media.mp4"
+  },
+  {
+    "id": "edit-video",
+    "slot": "tool",
+    "label": "Edit video",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A sunflower head sweeps close across the lens, revealing a pale blue cargo bicycle whose previously empty front basket is now overflowing with bright yellow flowers. Track sideways along a salmon courtyard wall as petals whip in the breeze. The completed edit preserves the basket's weave, stem occlusions and shadows on the chipped plaster. Soft morning light and a slightly imperfect focus pull make the seamless object addition feel like an ordinary live-action shot.",
+    "status": "todo",
+    "file": "edit-video.mp4"
+  },
+  {
+    "id": "video-upscale",
+    "slot": "tool",
+    "label": "Video upscale",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A kingfisher erupts from a dark woodland pool with a tiny silver fish, water droplets hanging around its turquoise wings. Track the ascent in 120fps slow motion with a long wildlife lens, resolving individual feather barbs and droplets against soft reeds. The bird crosses a narrow shaft of morning sun, briefly lighting its orange breast. Precise moving detail, natural wing blur and restrained background grain demonstrate clarity under demanding action rather than static sharpness.",
+    "status": "todo",
+    "file": "video-upscale.mp4"
+  },
+  {
+    "id": "reframe",
+    "slot": "tool",
+    "label": "Reframe",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A dancer launches into a sideways split leap across an empty wooden rehearsal hall, her maroon sleeves snapping outward. The fictional Afro-Brazilian adult travels rapidly from left to right while a smooth tracking camera keeps her head, hands and feet comfortably inside the central composition. Start on the takeoff, follow the full airborne silhouette, then catch the grounded landing. Afternoon window stripes slide behind her, emphasizing the finished subject-following crop and believable floor contact.",
+    "status": "todo",
+    "file": "reframe.mp4"
+  },
+  {
+    "id": "click-to-ad",
+    "slot": "tool",
+    "label": "Click to ad",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A burgundy insulated flask stands on black volcanic rock as its loose cap lifts and a plume of steam bursts into the cold alpine air. A fast, low gimbal push ends on beads of frost melting along the unmarked metal shoulder. Snow blows across the distant ridge while a warm tent glow reflects in the cup beside it. The compact product stays dominant, delivering a finished outdoor campaign moment with tactile temperature contrast.",
+    "status": "todo",
+    "file": "click-to-ad.mp4"
+  },
+  {
+    "id": "color-palette",
+    "slot": "tool",
+    "label": "Change color palette",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "An aerial camera skims an empty rocky cove as a clean wave of color grading sweeps across the live scene from left to right. Flat gray sea becomes deep teal, pale rocks turn warm amber and white foam gains crisp separation, while the terrain and waves keep their exact shapes. Begin the grade change immediately and finish on rich late-afternoon coastal color. Natural water motion and shadow continuity make the transformation unmistakably photographic.",
+    "status": "todo",
+    "file": "color-palette.mp4"
+  },
+  {
+    "id": "motion-control",
+    "slot": "tool",
+    "label": "Motion control",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "An elbow snaps upward, sending a sharp body wave through a dancer's chest into a sliding heel step. The original fictional Moroccan adult man wears loose olive rehearsal clothes in a worn boxing gym. A locked full-body camera captures the clean choreography without hiding his feet or hands. He drives into a low diagonal lunge, sleeves whipping behind the gesture. Frosted windows rake across sweat and fabric, making the controlled motion crisp and physically weighted.",
+    "status": "todo",
+    "file": "motion-control.mp4"
+  },
+  {
+    "id": "lipsync",
+    "slot": "tool",
+    "label": "Lipsync studio",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A host leans toward the lens with an animated open vowel and a raised palm, as if landing the funniest part of a story. The fictional Afro-Latina adult wears a red crewneck and translucent amber glasses in a compact green recording room. Her mouth stays large and unobstructed beside a low microphone. A fixed chest-up creator camera catches rapid, coherent lip shapes, then a broad laugh; pink shelf light and soft daylight give the clip lively depth.",
+    "status": "todo",
+    "file": "lipsync.mp4"
+  },
+  {
+    "id": "text-to-speech",
+    "slot": "tool",
+    "label": "Text to speech",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A narrator pulls her chair toward a microphone and launches into an urgent phrase, copper curls bouncing and one hand cutting the air for emphasis. The fictional Scottish adult woman sits in a dark timber voice booth with a single cream-shaded lamp. Shoot a tight three-quarter handheld view with the microphone below her mouth. Visible breath control, changing lip shapes and expressive eyes make the finished narration performance readable without showing software or written words.",
+    "status": "todo",
+    "file": "text-to-speech.mp4"
+  },
+  {
+    "id": "voice-change",
+    "slot": "tool",
+    "label": "Voice change",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A voice performer throws his chin forward in a theatrical booming delivery, then leans close with a mischievous whispering expression. The fictional Filipino adult man has round glasses and a salt-and-pepper beard; an unmarked microphone sits below his exposed mouth. A short handheld push follows the sudden change of vocal character inside a mint-painted home studio. Morning window light catches moving cheeks, throat tension and amused eyes, suggesting a transformed voice through a vivid performance.",
+    "status": "todo",
+    "file": "voice-change.mp4"
+  },
+  {
+    "id": "translate",
+    "slot": "tool",
+    "label": "Translate",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "Steam rolls across the lens as a fictional Senegalese adult cook lifts a bright red ceramic dish toward camera and speaks an animated short phrase. The camera is a close phone view on a shaded veranda, with her mouth clear above the dish and one expressive eyebrow raised. She gestures toward the food, then smiles at the viewer. Bright garden bounce and warm steam preserve natural facial motion and the finished feel of a localized creator clip.",
+    "status": "todo",
+    "file": "translate.mp4"
+  },
+  {
+    "id": "effects",
+    "slot": "tool",
+    "label": "Effects",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "The crown of a weathered terracotta bust cracks open and erupts into a flock of small cream paper birds, leaving a clearly missing section of the sculpture. A low orbiting camera follows the birds as they unfold and scatter through an empty stone rotunda. The remaining bust stays heavy on its plinth, shedding grit. Skylight shines through paper wings, with practical-looking debris and believable motion blur grounding the spectacular transformation.",
+    "status": "todo",
+    "file": "effects.mp4"
+  },
+  {
+    "id": "motion",
+    "slot": "tool",
+    "label": "Motion presets",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "An aerial camera dives toward a narrow sea arch, threads the opening just above churning water and accelerates into sunlit surf beyond. The shot begins already moving, with wet black rock rushing close on either side. Strong foreground parallax and a controlled bank make the camera preset instantly visible. Spray briefly dots the lens as the coast opens wide, with soft overcast light inside the arch giving way to warm reflected sea light.",
+    "status": "todo",
+    "file": "motion.mp4"
+  },
+  {
+    "id": "marketing",
+    "slot": "tool",
+    "label": "Marketing studio",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A rust canvas weekend bag flips open in a gust, exposing a tightly rolled cream sweater as fine desert sand races across the foreground. Shoot a low, fast slider move toward the stitched handle, keeping the original unmarked bag large against an empty dune camp and a billowing pale tent. Early sunlight reveals canvas weave, metal buckle scratches and grains caught in the seams. The finished travel campaign feels adventurous, tactile and immediately usable.",
+    "status": "todo",
+    "file": "marketing.mp4"
+  },
+  {
+    "id": "cam-dolly-in",
+    "slot": "format",
+    "label": "Dolly in",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A baker claps flour from her hands, creating a bright cloud that parts as the camera dollies straight toward her laughing face. The fictional Greek adult woman wears a faded blue apron in a stone bakery; rough loaves frame the foreground without blocking the move. Start wide enough to see the room, finish in a close portrait. A single side window backlights airborne flour and catches deep smile lines, making the camera approach emphatic.",
+    "status": "todo",
+    "file": "cam-dolly-in.mp4"
+  },
+  {
+    "id": "roller-coaster",
+    "slot": "format",
+    "label": "Roller coaster",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "The front car tips over a steep crest and plunges, lifting two riders' hair as their startled faces break into wild laughter. Both are fictional adults, a Black man and a Korean woman, secured in plain red restraints. A bolted wide camera faces them at arm's length, catching real vibration and rapidly climbing sky behind their heads. Late-afternoon sun flashes across the chassis; the opening drop makes the roller-coaster effect immediate and visceral.",
+    "status": "todo",
+    "file": "roller-coaster.mp4"
+  },
+  {
+    "id": "cinema-shot",
+    "slot": "format",
+    "label": "Cinema shot",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A woman breaks the surface of a flooded abandoned swimming pool, throwing water from her silver hair as a searchlight sweeps across the tiles. The fictional white adult wears a bottle-green coat, heavy with water. A low anamorphic camera tracks along the pool edge toward her alarmed face. Cold twilight fills the room; a warm maintenance lamp burns behind steam. Ripples, dripping fabric and chipped tile give this single tense film moment physical stakes.",
+    "status": "todo",
+    "file": "cinema-shot.mp4"
+  },
+  {
+    "id": "transition",
+    "slot": "format",
+    "label": "Transition",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A terracotta curtain lashes across the entire lens, transforming a narrow blue doorway into a windswept beach as it clears. A fictional Tamil adult woman continues the same forward stride across the transition, her cream dress whipping against the new sea breeze. A chest-height gimbal advances with her, matching body scale and direction through the fabric wipe. Hard afternoon light on the curtain becomes golden coastal light, and foamy surf races into the foreground.",
+    "status": "todo",
+    "file": "transition.mp4"
+  },
+  {
+    "id": "look-phone-flash",
+    "slot": "format",
+    "label": "Phone flash at night",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A wet basketball strikes the court beside the phone, exploding a puddle into white droplets under harsh direct camera light. A fictional mixed-race British adult with a shaved head lunges into the close selfie frame, laughing and shielding his face with one arm. Shoot handheld at arm's length, slightly off-level, with clipped highlights and noisy midnight shadows. His plain red fleece and airborne drizzle pop against the dark, empty court and bare hoop.",
+    "status": "todo",
+    "file": "look-phone-flash.mp4"
+  },
+  {
+    "id": "expand",
+    "slot": "format",
+    "label": "Expand",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A close view of a sunlit arched doorway rapidly expands into a vast cliffside monastery carved into red sandstone. The camera pulls straight backward through empty air, revealing stacked terraces, winding stairs and an immense desert gorge around the original doorway. Keep every stone edge and shadow continuous as the surroundings unfold. A hawk cuts through the new foreground, dusty wind trails off ledges, and afternoon haze supplies credible scale to the wide reveal.",
+    "status": "todo",
+    "file": "expand.mp4"
+  },
+  {
+    "id": "try-on",
+    "slot": "format",
+    "label": "Try on outfits",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "An ivory garment bag swings across a fictional Algerian adult model as she strides toward camera; when it clears, her plain cream separates have changed into a tailored emerald jumpsuit. Her face, body proportions and walking rhythm remain continuous. A full-body fashion camera tracks backward inside a peach tailoring room, catching the new waist seam and wide trouser movement. North-window light reveals actual linen wrinkles, stitching and confident body language beneath the changed outfit.",
+    "status": "todo",
+    "file": "try-on.mp4"
+  },
+  {
+    "id": "sketch-to-image",
+    "slot": "format",
+    "label": "Sketch to image",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "An ink-dark outline of a sculptural looped lamp lifts from blank cream drawing paper and gains volume, becoming a real ivory ceramic lamp on the same oak table. The camera tilts from a near-overhead drawing view to a low product angle as its fabric shade lights warmly. Keep the transformation centered on one original object. Charcoal residue, uneven glaze and a new contact shadow make the finished design feel physically present in rainy window light.",
+    "status": "todo",
+    "file": "sketch-to-image.mp4"
+  },
+  {
+    "id": "product-shot",
+    "slot": "format",
+    "label": "Product shot",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A tangerine portable speaker rotates on a glossy deep-red block as a blood-orange slice splashes into shallow water at its base. Its original squat body has a perforated metal grille, ivory dial and woven carry loop, all completely unmarked. A short tabletop orbit catches the splash in slow motion without losing the silhouette. Hard studio light reveals grille holes, wet citrus pulp and a clean diagonal shadow against a saturated coral backdrop.",
+    "status": "todo",
+    "file": "product-shot.mp4"
+  },
+  {
+    "id": "swap-element",
+    "slot": "format",
+    "label": "Swap an element",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A small blue wooden stool spins in a pale green waiting room; as the camera passes a foreground column, it is replaced by a sumptuous burnt-orange armchair still turning on the same floor spot. Continue the sideways move to reveal the chair's depth and stable contact shadow. A loose tassel lashes outward with the rotation. Scratched checkerboard tiles, afternoon window light and compressed velvet pile make the object replacement feel convincingly integrated.",
+    "status": "todo",
+    "file": "swap-element.mp4"
+  },
+  {
+    "id": "face-swap-video",
+    "slot": "format",
+    "label": "Video face swap",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A chess player slams a plain wooden knight onto the board, throws his head up and bursts into a broad, delighted laugh. The fictional Mexican adult man's silver temples, broad nose and chin dimple remain stable through the fast change of angle. A handheld camera pushes from the moving piece to his face, briefly passing behind his hand. Dappled park light tracks naturally across cheek, neck and collar, demonstrating a convincing moving facial replacement.",
+    "status": "todo",
+    "file": "face-swap-video.mp4"
+  },
+  {
+    "id": "video-bg-remove",
+    "slot": "format",
+    "label": "Video background remove",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "Long dark curls fan horizontally across a clean warm-gray studio background as a dancer snaps through a full turn. The fictional Somali adult woman wears an aubergine practice shirt, one arm slicing through the flying hair. A locked waist-up camera keeps the fine strands and gaps between fingers plainly visible against the empty seamless surface. Soft side light and grounded floor shadow make the finished background removal read through energetic motion, with crisp, natural edges.",
+    "status": "todo",
+    "file": "video-bg-remove.mp4"
+  },
+  {
+    "id": "skin-retouch",
+    "slot": "format",
+    "label": "Skin retouch",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A close laugh creases an older woman's cheeks as she throws her silver braid over one shoulder, bringing her luminous skin into sharp raking light. The fictional Indian adult wears a simple ochre blouse beside a pale linen curtain. Begin tight on her cheek and eye, then ease wide enough to catch the full expression. The finished beauty treatment keeps pores, fine wrinkles and small age spots visible; warm window bounce and flying hairs add life.",
+    "status": "todo",
+    "file": "skin-retouch.mp4"
+  },
+  {
+    "id": "character-scene",
+    "slot": "format",
+    "label": "Character in any scene",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A kiln door swings open and orange light floods a potter's delighted face as she lifts out a small glazed bowl with long metal tongs. The fictional Afro-Caribbean adult has cropped curls, a distinct eyebrow notch and a chalk-blue work shirt. Track sideways past foreground shelves into her close-up, keeping those identity details steady through changing light and occlusion. Dust, heat shimmer and cool doorway fill ground the recognizable character in a specific working scene.",
+    "status": "todo",
+    "file": "character-scene.mp4"
+  },
+  {
+    "id": "headshot",
+    "slot": "format",
+    "label": "Professional headshot",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A charcoal jacket swings onto a man's shoulders just as he catches the lens with an open, confident laugh. The fictional Chilean adult has curly graying hair, pronounced crow's feet and an open-collar shirt. Shoot an eye-level portrait against a softly textured mushroom wall, beginning on the moving jacket and finishing on a composed, direct gaze. Large window light shapes his face cleanly while real fabric folds and lively eyes keep the finished headshot human.",
+    "status": "todo",
+    "file": "headshot.mp4"
+  },
+  {
+    "id": "talking-head",
+    "slot": "format",
+    "label": "Talking head",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A vivid patchwork coat rises into frame as a presenter leans around it, speaks excitedly and points out a crooked seam with a playful grimace. The fictional Irish adult woman has a dark bob and tortoiseshell glasses in an attic sewing room. An eye-level creator camera stays close enough to read lips and eyebrows while her hands remain low. Cool skylight, warm rafters and a small focus correction give the finished talking-head clip authentic momentum.",
+    "status": "todo",
+    "file": "talking-head.mp4"
+  },
+  {
+    "id": "tts",
+    "slot": "format",
+    "label": "Text to speech",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "An older storyteller leans abruptly into a pool of tungsten light, eyes wide and mouth open on a forceful narration beat, then draws the listener closer with one slow beckoning hand. The fictional Egyptian adult has a trimmed gray beard and sits beside a suspended microphone in a navy booth. A gentle handheld push emphasizes the expressive delivery. Close lighting exposes beard hairs and moving facial lines while the microphone remains clear of his lips.",
+    "status": "todo",
+    "file": "tts.mp4"
+  },
+  {
+    "id": "voice-clone",
+    "slot": "format",
+    "label": "Voice clone",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A fictional Guatemalan adult voice performer appears twice in a clean vertical split-screen: identical braid, face and terracotta blouse, one in a recording nook and one on a sunlit veranda. The studio version delivers an animated phrase; the outdoor version immediately mirrors her precise lip shapes and hand emphasis. Locked matching close-ups make the duplicated performance legible at a glance. Warm indoor lamp light contrasts with soft outdoor daylight, while both faces retain natural texture.",
+    "status": "todo",
+    "file": "voice-clone.mp4"
+  },
+  {
+    "id": "music",
+    "slot": "format",
+    "label": "Music",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "Two adult hands slam a dramatic chord on a battered upright piano, throwing a puff of dust into a hard diagonal beam of afternoon light. Frame only forearms, hands and keys, keeping the performer's face outside the shot. A low handheld camera skims along the chipped keyboard as fingers roll into a fast flourish. Worn ivory, vibrating strings glimpsed beneath an open panel and drifting dust give the finished music moment visceral weight.",
+    "status": "todo",
+    "file": "music.mp4"
+  },
+  {
+    "id": "sound-effect",
+    "slot": "format",
+    "label": "Sound effect",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A bronze bowl drops onto a rough stone slab and spins on its rim beside a small unmarked recording microphone. Locked extreme close-up catches the first sharp impact, then visible rim vibration and fine dust jumping from the surface. A narrow window beam lights dents and spinning reflections against a dark studio wall. The object fills the frame, making the implied resonant sound tangible through a forceful physical event rather than equipment imagery.",
+    "status": "todo",
+    "file": "sound-effect.mp4"
+  },
+  {
+    "id": "product-ad",
+    "slot": "format",
+    "label": "Product to ad",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A grapefruit wedge splashes into a coral glass carafe, sending a ribbon of sparkling water over its lip and down onto cream terrazzo. A fast tabletop push freezes into 120fps slow motion at the splash peak, keeping the whole unmarked carafe readable. Hard midday light casts crisp palm-leaf shadows while tiny bubbles cling to the fruit. Wet reflections, fingerprints and translucent pink glass turn the simple product into a vivid finished social advertisement.",
+    "status": "todo",
+    "file": "product-ad.mp4"
+  },
+  {
+    "id": "ad-variants",
+    "slot": "format",
+    "label": "Ad variants",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "A cream canvas running shoe drops onto peach plaster and kicks up a puff of clay dust. Two precise match cuts keep the same shoe aligned as its set changes first to wet black slate with splashing water, then to pale sand with a windblown dune behind it. Use matching low product angles and hard directional light across all three shots. The original unmarked terracotta-paneled shoe stays identical, making the distinct ad variants immediately readable.",
+    "status": "todo",
+    "file": "ad-variants.mp4"
+  },
+  {
+    "id": "turn-to-sand",
+    "slot": "format",
+    "label": "Turn to sand",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "Five seconds, 16:9, 720p. A fictional young adult Black dancer in a cobalt windbreaker stands on a concrete rooftop in late afternoon. His trailing shoulder and arm disintegrate into tan grains that stream sideways while his face remains intact. A 35 mm camera watches at chest height with slight handheld movement. Hard warm sun catches individual particles, fabric folds and natural skin; the blue sky and distant buildings remain stable behind the effect. One continuous take, no cuts. Original fictional adults and objects only; no text, letters, worded signs, logos, brands, celebrities or copyrighted characters.",
+    "status": "done",
+    "file": "turn-to-sand.mp4"
+  },
+  {
+    "id": "cinema-studio",
+    "slot": "tool",
+    "label": "Cinema studio",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "Five seconds, 16:9, 720p. A fictional middle-aged East Asian man in a worn beige trench coat stands in a narrow rain-dark alley at night. He turns back toward the camera as it advances toward his face. Warm red practical light falls across wet pavement, cool reflected light fills the deep passage, and steam drifts around his legs. A 40 mm lens gives plausible perspective, natural skin detail and restrained film grain. One continuous take, no cuts. Original fictional adults and objects only; no text, letters, worded signs, logos, brands, celebrities or copyrighted characters.",
+    "status": "done",
+    "file": "cinema-studio.mp4"
+  },
+  {
+    "id": "influencer",
+    "slot": "tool",
+    "label": "Ai influencer",
+    "aspect": "16:9",
+    "duration": 5,
+    "prompt": "Five seconds, 16:9, 720p. A fictional adult white woman with tied-back brown hair wears a faded charcoal sweatshirt in an ordinary untidy sunlit bedroom. She lifts an unmarked clear cup of iced coffee toward the camera, laughs and lowers it. A wide 24 mm phone lens moves naturally at arm's length, catching mild exposure shifts, visible pores and imperfect focus. Window daylight, rumpled bedding and casual gestures create a believable creator clip. One continuous take, no cuts. Original fictional adults and objects only; no text, letters, worded signs, logos, brands, celebrities or copyrighted characters.",
+    "status": "done",
+    "file": "ai-influencer.mp4"
+  }
+]

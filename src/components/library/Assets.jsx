@@ -1,3 +1,4 @@
+import { PageArt } from '../Art.jsx'
 import { useEffect, useRef, useState } from 'react'
 import { useLibrary } from '../../lib/useLibrary.js'
 import { paletteFrom } from '../../lib/palette.js'
@@ -206,6 +207,7 @@ export default function Assets({ type }) {
     <>
       {list.length === 0 ? (
         <div className="empty glass">
+          <PageArt id={type === 'characters' ? 'character' : type === 'products' ? 'ads' : 'library'} className="empty-art" />
           <p>{k.empty}</p>
           <button className="btn-blue" onClick={() => setEditing('new')}>{k.add}</button>
         </div>

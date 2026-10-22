@@ -1,3 +1,4 @@
+import { PageArt } from '../Art.jsx'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Segmented from '../Segmented.jsx'
@@ -77,6 +78,7 @@ export default function Generations({ gens }) {
   if (!done.length) {
     return (
       <div className="empty glass">
+        <PageArt id="library" className="empty-art" />
         <p>Nothing made yet. Your images, videos and audio land here.</p>
         <Link className="btn-blue" to="/">Start creating</Link>
       </div>
