@@ -152,6 +152,14 @@ await test('SDK submission id is recorded before polling; failed polling request
     onSubmitted: ({ id }) => { assert.equal(id, 'sdk-job-71'); order.push('record') },
   }), /timeout/)
   assert.deepEqual(order, ['submit', 'record', 'wait', 'cancel'])
+  // A cancel that fails is reported with the job id, so the harness stops instead of moving on.
+  const stuck = { ...client, submit: async () => ({ id: 'sdk-job-stuck', wait: async () => { throw new Error('timeout') }, cancel: async () => { throw new Error('HTTP 502') } }) }
+  const err = await core.runComfy('image_flux', varsForTest(), { run: 'instant', podPhase: async () => 'none', createClient: () => stuck, onSubmitted: () => {} }).catch((e) => e)
+  assert.equal(err.uncancelled, 'sdk-job-stuck')
+  const file = ledger()
+  await assert.rejects(paidCall({ file, backend: 'cloud', call: plans.cloud.calls[0], invoke: async () => { throw err } }), /did not cancel/)
+  assert.equal(readLedger(file)[0].outcome, 'uncancelled')
+  assert.equal(ledgerTotal(readLedger(file)), 0.5, 'an uncancelled job keeps its full reservation')
 })
 function varsForTest() { return { prompt: 'test', width: 512, height: 512, count: 1, seed: 71 } }
 

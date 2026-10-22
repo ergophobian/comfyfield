@@ -119,7 +119,9 @@ export async function paidCall({ file, backend, call, runId = randomUUID(), invo
     return result
   } catch (e) {
     // Provider errors can contain signed URLs or echoed keys. Store only class and status.
-    row.outcome = 'failed'
+    // A job that timed out and refused to cancel may still be spending: stop and check the provider.
+    row.outcome = e.uncancelled ? 'uncancelled' : 'failed'
+    if (e.uncancelled) e.message = `Job ${e.uncancelled} did not cancel and may still be running. Cancel it in Comfy Cloud before another run.`
     e.liveCall = true
     row.error = { name: e.name, status: e.status ?? e.httpStatus ?? null }
     throw e
@@ -233,7 +235,7 @@ export async function podProof(core, { file, id, maximum, launchCleanup = launch
   }
 }
 
-export async function execute(backend, { file = ledgerFile, cap = 15, maximum = plans[backend]?.maximum, core, allowPaid = false, print = console.log, dry = false, keys = core?.readKeys() || {} } = {}) {
+export async function execute(backend, { file = ledgerFile, cap = 15, maximum = plans[backend]?.maximum, core, allowPaid = false, print = console.log, dry = false, keys = core?.readKeys() || {}, signal } = {}) {
   const release = acquireLock(`${file}.lock`)
   try {
     const preview = dryRun(backend, { file, cap, maximum, keys })
@@ -260,10 +262,10 @@ export async function execute(backend, { file = ledgerFile, cap = 15, maximum = 
             cursor = catalog.next_cursor
           }
           if (!found) throw new Error('The planned cheapest Router model is unavailable; no substitute submitted.')
-          files = await core.runComfyRouter({ model: call.model, input: call.input, idempotencyKey: hooks.runId }, hooks)
+          files = await core.runComfyRouter({ model: call.model, input: call.input, idempotencyKey: hooks.runId }, { ...hooks, ...(signal && { signal }) })
         } else {
           files = await core.runComfy(call.workflow, call.vars, {
-            run: 'instant', podPhase: async () => 'none', ...hooks,
+            run: 'instant', podPhase: async () => 'none', ...hooks, ...(signal && { signal }),
             timeoutMs: Math.floor(limit / core.CLOUD_USD_PER_GPU_SEC * 1000),
             patchGraph: (graph) => {
               for (const [node, inputs] of Object.entries(call.patch || {})) Object.assign(graph[node].inputs, inputs)
@@ -327,7 +329,10 @@ export async function main(args = process.argv.slice(2)) {
     await assertAccountEmpty(core.pod())
     return
   }
-  const result = await execute(backend, { cap, maximum, core, allowPaid, dry })
+  // Ctrl-C cancels the job in flight instead of leaving it running.
+  const stop = new AbortController()
+  for (const name of ['SIGINT', 'SIGTERM']) process.once(name, () => stop.abort())
+  const result = await execute(backend, { cap, maximum, core, allowPaid, dry, signal: stop.signal })
   if (!dry) console.log(JSON.stringify(result, null, 2))
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

@@ -984,9 +984,9 @@ async function submitAndWait(client, wf, { apiKey, timeoutMs, signal, split }, o
     await onSubmitted({ id: job.id })
     await job.wait(timeoutMs, signal)
   } catch (e) {
-    // A job nobody is waiting on would keep spending.
-    await job.cancel?.().catch(() => null)
-    throw e
+    // A job nobody is waiting on would keep spending, so a cancel that fails is reported, not swallowed.
+    const stopped = job.cancel ? await job.cancel().then(() => true, () => false) : true
+    throw stopped ? e : Object.assign(e, { uncancelled: job.id })
   }
   if (job.status !== 'succeeded') throw new JobFailed(`job ${job.id} ended ${job.status}`, { error: job.error })
   return job
@@ -1053,7 +1053,7 @@ export async function runComfy(workflow, vars = {}, opts = {}) {
       // A Pod is paid by the hour and runs one job at a time, so its runs may take longer: a talking head of
       // 10 to 20 seconds on InfiniteTalk renders for more than 30 minutes.
       const job = await submitAndWait(client, wf, { apiKey: partner, timeoutMs: timeoutMs ?? (target === 'pod' ? 90 : 30) * 60 * 1000, signal: runSignal, split: Boolean(held || onSubmitted) }, async (j) => { submitted = true; await onSubmitted?.(j) })
-      await onComplete({ id: job.id, actualCost: job.metrics?.cost_usd ?? null, seconds: gpuSeconds(job, t0) })
+      await onComplete({ id: job.id, actualCost: null, seconds: gpuSeconds(job, t0) })
       if (target === 'cloud') {
         try { logCloudRun({ seconds: gpuSeconds(job, t0), minVramGb: minVramOf(needs) }) } catch {}
       }
