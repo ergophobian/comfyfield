@@ -88,6 +88,7 @@ export function createEngine({ run, writePrompt, stitch, onChange = () => {}, co
 
   const doneItems = (id) => (S[id]?.items || []).filter((i) => i.status === 'done').sort(cmp)
   const running = (id) => (S[id]?.running || 0) > 0
+  const failed = (id) => (S[id]?.items || []).some((i) => i.status === 'failed')
   const gate = (id) => ({ ...emptyGate(), ...S[id] })
 
   // What a node hands downstream. null means the gate is closed or nothing exists yet.
@@ -98,7 +99,8 @@ export function createEngine({ run, writePrompt, stitch, onChange = () => {}, co
       return widgetReady(n.type, value) ? [{ id: n.id, kind: n.type === 'video' ? 'video' : 'image', url: n.type === 'face' ? value.faceUrl || value.url : value.url, row: 0, take: 0, prompt: '', inputType: n.type, value }] : []
     }
     if (n.type === 'image') return n.data.url ? [{ id: n.id, kind: 'image', url: n.data.url, row: 0, take: 0, prompt: '' }] : []
-    if (['model', 'stitch'].includes(n.type)) return doneItems(id)
+    if (n.type === 'model') return doneItems(id)
+    if (n.type === 'stitch') return doneItems(id).filter((item) => !item.stale)
     if (n.type === 'writer') return S[id]?.sent ? doneItems(id) : null
     if (n.type === 'approve') return gate(id).status === 'sent' ? gate(id).sent : null
     return []
@@ -123,7 +125,7 @@ export function createEngine({ run, writePrompt, stitch, onChange = () => {}, co
           notes.push(...texts)
         } else {
           const out = itemsOf(flow, s)
-          if (!out?.length) blocked = true
+          if (!out?.length || running(s) || failed(s)) blocked = true
           for (const it of out || []) {
             if (it.kind === 'image') images.push(it.url)
             if (it.kind === 'text') notes.push(it.text)
@@ -148,7 +150,7 @@ export function createEngine({ run, writePrompt, stitch, onChange = () => {}, co
       const src = byId(flow, s)
       if (src.type === 'prompt') { promptEdge = true; texts.push(...promptsOf(src)) } else {
         const out = itemsOf(flow, s)
-        if (!out || !out.length) blocked = true
+        if (!out || !out.length || running(s) || failed(s)) blocked = true
         else {
           const written = out.filter((i) => i.kind === 'text').map((i) => i.text)
           if (written.length) { promptEdge = true; texts.push(...written) }
@@ -218,6 +220,14 @@ export function createEngine({ run, writePrompt, stitch, onChange = () => {}, co
     walk(id)
   }
 
+  // A replacement can reuse its item id or URL. Mark existing assemblies stale explicitly,
+  // including across approval gates; Send still keeps all existing downstream outputs.
+  function invalidateStitchesBelow(flow, id) {
+    for (const target of downstreamOf(flow, id)) {
+      if (byId(flow, target).type === 'stitch') edit(target, (s) => ({ items: (s.items || []).map((item) => ({ ...item, stale: true })) }))
+    }
+  }
+
   async function runNode(flow, id) {
     const n = byId(flow, id)
     const units = todo(flow, id)
@@ -233,15 +243,15 @@ export function createEngine({ run, writePrompt, stitch, onChange = () => {}, co
       try {
         const files = await limit(async () => {
           if (n.type === 'stitch') return [await stitch(u.opts)]
-          if (n.type !== 'writer') return run(model, u.opts)
+          if (n.type !== 'writer') return run(model, u.opts, { stepId: id, unitId: u.key })
           if (!writePrompt) throw new Error('Prompt writing is not connected.')
-          const text = await writePrompt(u.opts)
+          const text = await writePrompt(u.opts, { stepId: id, unitId: u.key })
           if (typeof text !== 'string' || !text.trim()) throw new Error('Writer returned no prompt.')
           return [{ kind: 'text', text: text.trim(), prompt: text.trim() }]
         })
         next = files.map((f, i) => ({ ...pending[k], id: `${pending[k].id}#${i}`, kind: model.kind, ...f, status: 'done', created: Date.now() }))
       } catch (e) {
-        next = [{ ...pending[k], status: 'failed', error: e.message || String(e) }]
+        next = [{ ...pending[k], status: 'failed', error: e.message || String(e), ...(e.code && { code: e.code }), ...(e.reason && { reason: e.reason }) }]
       }
       edit(id, (s) => ({ items: s.items.flatMap((i) => (i.id === pending[k].id ? next : [i])) }))
     }))
@@ -251,14 +261,15 @@ export function createEngine({ run, writePrompt, stitch, onChange = () => {}, co
   }
 
   // Dependency-ordered passes. A node runs once per pass, only when every input has data.
-  async function pass(flow, { only = null, skipWithOutput = false } = {}) {
+  async function pass(flow, { only = null, skipWithOutput = false, retryIds = new Set() } = {}) {
     const ran = new Set()
     let total = 0
     for (;;) {
       const ready = topoOrder(flow).filter((id) => {
         const n = byId(flow, id)
         return executable(n) && !ran.has(id) && (!only || only.has(id)) && !running(id)
-          && !(skipWithOutput && doneItems(id).length) && todo(flow, id).length > 0
+          && !(n.type === 'stitch' && n.data.manual)
+          && !(skipWithOutput && !retryIds.has(id) && doneItems(id).length) && todo(flow, id).length > 0
       })
       if (!ready.length) break
       ready.forEach((id) => ran.add(id))
@@ -286,6 +297,14 @@ export function createEngine({ run, writePrompt, stitch, onChange = () => {}, co
       topoOrder(flow)
       syncGates(flow)
       return pass(flow)
+    },
+
+    // Retry keeps successful units, scopes the pass, and never opens an approval gate.
+    async retryFailed(flow, ids = flow.nodes.map((n) => n.id)) {
+      if (Object.values(S).some((s) => s.running > 0)) return { ok: false, reason: 'Already running' }
+      const retryIds = new Set(ids.filter((id) => failed(id)))
+      const only = new Set([...retryIds].flatMap((id) => [id, ...downstreamOf(flow, id)]))
+      return { ok: true, ...await pass(flow, { only, skipWithOutput: true, retryIds }) }
     },
 
     // Regenerate all: wipe every model output and gate, then run from scratch.
@@ -342,6 +361,7 @@ export function createEngine({ run, writePrompt, stitch, onChange = () => {}, co
       if (p.blocked) return { ok: false, reason: 'Waiting on an upstream node or approval' }
       if (running(id)) return { ok: false, reason: 'Already running' }
       edit(id, () => ({ items: [] }))
+      invalidateStitchesBelow(flow, id)
       resetGatesBelow(flow, id)
       const ran = await runNode(flow, id)
       return { ok: true, ran }
@@ -354,6 +374,7 @@ export function createEngine({ run, writePrompt, stitch, onChange = () => {}, co
       for (const s of sources(flow, id)) {
         if (!executable(byId(flow, s)) || running(s) || plan(flow, s).blocked) continue
         edit(s, () => ({ items: [] }))
+        invalidateStitchesBelow(flow, s)
         ran += await runNode(flow, s)
       }
       return { ok: true, ran }

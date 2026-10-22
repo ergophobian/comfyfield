@@ -8,7 +8,13 @@ import { NODE_PACKS, MODEL_DIRS, PACK_DIRS, PACK_ROOTS } from '../shared/modelFi
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 
-export const POD_IMAGE = 'ghcr.io/bchenner/patchwork-comfy:latest'
+// Pinned, so a push to the image does not change every new Pod. PatchWork's pod-image workflow
+// (.github/workflows/pod-image.yml) builds ./docker and pushes :latest plus :<commit sha>. This is the
+// tag of PatchWork release 0.10.4, digest sha256:361ba1d24a1593de07d6af5c249b32e50f6a075bea19ef446b488a0b7482f7e6.
+// To move to a new image: change docker/ in PatchWork and let the workflow build and push it (or run it
+// by hand), read the new :<commit sha> tag and its digest from GHCR, set it here, then boot one Pod to
+// prove it. Never point this at :latest; scripts/pod-checks.mjs fails if you do.
+export const POD_IMAGE = 'ghcr.io/bchenner/patchwork-comfy:9a90879c745b00dc19511d1248b3c50dae4747d7'
 export const PROXY_PORT = 8189
 export const STATUS_PORT = 8190
 export const PROXY_VERSION = '0.1.6'
@@ -58,6 +64,19 @@ const DIRS = MODEL_DIRS.join(' ')
 // The status server downloads into, lists and removes from these: ComfyUI's folders and the packs' own.
 const STATUS_DIRS = [...new Set([...MODEL_DIRS, ...PACK_DIRS])].join(' ')
 
+// ComfyField's fixes to a pinned pack: server/pack-patches/<pack id>/<path in the pack>, each base64-encoded.
+export const PATCH_DIR = path.join(HERE, 'pack-patches')
+export function packPatches(id) {
+  const root = path.join(PATCH_DIR, id)
+  if (!fs.existsSync(root)) return []
+  const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]))
+  return walk(root).map((file) => {
+    const rel = path.relative(root, file).split(path.sep).join('/')
+    if (!safePath(rel)) throw new Error(`Pack patch ${id}/${rel} has an unsafe path.`)
+    return { rel, b64: fs.readFileSync(file).toString('base64') }
+  })
+}
+
 // One case per pack for the installer, and the list the status server reads: id, folder, the classes to
 // look for, and the files it waits for before ComfyUI loads the pack.
 function packCases(packs) {
@@ -68,8 +87,14 @@ function packCases(packs) {
     }
   }
   const extra = (p) => `${p.pip?.length ? ` pip="${p.pip.join(' ')}";` : ''}${p.skip?.length ? ` skip="${p.skip.join('|')}";` : ''}`
+  // Files under server/pack-patches/<id>/ replace the pack's own after checkout, as cf_patch.
+  const patch = (id) => {
+    const files = packPatches(id)
+    if (!files.length) return ''
+    return ` cf_patch() { ${files.map(({ rel, b64 }) => `mkdir -p "$d/${path.posix.dirname(rel)}" && echo ${b64} | base64 -d > "$d/${rel}"`).join(' && ')}; };`
+  }
   return {
-    cases: Object.entries(packs).map(([id, p]) => `  ${id}) repo=https://github.com/${p.repo}.git; commit=${p.commit}; folder=${p.folder};${extra(p)} ;;`).join('\n'),
+    cases: Object.entries(packs).map(([id, p]) => `  ${id}) repo=https://github.com/${p.repo}.git; commit=${p.commit}; folder=${p.folder};${extra(p)}${patch(id)} ;;`).join('\n'),
     list: Object.entries(packs).map(([id, p]) => `${id}\t${p.folder}\t${p.classes.join(',')}\t${(p.before || []).join(',')}`).join('\n'),
   }
 }
@@ -147,6 +172,7 @@ if [ "$(git -C "$d" rev-parse HEAD 2>/dev/null)" != "$commit" ]; then
   { git clone --quiet --filter=blob:none --no-checkout "$repo" "$d" && git -C "$d" fetch --quiet --depth 1 origin "$commit" && git -C "$d" checkout --quiet --force "$commit"; } \\
     || { echo "could not fetch $folder at $commit"; rm -rf "$d"; exit 1; }
 fi
+if declare -F cf_patch >/dev/null; then cf_patch || { echo "could not patch $folder"; exit 1; }; fi
 [ -L "$C/custom_nodes/$folder" ] || rm -rf "$C/custom_nodes/$folder"
 ln -sfn "$d" "$C/custom_nodes/$folder" || { echo "could not link $folder into ComfyUI"; exit 1; }
 "$V" -m pip freeze 2>/dev/null | grep -iE '^(torch|torchvision|torchaudio|numpy|xformers|triton|sageattention|nvidia-[a-z0-9-]+)==' > /root/cf/constraints.txt

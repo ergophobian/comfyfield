@@ -119,6 +119,7 @@ export function createHarness({ adapters = { claude: claudeAdapter, codex: codex
           if (session.stopped) throw new Error('Session stopped')
           return stitch({ ...input, preview: true })
         } })
+        result = flows.report(args.flow_id, result)
       } else result = unwrap(await handlers.get(name)(args))
       if (name === 'add_node') emit(session, { type: 'presence', flowId: args.flow_id, nodeId: result.id, position: result.position })
       emit(session, { type: 'tool', name, state: 'done' })

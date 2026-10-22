@@ -44,16 +44,24 @@ export function PromptNode({ data, selected }) {
 }
 
 export function ImageNode({ id, data, selected }) {
-  const { upload } = useFlow()
+  const { upload, uploads } = useFlow()
   const file = useRef(null)
+  const st = uploads?.[id] || {}
+  const pick = () => !st.busy && file.current.click()
+  const drop = {
+    onDragOver: (e) => e.preventDefault(),
+    onDrop: (e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f && !st.busy) upload(id, f) },
+  }
   return (
     <Shell type="image" selected={selected} output>
-      <input ref={file} type="file" accept="image/*" hidden onChange={(e) => e.target.files[0] && upload(id, e.target.files[0])} />
+      <input ref={file} type="file" accept="image/*" hidden onChange={(e) => { e.target.files[0] && upload(id, e.target.files[0]); e.target.value = '' }} />
       {data.url ? (
-        <button type="button" className="fthumb nodrag" onClick={() => file.current.click()} title="Replace image"><img src={data.url} alt={data.name || ''} /></button>
+        <button type="button" className={`fthumb nodrag${st.busy ? ' busy' : ''}`} onClick={pick} {...drop} title="Replace image" aria-busy={!!st.busy}><img src={data.url} alt={data.name || ''} /></button>
       ) : (
-        <button type="button" className="fdrop nodrag" onClick={() => file.current.click()}>Upload an image</button>
+        <button type="button" className={`fdrop nodrag${st.busy ? ' busy' : ''}`} onClick={pick} {...drop} aria-busy={!!st.busy}>{st.busy ? 'Uploading…' : 'Upload an image'}</button>
       )}
+      {st.busy && data.url && <span className="fstat">Uploading…</span>}
+      {st.error && <span className="fstat bad" role="alert">Upload failed. {st.error}</span>}
     </Shell>
   )
 }
@@ -194,7 +202,7 @@ export function StitchNode({ id, data, selected }) {
     <Shell type="stitch" selected={selected} input output tag={data.aspect}>
       <p>{input.clips.length} {input.clips.length === 1 ? 'clip' : 'clips'} · Captions and music</p>
       {result && <video className="stitch-preview nodrag" src={result.url} controls playsInline preload="metadata" />}
-      <p className={`fstat${failed ? ' bad' : ''}`}>{st.running ? 'Rendering preview' : failed ? failed.error : input.blocked ? 'Add clips or wait for inputs' : 'Select to edit and export'}</p>
+      <p className={`fstat${failed ? ' bad' : ''}`}>{st.running ? 'Rendering preview' : failed ? failed.error : result?.stale ? 'Out of date, stitch again' : input.blocked ? 'Add clips or wait for inputs' : 'Select to edit and export'}</p>
       <button type="button" className="btn-soft xs nodrag" disabled={st.running > 0 || input.blocked} onClick={() => act.rerun(id)}>{result ? 'Render again' : 'Preview'}</button>
     </Shell>
   )

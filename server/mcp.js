@@ -5,6 +5,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod'
 import * as core from './core.js'
 import { flows } from './flows.js'
+import { nodeTypes, sourceTypes, targetTypes } from '../shared/flowRules.js'
 
 const text = (data) => ({ content: [{ type: 'text', text: typeof data === 'string' ? data : JSON.stringify(data, null, 2) }] })
 const fail = (e) => ({ isError: true, content: [{ type: 'text', text: e.message || String(e) }] })
@@ -49,12 +50,12 @@ export function createServer({ invoke, handlers = new Map(), flowService = flows
       count: z.number().int().min(1).max(4).optional().describe('Images per run'),
       duration: z.number().optional().describe('Video length in seconds'),
       image: z.string().optional().describe('Start image: URL or local file path'),
-      out: z.string().optional().describe('Folder to save into. Default .comfyfield/outputs'),
+      out: z.string().optional().describe('Folder to save into. Default outputs in the per-user data folder'),
     },
   }, tool(async ({ out, ...args }) => {
     const cost = await core.estimateCost(args).catch(() => null)
     const files = await core.generate(args)
-    const saved = await core.saveFiles(files, path.resolve(out || path.join(process.env.COMFYFIELD_HOME || '.', '.comfyfield', 'outputs')))
+    const saved = await core.saveFiles(files, path.resolve(out || path.join(core.home(), 'outputs')))
     return {
       files: files.map((f, i) => ({ kind: f.kind, path: saved[i], url: f.url })),
       estimated_cost_usd: cost ? { amount: Number(cost.usd.toFixed(4)), approximate: cost.approx } : null,
@@ -80,17 +81,47 @@ export function createServer({ invoke, handlers = new Map(), flowService = flows
     inputSchema: { idea: z.string(), n: z.number().int().min(1).max(20).optional(), kind: z.enum(['image', 'video']).optional() },
   }, tool(async (a) => ({ prompts: await core.writePrompts(a) })))
 
-  const flow = { flow_id: z.string() }
-  const position = z.object({ x: z.number(), y: z.number() })
-  register('list_flows', { description: 'List locally saved flows.', inputSchema: {} }, tool(() => flowService.read().flows.map(({ id, name }) => ({ id, name }))))
-  register('get_flow', { description: 'Read nodes, connections and run state of a flow.', inputSchema: flow }, tool(({ flow_id }) => ({ flow: flowService.get(flow_id), state: flowService.engine(flow_id).state })))
+  // Flow tools share flows.json with the app (see docs/flows-mcp.md). Errors say what to fix.
+  const flow = { flow_id: z.string().describe('Flow id from list_flows or create_flow') }
+  const position = z.object({ x: z.number(), y: z.number() }).describe('Canvas position in pixels. Default: right of the last node')
+  const data = z.record(z.string(), z.unknown()).describe('Node settings, merged over the defaults. prompt: { text, mode: "single"|"rows" }. model: { model: "<model id>", aspect, duration, takes, count, prompt }. image: { url }. writer: { instructions, note, target }. note: { text }')
+  const nodeType = z.enum(nodeTypes).describe(`Node type. Outputs: ${sourceTypes.join(', ')}. Inputs: ${targetTypes.join(', ')}. A prompt only feeds model or writer`)
+  const newNode = z.object({ id: z.string().optional().describe('Optional id to refer to the node in edges, such as "p" or "video"'), type: nodeType, position: position.optional(), data: data.optional() })
+  const edge = z.object({ source: z.string().describe('Node id that sends its output'), target: z.string().describe('Node id that receives it') })
+  const summary = (f) => ({ id: f.id, name: f.name, nodes: f.nodes.length, updated: f.updated })
+
+  register('list_flows', {
+    description: 'List flows saved in this ComfyField folder. The app shows the same flows in Flows.',
+    inputSchema: {},
+  }, tool(() => flowService.read().flows.map(summary)))
+  register('get_flow', {
+    description: 'Read a flow: nodes, connections and run state (outputs, gate status).',
+    inputSchema: flow,
+  }, tool(({ flow_id }) => ({ flow: flowService.get(flow_id), state: flowService.engine(flow_id).state })))
+  register('create_flow', {
+    description: 'Create a flow. Optionally pass nodes and edges to build it in one call; edges refer to the node ids you set. Does not run anything.',
+    inputSchema: { name: z.string(), nodes: z.array(newNode).max(100).optional(), edges: z.array(edge).max(200).optional() },
+  }, tool((args) => flowService.create(args)))
   register('add_node', {
-    description: 'Add a node to a flow. For model nodes, data.model must be a model object with an id from list_models.',
-    inputSchema: { ...flow, type: z.enum(['prompt', 'image', 'mask', 'face', 'video', 'crop', 'writer', 'stitch', 'model', 'approve', 'output', 'note']), position: position.optional(), data: z.record(z.string(), z.unknown()).optional() },
+    description: 'Add one node to a flow. For a model node set data.model to a model id from list_models. Returns the node with its id.',
+    inputSchema: { ...flow, ...newNode.shape },
   }, tool(({ flow_id, ...args }) => flowService.add(flow_id, args)))
-  register('connect_nodes', { description: 'Connect two nodes without creating a loop.', inputSchema: { ...flow, source: z.string(), target: z.string() } }, tool(({ flow_id, ...args }) => flowService.connect(flow_id, args)))
-  register('update_node', { description: 'Update a node’s data or position.', inputSchema: { ...flow, node_id: z.string(), data: z.record(z.string(), z.unknown()).optional(), position: position.optional() } }, tool(({ flow_id, node_id, ...args }) => flowService.update(flow_id, node_id, args)))
-  register('run_flow', { description: 'Fill gaps in a flow. Approval gates remain closed until the user sends them in Flows. Requires approval in an assistant session.', inputSchema: flow }, tool(({ flow_id }) => flowService.perform(flow_id, 'runNew')))
+  register('connect_nodes', {
+    description: 'Connect the output of source to the input of target. Each node has one input and one output. Loops are refused.',
+    inputSchema: { ...flow, ...edge.shape },
+  }, tool(({ flow_id, ...args }) => flowService.connect(flow_id, args)))
+  register('update_node', {
+    description: 'Change a node\'s data (merged over what it has) or its position.',
+    inputSchema: { ...flow, node_id: z.string(), data: data.optional(), position: position.optional() },
+  }, tool(({ flow_id, node_id, ...args }) => flowService.update(flow_id, node_id, args)))
+  register('remove_node', {
+    description: 'Remove a node, its connections and its results.',
+    inputSchema: { ...flow, node_id: z.string() },
+  }, tool(({ flow_id, node_id }) => flowService.remove(flow_id, node_id)))
+  register('run_flow', {
+    description: 'Run fills gaps: it runs only nodes that have no output yet and spends provider credits. It stops at Approve gates and Writer review; the user must press Send in Flows to continue. Returns outputs and what waits for the user.',
+    inputSchema: flow,
+  }, tool(async ({ flow_id }) => flowService.report(flow_id, await flowService.perform(flow_id, 'runNew'))))
   return server
 }
 

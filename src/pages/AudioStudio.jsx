@@ -7,6 +7,7 @@ import Pop, { Stepper } from '../components/generate/Pop.jsx'
 import Slot from '../components/generate/Slot.jsx'
 import VoicePicker, { defaultVoice } from '../components/generate/Voices.jsx'
 import { Feed, GoButton, PanelTabs, StatusNote, Steps, balanceText, canRun, costText, noun, useSticky } from '../components/generate/parts.jsx'
+import Tip from '../components/generate/Tip.jsx'
 import { useGenModel } from '../components/generate/useGenModel.js'
 import { IconBook, IconFolder, IconGlobe, IconMic, IconWave } from '../components/generate/icons.jsx'
 import { IconSpark, IconVideo } from '../components/Icons.jsx'
@@ -199,7 +200,8 @@ export default function AudioStudio() {
         <div className="gen-main-head">
           <Segmented value={main} onChange={setMain} options={mainTabs} />
         </div>
-        {gens.error && <div className="notice glass error gen-notice">{gens.error}{gens.retry && <button type="button" className="link-btn" onClick={gens.retry}>Retry</button>}</div>}
+        <Tip page="audio" onLearn={() => setMain('how')} />
+        {gens.error && <div className="notice glass error gen-notice">{gens.error}{gens.retry && <button type="button" className="link-btn" onClick={gens.retry}>{gens.retry.label || 'Retry'}</button>}</div>}
         {main === 'how' ? explainer : <Feed kind="audio" gens={gens} batches={[]} empty={explainer} />}
       </section>
     </main>

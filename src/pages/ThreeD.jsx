@@ -5,6 +5,7 @@ import { Chip, Option } from '../components/Composer.jsx'
 import { FormatGrid } from '../components/Recipes.jsx'
 import { IconAspect, IconClock, IconCopy, IconPlus, IconSettings, IconTrash } from '../components/Icons.jsx'
 import { Hero, Box, Pills, Steps, NotWired, Empty, useParam, fitBox } from '../components/studiob/Kit.jsx'
+import Tip, { scrollToHow } from '../components/generate/Tip.jsx'
 import { useApp } from '../lib/appContext.js'
 import { formatById, formatsFor } from '../lib/formats/index.js'
 
@@ -156,7 +157,7 @@ function Scene() {
         </aside>
       </div>
 
-      <section className="sb-section">
+      <section className="sb-section" id="how-3d">
         <div className="studio-sub"><h2>How it works</h2></div>
         <Steps items={[
           { title: 'Build the set', text: 'Describe it, or add boxes, people and lights by hand.' },
@@ -209,6 +210,7 @@ export default function ThreeD() {
         sub="Place props, people, lights and a camera, then render the take to video.">
         <Segmented value={tab} onChange={go} options={[{ value: 'scene', label: 'Scene' }, { value: 'photo', label: 'Photo to 3D model' }, { value: 'text', label: 'Text to 3D' }]} />
       </Hero>
+      {tab === 'scene' && <Tip page="3d" onLearn={scrollToHow('how-3d')} />}
       {tab === 'scene' ? <Scene /> : <ModelTab id={tabs[tab]} others={others} />}
     </main>
   )

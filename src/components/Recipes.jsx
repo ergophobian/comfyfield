@@ -83,10 +83,10 @@ export function RecipeSheet({ recipe, gens, connections, onClose, initial }) {
     setRunning(true)
     setError(null)
     try {
-      const next = await gens.generateFormat(recipe, values)
+      const next = await gens.generateFormat(recipe, values, { onSession: setSession })
       if (next.flow.nodes.some((node) => ['writer', 'approve'].includes(node.type))) setSession(next)
       else close()
-    } catch (e) { setError(e.message) }
+    } catch (e) { if (e.session) setSession(e.session); setError(e.message) }
     finally { setRunning(false) }
   }
 
@@ -108,7 +108,7 @@ export function RecipeSheet({ recipe, gens, connections, onClose, initial }) {
               <Field key={input.id} input={input} value={values[input.id]} onChange={(v) => set(input.id, v)} setError={setError} />
             ))}
           </div>
-          {error && <p className="sheet-error">{error}</p>}
+          {error && !session && <p className="sheet-error">{error}</p>}
           {session && <FormatReview session={session} />}
           {wired && !connected && <p className="sheet-note">This runs on {provider.name}. <Link to="/connections">Add your key</Link> to use it.</p>}
         </div>
