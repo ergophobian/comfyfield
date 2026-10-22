@@ -687,6 +687,29 @@ await test('fixes: a 405 while the Pod restarts ComfyUI retries twice on a fresh
   await assert.rejects(core.runComfy('image_sdxl', sdxl, { lease, podPhase: ready, pause, createClient: () => thrice }), /HTTP 405/)
   assert.deepEqual([leases, runs], [3, 3])
   assert.deepEqual([...deadlines], [90 * 60 * 1000], 'a Pod run may take 90 minutes, for long talking heads')
+  // A 502 after the Pod accepted the job is a failed poll, not a restart: sending it again would queue a paid copy.
+  leases = 0
+  pauses.length = 0
+  let submits = 0
+  const accepted = {
+    workflows: { fromFile: async () => ({ json: null, setInput() {} }) },
+    submit: async () => { submits++; return { id: 'j1', wait: async () => { throw Object.assign(new Error('HTTP 502'), { httpStatus: 502 }) } } },
+  }
+  await assert.rejects(core.runComfy('image_sdxl', sdxl, { lease, podPhase: ready, pause, createClient: () => accepted }), /HTTP 502/)
+  assert.deepEqual([leases, submits, pauses.length], [1, 1, 0], 'an accepted job is never submitted twice')
+  submits = 0
+  let refused = 1
+  const restarting = {
+    workflows: { fromFile: async () => ({ json: null, setInput() {} }) },
+    submit: async () => {
+      submits++
+      if (refused-- > 0) throw Object.assign(new Error('HTTP 405'), { httpStatus: 405 })
+      return { id: 'j2', status: 'succeeded', wait: async () => {}, outputs: [{ contentType: 'image/png', name: 'a.png', type: 'image', toBytes: async () => Buffer.from('png') }] }
+    },
+  }
+  const sent = await core.runComfy('image_sdxl', sdxl, { lease, podPhase: ready, pause, createClient: () => restarting })
+  assert.equal(sent[0].kind, 'image')
+  assert.equal(submits, 2, 'a refused submit is sent again')
 })
 
 await test('fixes: a status that arrives after its Pod ended is dropped, and a new Pod starts as starting', async () => {

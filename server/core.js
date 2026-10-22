@@ -6,7 +6,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { randomUUID } from 'node:crypto'
 import { setTimeout as delay } from 'node:timers/promises'
-import { Comfy } from '@comfyorg/sdk'
+import { Comfy, JobFailed } from '@comfyorg/sdk'
 import { models as pinned, falCategories, podWorkflows, routerWriterModel } from '../src/lib/catalog.js'
 import { comfyVars, comfyRouterInput, falInput, estimate, fill, falEndpointFor, dropOptional } from '../shared/mapping.js'
 import { renderStitch } from './stitch.js'
@@ -947,9 +947,19 @@ async function resolveComfyRoute(original, vars, { run, podPhase, podVram, podAr
   return { ...selected, target }
 }
 
+// Submits, then waits, so the caller knows whether the job reached the server before a failure.
+async function submitAndWait(client, wf, { apiKey, timeoutMs, signal }, onSubmitted) {
+  if (!client.submit) return client.run(wf, { apiKey, timeoutMs, ...(signal ? { signal } : {}) })
+  const job = await client.submit(wf, { apiKey, ...(signal ? { signal } : {}) })
+  onSubmitted()
+  await job.wait(timeoutMs, signal)
+  if (job.status !== 'succeeded') throw new JobFailed(`job ${job.id} ended ${job.status}`, { error: job.error })
+  return job
+}
+
 // Runs a bundled workflow on Comfy Cloud or the Pod, or in development on a local ComfyUI, and returns file URLs.
 export async function runComfy(workflow, vars = {}, opts = {}) {
-  const { createClient = (key, baseUrl) => comfyClient(baseUrl, key), lease = (o) => pod().lease(o), podPhase = () => pod().phaseNow(), podVram = () => pod().vramGb(), podRoom = () => pod().room(), podArch = () => pod().arch(), run = runType(), signal, retried = 0, pause = sleep } = opts
+  const { createClient = (key, baseUrl) => comfyClient(baseUrl, key), lease = (o) => pod().lease(o), podPhase = () => pod().phaseNow(), podVram = () => pod().vramGb(), podRoom = () => pod().room(), podArch = () => pod().arch(), run = runType(), signal, retried = 0, pause = (ms, s) => delay(ms, undefined, s ? { signal: s } : undefined) } = opts
   signal?.throwIfAborted()
   const original = workflowGraph(workflow, vars)
   let { file, template, graph } = original
@@ -996,6 +1006,7 @@ export async function runComfy(workflow, vars = {}, opts = {}) {
       client = createClient(partner)
     }
     const where = target === 'pod' ? 'The Pod' : 'Comfy Cloud'
+    let submitted = false
     try {
       signal?.throwIfAborted()
       const wf = await client.workflows.fromFile(file)
@@ -1006,7 +1017,7 @@ export async function runComfy(workflow, vars = {}, opts = {}) {
       const runSignal = signal && held?.signal ? AbortSignal.any([signal, held.signal]) : signal || held?.signal
       // A Pod is paid by the hour and runs one job at a time, so its runs may take longer: a talking head of
       // 10 to 20 seconds on InfiniteTalk renders for more than 30 minutes.
-      const job = await client.run(wf, { apiKey: partner, timeoutMs: (target === 'pod' ? 90 : 30) * 60 * 1000, ...(runSignal ? { signal: runSignal } : {}) })
+      const job = await submitAndWait(client, wf, { apiKey: partner, timeoutMs: (target === 'pod' ? 90 : 30) * 60 * 1000, signal: runSignal }, () => { submitted = true })
       if (target === 'cloud') {
         try { logCloudRun({ seconds: gpuSeconds(job, t0), minVramGb: minVramOf(needs) }) } catch {}
       }
@@ -1029,11 +1040,12 @@ export async function runComfy(workflow, vars = {}, opts = {}) {
       if (e.httpStatus === 402 || e.code === 'insufficient_credits') throw comfyError({ status: 402 }, {})
       // The Pod's proxy answers 405, 502 or 503 while ComfyUI restarts to load a node pack the run just
       // installed, and a second pack can restart it again. Each retry waits, then takes a fresh lease.
-      if (held && retried < 2 && [405, 502, 503].includes(e.httpStatus)) {
+      // Only a job the Pod never accepted is sent again: a failed poll would otherwise queue and pay for a copy.
+      if (held && !submitted && retried < 2 && [405, 502, 503].includes(e.httpStatus)) {
         held.release()
         held = null
         signal?.throwIfAborted()
-        await pause(20_000)
+        await pause(20_000, signal)
         signal?.throwIfAborted()
         return runComfy(workflow, vars, { ...opts, retried: retried + 1 })
       }
