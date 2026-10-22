@@ -244,6 +244,32 @@ export function saveMedia(buf, ext) {
   return { url: `/media/${name}`, path: file }
 }
 
+// CLI proofs use the same local media URLs and item shape as browser generations.
+const importsFile = () => path.join(home(), 'generation-imports.json')
+export function libraryImports() {
+  if (!fs.existsSync(importsFile())) return []
+  return JSON.parse(fs.readFileSync(importsFile(), 'utf8'))
+}
+export function dismissLibraryImport(id) {
+  fs.writeFileSync(importsFile(), JSON.stringify(libraryImports().filter((item) => item.id !== id)))
+}
+export async function saveToLibrary(files, metadata = {}) {
+  const items = []
+  for (const f of files) {
+    let local = f
+    if (!f.url?.startsWith('/media/')) {
+      const r = await fetch(f.url)
+      if (!r.ok) throw new Error(`Library download failed (${r.status}).`)
+      local = { ...f, ...saveMedia(Buffer.from(await r.arrayBuffer()), mimeExt(r.headers.get('content-type') || (f.kind === 'video' ? 'video/mp4' : 'image/png'))) }
+    }
+    const { path: localPath, ...file } = local
+    items.push({ ...metadata, ...file, id: randomUUID(), created: Date.now(), imported: true })
+  }
+  fs.mkdirSync(home(), { recursive: true })
+  fs.writeFileSync(importsFile(), JSON.stringify([...items, ...libraryImports()], null, 2))
+  return items
+}
+
 // Gemini TTS returns raw 16-bit PCM at 24 kHz; wrap it in a WAV header so browsers can play it.
 function pcmToWav(pcm, rate = 24000) {
   const h = Buffer.alloc(44)
@@ -575,7 +601,7 @@ async function withRouterFiles(value) {
   return value
 }
 
-export async function runComfyRouter({ model, input, idempotencyKey = randomUUID() }, { pause = sleep, signal } = {}) {
+export async function runComfyRouter({ model, input, idempotencyKey = randomUUID() }, { pause = sleep, signal, onSubmitted = () => {}, onComplete = () => {} } = {}) {
   let requestId
   try {
     if (!/^[\w.-]+\/[\w./-]+$/.test(model) || model.split('/').includes('..')) throw new Error('Use a Comfy Router provider/model id.')
@@ -586,6 +612,7 @@ export async function runComfyRouter({ model, input, idempotencyKey = randomUUID
     if (!response.ok || job.error_type) throw Object.assign(comfyError(response, job), { idempotencyKey })
     if (!job.request_id) throw Object.assign(new Error('Comfy Router did not return a request id.'), { code: 'invalid_response', retryable: true })
     requestId = job.request_id
+    await onSubmitted({ id: job.request_id })
     // Derive URLs from the documented route so credentials never follow an arbitrary response URL.
     const resultUrl = `${base}/${encodeURIComponent(job.request_id)}`
     let previous = response
@@ -608,11 +635,13 @@ export async function runComfyRouter({ model, input, idempotencyKey = randomUUID
       if (result.ok && (/^audio\//.test(mime) || (mime === 'application/octet-stream' && model.startsWith('elevenlabs/')))) {
         const buf = Buffer.from(await result.arrayBuffer())
         if (!buf.length) throw new Error('Comfy Router returned empty audio.')
+        await onComplete({ id: job.request_id, actualCost: null })
         return [{ ...saveMedia(buf, mime === 'application/octet-stream' || mime.includes('mpeg') ? 'mp3' : mimeExt(mime)), kind: 'audio' }]
       }
       const data = await routerJson(result)
       if (!result.ok || data.error_type) throw comfyError(result, { request_id: job.request_id, ...data })
       if (!Object.keys(data).length) throw comfyError(result, { request_id: job.request_id, error_type: 'invalid_response', retryable: true, message: 'Router returned an invalid result response. Retry with the same request key.' })
+      await onComplete({ id: job.request_id, actualCost: data.cost_usd ?? null })
       return routerFiles(data, model)
     }
     throw new Error(`Comfy Router took too long. Request ${job.request_id} may still be running; do not submit again without checking it.`)
@@ -947,19 +976,25 @@ async function resolveComfyRoute(original, vars, { run, podPhase, podVram, podAr
   return { ...selected, target }
 }
 
-// On a Pod, submits and then waits, so a retry knows whether the job reached the Pod before a failure.
-async function submitAndWait(client, wf, { apiKey, timeoutMs, signal, pod }, onSubmitted) {
-  if (!pod || !client.submit) return client.run(wf, { apiKey, timeoutMs, ...(signal ? { signal } : {}) })
+// Submits and then waits when the caller must know whether the job was accepted: a Pod retry, or the spend ledger.
+async function submitAndWait(client, wf, { apiKey, timeoutMs, signal, split }, onSubmitted) {
+  if (!split || !client.submit) return client.run(wf, { apiKey, timeoutMs, ...(signal ? { signal } : {}) })
   const job = await client.submit(wf, { apiKey, ...(signal ? { signal } : {}) })
-  onSubmitted()
-  await job.wait(timeoutMs, signal)
+  try {
+    await onSubmitted({ id: job.id })
+    await job.wait(timeoutMs, signal)
+  } catch (e) {
+    // A job nobody is waiting on would keep spending, so a cancel that fails is reported, not swallowed.
+    const stopped = job.cancel ? await job.cancel().then(() => true, () => false) : true
+    throw stopped ? e : Object.assign(e, { uncancelled: job.id })
+  }
   if (job.status !== 'succeeded') throw new JobFailed(`job ${job.id} ended ${job.status}`, { error: job.error })
   return job
 }
 
 // Runs a bundled workflow on Comfy Cloud or the Pod, or in development on a local ComfyUI, and returns file URLs.
 export async function runComfy(workflow, vars = {}, opts = {}) {
-  const { createClient = (key, baseUrl) => comfyClient(baseUrl, key), lease = (o) => pod().lease(o), podPhase = () => pod().phaseNow(), podVram = () => pod().vramGb(), podRoom = () => pod().room(), podArch = () => pod().arch(), run = runType(), signal, retried = 0, pause = (ms, s) => delay(ms, undefined, s ? { signal: s } : undefined) } = opts
+  const { createClient = (key, baseUrl) => comfyClient(baseUrl, key), lease = (o) => pod().lease(o), podPhase = () => pod().phaseNow(), podVram = () => pod().vramGb(), podRoom = () => pod().room(), podArch = () => pod().arch(), run = runType(), signal, retried = 0, pause = (ms, s) => delay(ms, undefined, s ? { signal: s } : undefined), patchGraph = (g) => g, onSubmitted, onComplete = () => {}, timeoutMs } = opts
   signal?.throwIfAborted()
   const original = workflowGraph(workflow, vars)
   let { file, template, graph } = original
@@ -1010,14 +1045,15 @@ export async function runComfy(workflow, vars = {}, opts = {}) {
     try {
       signal?.throwIfAborted()
       const wf = await client.workflows.fromFile(file)
-      wf.json = graph
+      wf.json = patchGraph(graph)
       for (const { id, field, key } of uploads) wf.setInput(id, field, client.assets.fromBytes(media[key].buf, { filename: `input.${mimeExt(media[key].mime)}`, contentType: media[key].mime }))
       const t0 = Date.now()
       signal?.throwIfAborted()
       const runSignal = signal && held?.signal ? AbortSignal.any([signal, held.signal]) : signal || held?.signal
       // A Pod is paid by the hour and runs one job at a time, so its runs may take longer: a talking head of
       // 10 to 20 seconds on InfiniteTalk renders for more than 30 minutes.
-      const job = await submitAndWait(client, wf, { apiKey: partner, timeoutMs: (target === 'pod' ? 90 : 30) * 60 * 1000, signal: runSignal, pod: Boolean(held) }, () => { submitted = true })
+      const job = await submitAndWait(client, wf, { apiKey: partner, timeoutMs: timeoutMs ?? (target === 'pod' ? 90 : 30) * 60 * 1000, signal: runSignal, split: Boolean(held || onSubmitted) }, async (j) => { submitted = true; await onSubmitted?.(j) })
+      await onComplete({ id: job.id, actualCost: null, seconds: gpuSeconds(job, t0) })
       if (target === 'cloud') {
         try { logCloudRun({ seconds: gpuSeconds(job, t0), minVramGb: minVramOf(needs) }) } catch {}
       }

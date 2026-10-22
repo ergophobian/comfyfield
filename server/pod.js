@@ -281,6 +281,7 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
       },
       spend: { today: spentToday(), cap: cap() },
       runs: m.leases.size, queue: m.status?.queue ?? null, downloads: downloads(), runtimes: runtimes(),
+      safety: { selfTerminateReady: m.status?.selfTerminateReady === true, proofDeadline: m.status?.proofDeadline ?? null },
       // What is on the Pod's disk, for the Pods page. Known only while the Pod runs.
       models: m.status?.models || [], disk: m.status ? { freeGb: m.status.diskFreeGb ?? null, totalGb: m.status.diskTotalGb ?? null } : null,
       evicted: m.status?.evicted || [], preparing: Boolean(rec?.prepare),
@@ -348,8 +349,9 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
   // by hand ({ gpuTypeId, cloudType } from the ladder) is the only one tried. A Session tier's `order`
   // lists the GPUs to try in its order instead of the ladder's. `prepare` ({ files, runtimes }) gets the
   // Pod ready for services before their first run, as soon as it answers.
-  async function start({ minVramGb = 0, volumeGb = 60, runtimes: want = [], gpu = null, order = null, tier = null, prepare: ready = null } = {}) {
+  async function start({ minVramGb = 0, volumeGb = 60, runtimes: want = [], gpu = null, order = null, tier = null, prepare: ready = null, proof = null } = {}) {
     if (!key()) throw fail('Add your RunPod key in Connections first.', 400)
+    if (proof && (!/^[a-f0-9-]{36}$/.test(proof.id) || !Number.isSafeInteger(proof.terminateAt) || proof.terminateAt <= now() || proof.terminateAt > now() + LIFETIME)) throw fail('Invalid proof safety settings.', 400)
     await adopt({ force: true }).catch(() => null)
     if (record() || m.placing) throw fail('A Pod already exists. ComfyField runs one Pod at a time.', 409)
     const spent = spentToday()
@@ -373,11 +375,11 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
       rungs = rungs.filter((r) => r.vramGb >= runtime.vramGb)
       if (!rungs.length) throw fail(`${runtime.name} needs a ${runtime.vramGb} GB GPU.`, 400)
     }
-    const idleMin = idleMinutes(keys().idle)
+    const idleMin = proof ? 10 : idleMinutes(keys().idle)
     m.placing = true
     m.event = null
     const token = randomBytes(24).toString('hex')
-    const name = `${PREFIX}${now().toString(36)}`
+    const name = proof ? `${PREFIX}live-${proof.id}` : `${PREFIX}${now().toString(36)}`
     // The newest video models are 40-44 GB each, so the volume holds at least two of them, and it
     // always has room for the runtimes the Pod installs.
     const volume = Math.max(MIN_VOLUME_GB, Math.ceil(Math.max(volumeGb, want.length ? volumeFor(want.map((id) => RUNTIMES[id])) : 0) / 10) * 10)
@@ -387,7 +389,7 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
         const r = await rest('/pods', { method: 'POST', timeoutMs: 60_000, body: {
           name, imageName: POD_IMAGE, gpuTypeIds: [rung.gpuTypeId], gpuCount: 1, cloudType: rung.cloudType,
           containerDiskInGb: 50, volumeInGb: volume, volumeMountPath: '/workspace',
-          ports: [`${PROXY_PORT}/http`, `${STATUS_PORT}/http`], env: podEnv({ token, idleMin, runtimes: want }), dockerStartCmd: podStartCmd(),
+          ports: [`${PROXY_PORT}/http`, `${STATUS_PORT}/http`], env: podEnv({ token, idleMin, runtimes: want, terminateAt: proof?.terminateAt }), dockerStartCmd: podStartCmd(),
         } })
         if (r.ok && r.data?.id) {
           const t = now()
@@ -670,5 +672,27 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
     return gql('query { myself { id } }').then((d) => Boolean(d?.myself?.id)).catch(() => false)
   }
 
-  return { status, quote, start, pause, resume, terminate, keep, lease, prepare, remove, tick, refresh, phaseNow, vramGb, arch, room, models, startMonitor, stopMonitor, test, guard, spentToday }
+  // Account-wide recovery must also find stopped Pods and Pods missing from pod.json.
+  async function sweep({ dryRun = false, prefix = PREFIX } = {}) {
+    if (!key()) throw fail('Add your RunPod key in Connections first.', 400)
+    if (!prefix.startsWith(PREFIX)) throw fail('Sweep only targets ComfyField Pods.', 400)
+    const r = await rest('/pods')
+    if (!r.ok) throw restError(r, 'list Pods')
+    const rows = Array.isArray(r.data) ? r.data : r.data?.data
+    if (!Array.isArray(rows)) throw fail('RunPod returned an unreadable Pod list.', 502)
+    const found = rows.filter((p) => p.name?.startsWith(prefix) && p.desiredStatus !== 'TERMINATED')
+    const results = []
+    for (const p of found) {
+      let terminated = false
+      if (!dryRun) {
+        const end = await rest(`/pods/${encodeURIComponent(p.id)}`, { method: 'DELETE' })
+        terminated = end.ok || end.status === 404
+        if (terminated && record()?.id === p.id) clear('Terminated by the live-run sweep.')
+      }
+      results.push({ id: p.id, name: p.name, status: p.desiredStatus, terminated })
+    }
+    return results
+  }
+
+  return { status, quote, start, pause, resume, terminate, keep, lease, prepare, remove, tick, refresh, phaseNow, vramGb, arch, room, models, startMonitor, stopMonitor, test, guard, spentToday, sweep }
 }

@@ -340,6 +340,11 @@ function mount(server, harness) {
         return send(res, 200, await upload(req, core.saveMedia))
       }
       if (url.pathname === '/api/library/import' && req.method === 'POST') return send(res, 200, await importUrl(await body(req)))
+      if (url.pathname === '/api/library/generations' && req.method === 'GET') return send(res, 200, core.libraryImports())
+      if (url.pathname === '/api/library/generations' && req.method === 'DELETE') {
+        core.dismissLibraryImport((await body(req)).id)
+        return send(res, 200, { ok: true })
+      }
       if (url.pathname.startsWith('/api/library/') && await libraryRoute(req, res, url)) return
       if (url.pathname.startsWith('/media/')) {
         const file = core.mediaPath(url.pathname)
