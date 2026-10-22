@@ -139,6 +139,7 @@ print(json.dumps({
   'noHeartbeatBusy': d(hb=10000 - 600, busy=True),
   'neverBeaten': d(hb=None, ready_at=10000 - 600),
   'idle': d(idle=780),
+  'busy': [m.is_busy(0, False, 9990, 10000), m.is_busy(0, False, 9900, 10000), m.is_busy(0, False, None, 10000), m.is_busy(None, False, None, 10000), m.is_busy(2, False, None, 10000), m.is_busy(0, True, None, 10000)],
   'nextIdle': [m.next_idle(30, 0, 0, False, 15), m.next_idle(30, 5, 0, False, 15), m.next_idle(30, None, 0, False, 15), m.next_idle(30, 0, None, False, 15), m.next_idle(30, 0, 0, True, 15)],
 }))`
   const r = spawnSync(python[0], [...python.slice(1), '-c', code, statusd], { encoding: 'utf8' })
@@ -155,7 +156,37 @@ print(json.dumps({
   assert.equal(out.noHeartbeatBusy, null)
   assert.match(out.neverBeaten, /no heartbeat since it became ready/)
   assert.match(out.idle, /idle for 13 minutes/)
+  assert.deepEqual(out.busy, [true, false, false, true, true, true], 'a run leased in the last minute keeps the Pod busy until its downloads or queue start')
   assert.deepEqual(out.nextIdle, [45, 0, 0, 0, 0], 'only a known-idle GPU and queue count; unknown is busy')
+})
+
+await test('fixes: a ready pack that no longer loads after a ComfyUI start is marked failed, once per start', { skip: !python && 'no Python 3.9+ found' }, () => {
+  const code = `
+import importlib.util, json, sys
+spec = importlib.util.spec_from_file_location('statusd', sys.argv[1])
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+m.PACKS = {'chatterbox': {'folder': 'ComfyUI_Fill-ChatterBox', 'classes': ['FL_ChatterboxVC'], 'before': []}, 'vhs': {'folder': 'VHS', 'classes': ['VHS_LoadVideo'], 'before': []}}
+m.RUNTIMES = {'chatterbox': {'state': 'ready', 'error': None, 'startedAt': 0, 'endedAt': 1}, 'vhs': {'state': 'ready', 'error': None, 'startedAt': 0, 'endedAt': 1}}
+m.comfy_started = lambda: 1000
+m.comfy_error = lambda folder: 'Cannot import %s: No module named perth' % folder
+asked = []
+def lists(classes):
+  asked.append(classes[0])
+  return classes[0] != 'FL_ChatterboxVC'
+m.lists_classes = lists
+m.recheck_packs(True, 1005)
+early = list(asked)
+m.recheck_packs(True, 1100)
+m.recheck_packs(True, 1200)
+print(json.dumps({'early': early, 'asked': asked, 'chatterbox': m.RUNTIMES['chatterbox'], 'vhs': m.RUNTIMES['vhs']['state']}))`
+  const r = spawnSync(python[0], [...python.slice(1), '-c', code, statusd], { encoding: 'utf8' })
+  assert.equal(r.status, 0, r.stderr)
+  const out = JSON.parse(r.stdout)
+  assert.deepEqual(out.early, [], 'no check in the first seconds after a start, while the old ComfyUI may still answer')
+  assert.deepEqual(out.asked.sort(), ['FL_ChatterboxVC', 'VHS_LoadVideo'], 'each pack is checked once per ComfyUI start')
+  assert.equal(out.chatterbox.state, 'failed')
+  assert.match(out.chatterbox.error, /No module named perth/)
+  assert.equal(out.vhs, 'ready')
 })
 
 await test('status server: auth, status, heartbeat, downloads and a boot-deadline terminate', { skip: !python && 'no Python 3.9+ found' }, async (t) => {
@@ -254,6 +285,8 @@ function fakeRunpod(clock) {
     if (u.pathname === '/heartbeat') return reply(null, 204)
     if (u.pathname === '/download') return reply({ downloads: {} }, 202)
     if (u.pathname.startsWith('/runtime/')) return reply({ runtime: { state: 'installing', error: null, sec: 0 } }, 202)
+    // A held status answer, like a slow Pod while the app ends it.
+    if (f.gate && u.pathname === '/status') await f.gate
     return f.statusd ? reply(f.statusd) : reply({ error: 'not reachable' }, 502)
   }
   f.count = (pred) => f.calls.filter(pred).length
@@ -576,6 +609,98 @@ await test('runs: no Pod, an ended Pod and the sandbox each fail the run with a 
   const sandbox = async () => ({ sandbox: true, release: () => released++ })
   await assert.rejects(core.runComfy('image_sdxl', sdxl, { lease: sandbox, podPhase: ready, createClient }), /sandbox Pod, so nothing renders/)
   assert.equal(released, 2)
+})
+
+await test('fixes: a Pod run follows job links on the Pod\'s private address through the public proxy, with the Pod token', async () => {
+  podMode()
+  const lease = async () => ({ baseUrl: 'https://pod1-8189.proxy.runpod.net', token: 'pod-token', sandbox: false, signal: new AbortController().signal, reason: () => null, release() {} })
+  // comfy-api-proxy builds these from the Pod's own address, which only RunPod's network reaches.
+  const own = 'http://100.65.31.61:60239/api/v2/jobs/pod-job'
+  const job = { id: 'pod-job', status: 'queued', created_at: '2026-10-17T00:00:00Z', started_at: null, completed_at: null, expires_at: null, queue_position: 0, progress: null, outputs: [], error: null, urls: { self: own, events: `${own}/events`, cancel: `${own}/cancel` } }
+  const seen = []
+  globalThis.fetch = async (url, init = {}) => {
+    const u = new URL(url)
+    seen.push(`${init.method || 'GET'} ${u.host}${u.pathname}`)
+    assert.equal(u.host, 'pod1-8189.proxy.runpod.net', `a request went to ${u.host}`)
+    assert.equal(new Headers(init.headers).get('Authorization'), 'Bearer pod-token')
+    if (u.pathname === '/api/v2/jobs') return jsonReply(job, 201)
+    if (u.pathname === '/api/v2/jobs/pod-job') return jsonReply({ ...job, status: 'succeeded', outputs: [{ node_id: '7', name: 'fox.png', type: 'image', content_type: 'image/png', size_bytes: 3, id: 'out-1', hash: null, url: null, url_expires_at: null }] })
+    if (u.pathname === '/api/v2/assets/out-1/content') return new Response('png', { headers: { 'Content-Type': 'image/png' } })
+    throw new Error(`Unexpected SDK request ${u.pathname}`)
+  }
+  const files = await core.runComfy('image_sdxl', sdxl, { lease, podPhase: ready })
+  assert.equal(fs.readFileSync(files[0].path, 'utf8'), 'png')
+  assert(seen.includes('GET pod1-8189.proxy.runpod.net/api/v2/jobs/pod-job'), seen.join(', '))
+
+  // The token never follows a link to a public host, and every request keeps the SDK's long-call limits.
+  const sent = []
+  const f = core.podFetch('https://pod1-8189.proxy.runpod.net', 'pod-token', async (url, init) => { sent.push({ url, auth: new Headers(init.headers).get('Authorization'), limits: Boolean(init.dispatcher) }); return new Response('{}') })
+  await f('http://10.0.0.5:8189/api/v2/jobs/j1', {})
+  await f('https://cdn.example.com/out.png', {})
+  assert.deepEqual(sent.map((s) => [s.url, s.auth]), [['https://pod1-8189.proxy.runpod.net/api/v2/jobs/j1', 'Bearer pod-token'], ['https://cdn.example.com/out.png', null]])
+  assert(sent.every((s) => s.limits))
+})
+
+await test('fixes: a 405 while the Pod restarts ComfyUI retries twice on a fresh lease after a pause, and a third one fails', async () => {
+  podMode()
+  let leases = 0
+  let runs = 0
+  const lease = async () => { leases++; return { baseUrl: 'https://pod1-8189.proxy.runpod.net', token: 't', sandbox: false, signal: new AbortController().signal, reason: () => null, release() {} } }
+  const deadlines = new Set()
+  const client = (fails) => ({
+    workflows: { fromFile: async () => ({ json: null, setInput() {} }) },
+    run: async (wf, o) => {
+      deadlines.add(o.timeoutMs)
+      if (++runs <= fails) throw Object.assign(new Error('HTTP 405'), { httpStatus: 405 })
+      return { outputs: [{ contentType: 'image/png', name: 'a.png', type: 'image', toBytes: async () => Buffer.from('png') }] }
+    },
+  })
+  const pauses = []
+  const pause = async (ms) => { pauses.push(ms) }
+  const twice = client(2)
+  const files = await core.runComfy('image_sdxl', sdxl, { lease, podPhase: ready, pause, createClient: () => twice })
+  assert.equal(files[0].kind, 'image')
+  assert.deepEqual([leases, runs], [3, 3])
+  assert.deepEqual(pauses, [20_000, 20_000], 'each retry waits for ComfyUI to come back')
+  leases = 0
+  runs = 0
+  const thrice = client(3)
+  await assert.rejects(core.runComfy('image_sdxl', sdxl, { lease, podPhase: ready, pause, createClient: () => thrice }), /HTTP 405/)
+  assert.deepEqual([leases, runs], [3, 3])
+  assert.deepEqual([...deadlines], [90 * 60 * 1000], 'a Pod run may take 90 minutes, for long talking heads')
+})
+
+await test('fixes: a status that arrives after its Pod ended is dropped, and a new Pod starts as starting', async () => {
+  const { pod, rp } = setup()
+  await pod.start()
+  rp.statusd = readyStatus({ diskFreeGb: 12, diskTotalGb: 322 })
+  assert.equal((await pod.tick()).phase, 'ready')
+  let open
+  rp.gate = new Promise((r) => { open = r })
+  const late = pod.refresh()
+  await new Promise((r) => setTimeout(r, 10))
+  await pod.terminate({ now: true })
+  rp.gate = null
+  open()
+  await late
+  assert.equal(pod.status().disk, null, 'the ended Pod\'s answer is not kept')
+  rp.statusd = null
+  const s = await pod.start()
+  assert.equal(s.phase, 'starting')
+  assert.equal(s.disk, null)
+})
+
+await test('fixes: a lease tells the Pod a run is on its way, so its watchdog keeps it past the lifetime limit', async () => {
+  const { pod, rp } = setup()
+  await pod.start()
+  rp.statusd = readyStatus()
+  await pod.tick()
+  const held = await pod.lease({ files: [] })
+  const beats = () => rp.calls.filter((c) => c.path === '/heartbeat').map((c) => c.body?.leases)
+  assert.equal(beats().at(-1), 1)
+  held.release()
+  await pod.tick()
+  assert.equal(beats().at(-1), 0)
 })
 
 await test('runs: Comfy Cloud + Pod is a saved choice, and the needs of a workflow size the Pod', () => {
@@ -1595,6 +1720,20 @@ await test('node packs: a graph\'s node classes decide its packs, and a pack Com
   const body = rp.calls.find((c) => c.path === '/v1/pods' && c.method === 'POST').body
   assert.equal(body.env.CF_RUNTIMES, 'vhs kjnodes')
   assert.equal(body.gpuTypeIds[0], GPU_LADDER[0].gpuTypeId, 'a pack needs no bigger GPU')
+})
+
+await test('fixes: a pack patch replaces the pinned file after checkout, before ComfyUI links the pack', () => {
+  const script = podBootScript()
+  const branch = script.split('\n').find((l) => l.startsWith('  wanvideo)'))
+  assert.match(branch, /cf_patch\(\) \{ mkdir -p "\$d\/multitalk" && echo (\S+) \| base64 -d > "\$d\/multitalk\/wav2vec2\.py"; \};/)
+  const b64 = /echo (\S+) \| base64 -d > "\$d\/multitalk\/wav2vec2\.py"/.exec(branch)[1]
+  const file = fs.readFileSync('server/pack-patches/wanvideo/multitalk/wav2vec2.py', 'utf8')
+  assert.equal(Buffer.from(b64, 'base64').toString(), file)
+  assert.match(file, /register_forward_hook/, 'the patch collects the hidden states newer transformers no longer return')
+  const pack = script.slice(script.indexOf("<<'PACK'"), script.indexOf('\nPACK\n'))
+  const call = pack.indexOf('declare -F cf_patch')
+  assert(call > pack.indexOf('checkout --quiet --force "$commit"') && call < pack.indexOf('ln -sfn'), 'patched after checkout, before the link')
+  assert.equal(script.split('\n').filter((l) => /^ {2}[a-z0-9]+\)/.test(l) && l.includes('cf_patch')).length, 1, 'only packs with a patch get one')
 })
 
 await test('node packs: the boot script installs packs before ComfyUI starts, keeps them on the volume and whitelists them', async () => {
