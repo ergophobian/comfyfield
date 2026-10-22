@@ -947,9 +947,9 @@ async function resolveComfyRoute(original, vars, { run, podPhase, podVram, podAr
   return { ...selected, target }
 }
 
-// Submits, then waits, so the caller knows whether the job reached the server before a failure.
-async function submitAndWait(client, wf, { apiKey, timeoutMs, signal }, onSubmitted) {
-  if (!client.submit) return client.run(wf, { apiKey, timeoutMs, ...(signal ? { signal } : {}) })
+// On a Pod, submits and then waits, so a retry knows whether the job reached the Pod before a failure.
+async function submitAndWait(client, wf, { apiKey, timeoutMs, signal, pod }, onSubmitted) {
+  if (!pod || !client.submit) return client.run(wf, { apiKey, timeoutMs, ...(signal ? { signal } : {}) })
   const job = await client.submit(wf, { apiKey, ...(signal ? { signal } : {}) })
   onSubmitted()
   await job.wait(timeoutMs, signal)
@@ -1017,7 +1017,7 @@ export async function runComfy(workflow, vars = {}, opts = {}) {
       const runSignal = signal && held?.signal ? AbortSignal.any([signal, held.signal]) : signal || held?.signal
       // A Pod is paid by the hour and runs one job at a time, so its runs may take longer: a talking head of
       // 10 to 20 seconds on InfiniteTalk renders for more than 30 minutes.
-      const job = await submitAndWait(client, wf, { apiKey: partner, timeoutMs: (target === 'pod' ? 90 : 30) * 60 * 1000, signal: runSignal }, () => { submitted = true })
+      const job = await submitAndWait(client, wf, { apiKey: partner, timeoutMs: (target === 'pod' ? 90 : 30) * 60 * 1000, signal: runSignal, pod: Boolean(held) }, () => { submitted = true })
       if (target === 'cloud') {
         try { logCloudRun({ seconds: gpuSeconds(job, t0), minVramGb: minVramOf(needs) }) } catch {}
       }
