@@ -1,7 +1,8 @@
 import { imageLimit, videoLimit, videoTypes } from '../shared/widgetInputs.js'
 
 const imageTypes = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif', 'image/svg+xml': 'svg' }
-const audioTypes = { 'audio/mpeg': 'mp3', 'audio/wav': 'wav', 'audio/x-wav': 'wav', 'audio/mp4': 'm4a', 'audio/ogg': 'ogg', 'audio/flac': 'flac' }
+const audioTypes = { 'audio/mpeg': 'mp3', 'audio/wav': 'wav', 'audio/x-wav': 'wav', 'audio/mp4': 'm4a', 'audio/ogg': 'ogg', 'audio/flac': 'flac',
+  'audio/x-m4a': 'm4a', 'audio/mp3': 'mp3', 'audio/x-flac': 'flac' }
 const fail = (message, status) => { throw Object.assign(new Error(message), { status }) }
 
 async function read(req, limit) {

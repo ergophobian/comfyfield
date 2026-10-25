@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom'
 import { IconUpload } from '../Icons.jsx'
 import { uploadImage } from '../../lib/providers.js'
 import { useLibrary, toRef } from '../../lib/useLibrary.js'
+import { uploadMedia } from '../widgets/media.js'
 
 const media = {
   image: { accept: 'image/png,image/jpeg,image/webp,image/gif', hint: 'Drop an image or click to choose', noun: 'an image' },
@@ -12,7 +13,7 @@ const media = {
   audio: { accept: 'audio/*', hint: 'Drop an audio file or click to choose', noun: 'an audio file' },
 }
 
-// Library list and tab behind each pick. There is no voices list yet, so voice picks stay empty.
+// Library list and tab behind each pick.
 const picks = {
   character: { list: 'characters', noun: 'characters' },
   product: { list: 'products', noun: 'products' },
@@ -23,7 +24,6 @@ const picks = {
 const textual = ['text', 'longtext']
 const calm = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
-// Audio stays local until the backend supports audio uploads.
 const readLocal = (file, type) => new Promise((resolve) => {
   const url = URL.createObjectURL(file)
   const done = (ratio) => resolve({ url, name: file.name, local: true, ratio })
@@ -50,6 +50,8 @@ function MediaField({ input, value, onChange, setError, labelId }) {
     setError(null)
     try {
       if (type === 'image') onChange(await uploadImage(file))
+      // A run reads audio from the server, so it uploads like an image.
+      else if (type === 'audio') onChange(await uploadMedia(file))
       else {
         const next = await readLocal(file, type)
         if (value?.local) URL.revokeObjectURL(value.url)

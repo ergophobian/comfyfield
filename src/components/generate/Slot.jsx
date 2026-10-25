@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { IconClose, IconImage, IconVideo, IconUpload } from '../Icons.jsx'
 import { IconWave } from './icons.jsx'
 import { uploadImage } from '../../lib/providers.js'
+import { uploadMedia } from '../widgets/media.js'
 
 const kinds = {
   image: { accept: 'image/png,image/jpeg,image/webp,image/gif', icon: <IconImage />, noun: 'an image', ok: (t) => t.startsWith('image/') },
@@ -9,9 +10,10 @@ const kinds = {
   media: { accept: 'audio/*,video/*', icon: <IconWave />, noun: 'a recording or a video', ok: (t) => t.startsWith('audio/') || t.startsWith('video/') },
 }
 
-// Images go to the server so models can read them. Video and audio stay in the browser until the backend takes uploads of them.
+// Images and recordings go to the server so models can read them. A video stays in the browser.
 async function take(file, type) {
   if (type === 'image') return uploadImage(file)
+  if (type === 'media') return { ...(await uploadMedia(file)), kind: file.type.split('/')[0] }
   return { url: URL.createObjectURL(file), name: file.name, local: true, kind: file.type.split('/')[0] }
 }
 
