@@ -30,6 +30,7 @@ export const providers = {
   fal: { env: ['FAL_KEY'], fields: ['key'] },
   google: { env: ['GEMINI_API_KEY'], fields: ['key'] },
   elevenlabs: { env: ['ELEVENLABS_API_KEY'], fields: ['key'] },
+  youtube: { env: ['YOUTUBE_API_KEY'], fields: ['key'] },
   runpod: { env: ['RUNPOD_API_KEY', 'RUNPOD_DAILY_CAP', 'RUNPOD_AUTO_START', 'RUNPOD_IDLE_MIN', 'RUNPOD_TIER'], fields: ['key', 'cap', 'auto', 'idle', 'tier'] },
 }
 
@@ -461,6 +462,11 @@ export async function testConnection(id) {
   if (id === 'elevenlabs') {
     // Restricted keys often lack user_read, so check with the models list instead.
     const r = await fetch('https://api.elevenlabs.io/v1/models', { headers: { 'xi-api-key': c.key } })
+    return r.ok
+  }
+  if (id === 'youtube') {
+    // A one-unit lookup of YouTube's own channel proves the key without touching the user's quota much.
+    const r = await fetch(`https://www.googleapis.com/youtube/v3/channels?part=id&forHandle=%40YouTube&key=${encodeURIComponent(c.key)}`)
     return r.ok
   }
   if (id === 'fal') return Boolean(c.key) // fal has no free auth-check endpoint

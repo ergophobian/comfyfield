@@ -8,10 +8,15 @@ import { preview } from 'vite'
 import { startBrowser, uiTimeout } from './browser.mjs'
 import { schemas } from '../src/lib/formats/schemas.js'
 import { createWorkspaces, workspaceRoute } from '../server/workspaces.js'
+import { fetchChannel } from '../server/youtube.js'
+import { youtubeMock } from './fixtures/youtube-mock.mjs'
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cf-ws-ui-'))
 const service = createWorkspaces({ directory: () => dir })
 const requests = []
+// The YouTube Data API is mocked; its images come from this preview server under /yt/.
+const yt = youtubeMock({ imageBase: '/yt' })
+const youtube = (channel) => fetchChannel(channel, { key: 'mock-youtube-key', fetch: (href) => yt.fetch(href) })
 const jobs = new Map()
 const svg = (label, fill = '#e4e9ff') => `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400"><rect width="400" height="400" fill="${fill}"/><text x="200" y="210" text-anchor="middle" font-family="sans-serif" font-size="28" fill="#30384d">${label}</text></svg>`
 const read = async (req) => { let raw = ''; for await (const c of req) raw += c; return raw ? JSON.parse(raw) : {} }
@@ -21,6 +26,12 @@ const server = await preview({ configFile: false, envFile: false, plugins: [{
   name: 'workspace-mock-api', configurePreviewServer(server) {
     server.middlewares.use(async (req, res, next) => {
       const url = new URL(req.url, 'http://localhost')
+      if (url.pathname.startsWith('/yt/')) {
+        const name = url.pathname.slice(4).replace(/=.*$/, '').replace('.svg', '')
+        const colors = ['#1d2350', '#3b2a6b', '#0f3b57', '#4a2040', '#14324a', '#2d2d5a', '#183a3a']
+        res.setHeader('Content-Type', 'image/svg+xml')
+        return res.end(svg(name === 'avatar' ? 'ND' : name === 'banner' ? 'Mock banner' : `Mock ${name.replace('-', ' ')}`, colors[(Number(name.split('-')[1]) || 0) % colors.length]).replace('fill="#30384d"', 'fill="#ffffff"'))
+      }
       if (url.pathname === '/media/mock-avatar.svg') { res.setHeader('Content-Type', 'image/svg+xml'); return res.end(svg('ND', '#1d2350')) }
       if (url.pathname.startsWith('/mock-')) {
         res.setHeader('Content-Type', 'image/svg+xml')
@@ -28,14 +39,14 @@ const server = await preview({ configFile: false, envFile: false, plugins: [{
       }
       if (!url.pathname.startsWith('/api/')) return next()
       try {
-        if (await workspaceRoute(req, res, url, { body: read, send, service })) return
+        if (await workspaceRoute(req, res, url, { body: read, send, service, youtube })) return
       } catch (e) { return send(res, e.status || 500, { error: e.message }) }
       if (url.pathname === '/api/comfy/requirements') {
         const { workflows } = await read(req)
         return send(res, 200, { connections: { fal: { connected: true }, google: { connected: true }, comfyRouter: { connected: true } }, cloudConnected: true, pod: { phase: 'none' },
           requirements: workflows.map(({ workflow }) => ({ workflow, notOnCloud: [], minVramGb: 0, target: 'cloud', selectedWorkflow: workflow })) })
       }
-      if (url.pathname === '/api/connections') return send(res, 200, { fal: { connected: true }, google: { connected: true } })
+      if (url.pathname === '/api/connections') return send(res, 200, { fal: { connected: true }, google: { connected: true }, youtube: { connected: true } })
       if (url.pathname === '/api/fal/schema') return send(res, 200, schemas.fal[url.searchParams.get('id')] || { properties: { prompt: { type: 'string' } } })
       if (url.pathname === '/api/stitch/exports' || url.pathname === '/api/library/generations') return send(res, 200, [])
       if (url.pathname === '/api/upload') {
@@ -194,6 +205,28 @@ ${await evaluate('document.querySelector(".app-panel").innerText')}`)
   await wait('document.querySelectorAll(".lib-card").length === 2')
   await screenshot('mock-library-scope')
 
+  // YouTube: paste a handle; the header shows the channel and its last six uploads, cached in workspaces.json.
+  await goto('/workspaces')
+  await wait('document.querySelector(".ws-connect input")')
+  await type('.ws-connect input', 'https://www.youtube.com/@nightdrives')
+  await click('.ws-connect button')
+  await wait('document.querySelectorAll(".ws-uploads li").length === 6')
+  assert.equal(await evaluate('document.querySelector(".ws-head h2").textContent'), 'Night Drives')
+  assert.match(await evaluate('document.querySelector(".ws-head-text p").textContent'), /@nightdrives · 128K subscribers · 212 videos/)
+  await wait('[...document.querySelectorAll(".ws-head img")].every((img) => img.complete && img.naturalWidth > 0)')
+  assert.equal(service.active().youtube.uploads.length, 6, 'The channel is cached in workspaces.json')
+  const callsBefore = yt.calls.length
+  await goto('/workspaces')
+  await wait('document.querySelectorAll(".ws-uploads li").length === 6')
+  assert.equal(yt.calls.length, callsBefore, 'A reload reads the cache, not YouTube')
+  await screenshot('mock-youtube-header')
+  await cdp('Emulation.setDeviceMetricsOverride', { width: 390, height: 1100, deviceScaleFactor: 1, mobile: true })
+  await goto('/workspaces')
+  await wait('document.querySelectorAll(".ws-uploads li").length === 6')
+  assert(await evaluate('document.documentElement.scrollWidth <= 390'), 'The channel header fits 390px')
+  await screenshot('mock-youtube-header-390')
+  await cdp('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false })
+
   // Switch back to Default: no pinned section.
   if (!await evaluate('Boolean(document.querySelector("#ws-menu"))')) await click('.ws-chip')
   await wait('document.querySelector("#ws-menu .ws-item")')
@@ -218,7 +251,7 @@ ${await evaluate('document.querySelector(".app-panel").innerText')}`)
   await screenshot('mock-workspaces-390')
 
   assert.deepEqual(errors, [], 'No browser runtime exceptions')
-  console.log('Workspace UI checks ok: create with avatar, rules and a pin; saved to workspaces.json; switcher and rules toggle; pinned first in Apps; rules join the prompt only while on; 390px. Library filter defaults to the active workspace with All; old takes move to Default. Five mock screenshots saved.')
+  console.log('Workspace UI checks ok: create with avatar, rules and a pin; saved to workspaces.json; switcher and rules toggle; pinned first in Apps; rules join the prompt only while on; 390px. Library filter defaults to the active workspace with All; old takes move to Default. YouTube header from a mocked API, cached across reloads, at 1440px and 390px. Seven mock screenshots saved.')
 } finally {
   await browser?.close()
   await server.close()

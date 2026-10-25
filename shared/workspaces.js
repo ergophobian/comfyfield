@@ -68,3 +68,12 @@ export const workspaceOf = (item) => (typeof item?.workspace === 'string' && ite
 export const inWorkspace = (item, scope) => !scope || workspaceOf(item) === scope
 
 export const initialsOf = (name = '') => name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() || '').join('') || '?'
+
+// 12,400 → 12.4K and 128,400 → 128K, the way YouTube shows subscriber counts.
+export function compactCount(n) {
+  if (n == null) return ''
+  if (n < 1000) return String(n)
+  const [div, unit] = n >= 1e9 ? [1e9, 'B'] : n >= 1e6 ? [1e6, 'M'] : [1e3, 'K']
+  const v = n / div
+  return `${v >= 100 ? Math.floor(v) : Math.floor(v * 10) / 10}${unit}`
+}

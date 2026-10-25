@@ -66,6 +66,15 @@ export function createWorkspaces({ directory = () => dataDirectory() } = {}) {
       find(store, id)
       return write({ ...store, active: id })
     },
+    // The channel is fetched data, not user input, so it skips cleanWorkspace.
+    setYoutube(id, youtube) {
+      const store = read()
+      const ws = { ...find(store, id), updated: Date.now() }
+      if (youtube) ws.youtube = youtube
+      else delete ws.youtube
+      write({ ...store, workspaces: store.workspaces.map((w) => (w.id === id ? ws : w)) })
+      return ws
+    },
     // Server-side runs (Flows, MCP) add the active workspace's criteria the same way the app does.
     withActiveCriteria: (prompt, kind) => withCriteria(prompt, service.active(), kind),
   }
@@ -105,10 +114,20 @@ export function migrateToWorkspaces({ directory = () => dataDirectory() } = {}) 
 export const keepWorkspace = (next, previous) => (typeof next.workspace !== 'string' && typeof previous?.workspace === 'string' ? { ...next, workspace: previous.workspace } : next)
 
 // /api/workspaces routes. Returns false when the path is not a workspace route.
-export async function workspaceRoute(req, res, url, { body, send, service = workspaces }) {
+// youtube(channel) fetches a channel for POST /api/workspaces/:id/youtube; a refresh sends no channel.
+export async function workspaceRoute(req, res, url, { body, send, service = workspaces, youtube }) {
   if (url.pathname === '/api/workspaces' && req.method === 'GET') return send(res, 200, service.list()), true
   if (url.pathname === '/api/workspaces' && req.method === 'POST') return send(res, 200, service.create(await body(req))), true
   if (url.pathname === '/api/workspaces/active' && req.method === 'POST') return send(res, 200, service.activate((await body(req)).id)), true
+  const yt = /^\/api\/workspaces\/([\w-]{1,64})\/youtube$/.exec(url.pathname)
+  if (yt && req.method === 'POST') {
+    const { channel } = await body(req)
+    const current = service.list().workspaces.find((w) => w.id === yt[1])
+    if (!current) throw Object.assign(new Error('That workspace is gone. Pick another one.'), { status: 404 })
+    if (!youtube) throw Object.assign(new Error('YouTube is not set up on this server.'), { status: 501 })
+    return send(res, 200, service.setYoutube(yt[1], await youtube(channel || current.youtube?.input))), true
+  }
+  if (yt && req.method === 'DELETE') return send(res, 200, service.setYoutube(yt[1], null)), true
   const m = /^\/api\/workspaces\/([\w-]{1,64})$/.exec(url.pathname)
   if (!m) return false
   if (req.method === 'PATCH') return send(res, 200, service.update(m[1], await body(req))), true
