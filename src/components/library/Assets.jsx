@@ -2,6 +2,7 @@ import { PageArt } from '../Art.jsx'
 import { useEffect, useRef, useState } from 'react'
 import { useLibrary } from '../../lib/useLibrary.js'
 import { paletteFrom } from '../../lib/palette.js'
+import { inWorkspace } from '../../../shared/workspaces.js'
 import { IconPlus, IconClose, IconLink, IconTrash } from '../Icons.jsx'
 
 const kinds = {
@@ -197,10 +198,10 @@ function Card({ type, item, n, onOpen }) {
   )
 }
 
-export default function Assets({ type }) {
+export default function Assets({ type, scope = null }) {
   const lib = useLibrary()
   const [editing, setEditing] = useState(null)
-  const list = lib[type]
+  const list = lib[type].filter((item) => inWorkspace(item, scope))
   const k = kinds[type]
   if (!lib.ready) return null
   return (

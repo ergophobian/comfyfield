@@ -3,6 +3,7 @@ import { useEffect, useSyncExternalStore } from 'react'
 import { api, initFlows, changeFlows, flushFlows, refreshFlows, flowSnapshot, subscribeFlows } from './remoteFlows.js'
 import { createEngine } from './flowEngine.js'
 import { nodeLabels, nodeDefaults } from '../../shared/flowRules.js'
+import { activeWorkspace } from './workspaces.js'
 
 export { nodeLabels }
 
@@ -16,7 +17,7 @@ const link = (a, b) => ({ id: `${a}-${b}`, source: a, target: b })
 
 function build(name, spec, edges) {
   const nodes = spec.map(([key, type, x, y, data]) => ({ ...makeNode(type, { x, y }, data), id: key }))
-  return { id: uid(), name, nodes, edges: edges.map(([a, b]) => link(a, b)), updated: Date.now() }
+  return { id: uid(), name, workspace: activeWorkspace().id, nodes, edges: edges.map(([a, b]) => link(a, b)), updated: Date.now() }
 }
 
 const imageModel = () => find('g-nano-banana-2', 'image')
@@ -112,7 +113,7 @@ export function flowFromBatch({ prompts, model, aspect, duration, takes, count }
 }
 
 export function blankFlow() {
-  return { id: uid(), name: 'Untitled flow', nodes: [], edges: [], updated: Date.now() }
+  return { id: uid(), name: 'Untitled flow', workspace: activeWorkspace().id, nodes: [], edges: [], updated: Date.now() }
 }
 
 const strip = (f) => ({
@@ -156,7 +157,7 @@ export function parseFlow(text) {
   if (!Array.isArray(f.nodes) || !Array.isArray(f.edges)) throw new Error('This file is not a ComfyField flow')
   const types = Object.keys(nodeLabels)
   if (f.nodes.some((n) => !types.includes(n.type))) throw new Error('This flow uses a node type this version does not know')
-  return { ...strip(f), id: uid(), name: f.name || 'Imported flow', updated: Date.now() }
+  return { ...strip(f), id: uid(), name: f.name || 'Imported flow', workspace: activeWorkspace().id, updated: Date.now() }
 }
 
 // Planning stays pure in the browser; actions and run state belong to the server.

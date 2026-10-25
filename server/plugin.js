@@ -12,7 +12,7 @@ import { serveMedia } from './serveMedia.js'
 import { agentRoutes } from './agent-routes.js'
 import { createJobs } from './jobs.js'
 import { allowedApiRequest } from './local-access.js'
-import { workspaceRoute } from './workspaces.js'
+import { workspaceRoute, workspaces, migrateToWorkspaces } from './workspaces.js'
 
 export { providers } from './core.js'
 
@@ -63,6 +63,7 @@ function writeLib(lib) {
 
 function clean(type, data) {
   const out = {}
+  if (typeof data.workspace === 'string' && /^[\w-]{1,64}$/.test(data.workspace)) out.workspace = data.workspace
   for (const [k, kind] of Object.entries(shape[type])) {
     if (!(k in data)) continue
     out[k] = Array.isArray(kind)
@@ -88,7 +89,7 @@ async function libraryRoute(req, res, url) {
   const list = lib[type] || []
   if (req.method === 'GET' && !id) return send(res, 200, list), true
   if (req.method === 'POST' && !id) {
-    const item = { id: crypto.randomUUID(), ...clean(type, await body(req)), created: Date.now() }
+    const item = { id: crypto.randomUUID(), workspace: workspaces.active().id, ...clean(type, await body(req)), created: Date.now() }
     if (!item.name?.trim()) return send(res, 400, { error: 'Give it a name first.' }), true
     writeLib({ ...lib, [type]: [item, ...list] })
     return send(res, 200, item), true
@@ -262,6 +263,7 @@ function mount(server, harness) {
   // The app's server is the one process that watches the Pod: heartbeats, spend and the guards.
   // Vite restarts its server when a config file changes, so the monitor stops with it.
   core.pod().startMonitor()
+  try { migrateToWorkspaces() } catch (e) { console.warn(`Could not move existing items to the Default workspace: ${e.message}`) }
   const agents = agentRoutes({ body, send, harness })
   server.httpServer?.once('close', () => { core.pod().stopMonitor(); agents.close().catch(() => {}) })
   server.middlewares.use(async (req, res, next) => {

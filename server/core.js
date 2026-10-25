@@ -264,7 +264,7 @@ export async function saveToLibrary(files, metadata = {}) {
       local = { ...f, ...saveMedia(Buffer.from(await r.arrayBuffer()), mimeExt(r.headers.get('content-type') || (f.kind === 'video' ? 'video/mp4' : 'image/png'))) }
     }
     const { path: localPath, ...file } = local
-    items.push({ ...metadata, ...file, id: randomUUID(), created: Date.now(), imported: true })
+    items.push({ workspace: workspaces.active().id, ...metadata, ...file, id: randomUUID(), created: Date.now(), imported: true })
   }
   fs.mkdirSync(home(), { recursive: true })
   fs.writeFileSync(importsFile(), JSON.stringify([...items, ...libraryImports()], null, 2))

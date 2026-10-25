@@ -1,4 +1,5 @@
 import { useEffect, useSyncExternalStore } from 'react'
+import { activeWorkspace } from './workspaces.js'
 
 const types = ['characters', 'products', 'brands']
 let state = { characters: [], products: [], brands: [], ready: false }
@@ -28,7 +29,7 @@ export const upload = (file) => new Promise((resolve, reject) => {
 })
 
 export const create = async (type, data) => {
-  const item = await call(`/api/library/${type}`, 'POST', data)
+  const item = await call(`/api/library/${type}`, 'POST', { workspace: activeWorkspace().id, ...data })
   set({ [type]: [item, ...state[type]] })
   return item
 }

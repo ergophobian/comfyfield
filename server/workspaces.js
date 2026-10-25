@@ -74,6 +74,36 @@ export function createWorkspaces({ directory = () => dataDirectory() } = {}) {
 
 export const workspaces = createWorkspaces()
 
+// Moves everything made before workspaces into Default: Library elements, flows and CLI imports.
+// It only fills a missing workspace id, so running it again changes nothing. Returns how many items moved.
+export function migrateToWorkspaces({ directory = () => dataDirectory() } = {}) {
+  let moved = 0
+  const stamp = (item) => {
+    if (!item || typeof item !== 'object' || typeof item.workspace === 'string') return item
+    moved++
+    return { ...item, workspace: DEFAULT_WORKSPACE }
+  }
+  const update = (name, fn) => {
+    const file = path.join(directory(), name)
+    let data
+    try { data = JSON.parse(fs.readFileSync(file, 'utf8')) } catch { return }
+    const before = moved
+    const next = fn(data)
+    if (moved === before) return
+    fs.writeFileSync(`${file}.tmp`, JSON.stringify(next, null, 2))
+    fs.renameSync(`${file}.tmp`, file)
+  }
+  update('library.json', (lib) => Object.fromEntries(Object.entries(lib).map(([type, list]) => [type, Array.isArray(list) ? list.map(stamp) : list])))
+  // The revision stays: a workspace id is not an edit, and the open canvas must still be able to save.
+  update('flows.json', (store) => ({ ...store, flows: Array.isArray(store.flows) ? store.flows.map(stamp) : store.flows }))
+  update('generation-imports.json', (list) => (Array.isArray(list) ? list.map(stamp) : list))
+  return moved
+}
+
+// A save from a page loaded before the migration may drop the id; keep the one already stored.
+// A flow with no id at all reads as Default (workspaceOf), so it stays as it was sent.
+export const keepWorkspace = (next, previous) => (typeof next.workspace !== 'string' && typeof previous?.workspace === 'string' ? { ...next, workspace: previous.workspace } : next)
+
 // /api/workspaces routes. Returns false when the path is not a workspace route.
 export async function workspaceRoute(req, res, url, { body, send, service = workspaces }) {
   if (url.pathname === '/api/workspaces' && req.method === 'GET') return send(res, 200, service.list()), true

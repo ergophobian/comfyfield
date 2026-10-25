@@ -11,6 +11,9 @@ import AssistantPanel from '../components/AssistantPanel.jsx'
 import { AgentPresence, useAgentPresence } from '../components/flow/AgentPresence.jsx'
 import { getConnections } from '../lib/providers.js'
 import { uploadFlowImage, legacyImages, migrateDataUrl, patchNode } from '../lib/flowImage.js'
+import { inWorkspace } from '../../shared/workspaces.js'
+import { useScope } from '../lib/workspaces.js'
+import { WorkspaceScope } from '../components/nav/WorkspaceSwitcher.jsx'
 
 const addable = [
   ['prompt', 'Text or a list of prompts'],
@@ -55,6 +58,8 @@ function Canvas({ picker }) {
   const importer = useRef(null)
   const rf = useReactFlow()
   const flow = store.flows.find((f) => f.id === store.current) || store.flows[0]
+  const scope = useScope()
+  const listed = store.flows.filter((f) => inWorkspace(f, scope.scope))
   const engine = engineFor(flow.id)
   const state = useSyncExternalStore(engine.subscribe, () => engine.state)
 
@@ -133,7 +138,7 @@ function Canvas({ picker }) {
   }
   const remove = (id) => update((f) => ({ ...f, nodes: f.nodes.filter((n) => n.id !== id), edges: f.edges.filter((e) => e.source !== id && e.target !== id) }))
 
-  const startFrom = (s) => { update((f) => ({ ...s.make(), id: f.id })); setTimeout(() => rf.fitView({ padding: 0.25, duration: 500 }), 60) }
+  const startFrom = (s) => { update((f) => ({ ...s.make(), id: f.id, workspace: f.workspace || s.make().workspace })); setTimeout(() => rf.fitView({ padding: 0.25, duration: 500 }), 60) }
   const newFlow = () => setStore((s) => { const f = blankFlow(); return { current: f.id, flows: [f, ...s.flows] } })
   const open = (id) => setStore((s) => ({ ...s, current: id }))
   const drop = (id) => setStore((s) => {
@@ -162,8 +167,10 @@ function Canvas({ picker }) {
       <div className="flows">
         {!ready && <div className="agent-flow-status glass" role="status">{error || 'Loading shared flows…'}{error && <><button type="button" className="btn-soft" onClick={download}>Export unsaved flow</button><button type="button" className="btn-soft" onClick={() => reloadFlows().catch((e) => setNote(e.message))}>Reload flows</button></>}</div>}
         <div className="ftool glass">
-          <Pop label={<>Flows<span className="fcount">{store.flows.filter((f) => f.nodes.length).length || ''}</span></>}>
-            {store.flows.map((f) => (
+          <Pop label={<>Flows<span className="fcount">{listed.filter((f) => f.nodes.length).length || ''}</span></>}>
+            <div onClick={(e) => e.stopPropagation()}><WorkspaceScope {...scope} className="fl-scope" /></div>
+            {!listed.length && <p className="fl-empty">No flows in {scope.current.name} yet.</p>}
+            {listed.map((f) => (
               <div key={f.id} className="fl-row">
                 <button type="button" className={f.id === flow.id ? 'on' : ''} onClick={() => open(f.id)}>{f.name}<small>{f.nodes.length} nodes</small></button>
                 <button type="button" className="fl-x" aria-label={`Delete ${f.name}`} onClick={() => drop(f.id)}><IconClose /></button>
