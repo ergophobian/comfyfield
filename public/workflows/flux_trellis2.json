@@ -352,7 +352,7 @@
       "resolution": 768,
       "sign_mode": "udf",
       "sign_mode.qef": false,
-      "sign_mode.drop_inverted_components": false,
+      "sign_mode.drop_inverted_components": "{{solid}}",
       "sign_mode.drop_enclosed_components": false,
       "band": 1.0,
       "project_back": 0.0,
@@ -373,11 +373,24 @@
       "placement_mode": "midpoint"
     }
   },
+  "36": {
+    "class_type": "FillHoles",
+    "inputs": {
+      "mesh": [
+        "27",
+        0
+      ],
+      "max_perimeter": "{{fill}}",
+      "weld_epsilon_rel": 0.00001,
+      "max_vertices": 16,
+      "fill_chains": false
+    }
+  },
   "28": {
     "class_type": "MeshSmoothNormals",
     "inputs": {
       "mesh": [
-        "27",
+        "36",
         0
       ],
       "crease_angle": 180.0

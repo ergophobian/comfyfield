@@ -833,12 +833,16 @@ export const schemas = {
       "width"
     ],
     "flux_trellis2": [
+      "fill",
       "prompt",
-      "seed"
+      "seed",
+      "solid"
     ],
     "flux_trellis2_cloud": [
+      "fill",
       "prompt",
-      "seed"
+      "seed",
+      "solid"
     ],
     "h3_draw": [
       "duration",
@@ -1221,6 +1225,13 @@ export const schemas = {
       "prompt",
       "seed"
     ],
+    "krea2_realism_t2i": [
+      "count",
+      "height",
+      "prompt",
+      "seed",
+      "width"
+    ],
     "krea2_t2i": [
       "count",
       "height",
@@ -1291,6 +1302,17 @@ export const schemas = {
       "prompt",
       "seed",
       "style"
+    ],
+    "qwen2511_anypose": [
+      "image",
+      "image2",
+      "prompt",
+      "seed"
+    ],
+    "qwen2511_anything2real": [
+      "image",
+      "prompt",
+      "seed"
     ],
     "qwen2511_edit": [
       "image",
@@ -1440,6 +1462,12 @@ export const schemas = {
       "prompt",
       "seed",
       "width"
+    ],
+    "qwen_image21_faceswap": [
+      "image",
+      "image2",
+      "prompt",
+      "seed"
     ],
     "qwen_image21_t2i": [
       "count",
@@ -1628,6 +1656,15 @@ export const schemas = {
       "target",
       "upscale_factor"
     ],
+    "seedvr2_old_footage": [
+      "deinterlace",
+      "denoise",
+      "duration",
+      "seed",
+      "start",
+      "upscale_factor",
+      "video"
+    ],
     "seedvr2_video": [
       "duration",
       "seed",
@@ -1678,24 +1715,40 @@ export const schemas = {
       "width"
     ],
     "trellis2_character": [
+      "fill",
       "image",
       "prompt",
-      "seed"
+      "seed",
+      "solid"
     ],
     "trellis2_character_cloud": [
+      "fill",
       "image",
       "prompt",
-      "seed"
+      "seed",
+      "solid"
     ],
     "trellis2_image": [
+      "fill",
       "image",
       "resolution",
-      "seed"
+      "seed",
+      "solid"
     ],
     "trellis2_turntable": [
       "background",
       "image",
       "seed"
+    ],
+    "ugc_ad": [
+      "audio",
+      "height",
+      "image",
+      "image2",
+      "prompt",
+      "seconds",
+      "seed",
+      "width"
     ],
     "video_bg_change": [
       "duration",
@@ -1760,49 +1813,6 @@ export const schemas = {
       "prompt",
       "seed",
       "width"
-    ],
-    "ugc_ad": [
-      "audio",
-      "height",
-      "image",
-      "image2",
-      "prompt",
-      "seconds",
-      "seed",
-      "width"
-    ],
-    "krea2_realism_t2i": [
-      "count",
-      "height",
-      "prompt",
-      "seed",
-      "width"
-    ],
-    "qwen2511_anypose": [
-      "image",
-      "image2",
-      "prompt",
-      "seed"
-    ],
-    "qwen2511_anything2real": [
-      "image",
-      "prompt",
-      "seed"
-    ],
-    "qwen_image21_faceswap": [
-      "image",
-      "image2",
-      "prompt",
-      "seed"
-    ],
-    "seedvr2_old_footage": [
-      "deinterlace",
-      "denoise",
-      "duration",
-      "seed",
-      "start",
-      "upscale_factor",
-      "video"
     ]
   },
   "comfyOptional": {
@@ -1928,14 +1938,14 @@ export const schemas = {
       "image3",
       "image4"
     ],
-    "wan22_i2v": [
-      "image2"
+    "scail2_character_swap": [
+      "previous"
     ],
     "ugc_ad": [
       "audio"
     ],
-    "scail2_character_swap": [
-      "previous"
+    "wan22_i2v": [
+      "image2"
     ],
     "wan_animate2": [
       "previous"

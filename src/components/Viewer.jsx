@@ -2,22 +2,27 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import UseIn from './formats/UseIn.jsx'
 import Compare from './widgets/Compare.jsx'
+import ModelView, { saveStl } from './ModelView.jsx'
 import { useApp } from '../lib/appContext.js'
 import { handoffFor } from '../lib/handoff.js'
 import { create } from '../lib/useLibrary.js'
 import { IconCheck, IconDownload, IconCopy, IconTrash, IconClose, IconChevron } from './Icons.jsx'
 
-export const ext = { image: 'png', video: 'mp4', audio: 'mp3' }
+export const ext = { image: 'png', video: 'mp4', audio: 'mp3', '3d': 'glb' }
 
-export function Media({ it, full }) {
+export function Media({ it, full, onInfo }) {
+  if (it.kind === '3d') return <ModelView url={it.url} alt={it.caption} full={full} onInfo={onInfo} />
   if (it.kind === 'video') return <video src={it.url} autoPlay={full} loop muted={!full} playsInline controls={full} />
   if (it.kind === 'audio') return <div className="audio-card"><p>{it.caption}</p><audio src={it.url} controls /></div>
   return <img src={it.url} alt={it.caption} />
 }
 
-export function Act({ label, on, onClick, children }) {
-  return <button type="button" className={`lib-act${on ? ' on' : ''}`} aria-label={label} title={label} onClick={(e) => { e.stopPropagation(); onClick() }}>{children}</button>
+export function Act({ label, on, wide, onClick, children }) {
+  return <button type="button" className={`lib-act${on ? ' on' : ''}${wide ? ' wide' : ''}`} aria-label={label} title={label} onClick={(e) => { e.stopPropagation(); onClick() }}>{children}</button>
 }
+
+// A slicer needs a closed surface, so the viewer says whether the mesh has any open edges.
+const meshNote = ({ faces, open }) => `${faces.toLocaleString()} faces · ${open ? `${open.toLocaleString()} open edges` : 'closed surface, ready to slice'}`
 
 const copyPrompt = async (it) => { try { await navigator.clipboard.writeText(it.caption || '') } catch {} }
 
@@ -59,7 +64,8 @@ export default function Viewer({ items, at, setAt, copy = copyPrompt, onClose })
   const { openFormat, gens, picker } = useApp()
   const navigate = useNavigate()
   const [saving, setSaving] = useState(false)
-  useEffect(() => setSaving(false), [it?.id])
+  const [mesh, setMesh] = useState(null)
+  useEffect(() => { setSaving(false); setMesh(null) }, [it?.id])
   const go = (action) => {
     const h = handoffFor(action, it, picker)
     if (!h) return
@@ -86,18 +92,19 @@ export default function Viewer({ items, at, setAt, copy = copyPrompt, onClose })
   return (
     <div className="viewer" onClick={onClose} role="dialog" aria-label="Viewer">
       <button className="viewer-nav prev" aria-label="Previous" disabled={at === 0} onClick={(e) => { e.stopPropagation(); setAt(at - 1) }}><IconChevron dir="left" /></button>
-      <div className="viewer-card glass pop" key={it.id} onClick={(e) => e.stopPropagation()}>
-        <div className="viewer-media">{it.kind === 'image' && it.source ? <Compare before={it.source} after={it.url} alt={it.caption} /> : <Media it={it} full />}</div>
+      <div className={`viewer-card glass pop${it.kind === '3d' ? ' model' : ''}`} key={it.id} onClick={(e) => e.stopPropagation()}>
+        <div className="viewer-media">{it.kind === 'image' && it.source ? <Compare before={it.source} after={it.url} alt={it.caption} /> : <Media it={it} full onInfo={setMesh} />}</div>
         <div className="viewer-foot">
           <div className="viewer-text">
             <p>{it.caption}</p>
-            <span>{it.model}{it.aspect ? ` · ${it.aspect}` : ''}</span>
+            <span>{it.model}{it.kind !== '3d' && it.aspect ? ` · ${it.aspect}` : ''}{mesh && ` · ${meshNote(mesh)}`}</span>
           </div>
           <div className="viewer-acts">
             {/* The viewer sits above the format sheet, so it closes first. */}
             <UseIn item={it} up onUse={(format, values) => { onClose(); openFormat(format, values) }} />
             <Act label={it.approved ? 'Remove approval' : 'Approve'} on={it.approved} onClick={() => gens.toggleApprove(it.id)}><IconCheck /></Act>
             <a className="lib-act" href={it.url} download={`${it.id}.${ext[it.kind] || 'png'}`} aria-label="Download" title="Download"><IconDownload /></a>
+            {it.kind === '3d' && <Act label="Save as STL for 3D printing" wide onClick={() => saveStl(it.url, it.id).catch(() => {})}>STL</Act>}
             <Act label="Copy prompt" onClick={() => copy(it)}><IconCopy /></Act>
             <Act label="Delete" onClick={() => { gens.dismiss(it.id); items.length === 1 ? onClose() : setAt(Math.min(at, items.length - 2)) }}><IconTrash /></Act>
           </div>

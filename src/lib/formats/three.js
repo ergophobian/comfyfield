@@ -2,6 +2,15 @@
 import { open, photo, covers } from './parts.js'
 
 const glb = 'A .glb model you can spin and download'
+// TRELLIS.2 meshes are dense and uneven: fine for props and renders, never for a skeleton.
+const notRigReady = 'Not rig-ready: the mesh needs retopology in Blender or another 3D tool before you rig or animate it.'
+// For printing, core ComfyUI nodes drop the remesher's inner shell and fill small holes before export.
+// The Library saves the model as STL for a slicer.
+const use = { id: 'use', type: 'choice', label: 'Made for', default: 'screen', options: [
+  { id: 'screen', label: 'Screens', note: 'Games, renders and AR', params: { fill: 0, solid: false } },
+  { id: 'print', label: '3D printing', note: 'One solid shell, small holes filled', params: { fill: 0.03, solid: true } },
+] }
+const printTip = 'For printing, pick 3D printing and save it as STL from the Library.'
 
 const models = [
   open({
@@ -15,8 +24,10 @@ const models = [
         { id: 'draft', label: 'Draft', note: 'Quick shape and texture', params: { resolution: 1024 } },
         { id: 'final', label: 'Final', note: 'Full detail, takes longer', params: { resolution: 1536 } },
       ] },
+      use,
     ],
     output: glb,
+    limits: `${notRigReady} ${printTip}`,
     cover: covers.indigo,
   }),
   open({
@@ -30,10 +41,12 @@ const models = [
         { id: 'stylized', label: 'Stylized', text: 'as a stylized hand painted game asset with chunky proportions' },
         { id: 'low-poly', label: 'Low poly', text: 'as a clean low poly model with flat colored facets' },
       ] },
+      use,
     ],
     // The first pass draws one clean reference image for TRELLIS.2 to lift into a mesh.
     prompt: 'A single {object} {style}, the whole object in view at a three quarter angle, centered on a plain white background, soft even studio light with no harsh shadows.',
     output: glb,
+    limits: `${notRigReady} ${printTip}`,
     cover: covers.lilac,
   }),
   open({
@@ -44,15 +57,17 @@ const models = [
       { id: 'character', type: 'character', label: 'Character' },
       { id: 'pose', type: 'choice', label: 'Pose', default: 'standing', options: [
         { id: 'standing', label: 'Standing', text: 'standing in a relaxed neutral pose with arms at their sides' },
-        { id: 'a-pose', label: 'Ready to rig', note: 'A pose', text: 'in an A pose with arms angled down and away from the body' },
+        { id: 'a-pose', label: 'A pose', note: 'Easier to retopologize and rig', text: 'in an A pose with arms angled down and away from the body' },
         { id: 'action', label: 'Action', text: 'in a dynamic heroic action pose' },
         { id: 'sitting', label: 'Sitting', text: 'sitting cross-legged on the ground' },
       ] },
+      use,
     ],
     // Klein draws the figure from the character's first picture, which it cannot tie to a name, and
     // TRELLIS.2 lifts that drawing into a mesh.
     prompt: 'Turn the character in the first image into a full body figure {pose}. Keep their face, hair, outfit and colors. Show the whole figure centered on a plain white background, in soft even light.',
     output: 'A .glb figure you can spin and download',
+    limits: `${notRigReady} The A pose makes that step easier. ${printTip}`,
     cover: covers.rose,
   }),
   open({

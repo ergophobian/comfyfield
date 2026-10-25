@@ -2581,6 +2581,8 @@ await test('audio and 3D: Chatterbox, MiniMax Music 3 and Stable Audio 3 go to C
   const vars = { prompt: 'A line', script: 'Hello there', lyrics: '[Instrumental]', language: 'English (en)', exaggeration: 0.5, cfg_weight: 0.5, seed: 1, start: 0, duration: 5,
     resolution: 1024, background: '#ffffff', image: png, audio: flac, voice: flac, video: 'data:video/mp4;base64,AAAAIGZ0eXBpc29t' }
   const run = (w, phase = 'none') => core.runComfy(w, vars, { createClient: () => client, lease, podPhase: async () => phase, podVram: () => 24, podRoom: () => ({}) })
+  // TRELLIS.2's hole fill and inner shell, set by the 3D formats' Made for choice.
+  Object.assign(vars, { fill: 0, solid: false })
   for (const w of ['chatterbox_tts', 'chatterbox_clone', 'chatterbox_vc', 'minimax_music3', 'stable_audio3']) {
     const files = await run(w)
     assert.deepEqual(files.map((f) => f.kind), ['audio'], `${w} keeps its speech`)
@@ -2636,6 +2638,12 @@ await test('audio and 3D: formats send Chatterbox its own language labels, a scr
   assert(!by['talking-head'].inputs.some((i) => i.id === 'accent'), 'Chatterbox has no accent control')
   assert.deepEqual(['', '   ', null, 'Verse one'].map((lyrics) => pick('music', { lyrics }).o.fields.lyrics), ['[Instrumental]', '[Instrumental]', '[Instrumental]', 'Verse one'])
   assert.deepEqual(['draft', 'final'].map((detail) => pick('image-to-3d', { detail }).o.params.resolution), [1024, 1536])
+  for (const id of ['image-to-3d', 'text-to-3d', 'character-to-3d']) {
+    const made = (use) => pick(id, { use }).o.params
+    assert.deepEqual([made('screen').fill, made('screen').solid, made('print').fill, made('print').solid], [0, false, 0.03, true], `${id} prints from one solid shell with small holes filled`)
+    assert(/not rig-ready/i.test(by[id].limits), `${id} says its mesh is not rig-ready`)
+  }
+  assert.equal(pick('image-to-3d', { detail: 'final', use: 'print' }).o.params.resolution, 1536, 'the print pass keeps the detail')
   const spin = pick('turntable', { background: 'dark' })
   assert.deepEqual([spin.o.params.background, spin.o.prompt], ['#1c1c22', ''])
   assert.equal(pick('voice-clone', { name: 'My narrator voice' }).o.prompt, 'Hello, this is My narrator voice. It is ready to read anything you write.')

@@ -37,7 +37,7 @@
       ],
       "width": 1024,
       "height": 1024,
-      "pad_factor": 1.0,
+      "pad_factor": 1,
       "grow_mask": 0,
       "background": "#000000"
     }
@@ -87,9 +87,9 @@
         "7",
         0
       ],
-      "cfg": 1.0,
+      "cfg": 1,
       "start_percent": 0.667,
-      "end_percent": 1.0
+      "end_percent": 1
     }
   },
   "11": {
@@ -109,7 +109,7 @@
         "11",
         0
       ],
-      "shift": 5.0
+      "shift": 5
     }
   },
   "13": {
@@ -119,9 +119,9 @@
         "7",
         0
       ],
-      "cfg": 1.0,
+      "cfg": 1,
       "start_percent": 0.769,
-      "end_percent": 1.0
+      "end_percent": 1
     }
   },
   "14": {
@@ -148,7 +148,7 @@
       "cfg": 7.5,
       "sampler_name": "euler",
       "scheduler": "normal",
-      "denoise": 1.0,
+      "denoise": 1,
       "model": [
         "12",
         0
@@ -206,7 +206,7 @@
       "cfg": 7.5,
       "sampler_name": "euler",
       "scheduler": "normal",
-      "denoise": 1.0,
+      "denoise": 1,
       "model": [
         "14",
         0
@@ -255,7 +255,7 @@
       "cfg": 7.5,
       "sampler_name": "euler",
       "scheduler": "simple",
-      "denoise": 1.0,
+      "denoise": 1,
       "model": [
         "14",
         0
@@ -309,10 +309,10 @@
     "inputs": {
       "seed": "{{seed}}",
       "steps": 12,
-      "cfg": 1.0,
+      "cfg": 1,
       "sampler_name": "euler",
       "scheduler": "normal",
-      "denoise": 1.0,
+      "denoise": 1,
       "model": [
         "7",
         0
@@ -358,10 +358,10 @@
       "resolution": 768,
       "sign_mode": "udf",
       "sign_mode.qef": false,
-      "sign_mode.drop_inverted_components": false,
+      "sign_mode.drop_inverted_components": "{{solid}}",
       "sign_mode.drop_enclosed_components": false,
-      "band": 1.0,
-      "project_back": 0.0,
+      "band": 1,
+      "project_back": 0,
       "fix_poles": false,
       "smooth_iters": 20,
       "drop_small_components": 0.01,
@@ -383,10 +383,10 @@
     "class_type": "MeshSmoothNormals",
     "inputs": {
       "mesh": [
-        "27",
+        "36",
         0
       ],
-      "crease_angle": 180.0
+      "crease_angle": 180
     }
   },
   "29": {
@@ -450,7 +450,7 @@
       "resolution": 1024,
       "samples": 64,
       "max_distance": 0.71,
-      "strength": 1.0,
+      "strength": 1,
       "bias": 0.01
     }
   },
@@ -490,7 +490,7 @@
         "33",
         0
       ],
-      "crease_angle": 180.0
+      "crease_angle": 180
     }
   },
   "35": {
@@ -501,6 +501,19 @@
         0
       ],
       "filename_prefix": "comfyfield/trellis2_character"
+    }
+  },
+  "36": {
+    "class_type": "FillHoles",
+    "inputs": {
+      "mesh": [
+        "27",
+        0
+      ],
+      "max_perimeter": "{{fill}}",
+      "weld_epsilon_rel": 0.00001,
+      "max_vertices": 16,
+      "fill_chains": false
     }
   },
   "60": {
@@ -606,7 +619,7 @@
         0
       ],
       "upscale_method": "lanczos",
-      "megapixels": 1.0,
+      "megapixels": 1,
       "resolution_steps": 16
     }
   },
