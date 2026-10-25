@@ -191,7 +191,12 @@ try {
     for (const deadline = Date.now() + uiTimeout; Date.now() < deadline;) { if (await evaluate(`Boolean(${expression})`)) return; await pause(100) }
     throw new Error(`Timed out: ${expression}\n${await evaluate('document.body.innerText')}\n${errors.join('\n')}`)
   }
-  const click = (text) => evaluate(`[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === ${JSON.stringify(text)}).click()`)
+  // Generations run as polled jobs, so a button can still read "Working" for a moment.
+  const click = async (text) => {
+    const find = `[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === ${JSON.stringify(text)} && !b.disabled)`
+    await wait(find)
+    return evaluate(`${find}.click()`)
+  }
   const input = (selector, value) => evaluate(`(() => { const el = document.querySelector(${JSON.stringify(selector)}); Object.getOwnPropertyDescriptor(el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype, 'value').set.call(el, ${JSON.stringify(value)}); el.dispatchEvent(new Event('input', { bubbles: true })); })()`)
   const goto = async (url) => { await cdp('Page.navigate', { url: `${origin}${url}` }); await wait('document.querySelector("main") && document.readyState === "complete"') }
   const screenshot = async (name) => {
