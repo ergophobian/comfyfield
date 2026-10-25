@@ -78,7 +78,7 @@ await test('Router consumes ordered format slots and character or product refere
 })
 
 await test('Router chains reject unsupported upstream images before any generation, including gates and targets', async () => {
-  const base = { id: 'router-chain', name: 'Router chain', job: 'Test chain', shape: 'chain', kind: 'image', cover: 'test', inputs: [], steps: [{ id: 'first', model: 'comfy-router-flux' }, { id: 'gate', type: 'approve' }, { id: 'last', model: 'comfy-router-photon', settings: { aspect: '16:9' } }], outputs: [{ step: 'last', kind: 'image' }] }
+  const base = { id: 'router-chain', name: 'Router chain', job: 'photo', shape: 'chain', kind: 'image', cover: 'test', inputs: [], steps: [{ id: 'first', model: 'comfy-router-flux' }, { id: 'gate', type: 'approve' }, { id: 'last', model: 'comfy-router-photon', settings: { aspect: '16:9' } }], outputs: [{ step: 'last', kind: 'image' }] }
   let calls = 0
   for (const [model, kind] of [['comfy-router-photon', 'image'], ['comfy-router-ltx', 'video']]) {
     const format = { ...base, steps: [...base.steps.slice(0, 2), { ...base.steps[2], model, kind }], outputs: [{ step: 'last', kind }] }

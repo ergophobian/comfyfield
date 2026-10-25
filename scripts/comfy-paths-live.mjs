@@ -207,7 +207,7 @@ function valuesFor(format, p) {
 }
 
 // A stand-in for the Google prompt writer, which has no key this round.
-const writePrompt = async ({ format, note }) => `${format.job}. ${note || ''} Natural light, clear subject, realistic detail.`.trim()
+const writePrompt = async ({ format, note }) => `${format.blurb || format.name}. ${note || ''} Natural light, clear subject, realistic detail.`.trim()
 
 // ---- Run.
 const first = await get('/api/pod')

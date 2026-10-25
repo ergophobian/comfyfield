@@ -20,14 +20,14 @@ export function AppCard({ format, to, i = 0, picked = false, disabled = false, o
   }
   const badge = badgeText(format)
   const props = {
-    className: `recipe-card${rise ? ' rise' : ''}${picked ? ' on' : ''}`,
+    className: `format-card${rise ? ' rise' : ''}${picked ? ' on' : ''}`,
     style: { '--d': `calc(${Math.min(i, 12)} * var(--stagger))` },
     onPointerEnter: () => preview(true), onPointerLeave: () => preview(false),
     onFocus: () => preview(true), onBlur: () => preview(false),
   }
   const body = (
     <>
-      <span className="recipe-cover" style={{ background: format.cover }}>
+      <span className="format-cover" style={{ background: format.cover }}>
         <ArtImage id={format.id} alt={`${format.name} example`} />
         {format.preview && <video ref={ref} className={live ? 'on' : ''} src={format.preview} muted loop playsInline preload="none" />}
         {badge && <i className="app-badge">{badge}</i>}
@@ -35,7 +35,7 @@ export function AppCard({ format, to, i = 0, picked = false, disabled = false, o
       </span>
       <strong>{format.name}</strong>
       <small>{format.blurb}</small>
-      <span className="recipe-tags">
+      <span className="format-tags">
         {format.runsOn && <em title={format.runsOn}>{format.runsOn}</em>}
         {!isWired(format) && <em className="todo">Not wired yet</em>}
       </span>
@@ -54,7 +54,7 @@ export function AppCard({ format, to, i = 0, picked = false, disabled = false, o
 
 export function AppGrid({ list, to = (f) => `/apps/${f.id}` }) {
   return (
-    <div className="recipe-grid app-grid">
+    <div className="format-grid app-grid">
       {list.map((f, i) => <AppCard key={f.id} format={f} i={i} to={to(f)} />)}
     </div>
   )

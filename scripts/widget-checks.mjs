@@ -6,7 +6,7 @@ import path from 'node:path'
 import { upload } from '../server/upload.js'
 import { serveMedia } from '../server/serveMedia.js'
 import { aspectBox, fitBox, trimRange, widgetReady, videoLimit, imageLimit } from '../shared/widgetInputs.js'
-import { initialValues, missingInputs, recipeOptions } from '../src/lib/recipes.js'
+import { initialValues, missingInputs, formatOptions } from '../src/lib/formats/values.js'
 
 const req = (type, chunks, headers = {}) => Object.assign(Readable.from(chunks.map((c) => Buffer.isBuffer(c) ? c : Buffer.from(c))), { headers: { 'content-type': type, ...headers } })
 const saved = []
@@ -33,16 +33,16 @@ const box = aspectBox('9:16', '1920:1080')
 assert.equal((box.width * 1920) / (box.height * 1080), 9 / 16)
 assert.equal(widgetReady('mask', { url: '/photo' }), false)
 assert.equal(widgetReady('face', { url: '/photo' }), false)
-const recipe = { name: 'Widget test', prompt: 'Use {face}', settings: {}, inputs: ['mask', 'face', 'video', 'crop'].map((type) => ({ id: type, type })) }
-assert.equal(missingInputs(recipe, initialValues(recipe)).length, 4)
+const format = { name: 'Widget test', prompt: 'Use {face}', settings: {}, inputs: ['mask', 'face', 'video', 'crop'].map((type) => ({ id: type, type })) }
+assert.equal(missingInputs(format, initialValues(format)).length, 4)
 const values = {
   mask: { url: '/photo', maskUrl: '/mask' },
   face: { url: '/group', faceUrl: '/face', name: 'Selected face' },
   video: { url: '/video', duration: 8, trim: { start: 1, end: 3 }, posterUrl: '/poster', posterTime: 2 },
   crop: { url: '/photo', box, aspect: '9:16' },
 }
-assert.equal(missingInputs(recipe, values).length, 0)
-const opts = recipeOptions(recipe, values)
+assert.equal(missingInputs(format, values).length, 0)
+const opts = formatOptions(format, values)
 assert.deepEqual(opts.inputs, values)
 assert.deepEqual(opts.images, ['/photo', '/face', '/photo'])
 assert.deepEqual(opts.media, { maskStrokes: '/mask', video: '/video' })

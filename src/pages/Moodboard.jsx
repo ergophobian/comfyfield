@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import PhotoGrid from '../components/studio/PhotoGrid.jsx'
 import { Hero, GoButton, NotWired, useStored } from '../components/studio/Shell.jsx'
-import { FormatGrid } from '../components/Recipes.jsx'
+import { FormatGrid } from '../components/Formats.jsx'
 import { IconCheck, IconClose, IconPlus, IconTrash } from '../components/Icons.jsx'
 import { useApp } from '../lib/appContext.js'
 import { formats, formatById } from '../lib/formats/index.js'

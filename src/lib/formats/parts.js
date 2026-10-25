@@ -4,7 +4,7 @@ import { defineFormat } from './spec.js'
 //
 // A format is data: inputs the sheet renders, a prompt template and the workflow it will run.
 //   id, name, kind (image | video | audio), category (see index.js), blurb
-//   engine    'comfy' for open weights. The teammate's fal recipes are tagged 'fal' in index.js
+//   engine    'comfy' for open weights. The teammate's fal formats are tagged 'fal' in index.js
 //   runsOn    model label shown on cards and the sheet, checked against Comfy Cloud and Runpod in the backend pass
 //   workflow  public/workflows/<id>.json. Missing workflows keep the format out of runnable galleries
 //   inputs    see below. prompt fills {inputId} with the value (a choice uses its option text or label)

@@ -1,5 +1,5 @@
 // Preserve the full catalog and expose only formats whose targets validate to galleries.
-import { recipes } from '../recipes.js'
+import { falFormats } from './fal.js'
 import { motion } from './motion.js'
 import { edits } from './edit.js'
 import { people } from './people.js'
@@ -10,7 +10,8 @@ import { three } from './three.js'
 import { apps2 } from './appsx.js'
 import { presets } from './presetsx.js'
 import { mixedLooks } from './mixedx.js'
-import { jobs } from './jobsx.js'
+import { jobs as useCases } from './jobsx.js'
+import { jobs } from './jobs.js'
 import { validateFormat } from './validate.js'
 import { effects } from './effects.js'
 
@@ -34,7 +35,7 @@ export const categories = [
   { id: 'enhance', name: 'Enhance', blurb: 'Sharper, smoother, cleaner.' },
 ]
 
-// Category and model label for each fal recipe, kept here so recipes.js stays as its author wrote it.
+// Category and model label for each fal format, kept here so fal.js stays as its author wrote it.
 const falInfo = {
   melt: ['effects', 'Seedance 2.0'],
   'zero-gravity': ['effects', 'Seedance 2.0'],
@@ -48,7 +49,7 @@ const falInfo = {
   upscale: ['enhance', 'SeedVR'],
 }
 
-const fromFal = recipes.map((r) => {
+const fromFal = falFormats.map((r) => {
   const [category, model] = falInfo[r.id] || ['effects', 'fal']
   return { ...r, engine: 'fal', category, runsOn: `${model} via fal` }
 })
@@ -71,11 +72,22 @@ const widenMix = (f) => ({
   }),
 })
 
-export const allFormats = [...motion, ...presets, ...looks, ...edits, ...people, ...ads, ...fun, ...apps2, ...mixedLooks, ...jobs, ...three, ...fromFal, ...effects]
+export const allFormats = [...motion, ...presets, ...looks, ...edits, ...people, ...ads, ...fun, ...apps2, ...mixedLooks, ...useCases, ...three, ...fromFal, ...effects]
   .map((f) => (f.id === 'cam-mix' ? widenMix(f) : f))
 
 export const formatProblems = new Map(allFormats.map((f) => [f.id, validateFormat(f)]))
 export const formats = allFormats.filter((f) => !formatProblems.get(f.id).length)
+
+export { jobs, jobById } from './jobs.js'
+
+// Featured first, then open weights before fal. There is no usage data yet, so featured stands in for popular.
+export const popularFirst = (list) => {
+  const rank = (f) => (f.featured ? 0 : 2) + (isOpen(f) ? 0 : 1)
+  return [...list].sort((a, b) => rank(a) - rank(b))
+}
+export const formatsForJob = (job) => popularFirst(formats.filter((f) => f.job === job))
+// Jobs in their fixed order, each with how many formats it has. A job with none stays out of the list.
+export const jobRail = () => jobs.map((j) => ({ ...j, count: formats.filter((f) => f.job === j.id).length })).filter((j) => j.count)
 
 // Higgsfield's app hubs. A format with `hub` set shows on /apps under that hub and opens at /apps/:id.
 export const hubs = [

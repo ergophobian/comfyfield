@@ -1,9 +1,10 @@
-import { initialValues, visibleInputs, pictureTypes } from '../recipes.js'
+import { initialValues, visibleInputs, pictureTypes } from './values.js'
 import { falInput, comfyRouterInput, PICTURE_SLOTS } from '../../../shared/mapping.js'
 import { schemas as savedSchemas } from './schemas.js'
 import { stepModel, stepOptions, selectedStep } from './options.js'
 import { widgetTypes } from '../../../shared/widgetInputs.js'
 import { topoOrder } from '../flowEngine.js'
+import { jobIds } from './jobs.js'
 
 const types = new Set(['text', 'longtext', 'choice', 'count', 'image', 'video', 'audio', 'draw', 'character', 'product', 'brand', 'voice', ...widgetTypes])
 const media = new Set(['image', 'video', 'audio', 'draw', ...widgetTypes])
@@ -66,6 +67,7 @@ export function validateFormat(format, schemas = savedSchemas) {
   for (const field of ['id', 'name', 'job', 'shape', 'cover']) {
     if (typeof format[field] !== 'string' || !format[field].trim()) bad(`Missing ${field}`)
   }
+  if (format.job && !jobIds.includes(format.job)) bad(`Unknown job ${format.job}`)
   if (!['preset', 'chain', 'tool', 'pipeline'].includes(format.shape)) bad(`Unknown shape ${format.shape}`)
   if (!Array.isArray(format.inputs)) bad('Missing typed inputs')
   if (!Array.isArray(format.steps) || !format.steps.length) bad('Missing steps')

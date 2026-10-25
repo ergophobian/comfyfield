@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom'
 import TopBar from './components/nav/TopBar.jsx'
-import { RecipeSheet } from './components/Recipes.jsx'
+import { FormatSheet } from './components/Formats.jsx'
 import Explore from './pages/Explore.jsx'
 import ImageStudio from './pages/ImageStudio.jsx'
 import VideoStudio from './pages/VideoStudio.jsx'
@@ -115,7 +115,7 @@ export default function App() {
       </div>
       <PodSheet />
       <RunToasts />
-      {sheet && <RecipeSheet key={sheet.format.id} recipe={sheet.format} initial={sheet.initial} gens={gens} connections={connections} onClose={() => setSheet(null)} />}
+      {sheet && <FormatSheet key={sheet.format.id} format={sheet.format} initial={sheet.initial} gens={gens} connections={connections} onClose={() => setSheet(null)} />}
     </AppCtx.Provider>
   )
 }

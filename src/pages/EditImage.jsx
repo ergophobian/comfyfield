@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import Segmented from '../components/Segmented.jsx'
-import { FormatGrid } from '../components/Recipes.jsx'
+import { FormatGrid } from '../components/Formats.jsx'
 import { Field } from '../components/formats/Fields.jsx'
 import { Hero, Box, Pills, NotWired, Empty, ErrorNote, Compared, IconEye, useParam, stagger } from '../components/studiob/Kit.jsx'
 import { useApp } from '../lib/appContext.js'

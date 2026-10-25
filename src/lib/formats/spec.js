@@ -1,7 +1,8 @@
+import { jobFor } from './jobs.js'
+
 // Keep the existing catalog copy and controls while giving each entry an executable shape.
 export function defineFormat(format) {
   return {
-    job: format.blurb || format.name,
     shape: format.prompt ? 'preset' : 'tool',
     ...format,
     steps: format.steps || [{
@@ -15,5 +16,6 @@ export function defineFormat(format) {
       ...(format.sizes && { sizes: format.sizes }),
     }],
     outputs: format.outputs || [{ step: 'generate', kind: format.kind }],
+    job: jobFor(format),
   }
 }
