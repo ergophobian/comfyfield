@@ -1,10 +1,22 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync } from 'node:fs'
 import { resolve, join } from 'node:path'
 import { spawn } from 'node:child_process'
+import { createServer } from 'node:net'
 import { setTimeout as delay } from 'node:timers/promises'
 
 export const browserTimeout = process.env.CI ? 60000 : 20000
 export const uiTimeout = process.env.CI ? 30000 : 10000
+
+// Vite's dev server reads port 0 as its default 5173, so ask the OS for a free port first.
+export function freePort() {
+  return new Promise((done, fail) => {
+    const server = createServer().once('error', fail)
+    server.listen(0, '127.0.0.1', () => {
+      const { port } = server.address()
+      server.close(() => done(port))
+    })
+  })
+}
 
 export function chromeExecutable() {
   const executable = process.env.CHROME_PATH || [
