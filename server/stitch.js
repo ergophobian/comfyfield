@@ -149,7 +149,8 @@ export async function renderStitch(options, { home, mediaPath, binary, timeout, 
 // number, and join the rendered chunks over their overlap.
 export async function probeVideo(file, { binary, timeout } = {}) {
   binary ||= await findFfmpeg()
-  const log = await ffmpeg(['-i', file, '-map', '0:v:0', '-c', 'copy', '-f', 'null', '-'], { binary, timeout, allowFailure: true })
+  // Decode, not stream copy: ffmpeg 6 (the ffmpeg-static build) prints no frame count for a copied stream.
+  const log = await ffmpeg(['-i', file, '-map', '0:v:0', '-f', 'null', '-'], { binary, timeout, allowFailure: true })
   const stream = /Stream #.*Video:.*/.exec(log)?.[0] || ''
   const size = /, (\d{2,5})x(\d{2,5})/.exec(stream)
   const fps = Number(/([\d.]+) fps/.exec(stream)?.[1] || /([\d.]+) tbr/.exec(stream)?.[1])
