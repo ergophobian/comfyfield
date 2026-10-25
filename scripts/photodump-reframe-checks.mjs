@@ -2,12 +2,16 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { photodumpFormat, reframeFormat, reframeRatios, reframeIssue } from '../src/lib/formats/photodumpReframe.js'
 import { photodumpSets, setSizes, photoRatios, qualities } from '../src/components/studio/presets.js'
-import { compileFormat, runFormat } from '../src/lib/formats/runner.js'
+import { compileFormat, runFormat as runWithPlanning } from '../src/lib/formats/runner.js'
+import { offlineRequirements } from './fixtures/format-planning.mjs'
 import { validateFormat } from '../src/lib/formats/validate.js'
 import { comfyVars, fill, dropOptional } from '../shared/mapping.js'
 import { tools } from '../src/lib/tools.js'
 import { formats, allFormats } from '../src/lib/formats/index.js'
 import { MODEL_FILES, LOADERS } from '../shared/modelFiles.js'
+
+// The runner preflights each run; inject offline requirements instead of a network call.
+const runFormat = (format, values, options) => runWithPlanning(format, values, { requirements: offlineRequirements, ...options })
 import { checkGraph } from './graph-check.mjs'
 
 const core = JSON.parse(readFileSync('scripts/fixtures/comfy-nodes.json', 'utf8')).nodes

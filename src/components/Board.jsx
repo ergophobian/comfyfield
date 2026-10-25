@@ -11,7 +11,7 @@ function Take({ it, onApprove, onDismiss }) {
           Failed
           {typeof it.failed === 'string' && <small title={it.failed}>{it.failed}</small>}
           <span className="take-acts">
-            {it.retry && <button type="button" onClick={it.retry}>Retry</button>}
+            {it.retry && <button type="button" onClick={it.retry}>{it.retry.label || 'Retry'}</button>}
             <button type="button" onClick={() => onDismiss(it.id)}>Dismiss</button>
           </span>
         </span>
@@ -32,7 +32,8 @@ function Take({ it, onApprove, onDismiss }) {
 // Results of one batch, one row per prompt, takes side by side, approve the winners.
 export default function Board({ items, batch, onApprove, onDismiss }) {
   const mine = items.filter((i) => i.batch === batch.id)
-  const done = mine.filter((i) => !i.pending).length
+  // An upscaled copy sits beside its take but is not one of the takes the batch counts.
+  const done = mine.filter((i) => !i.pending && !i.upscaled).length
   const approved = mine.filter((i) => i.approved)
   const rows = batch.prompts.map((p, r) => ({ p, takes: mine.filter((i) => i.row === r).reverse() }))
 

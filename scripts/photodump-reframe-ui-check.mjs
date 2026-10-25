@@ -5,6 +5,7 @@ import { startBrowser, uiTimeout } from './browser.mjs'
 
 // A separate Vite server with an in-process mock API never loads provider routes or keys.
 const requests = []
+const jobs = new Map()
 let failNext = false
 let failShotAt = 4
 let uploadUrl = '/mock-photo.svg'
@@ -27,17 +28,33 @@ const server = await preview({ configFile: false, envFile: false, plugins: [{
         req.resume()
         return res.end(JSON.stringify({ url: uploadUrl }))
       }
+      if (url.pathname.startsWith('/api/jobs/')) return res.end(JSON.stringify(jobs.get(url.pathname.slice('/api/jobs/'.length))))
       if (req.method === 'POST') {
         let body = ''
         for await (const chunk of req) body += chunk
-        requests.push({ path: url.pathname, body: JSON.parse(body) })
-        assert.equal(url.pathname, '/api/comfy/run', 'Only mocked Comfy generations are allowed')
-        if (failNext || requests.length === failShotAt) {
-          failNext = false
-          res.statusCode = 500
-          return res.end(JSON.stringify({ error: 'Mock generation failure' }))
+        let data = JSON.parse(body)
+        if (url.pathname === '/api/comfy/requirements') {
+          return res.end(JSON.stringify({
+            connections: { comfy: { connected: true }, fal: { connected: true }, google: { connected: true } }, cloudConnected: true, pod: { phase: 'none' },
+            requirements: data.workflows.map(({ workflow }) => ({ workflow, notOnCloud: [], minVramGb: 0, target: 'cloud', selectedWorkflow: workflow })),
+          }))
         }
-        return res.end(JSON.stringify({ files: [{ url: '/mock-result.svg', kind: 'image' }] }))
+        // Generations run as server jobs; record the route each job runs.
+        let path = url.pathname
+        const job = path === '/api/jobs'
+        if (job) ({ route: path, body: data } = data)
+        requests.push({ path, body: data })
+        assert.equal(path, '/api/comfy/run', 'Only mocked Comfy generations are allowed')
+        const failed = failNext || requests.length === failShotAt
+        if (failed) failNext = false
+        const files = [{ url: '/mock-result.svg', kind: 'image' }]
+        if (!job) {
+          if (failed) { res.statusCode = 500; return res.end(JSON.stringify({ error: 'Mock generation failure' })) }
+          return res.end(JSON.stringify({ files }))
+        }
+        const id = `job-${jobs.size + 1}`
+        jobs.set(id, failed ? { id, status: 'failed', error: { message: 'Mock generation failure', status: 500 } } : { id, status: 'done', files })
+        return res.end(JSON.stringify({ id }))
       }
       res.end('{}')
     })

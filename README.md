@@ -10,12 +10,13 @@ Entry for the [Open Source Higgsfield](https://comfy.org/open-source-higgsfield)
 
 ## Run it
 
+Install [Node.js 22 or newer](https://nodejs.org/en/download): use the macOS `.pkg`, Windows `.msi`, or the Linux instructions on that page. Reopen your terminal after installation.
+
 ```bash
-npm install
-npm run dev
+npm start
 ```
 
-Open the local URL, go to **Connections**, and paste your keys. Keys are saved to `.comfyfield/keys.json` on your machine (gitignored) and only the local server reads them. You can use `.env` instead; see `.env.example`.
+The first start installs dependencies, builds the app and opens your browser. Open **Connections** to add keys when ready. See the [macOS, Windows and Linux setup guide](docs/setup.md) for Node.js installation, the post-publication `npx comfyfield` path, data locations and troubleshooting. Data defaults to `~/.comfyfield` on macOS/Linux or `%APPDATA%\comfyfield` on Windows; `COMFYFIELD_HOME` keeps the existing `<folder>/.comfyfield` override. Only the local server reads saved keys.
 
 ### ComfyUI models for the bundled workflows
 
@@ -38,13 +39,15 @@ args = ["comfyfield", "mcp"]
 env = { COMFYFIELD_HOME = "/path/to/your/comfyfield" }
 ```
 
-Cursor and ChatGPT desktop take the same command: `npx comfyfield mcp`. Keys are read from `.comfyfield/keys.json` in `COMFYFIELD_HOME` (default: the working directory), then from `FAL_KEY`, `GEMINI_API_KEY`, `ELEVENLABS_API_KEY`, `COMFY_API_KEY` and `RUNPOD_API_KEY`.
+Cursor and ChatGPT desktop take the same command: `npx comfyfield mcp`. Keys are read from the per-user data folder (or `.comfyfield/keys.json` under `COMFYFIELD_HOME`), then from `FAL_KEY`, `GEMINI_API_KEY`, `ELEVENLABS_API_KEY`, `COMFY_API_KEY` and `RUNPOD_API_KEY`.
 
 Tools: `list_models`, `generate`, `get_model_schema`, `balance`, `write_prompts`, `stitch`, `export_stitch`. Any fal endpoint works as `fal:<endpoint>`.
 
+Flow tools: `list_flows`, `get_flow`, `create_flow`, `add_node`, `connect_nodes`, `update_node`, `remove_node`, `run_flow`. Flows are saved in `.comfyfield/flows.json`, so the app shows what an agent builds (switch back to the tab to reload). `run_flow` fills gaps and stops at Approve gates; only you can press Send in Flows. See [docs/flows-mcp.md](docs/flows-mcp.md).
+
 The Skills page (`/skills`) lists ready-made jobs to run from your agent, each with a prompt to copy. Their slash commands are not wired into the MCP server yet.
 
-Recipes and flows are not in this tree yet. TODO: add `list_recipes`, `run_recipe` and `run_flow` once `src/lib/recipes.js` and flows land.
+Recipes are not wired into the MCP server yet. TODO: add `list_recipes` and `run_recipe`.
 
 CLI:
 

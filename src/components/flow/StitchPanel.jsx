@@ -5,7 +5,7 @@ import { stitchInputs, stitchRequest, uploadStitchFile } from '../../lib/stitch.
 
 const storedClip = ({ id, url, name, upstream, start, end, caption }) => ({ id, url: upstream ? undefined : url, name, upstream, start, end, caption })
 
-export default function StitchPanel({ node, patch }) {
+export default function StitchPanel({ node, patch, disabled = false }) {
   const { flow, engine, state, act } = useContext(FlowCtx)
   const { gens } = useApp()
   const input = stitchInputs(flow, node.id, engine.itemsOf, (id) => state[id]?.running > 0)
@@ -18,8 +18,8 @@ export default function StitchPanel({ node, patch }) {
   const [saved, setSaved] = useState('')
   const upload = useRef(null)
   const musicUpload = useRef(null)
-  const busy = working || st.running > 0
-  const current = result && result.signature === input.signature && !input.blocked
+  const busy = disabled || working || st.running > 0
+  const current = result && !result.stale && result.signature === input.signature && !input.blocked
   const exported = result && (result.exported || saved === result.url || gens.items.some((item) => item.url === result.url))
   const change = (data) => { setError(''); patch(node.id, data) }
   const setClips = (list) => change({ clips: list.map(storedClip) })
@@ -101,13 +101,13 @@ export default function StitchPanel({ node, patch }) {
         </>}
       </fieldset>
       {input.blocked && <p className="muted fp-blurb">{clips.length ? 'Waiting for connected video results or approval.' : 'Add clips or connect a video node to start.'}</p>}
-      <button type="button" className="btn-blue sm" disabled={busy || input.blocked} onClick={() => act.rerun(node.id)}>{busy ? 'Working' : result ? 'Render again' : 'Preview'}</button>
+      <button type="button" className="btn-blue sm" disabled={busy || input.blocked} onClick={() => act.rerun(node.id)}>{working || st.running > 0 ? 'Working' : node.data.manual ? result ? 'Re-stitch' : 'Stitch scene' : result ? 'Render again' : 'Preview'}</button>
       {(error || failed) && <p className="stitch-error" role="alert">{error || failed.error}</p>}
       {result && <>
         <video className="stitch-preview" aria-label="Stitch preview" src={result.url} controls playsInline preload="metadata" />
         {!current && <p className="muted fp-blurb">Settings changed. Render again before exporting.</p>}
         <button type="button" className="btn-blue sm" disabled={busy || !current || exported} onClick={save}>{exported ? 'Saved to Library' : 'Export to Library'}</button>
-        {current && exported && <a className="btn-soft sm" href={result.url} download>Download video</a>}
+        {current && exported && !busy && <a className="btn-soft sm" href={result.url} download>Download video</a>}
       </>}
     </>
   )
