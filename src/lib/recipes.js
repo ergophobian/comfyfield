@@ -210,7 +210,8 @@ export function recipeOptions(recipe, values) {
       if (input.field) fields[input.field] = v.url
       else images.push(v.url)
     } else if (input.type === 'video' || input.type === 'audio') {
-      if (v) media[input.id] = v.url
+      // `text` names an attached file in the prompt only when there is one, e.g. 'the voice from <Audio 1>'.
+      if (v) { media[input.id] = v.url; if (input.text) fill[input.id] = input.text }
     } else if (input.type === 'draw') {
       if (v) { images.push(v.url); if (v.strokes) media[`${input.id}Strokes`] = v.strokes }
     } else if (libraryPicks.includes(input.type)) {

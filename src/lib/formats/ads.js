@@ -24,7 +24,9 @@ export const ads = [
   open({
     id: 'ugc-ad', name: 'UGC ad', kind: 'video', category: 'ads', layout: 'wide',
     blurb: 'Your character talks about your product to camera.',
-    runsOn: 'Chatterbox and MiniMax H3', workflow: 'ugc_ad',
+    // H3 makes the speech with the picture, so the ad needs no separate voice step. A voice sample
+    // becomes <Audio 1>, the voice H3 copies; without one, H3 picks a voice that fits the character.
+    runsOn: 'MiniMax H3', workflow: 'ugc_ad', sizes: h3Sizes,
     inputs: [
       { id: 'character', type: 'character', label: 'Character', half: true },
       { id: 'product', type: 'product', label: 'Product', half: true },
@@ -42,11 +44,16 @@ export const ads = [
         { id: 'playful', label: 'Playful', text: 'playful and funny, with quick expressive reactions' },
       ] },
       { id: 'script', type: 'longtext', label: 'Script', placeholder: 'Okay, I did not expect to love this as much as I do. Here is why it lives in my bag now.' },
-      { id: 'voice', type: 'voice', label: 'Voice', optional: true, half: true },
-      { id: 'sound', type: 'text', label: 'Background sound', optional: true, half: true, placeholder: 'In the background, soft cafe chatter and an espresso machine' },
+      { id: 'voice', type: 'audio', label: 'Voice sample', optional: true, half: true, text: 'They speak in the voice from <Audio 1>.' },
+      { id: 'length', type: 'choice', label: 'Length', half: true, default: '10', options: [
+        { id: '5', label: '5 seconds', note: 'One line', params: { duration: 5, seconds: 5 } },
+        { id: '10', label: '10 seconds', note: 'Two or three lines', params: { duration: 10, seconds: 10 } },
+        { id: '15', label: '15 seconds', note: 'A short review', params: { duration: 15, seconds: 15 } },
+      ] },
+      { id: 'sound', type: 'text', label: 'Background sound', optional: true, placeholder: 'In the background, soft cafe chatter and an espresso machine' },
     ],
-    prompt: '{character} {camera}, holding {product} and talking straight to the camera, {emotion}. They say: {script} {sound}',
-    settings: { aspect: '9:16' },
+    prompt: 'A vertical iPhone UGC ad. The person in <Picture 1> ({character}) {camera}, holding the product in <Picture 2> ({product}) and talking straight to the camera, {emotion}. Keep their face and the product shape, label and colors exactly the same in every frame. They say: "{script}" {voice} {sound}',
+    settings: { aspect: '9:16', duration: 10 },
     cover: covers.peach,
   }),
   open({

@@ -1339,6 +1339,16 @@ export const schemas = {
       "image",
       "seed"
     ],
+    "ugc_ad": [
+      "audio",
+      "height",
+      "image",
+      "image2",
+      "prompt",
+      "seconds",
+      "seed",
+      "width"
+    ],
     "video_bg_change": [
       "duration",
       "prompt",
@@ -1478,6 +1488,9 @@ export const schemas = {
       "image2",
       "image3",
       "image4"
+    ],
+    "ugc_ad": [
+      "audio"
     ],
     "wan22_i2v": [
       "image2"
