@@ -197,7 +197,9 @@ These block or degrade several graphs at once. Each is a small change outside th
 
 ## Camera and effect presets: move off `h3_i2v` and `ltx_i2v`
 
-Today: 97 formats run on `h3_i2v` (71 camera moves, 19 effects, 7 others; 95 of them `auto`, 5 s) and 143 effects on `ltx_i2v` (98 `auto`; 45 at 9:16 or 16:9, 4 to 15 s). [Verified: counted from `allFormats`]
+Update: done for H3. Every format now runs on `h3_open_i2v`, and #123 removed `h3_i2v` from the repo and the model picker. `graph-check` now fails on any partner node.
+
+At research time: 97 formats ran on `h3_i2v` (71 camera moves, 19 effects, 7 others; 95 of them `auto`, 5 s) and 143 effects on `ltx_i2v` (98 `auto`; 45 at 9:16 or 16:9, 4 to 15 s). [Verified: counted from `allFormats`]
 
 - `h3_i2v` is Comfy's **paid MiniMax partner node** (`MinimaxHailuo03FirstLastFrameNode`, `model: "MiniMax H3"`, 768P, Comfy credits). It is not open weights, and the contest's "Open Weights Only" prize requires "no partner nodes or APIs". [Verified: `public/workflows/h3_i2v.json`; lineup note on the contest post]
 - `ltx_i2v` is LTX Video 2B v0.9.5 (2025, no audio, 30 steps, cfg 3). [Verified: `public/workflows/ltx_i2v.json`]

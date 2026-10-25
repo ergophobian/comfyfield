@@ -1,0 +1,36 @@
+{
+  "date": "2026-10-21",
+  "baseCommit": "3174854ed9904e3a4d9a017ab1a62215252e20a6",
+  "host": "pi-windows",
+  "checkout": "C:/comfyfield-live-runs-71",
+  "node": "24.11.1",
+  "shellPrerequisite": "Git Bash first on process PATH; Windows WSL bash cannot run the native-path fixtures",
+  "checks": {
+    "npx vite build": "passed, existing chunk-size warning",
+    "node scripts/live-run-check.mjs": "16 passed",
+    "node scripts/pod-checks.mjs": "84 passed",
+    "node scripts/verify.mjs": "22/22 check scripts passed",
+    "local dry runs": "cloud, router, pod, sweep passed"
+  },
+  "spendUsd": 0,
+  "paidCalls": 0,
+  "podsStarted": 0,
+  "accountState": "not accessed; unverified",
+  "keysPresentInThisCheckout": {
+    "comfy.key": false,
+    "runpod.key": false
+  },
+  "screenshot": "mock-library-import.png; offline mock only",
+  "sha256AfterNewlineNormalization": {
+    "scripts/live-run.mjs": "13988c5b049660e75984ad54f0e8a469d4bc3226a746842b5a16b8d88ba66086",
+    "scripts/live-run-check.mjs": "87c462f8d6747c25109b80b9ccf28a0cac07a6b8869dd50234a4f35f9b4473d7",
+    "scripts/pod-checks.mjs": "d0aed67d795537f1b2c7a082c6de7d29dc4ac4b878e8d16fdf212ee2201c8471",
+    "scripts/format-ui-check.mjs": "653a67747becd34dfc169186fddc8ad207302493249077a477ef760aa2ccccb7",
+    "server/core.js": "e3dd32d5fbe87625ba7ec8b78649c129672756cfcb3f48fc1644d9810dcd15dc",
+    "server/pod.js": "21824c7e049cd637282de9516a065bec36314186b894ff3b71518e0ae5872b6f",
+    "server/podBoot.js": "a4a55b910c48e6e7e13ada67bfaeafd11ebfc27a012fc34bf9f5da1bb9788de9",
+    "server/pod-statusd.py": "3f60bdae2f6e7d8ed17e2b215f95b54ee84b0a10014e04d406ad38a162b62502",
+    "server/plugin.js": "ce79a01217fe6a70a2da508d5e0397bd35874efe48c8ff3c93daca217801b1b5",
+    "src/lib/useGenerations.js": "0d050166988931844d91fbab8b1bb364915cdb07961415bf03298b3680cda73f"
+  }
+}

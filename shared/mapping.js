@@ -64,13 +64,53 @@ export function comfyVars(kind, o, sizes) {
 }
 
 export function comfyRouterInput(model, o) {
-  if (model === 'bfl/flux-2-pro') {
-    const [width, height] = aspectSize[o.aspect || '16:9']
-    return { prompt: o.prompt, width, height, ...o.params }
+  const attached = o.images?.length ? o.images : o.image ? [o.image] : []
+  const references = (o.refs || []).filter((r) => ['character', 'product'].includes(r.type)).map((r) => r.images?.[0]).filter((url) => !attached.includes(url))
+  const pictures = (o.slots?.pictures || [...attached, ...references]).filter(Boolean)
+  const params = { ...o.params, ...o.fields }
+  const aspect = o.aspect === 'auto' || !o.aspect ? '16:9' : o.aspect
+  const size = aspectSize[aspect]
+  const limited = (max) => {
+    if (pictures.length > max) throw new Error(`This Router model accepts up to ${max} reference images.`)
   }
-  if (model === 'byteplus/dreamina-seedance-2-5-260628') {
-    const image = o.images?.[0] || o.image
-    return { content: [{ type: 'text', text: o.prompt }, ...(image ? [{ type: 'image_url', image_url: { url: image }, role: 'first_frame' }] : [])], duration: o.duration || 5, resolution: '720p', ...(image ? {} : { ratio: o.aspect || '16:9' }), ...o.params }
+  if (['bfl/flux-2-pro', 'bfl/flux-2-max'].includes(model)) {
+    limited(9)
+    if (!size) throw new Error('Choose a supported image aspect ratio.')
+    const [width, height] = size
+    return { prompt: o.prompt, width, height, ...Object.fromEntries(pictures.map((url, i) => [i ? `input_image_${i + 1}` : 'input_image', url])), ...params }
+  }
+  if (model === 'bfl/flux-kontext-pro') {
+    limited(4)
+    return { prompt: o.prompt, aspect_ratio: aspect, ...Object.fromEntries(pictures.map((url, i) => [i ? `input_image_${i + 1}` : 'input_image', url])), ...params }
+  }
+  if (model === 'byteplus/seedream-5-0-flash-260915') {
+    limited(10)
+    if (!size) throw new Error('Choose a supported image aspect ratio.')
+    return { prompt: o.prompt, size: size.join('x'), response_format: 'url', ...(pictures.length && { image: pictures }), ...params }
+  }
+  if (model === 'luma/photon-flash-1') {
+    limited(0)
+    return { prompt: o.prompt, aspect_ratio: aspect, ...params }
+  }
+  if (['byteplus/dreamina-seedance-2-5-260628', 'byteplus/seedance-1-0-pro-fast-251015'].includes(model)) {
+    const multi = model === 'byteplus/dreamina-seedance-2-5-260628' && pictures.length > 1
+    limited(multi ? 9 : 1)
+    const image = pictures[0]
+    // Seedance 2.5 follows the first frame's shape and refuses a concrete ratio with it.
+    return { content: [{ type: 'text', text: o.prompt }, ...pictures.map((url) => ({ type: 'image_url', image_url: { url }, role: multi ? 'reference_image' : 'first_frame' }))], duration: o.duration || 5, resolution: '720p', ...(image && !multi ? {} : { ratio: aspect }), ...params }
+  }
+  if (model === 'ltx/ltx-2-5-fast') {
+    limited(0)
+    if (!['16:9', '9:16'].includes(aspect)) throw new Error('Ltx Router video accepts 16:9 or 9:16.')
+    return { prompt: o.prompt, duration: o.duration || 5, resolution: aspect === '9:16' ? '720x1280' : '1280x720', fps: 24, ...params }
+  }
+  if (model === 'elevenlabs/eleven_v4_turbo') {
+    limited(0)
+    return { inputs: [{ text: o.prompt, voice_id: params.voice_id || '21m00Tcm4TlvDq8ikWAM' }], ...Object.fromEntries(Object.entries(params).filter(([key]) => key !== 'voice_id')) }
+  }
+  if (model === 'elevenlabs/eleven_sfx_v2') {
+    limited(0)
+    return { text: o.prompt, duration_seconds: o.duration || 5, ...params }
   }
   throw new Error('This Router model needs its native input body. Call runComfyRouter with input.')
 }
@@ -145,13 +185,19 @@ export function estimate(model, meta, o) {
   const takes = o.takes || 1
   let usd = null
   let approx = Boolean(price.estimate)
-  if (unit.includes('megapixel')) usd = price.amount * (w * h) / 1e6 * (o.count || 1)
+  if (/gpu[- _]?seconds?/.test(unit)) {
+    if (!Number.isFinite(o.executionSeconds) || o.executionSeconds <= 0) return null
+    usd = price.amount * o.executionSeconds
+  } else if (unit.includes('megapixel')) usd = price.amount * (w * h) / 1e6 * (o.count || 1)
   else if (unit.includes('image')) usd = price.amount * (o.count || 1)
-  else if (unit.includes('second')) usd = price.amount * (o.duration || 5)
+  else if (unit.includes('second')) {
+    usd = price.amount * (o.duration || 5)
+    if (!o.duration) approx = true
+  }
   else if (unit.includes('video') || unit.includes('request') || unit.includes('generation')) usd = price.amount
   else if (unit.includes('token') && model.kind === 'video') {
     const [vw, vh] = w >= h ? [1280, 720] : [720, 1280]
-    usd = price.amount * (vw * vh * 24 * (o.duration || 5)) / 1024 / 1000
+    usd = price.amount * (vw * vh * 24 * (o.duration || 5)) / 1024 / (unit.includes('1m') ? 1e6 : 1000)
     approx = true
   } else if (unit.includes('character')) {
     usd = price.amount * (o.chars || 0) / (unit.includes('1000') ? 1000 : 1)

@@ -32,7 +32,7 @@ const SHOWN = 48
 
 // The results feed: this session's batch boards, then every single generation of this kind, newest first.
 export function Feed({ kind, gens, batches, size, empty }) {
-  const singles = gens.items.filter((i) => i.kind === kind && !i.batch && !i.failed)
+  const singles = gens.items.filter((i) => i.kind === kind && !i.batch)
   if (!batches.length && !singles.length) return empty || null
   return (
     <div className="gen-feed">

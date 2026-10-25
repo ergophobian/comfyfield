@@ -1,4 +1,5 @@
 import RunNotes from './RunNotes.jsx'
+import { ArtImage } from '../Art.jsx'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Field } from './Fields.jsx'
@@ -74,7 +75,7 @@ export default function FormatWorkspace({ format, motion = false, showMore = tru
     setRunning(true)
     setError(null)
     setSession(null)
-    try { setSession(await gens.generateFormat(format, values)) } catch (e) { setError(e.message) }
+    try { setSession(await gens.generateFormat(format, values, { onSession: setSession })) } catch (e) { if (e.session) setSession(e.session); setError(e.message) }
     finally { setRunning(false) }
   }
   const use = (id, initial) => {
@@ -95,6 +96,7 @@ export default function FormatWorkspace({ format, motion = false, showMore = tru
           <div className="app-hero glass rise">
             {!(main && values[main.id]) && (
               <span className="app-cover" style={{ background: format.cover }}>
+                <ArtImage id={format.id} alt={`${format.name} example`} />
                 {format.preview && <video src={format.preview} muted loop playsInline autoPlay={!calm()} />}
               </span>
             )}
@@ -121,7 +123,7 @@ export default function FormatWorkspace({ format, motion = false, showMore = tru
             <p className="sheet-note">Nothing else to set. Add your {(main?.label || 'media').toLowerCase()} and generate.</p>
           )}
           <RunNotes format={format} values={values} />
-          {error && <p className="sheet-error">{error}</p>}
+          {error && !session && <p className="sheet-error">{error}</p>}
           {session && <FormatReview key={session.flow.id + session.flow.values.renderer} session={session} />}
           <div className="app-go">
             <button className="btn-blue" disabled={running || !wired || missing.length > 0 || !connected}>
@@ -144,8 +146,8 @@ export default function FormatWorkspace({ format, motion = false, showMore = tru
           </div>
           {failed.map((g) => (
             <p key={g.id} className="app-failed">
-              <span>{g.failed}</span>
-              {g.retry && <button type="button" className="link-btn" onClick={g.retry}>Retry</button>}
+              <span>{g.failed}{g.restoreNote && <> {g.restoreNote}</>}</span>
+              {g.retry && <button type="button" className="link-btn" onClick={g.retry}>{g.retry.label || 'Retry'}</button>}
               <button type="button" className="link-btn" onClick={() => gens.dismiss(g.id)}>Dismiss</button>
             </p>
           ))}

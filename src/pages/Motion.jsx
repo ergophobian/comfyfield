@@ -1,3 +1,4 @@
+import { ArtImage } from '../components/Art.jsx'
 import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import Segmented from '../components/Segmented.jsx'
@@ -41,7 +42,7 @@ export default function Motion() {
   ]
   const slot = (f, label, i) => (f ? (
     <button type="button" className="mix-slot has" onClick={() => setPicked((p) => p.filter((_, j) => j !== i))} aria-label={`Remove ${f.name}`}>
-      <i style={{ background: f.cover }} />
+      <i style={{ background: f.cover }}><ArtImage id={f.id} alt={`${f.name} example`} /></i>
       <span>{f.name}</span>
       <IconClose />
     </button>

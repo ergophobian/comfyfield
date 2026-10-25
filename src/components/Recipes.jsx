@@ -1,4 +1,5 @@
 import RunNotes from './formats/RunNotes.jsx'
+import { ArtImage } from './Art.jsx'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { IconClose } from './Icons.jsx'
@@ -26,6 +27,7 @@ function Card({ format, onOpen, i = 0 }) {
     <button type="button" className="recipe-card rise" style={{ '--d': `calc(${Math.min(i, 12)} * var(--stagger))` }} onClick={() => onOpen(format)}
       onPointerEnter={() => preview(true)} onPointerLeave={() => preview(false)} onFocus={() => preview(true)} onBlur={() => preview(false)}>
       <span className="recipe-cover" style={{ background: format.cover }}>
+        <ArtImage id={format.id} alt={`${format.name} example`} />
         {format.preview && <video ref={ref} className={live ? 'on' : ''} src={format.preview} muted loop playsInline preload="none" />}
       </span>
       <strong>{format.name}</strong>
@@ -82,10 +84,10 @@ export function RecipeSheet({ recipe, gens, connections, onClose, initial }) {
     setRunning(true)
     setError(null)
     try {
-      const next = await gens.generateFormat(recipe, values)
+      const next = await gens.generateFormat(recipe, values, { onSession: setSession })
       if (next.flow.nodes.some((node) => ['writer', 'approve'].includes(node.type))) setSession(next)
       else close()
-    } catch (e) { setError(e.message) }
+    } catch (e) { if (e.session) setSession(e.session); setError(e.message) }
     finally { setRunning(false) }
   }
 
@@ -93,6 +95,7 @@ export function RecipeSheet({ recipe, gens, connections, onClose, initial }) {
     <div className={`scrim side${leaving ? ' out' : ''}`} onPointerDown={(e) => e.target === e.currentTarget && close()}>
       <form className={`sheet glass${recipe.layout === 'wide' ? ' wide' : ''}`} onSubmit={run} role="dialog" aria-label={recipe.name}>
         <div className="sheet-cover" style={{ background: recipe.cover }}>
+          <ArtImage id={recipe.id} alt={`${recipe.name} example`} />
           {recipe.preview && <video src={recipe.preview} muted loop playsInline autoPlay={!calm()} />}
           <button type="button" className="icon-btn" onClick={close} aria-label="Close"><IconClose /></button>
           {recipe.runsOn && <span className="sheet-tag">{recipe.runsOn}</span>}
@@ -107,7 +110,7 @@ export function RecipeSheet({ recipe, gens, connections, onClose, initial }) {
             ))}
           </div>
           <RunNotes format={recipe} values={values} />
-          {error && <p className="sheet-error">{error}</p>}
+          {error && !session && <p className="sheet-error">{error}</p>}
           {session && <FormatReview session={session} />}
           {wired && !connected && <p className="sheet-note">This runs on {provider.name}. <Link to="/connections">Add your key</Link> to use it.</p>}
         </div>

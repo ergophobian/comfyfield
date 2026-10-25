@@ -1,0 +1,145 @@
+{
+  "1": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "flux-2-klein-4b-fp8.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "2": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "qwen_3_4b.safetensors",
+      "type": "flux2",
+      "device": "default"
+    }
+  },
+  "3": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "flux2-vae.safetensors"
+    }
+  },
+  "20": {
+    "class_type": "PrimitiveStringMultiline",
+    "inputs": {
+      "value": "{{prompt}}"
+    }
+  },
+  "30": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": [
+        "20",
+        0
+      ],
+      "clip": [
+        "2",
+        0
+      ]
+    }
+  },
+  "31": {
+    "class_type": "ConditioningZeroOut",
+    "inputs": {
+      "conditioning": [
+        "30",
+        0
+      ]
+    }
+  },
+  "33": {
+    "class_type": "EmptyFlux2LatentImage",
+    "inputs": {
+      "width": "{{width}}",
+      "height": "{{height}}",
+      "batch_size": "{{count}}"
+    }
+  },
+  "34": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": [
+        "37",
+        0
+      ],
+      "guider": [
+        "38",
+        0
+      ],
+      "sampler": [
+        "39",
+        0
+      ],
+      "sigmas": [
+        "40",
+        0
+      ],
+      "latent_image": [
+        "33",
+        0
+      ]
+    }
+  },
+  "35": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "34",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ]
+    }
+  },
+  "36": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "filename_prefix": "comfyfield/flux_look",
+      "images": [
+        "35",
+        0
+      ]
+    }
+  },
+  "37": {
+    "class_type": "RandomNoise",
+    "inputs": {
+      "noise_seed": "{{seed}}"
+    }
+  },
+  "38": {
+    "class_type": "CFGGuider",
+    "inputs": {
+      "model": [
+        "1",
+        0
+      ],
+      "positive": [
+        "30",
+        0
+      ],
+      "negative": [
+        "31",
+        0
+      ],
+      "cfg": 1
+    }
+  },
+  "39": {
+    "class_type": "KSamplerSelect",
+    "inputs": {
+      "sampler_name": "euler"
+    }
+  },
+  "40": {
+    "class_type": "Flux2Scheduler",
+    "inputs": {
+      "steps": 4,
+      "width": "{{width}}",
+      "height": "{{height}}"
+    }
+  }
+}

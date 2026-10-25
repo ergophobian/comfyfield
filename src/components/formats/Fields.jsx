@@ -3,8 +3,8 @@ import InputWidget from '../widgets/index.jsx'
 import { widgetTypes } from '../../../shared/widgetInputs.js'
 import { Link } from 'react-router-dom'
 import { IconUpload } from '../Icons.jsx'
-import { uploadImage } from '../../lib/providers.js'
-import { uploadMedia } from '../widgets/media.js'
+import MediaPicker from '../generate/MediaPicker.jsx'
+import { uploadFile, pastedFile } from '../../lib/uploads.js'
 import { useLibrary, toRef } from '../../lib/useLibrary.js'
 
 const media = {
@@ -23,30 +23,35 @@ const picks = {
 const textual = ['text', 'longtext']
 const calm = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
+// Click opens the media picker; a file dropped or pasted on the field uploads straight away. Every kind goes to the
+// server, so a model can read it, and images and videos carry their pixel ratio.
 function MediaField({ input, value, onChange, setError, labelId }) {
   const { type } = input
   const m = media[type]
   const [busy, setBusy] = useState(false)
   const [over, setOver] = useState(false)
+  const [picking, setPicking] = useState(false)
   const ref = useRef(null)
-  const choose = () => ref.current.click()
+  const choose = () => setPicking(true)
+  const put = (next) => {
+    if (value?.local) URL.revokeObjectURL(value.url)
+    onChange(next)
+  }
 
   const take = async (file) => {
     if (!file) return
     if (file.type && !file.type.startsWith(`${type}/`)) { setError(`That is not ${m.noun}.`); return }
     setBusy(true)
     setError(null)
-    try {
-      if (type === 'image') onChange(await uploadImage(file))
-      else onChange(await uploadMedia(file))
-    } catch (e) { setError(e.message) }
+    try { put(await uploadFile(file)) } catch (e) { setError(e.message) }
     setBusy(false)
   }
 
   return (
     <div className={`drop${over ? ' over' : ''}${value ? ' has' : ''}${type === 'audio' ? ' sound' : ''}`}
       role="button" tabIndex={0} aria-labelledby={labelId}
-      onClick={choose}
+      onClick={(e) => !e.target.closest('.mp') && choose()}
+      onPaste={(e) => { const f = pastedFile(e); if (f) { e.preventDefault(); take(f) } }}
       onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); choose() } }}
       onDragOver={(e) => { e.preventDefault(); setOver(true) }}
       onDragLeave={() => setOver(false)}
@@ -63,6 +68,10 @@ function MediaField({ input, value, onChange, setError, labelId }) {
       {value && <small>{busy ? 'Uploading' : 'Replace'}</small>}
       <input ref={ref} type="file" accept={m.accept} hidden
         onChange={(e) => { take(e.target.files[0]); e.target.value = '' }} />
+      {picking && (
+        <MediaPicker type={type} title={input.label || `Choose ${m.noun}`} accept={m.accept} setError={setError}
+          onClose={() => setPicking(false)} onPick={(it) => { setPicking(false); put(it) }} />
+      )}
     </div>
   )
 }

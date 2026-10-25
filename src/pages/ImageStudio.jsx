@@ -1,18 +1,23 @@
+import { ArtImage } from '../components/Art.jsx'
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Segmented from '../components/Segmented.jsx'
 import ModelPicker from '../components/ModelPicker.jsx'
 import PromptList, { newRows } from '../components/Batch.jsx'
 import Pop, { Stepper } from '../components/generate/Pop.jsx'
-import { LibraryPicks, RefTags } from '../components/generate/Library.jsx'
+import { LibraryPicks, RefTags, refOf } from '../components/generate/Library.jsx'
+import MentionText from '../components/generate/Mentions.jsx'
+import MediaPicker from '../components/generate/MediaPicker.jsx'
 import { Banner, Feed, GoButton, StatusNote, balanceText, canRun, costText, noun, useBatches, useView } from '../components/generate/parts.jsx'
 import { useGenModel } from '../components/generate/useGenModel.js'
+import EnhanceChip, { enhancePrompt, useEnhance } from '../components/generate/Enhance.jsx'
 import { label, paramsFor, useModelInputs } from '../components/generate/useModelInputs.js'
 import { IconAt, IconGrid } from '../components/generate/icons.jsx'
 import { IconAspect, IconClose, IconImage, IconPlus, IconSpark } from '../components/Icons.jsx'
 import { useApp } from '../lib/appContext.js'
+import { chooseModel, useHandoff } from '../lib/handoff.js'
 import { usePod } from '../lib/usePod.js'
-import { uploadImage } from '../lib/providers.js'
+import { acceptsImage, uploadImage } from '../lib/providers.js'
 import { estimate, useBalance, useModelMeta } from '../lib/cost.js'
 import { flowFromBatch, openFlow } from '../lib/flowStore.js'
 import { covers } from '../lib/formats/parts.js'
@@ -22,7 +27,7 @@ const fan = [covers.peach, covers.dusk, covers.sky, covers.rose]
 
 // Higgsfield's Create image: the feed fills the page and the prompt bar is pinned to the bottom.
 export default function ImageStudio() {
-  const { gens, connections } = useApp()
+  const { gens, connections, picker } = useApp()
   const { status: pod } = usePod()
   const pick = useGenModel('image')
   const { model } = pick
@@ -37,17 +42,31 @@ export default function ImageStudio() {
   const [uploading, setUploading] = useState(0)
   const [refs, setRefs] = useState([])
   const [error, setError] = useState(null)
+  const [enhance, setEnhance] = useEnhance('image')
+  const [enhancing, setEnhancing] = useState(false)
   const [dragging, setDragging] = useState(false)
   const [view, setView] = useView()
   const [batches, addBatch] = useBatches('image')
   const fileRef = useRef(null)
+  const [picking, setPicking] = useState(false)
   const navigate = useNavigate()
   const balance = useBalance()
   const metaOf = useModelMeta([model])
+  useHandoff((h) => {
+    chooseModel(picker, h.model)
+    if (h.prompt != null) { setBatchMode(false); setPrompt(h.prompt) }
+    if (h.aspect) setAspect(h.aspect)
+    if (h.count) setCount(h.count)
+    if (h.references) setUploads((us) => (h.replace ? h.references : [...us, ...h.references]).slice(0, MAX_REFS))
+    if (h.refs) setRefs(h.refs)
+  })
 
-  // ComfyUI's FLUX and SDXL workflows have no image input; every other model takes references.
-  const canAttach = model.open || !['comfy', 'comfyRouter'].includes(model.provider)
-  const images = canAttach ? [...uploads.map((u) => u.url), ...refs.flatMap((r) => r.images.slice(0, 1))] : []
+  // Router references follow each model's native capability.
+  const canAttach = model.open || (model.provider === 'comfyRouter' ? acceptsImage(model) : model.provider !== 'comfy')
+  const maxRefs = canAttach ? model.maxImages ?? MAX_REFS : 0
+  const pictures = [...uploads.map((u) => u.url), ...refs.flatMap((r) => r.images.slice(0, 1))]
+  const referenceError = pictures.length > maxRefs ? `${model.name} accepts up to ${maxRefs} reference images. Remove references to continue.` : null
+  const images = canAttach ? pictures : []
   const inputs = useModelInputs(model, images.length > 0)
   const ratio = inputs.ratios.includes(aspect) ? aspect : ['1:1', 'auto'].find((r) => inputs.ratios.includes(r)) || inputs.ratios[0]
   const shownQuality = (quality && inputs.qualities?.includes(quality) && quality) || (inputs.qualityDefault != null ? String(inputs.qualityDefault) : inputs.qualities?.[0])
@@ -66,30 +85,45 @@ export default function ImageStudio() {
 
   const attach = async (files) => {
     if (!canAttach) return
-    const list = [...files].filter((f) => !f.type || f.type.startsWith('image/')).slice(0, MAX_REFS - uploads.length)
+    const list = [...files].filter((f) => !f.type || f.type.startsWith('image/')).slice(0, Math.max(0, maxRefs - pictures.length - uploading))
     if (!list.length) { if (files.length) setError('Add images: PNG, JPG, WebP or GIF.'); return }
     setError(null)
     setUploading((n) => n + list.length)
     await Promise.all(list.map(async (f) => {
       try {
         const up = await uploadImage(f)
-        setUploads((us) => [...us, up].slice(0, MAX_REFS))
+        setUploads((us) => [...us, up].slice(0, maxRefs))
       } catch (e) { setError(e.message) }
       setUploading((n) => n - 1)
     }))
   }
 
-  const go = () => {
-    if (!prompts.length || !connected || uploading) return
+  const mention = (type, item, text) => {
+    setPrompt(text)
+    setRefs((rs) => (rs.some((r) => r.id === item.id) ? rs : [...rs, refOf(type, item)]))
+  }
+
+  const go = async () => {
+    if (!prompts.length || !connected || uploading || enhancing || referenceError) return
+    // Enhance rewrites each prompt first; one that cannot be rewritten runs as written.
+    let ready = prompts
+    if (enhance && !model.open) {
+      setEnhancing(true)
+      setError(null)
+      const failed = []
+      ready = await Promise.all(prompts.map((p) => enhancePrompt(p, 'image', model).catch((e) => { failed.push(e.message); return p })))
+      setEnhancing(false)
+      if (failed.length) setError(`Enhance did not run: ${failed[0]} Your prompt ran as written.`)
+    }
     const batch = { id: crypto.randomUUID(), prompts, total, model: model.name, kind: 'image' }
     if (batchMode) addBatch(batch)
     const params = paramsFor(inputs, { quality, resolution })
-    prompts.forEach((p, r) => {
+    ready.forEach((p, r) => {
       for (let t = 0; t < calls; t++) {
         gens.generate(model, {
           prompt: p, caption: p, aspect: ratio, count: perCall, duration: 5, images,
           ...(Object.keys(params).length && { params }), ...(refs.length && { refs }),
-        }, batchMode ? { batch: batch.id, row: r } : {})
+        }, { ...(batchMode && { batch: batch.id, row: r }), ...(p !== prompts[r] && { original: prompts[r] }) })
       }
     })
   }
@@ -102,12 +136,12 @@ export default function ImageStudio() {
   }
 
   const dropOk = (e) => canAttach && e.dataTransfer.types.includes('Files')
-  const attachTitle = !canAttach ? `${model.name} does not take reference images` : uploads.length >= MAX_REFS ? `Up to ${MAX_REFS} references` : 'Add reference images'
+  const attachTitle = !canAttach ? `${model.name} does not take reference images` : pictures.length + uploading >= maxRefs ? `Up to ${maxRefs} references` : 'Add reference images'
 
   const hero = (
     <div className="gen-hero">
       <div className="gen-fan" aria-hidden="true">
-        {fan.map((c, i) => <i key={i} style={{ background: c, '--i': i }} />)}
+        {fan.map((c, i) => <i key={i} style={{ background: c, '--i': i }}><ArtImage id={['expand', 'character-scene', 'product-shot', 'look-phone-flash', 'game-style'][i % 5]} /></i>)}
       </div>
       <h1 className="rise">Start with {model.name}</h1>
       <p className="rise">Describe a scene, a character, a mood or a style in the bar below. Add references with the plus button, or pull a saved character in with @.</p>
@@ -128,7 +162,7 @@ export default function ImageStudio() {
         <Feed kind="image" gens={gens} batches={batches} size={view} empty={hero} />
       </section>
 
-      {(error || gens.error) && <div className="notice glass error gen-notice">{error || gens.error}{!error && gens.retry && <button type="button" className="link-btn" onClick={gens.retry}>Retry</button>}</div>}
+      {(referenceError || error || gens.error) && <div className="notice glass error gen-notice">{referenceError || error || gens.error}{!referenceError && !error && gens.retry && <button type="button" className="link-btn" onClick={gens.retry}>{gens.retry.label || 'Retry'}</button>}</div>}
 
       <form className={`composer glass gen-bar${dragging ? ' dragging' : ''}`} onSubmit={(e) => { e.preventDefault(); go() }}
         onDragOver={(e) => { if (dropOk(e)) { e.preventDefault(); setDragging(true) } }}
@@ -150,8 +184,8 @@ export default function ImageStudio() {
           <div className="gen-bar-body">
             <div className="gen-bar-text" key={batchMode ? 'b' : 's'}>
               {batchMode ? <PromptList rows={rows} setRows={setRows} kind="image" /> : (
-                <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={2} aria-label="Prompt"
-                  placeholder={images.length ? 'Describe what to make with your references' : 'Describe the image you want'}
+                <MentionText up value={prompt} onChange={setPrompt} onPick={mention} rows={2} aria-label="Prompt"
+                  placeholder={images.length ? 'Describe what to make with your references' : 'Describe the image you want. Type @ for a saved element'}
                   onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), go())} />
               )}
             </div>
@@ -161,12 +195,13 @@ export default function ImageStudio() {
           <div className="gen-bar-foot">
             <div className="chips">
               <div className="chip gen-icon">
-                <button type="button" aria-label="Add reference images" title={attachTitle} disabled={!canAttach || uploads.length >= MAX_REFS}
-                  className={uploads.length ? 'lit' : ''} onClick={() => fileRef.current.click()}><IconPlus /></button>
+                <button type="button" aria-label="Add reference images" title={attachTitle} disabled={!canAttach || pictures.length + uploading >= maxRefs}
+                  className={uploads.length ? 'lit' : ''} onClick={() => setPicking(true)}><IconPlus /></button>
               </div>
               <Pop up keep className="gen-icon" icon={<IconAt />} title="Add from Library" lit={refs.length > 0}>
-                <LibraryPicks refs={refs} setRefs={setRefs} />
+                <LibraryPicks refs={refs} setRefs={setRefs} maxImages={Math.max(0, maxRefs - uploads.length - uploading)} />
               </Pop>
+              {!model.open && <EnhanceChip on={enhance} setOn={setEnhance} busy={enhancing} />}
               <ModelPicker up model={model} options={pick.options} open={pick.open} favorites={pick.favorites}
                 toggleFavorite={pick.toggleFavorite} choose={pick.choose} connections={connections} />
               <Pop up icon={<IconAspect />} label={label(ratio)} title="Aspect ratio">
@@ -186,7 +221,7 @@ export default function ImageStudio() {
             </div>
             <div className="foot-actions">
               {batchMode && prompts.length > 0 && !model.open && <button type="button" className="btn-soft" onClick={openAsFlow}>Open as flow</button>}
-              <GoButton total={total} cost={costText(cost)} disabled={!total || !connected || uploading > 0} />
+              <GoButton total={total} cost={costText(cost)} disabled={!total || !connected || uploading > 0 || enhancing || Boolean(referenceError)} />
             </div>
           </div>
           <div className="gen-bar-note">
@@ -203,6 +238,14 @@ export default function ImageStudio() {
         <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden
           onChange={(e) => { attach(e.target.files); e.target.value = '' }} />
       </form>
+      {picking && (
+        <MediaPicker multiple title="Add references" accept="image/png,image/jpeg,image/webp,image/gif" setError={setError}
+          onClose={() => setPicking(false)}
+          onPick={(it) => {
+            setPicking(false)
+            setUploads((us) => us.some((u) => u.url === it.url) || us.length + refs.flatMap((r) => r.images.slice(0, 1)).length + uploading >= maxRefs ? us : [...us, it])
+          }} />
+      )}
     </main>
   )
 }

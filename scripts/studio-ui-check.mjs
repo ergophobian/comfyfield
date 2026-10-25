@@ -20,6 +20,7 @@ for (const [name, args] of [
 }
 const picture = '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><rect width="600" height="400" fill="#e4e9ff"/><circle cx="300" cy="150" r="90" fill="#9b8cf5"/><path d="M150 360 Q150 220 300 230 Q450 220 450 360Z" fill="#6f7fd8"/><text x="300" y="390" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#30384d">Mock studio media</text></svg>'
 const requests = []
+const jobs = new Map()
 const server = await preview({ configFile: false, envFile: false, plugins: [{
   name: 'studio-mock-api', configurePreviewServer(server) {
     server.middlewares.use(async (req, res, next) => {
@@ -49,18 +50,36 @@ const server = await preview({ configFile: false, envFile: false, plugins: [{
         const type = req.headers['content-type'] || ''
         return res.end(JSON.stringify({ url: type.startsWith('video/') ? '/mock-clip.webm' : type.startsWith('audio/') ? '/mock-audio.wav' : '/mock-photo.svg' }))
       }
+      if (url.pathname === '/api/comfy/requirements') {
+        let body = ''
+        for await (const chunk of req) body += chunk
+        return res.end(JSON.stringify({
+          connections: Object.fromEntries(['comfy', 'comfyRouter', 'google', 'elevenlabs', 'fal'].map((p) => [p, { connected: true }])),
+          cloudConnected: true, pod: { phase: 'none' },
+          requirements: JSON.parse(body).workflows.map(({ workflow }) => ({ workflow, notOnCloud: [], minVramGb: 0, target: 'cloud', selectedWorkflow: workflow })),
+        }))
+      }
       if (url.pathname === '/api/stitch/exports') return res.end('[]')
       if (url.pathname === '/api/library/characters') return res.end(JSON.stringify([{ id: 'mock-character', name: 'Mock character', images: ['/mock-photo.svg'] }]))
       if (url.pathname.startsWith('/api/library/')) return res.end('[]')
       if (url.pathname === '/api/connections') return res.end(JSON.stringify(Object.fromEntries(['comfy', 'google', 'elevenlabs', 'fal'].map((p) => [p, { connected: true }]))))
       if (url.pathname === '/api/fal/schema') return res.end(JSON.stringify({ properties: { prompt: { type: 'string' } } }))
+      if (url.pathname.startsWith('/api/jobs/')) return res.end(JSON.stringify(jobs.get(url.pathname.slice('/api/jobs/'.length))))
       if (req.method === 'POST') {
         let body = ''
         for await (const chunk of req) body += chunk
-        const payload = JSON.parse(body)
-        requests.push({ path: url.pathname, ...payload })
-        const kind = ['/api/google', '/api/elevenlabs', '/api/fal'].includes(url.pathname) || /chatterbox|drama3|qwen3/.test(payload.workflow) ? 'audio' : /image_upscale|seedvr2_image/.test(payload.workflow) ? 'image' : 'video'
-        return res.end(JSON.stringify({ files: [{ kind, url: kind === 'audio' ? '/mock-audio.wav' : kind === 'image' ? '/mock-photo.svg' : '/mock-clip.webm' }] }))
+        // Generations run as server jobs; record the route the job runs, as a direct call would show it.
+        let path = url.pathname
+        let payload = JSON.parse(body)
+        const job = path === '/api/jobs'
+        if (job) ({ route: path, body: payload } = payload)
+        requests.push({ path, ...payload })
+        const kind = ['/api/google', '/api/elevenlabs', '/api/fal'].includes(path) || /chatterbox|drama3|qwen3/.test(payload.workflow) ? 'audio' : /image_upscale|seedvr2_image/.test(payload.workflow) ? 'image' : 'video'
+        const files = [{ kind, url: kind === 'audio' ? '/mock-audio.wav' : kind === 'image' ? '/mock-photo.svg' : '/mock-clip.webm' }]
+        if (!job) return res.end(JSON.stringify({ files }))
+        const id = `job-${jobs.size + 1}`
+        jobs.set(id, { id, status: 'done', files })
+        return res.end(JSON.stringify({ id }))
       }
       res.end('{}')
     })

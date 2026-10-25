@@ -1,3 +1,5 @@
+import { heroArt, presetArt } from '../lib/formats/art.js'
+import { ArtImage } from '../components/Art.jsx'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Chip, Option } from '../components/Composer.jsx'
@@ -30,6 +32,7 @@ function TemplateSheet({ value, onPick, onClose, intro }) {
         {!grid ? (
           <div className="ff-intro">
             <span className="ff-art" aria-hidden="true">
+              <ArtImage src={heroArt('fashion')} width={1600} height={900} />
               <i className="model"><TypeArt kind="average" /></i>
               <b><IconPlus /></b>
               <i className="item"><IconHanger /></i>
@@ -45,7 +48,7 @@ function TemplateSheet({ value, onPick, onClose, intro }) {
               {fashionTemplates.map((t, i) => (
                 <button key={t.id} type="button" aria-pressed={pick === t.id} className={`ff-template${pick === t.id ? ' on' : ''}`}
                   style={{ '--i': Math.min(i, 12) }} onClick={() => setPick(t.id)}>
-                  <span className="ff-template-cover" style={{ background: t.cover }} />
+                  <span className="ff-template-cover" style={{ background: t.cover }}><ArtImage src={presetArt('fashion', t.id)} /></span>
                   <strong>{t.name}</strong>
                   <small>{t.note}</small>
                 </button>
@@ -85,7 +88,7 @@ export default function FashionFactory() {
       <div className="ff-feed">
         <div className="ff-top rise">
           <button type="button" className="ff-chosen" onClick={() => setSheet('grid')}>
-            <span style={{ background: t.cover }} />
+            <span style={{ background: t.cover }}><ArtImage src={presetArt('fashion', t.id)} /></span>
             <span>
               <small>Template</small>
               <strong>{t.name}</strong>

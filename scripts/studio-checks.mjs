@@ -2,13 +2,15 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { allFormats, formatById, isWired } from '../src/lib/formats/index.js'
 import { initialValues, missingInputs } from '../src/lib/recipes.js'
-import { runFormat } from '../src/lib/formats/runner.js'
+import { runFormat as runWithPlanning } from '../src/lib/formats/runner.js'
+import { offlineRequirements } from './fixtures/format-planning.mjs'
 import { comfyVars, dropOptional, fill } from '../shared/mapping.js'
 import { studioLimitNote, upscaleOutput } from '../src/lib/studioLimits.js'
 import { models } from '../src/lib/catalog.js'
 
 // Exercise the same runner as the studio workspace. No provider or key loading.
 globalThis.fetch = () => { throw new Error('Network is forbidden in studio checks') }
+const runFormat = (format, values, options) => runWithPlanning(format, values, { requirements: offlineRequirements, ...options })
 const image = { url: '/mock-photo.png', ratio: '160:90', name: 'Mock photo' }
 const video = { url: '/mock-clip.webm', ratio: '160:90', name: 'Mock clip', duration: 12, trim: { start: 2.125, end: 7.375 } }
 const audio = { url: '/mock-audio.wav', name: 'Mock recording' }

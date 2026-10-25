@@ -27,7 +27,7 @@ export default function ProviderAudio({ model }) {
       </div>
       <div className="gen-line"><span>Batch size</span><Stepper value={takes} onChange={setTakes} label="Takes per run" /></div>
       {model.open ? <p className="sheet-note">Not wired yet. This model has no runnable format.</p> : !connected && <p className="sheet-note"><Link to="/connections">Connect this provider</Link> to generate audio.</p>}
-      {gens.error && <p className="sheet-error">{gens.error}</p>}
+      {gens.error && <p className="sheet-error">{gens.error}{gens.retry && <button type="button" className="link-btn" onClick={gens.retry}>{gens.retry.label || 'Retry'}</button>}</p>}
       <button className="btn-blue" disabled={!prompt.trim() || !connected || model.open}>Generate audio</button>
     </form>
     {items.length > 0 && <Results items={items.filter((g) => !g.failed)} />}
