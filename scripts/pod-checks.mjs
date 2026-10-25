@@ -2039,13 +2039,15 @@ await test('uploads: a graph takes more pictures, a mask and audio, and an optio
     5: { class_type: 'LoadImage', inputs: { image: '{{mask}}' } },
     6: { class_type: 'LoadAudio', inputs: { audio: '{{audio}}' } },
     7: { class_type: 'LoadAudio', inputs: { audio: '{{voice}}' } },
-    8: { class_type: 'LoadImage', inputs: { image: '{{image7}}' } },
+    8: { class_type: 'LoadImage', inputs: { image: '{{image10}}' } },
+    9: { class_type: 'LoadImage', inputs: { image: '{{image9}}' } },
+    10: { class_type: 'LoadVideo', inputs: { file: '{{clipvideo}}' } },
   }
   const without = dropOptional(graph, { image: 'a' })
-  assert.deepEqual(Object.keys(without), ['1', '4', '5', '6', '7', '8'])
+  assert.deepEqual(Object.keys(without), ['1', '4', '5', '6', '7', '8', '9', '10'])
   assert.deepEqual(without['4'].inputs, { image1: ['1', 0], prompt: '{{prompt}}' }, 'the input linked to the dropped node goes too')
   assert.equal(dropOptional(graph, { image: 'a', image3: 'b' }), graph, 'with the file, nothing changes')
-  assert.deepEqual(core.uploadsOf(graph).map((u) => `${u.id}.${u.field}=${u.key}`), ['1.image=image', '2.image=image3', '5.image=mask', '6.audio=audio', '7.audio=voice'], 'only known slots upload')
+  assert.deepEqual(core.uploadsOf(graph).map((u) => `${u.id}.${u.field}=${u.key}`), ['1.image=image', '2.image=image3', '5.image=mask', '6.audio=audio', '7.audio=voice', '9.image=image9', '10.file=clipvideo'], 'only known slots upload')
 
   const { fileSlots } = await import('../src/lib/recipes.js')
   const tryOn = { inputs: [{ id: 'person', type: 'image' }, { id: 'garment', type: 'image' }, { id: 'garment2', type: 'image', optional: true }, { id: 'character', type: 'character' }, { id: 'track', type: 'audio' }] }
@@ -2056,6 +2058,18 @@ await test('uploads: a graph takes more pictures, a mask and audio, and an optio
   assert.equal(fileSlots({ inputs: [{ id: 'prompt', type: 'text' }] }, {}), null, 'no slots without files')
   const composer = comfyVars('image', { prompt: 'x', aspect: '1:1', images: ['/a.png', '/b.png'] })
   assert.deepEqual([composer.image, composer.image2], ['/a.png', '/b.png'], 'the composer\'s attachments fill the slots in order')
+  // FastH3 Omni numbers references in arrival order: refTags packs the pictures and renumbers the tags.
+  const { recipeOptions } = await import('../src/lib/recipes.js')
+  const omni = { refTags: true, prompt: '{scene}', params: {}, settings: { aspect: '16:9', duration: 5 }, inputs: [{ id: 'scene', type: 'longtext' }, ...[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => ({ id: `ref${n}`, type: 'image', optional: n > 1 })), { id: 'video', type: 'video', optional: true }, { id: 'track', type: 'audio', optional: true },
+    { id: 'clipsound', type: 'choice', default: 'use', options: [{ id: 'use', params: { clipsound: true } }, { id: 'mute' }] }] }
+  const clip = { url: '/c.mp4', duration: 9, trim: { start: 1, end: 6 } }
+  const packed = recipeOptions(omni, { scene: '<Picture 1>, <Picture 3> and <Picture 9> to <Video 1 sound>, voice <Audio 1>', ref1: { url: '/1.png' }, ref3: { url: '/3.png' }, ref9: { url: '/9.png' }, video: clip, track: { url: '/v.wav' }, clipsound: 'use' })
+  assert.equal(packed.prompt, '<Picture 1>, <Picture 2> and <Picture 3> to <Audio 1>, voice <Audio 2>')
+  const pv = comfyVars('video', packed)
+  assert.deepEqual([pv.image, pv.image2, pv.image3, pv.image4, pv.video, pv.clipvideo, pv.start, pv.duration], ['/1.png', '/3.png', '/9.png', undefined, undefined, '/c.mp4', 1, 5], 'a clip with its sound goes to clipvideo, trimmed')
+  const muted = recipeOptions(omni, { scene: '<Audio 1> over <Video 1 sound>', ref1: { url: '/1.png' }, video: clip, track: { url: '/v.wav' }, clipsound: 'mute' })
+  assert.equal(muted.prompt, '<Audio 1> over the sound of <Video 1>')
+  assert.equal(comfyVars('video', muted).video, '/c.mp4')
 
   const { open } = await import('../src/lib/formats/parts.js')
   const { validateFormat } = await import('../src/lib/formats/validate.js')

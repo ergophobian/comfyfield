@@ -224,11 +224,28 @@ export function recipeOptions(recipe, values) {
     } else fill[input.id] = (v || '').trim()
   }
   // Collapse spaces but keep line breaks, so shot lists stay one shot per line.
-  const prompt = recipe.prompt.replace(/\{(\w+)\}/g, (_, k) => fill[k] ?? '').replace(/[^\S\n]+/g, ' ').replace(/ *\n\s*/g, '\n').trim()
+  let prompt = recipe.prompt.replace(/\{(\w+)\}/g, (_, k) => fill[k] ?? '').replace(/[^\S\n]+/g, ' ').replace(/ *\n\s*/g, '\n').trim()
   const first = recipe.inputs.find((i) => i.type === 'image' || i.type === 'draw' || widgetTypes.includes(i.type))
   const slots = fileSlots(recipe, values)
   // A shape, length or quality choice sets the run's canvas or length; none is an input of the model.
-  const { aspect: shaped, duration: timed, scale, ...rest } = params
+  const { aspect: shaped, duration: timed, scale, clipsound, ...rest } = params
+  if (recipe.refTags && slots) {
+    // MiniMax H3 numbers its references in the order they arrive, so an empty slot would shift every
+    // later <Picture n>. Pack the pictures and renumber the user's tags to match.
+    const filled = slots.pictures.map((url, i) => [url, i + 1]).filter(([url]) => url)
+    const picture = Object.fromEntries(filled.map(([, n], i) => [n, i + 1]))
+    slots.pictures = filled.map(([url]) => url)
+    // A clip sent with its sound gets the first <Audio> label, so the user's audio moves up one and
+    // <Video 1 sound> names the clip's.
+    const sound = clipsound && (widgets.video || media.video)
+    prompt = prompt.replace(/<(Picture|Audio) (\d+)>/g, (tag, type, n) => type === 'Picture' ? (picture[n] ? `<Picture ${picture[n]}>` : tag) : sound ? `<Audio ${Number(n) + 1}>` : tag)
+      .replace(/<Video 1 sound>/g, sound ? '<Audio 1>' : 'the sound of <Video 1>')
+    if (sound) {
+      rest.clipvideo = sound
+      delete widgets.video
+      delete media.video
+    }
+  }
   return {
     ...widgets, prompt, caption: recipe.name, images, fields, params: rest, count: 1,
     ...(slots && { slots }),

@@ -121,6 +121,9 @@ export const MODEL_FILES = {
   // Video services (research_notes/engine/video-gen and effects-loras), checked against the Hugging Face API and the Comfy Cloud listing on 2026-10-19. Comfy Cloud has no effect LoRA.
   'minimax_h3_ref2va_pruned_int8_convrot.safetensors': { repo: 'Comfy-Org/MiniMax-H3', path: 'diffusion_models/minimax_h3_ref2va_pruned_int8_convrot.safetensors', dir: 'diffusion_models', gb: 20.97, vramGb: 32, cloud: true,
     label: 'MiniMax H3 Reference to Video', sha256: '9255f52b6677845ad238f20dfaafa94727053694127ab7f255c048f0f9365779' },
+  // FastVideo's 8-step FastH3 Omni (2026-10-20), on H3's text encoder and VAEs. Not on Comfy Cloud yet.
+  'fasth3_omniref_8step_pruned_int8_convrot.safetensors': { repo: 'FastVideo/FastH3-Omni-Comfy', path: 'diffusion_models/fasth3_omniref_8step_pruned_int8_convrot.safetensors', dir: 'diffusion_models', gb: 22.21, vramGb: 32, cloud: false,
+    label: 'FastH3 Omni', sha256: '851b2dc9670ed864b7f1e951ac9da047d83b1c04ded9bfcc1a9e5bba0ee33f80' },
   'minimax_h3_fun_controlnet_union_2.0_pruned_int8_convrot.safetensors': { repo: 'Comfy-Org/MiniMax-H3', path: 'model_patches/minimax_h3_fun_controlnet_union_2.0_pruned_int8_convrot.safetensors', dir: 'model_patches', gb: 4.53, vramGb: 0, cloud: false,
     label: 'The MiniMax H3 Fun ControlNet 2.0 patch', sha256: '890af58bb350f0c2f6c409b1c67ea8f4196654297d037769b72de1e6f504c612' },
   'gemma4_e2b_it_int8_convrot.safetensors': { repo: 'Comfy-Org/gemma-4', path: 'text_encoders/gemma4_e2b_it_int8_convrot.safetensors', dir: 'text_encoders', gb: 5.20, vramGb: 0, cloud: true,
