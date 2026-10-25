@@ -1,3 +1,5 @@
+import { ArtImage } from '../components/Art.jsx'
+import { heroArt, toolArt, hubArt, modelArt } from '../lib/formats/art.js'
 import { useEffect, useRef, useState } from 'react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { FormatGrid } from '../components/Recipes.jsx'
@@ -52,6 +54,7 @@ const calm = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').match
 function Art({ slide }) {
   return (
     <div className={`ex-art ${slide.art}`} aria-hidden="true">
+      <ArtImage src={heroArt(slide.art === 'cinema' ? 'cinema' : slide.art)} width={1600} height={900} />
       {slide.art === 'cinema' && <><span className="ex-frame" /><span className="ex-rec">Rec</span></>}
       {slide.art === 'influencer' && (
         <span className="ex-profile"><i className="ex-avatar" /><span><b /><b /></span></span>
@@ -161,9 +164,10 @@ const kindOfTool = (t) => [t.menu].flat().find((m) => kindName[m])
 const tagOfTool = (t) => ([t.menu].flat().includes('studio') ? 'Studio' : null)
 
 // Higgsfield's small tool card: icon, medium chip, name with badge, one line.
-function Tile({ to, icon, kind, tag, name, badge, line, sub, i }) {
+function Tile({ to, icon, kind, tag, name, badge, line, sub, i, art, artId }) {
   return (
     <Link to={to} className="ex-tile rise" style={{ '--d': `calc(${Math.min(i, 12)} * var(--stagger))` }}>
+      {art && <span className="ex-tile-art"><ArtImage id={artId} src={art} alt={`${name} example`} /></span>}
       <span className="ex-tile-top">
         <span className="mega-icon">{icon}</span>
         {(kind || tag) && <span className="ex-kind">{kind ? <><KindIcon kind={kind} />{kindName[kind]}</> : tag}</span>}
@@ -203,7 +207,7 @@ function Home() {
       }>
         <div className="ex-tools" id="ex-tools">
           {shown.map((t, i) => (
-            <Tile key={t.id} i={i} to={t.route} icon={<ToolIcon id={t.id} />} kind={kindOfTool(t)} tag={tagOfTool(t)} name={t.name} badge={t.badge} line={t.blurb} />
+            <Tile key={t.id} i={i} to={t.route} art={toolArt(t.id)} icon={<ToolIcon id={t.id} />} kind={kindOfTool(t)} tag={tagOfTool(t)} name={t.name} badge={t.badge} line={t.blurb} />
           ))}
         </div>
       </Row>
@@ -216,7 +220,7 @@ function Home() {
         {apps.length ? <FormatGrid list={apps} onOpen={(f) => navigate(`/apps/${f.id}`)} /> : (
           // Until formats carry a hub, show the hubs themselves.
           <div className="ex-tiles">
-            {hubs.map((h, i) => <Tile key={h.id} i={i} to={`/apps#${h.id}`} icon={<ToolIcon id="apps" />} name={h.name} line={h.blurb} />)}
+            {hubs.map((h, i) => <Tile key={h.id} i={i} to={`/apps#${h.id}`} art={hubArt(h.id)} artId={h.id} icon={<ToolIcon id="apps" />} name={h.name} line={h.blurb} />)}
           </div>
         )}
       </Row>
@@ -228,7 +232,7 @@ function Home() {
       <Row id="models" strip title="Open-weight models" line="The models behind each generator, ready to run on ComfyUI." more={<Link className="link-btn" to="/models">See all</Link>}>
         <div className="ex-tiles">
           {openModels.map((m, i) => (
-            <Tile key={m.id} i={i} to={modelRoute(m)} icon={<ModelIcon model={m} />} kind={m.kind} name={m.name} badge={m.badge} sub={m.vendor} line={m.blurb} />
+            <Tile key={m.id} i={i} to={modelRoute(m)} art={modelArt(m.kind, m.id)} icon={<ModelIcon model={m} />} kind={m.kind} name={m.name} badge={m.badge} sub={m.vendor} line={m.blurb} />
           ))}
         </div>
       </Row>

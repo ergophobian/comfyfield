@@ -1,3 +1,4 @@
+import { PageArt } from '../Art.jsx'
 import { useEffect, useRef, useState } from 'react'
 import { IconPlus, IconClose } from '../Icons.jsx'
 
@@ -72,6 +73,7 @@ export default function Voices() {
   return (
     <>
       <div className="empty glass">
+          <PageArt id={'audio'} className="empty-art" />
         <p>Save a voice from a short sample, then use it in any script.</p>
         <button className="btn-blue" onClick={() => setEditing(true)}>Add a voice</button>
       </div>

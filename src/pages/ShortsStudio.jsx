@@ -1,8 +1,10 @@
+import { PageArt } from '../components/Art.jsx'
 import { useEffect, useState } from 'react'
 import Segmented from '../components/Segmented.jsx'
 import { Field } from '../components/formats/Fields.jsx'
 import { IconPlus, IconSearch } from '../components/Icons.jsx'
 import { Split, Box, Ratios, Pills, Tiles, Toggle, Steps, NotWired, Empty, ErrorNote, coverAt, slug } from '../components/studiob/Kit.jsx'
+import Tip from '../components/generate/Tip.jsx'
 import { covers } from '../lib/formats/parts.js'
 import { Pictures } from '../components/studiob/Inputs.jsx'
 import { formatById } from '../lib/formats/index.js'
@@ -98,6 +100,7 @@ export default function ShortsStudio() {
     <main className="sb-page">
       <Split name="Shorts studio" panel={panel}
         foot={<NotWired runsOn="Qwen3-VL, Wan VACE and Chatterbox" summary={`${current?.label}, ${ratio}, captions ${captions ? 'on' : 'off'}. Output at 720p.`} />}>
+        <PageArt id="shorts" />
         <div className="sb-bar">
           <Segmented value={tab} onChange={setTab} options={[{ value: 'presets', label: 'Presets' }, { value: 'history', label: 'History' }, { value: 'how', label: 'How it works' }]} />
           {tab === 'presets' && (
@@ -107,6 +110,7 @@ export default function ShortsStudio() {
             </label>
           )}
         </div>
+        <Tip page="shorts" onLearn={() => setTab('how')} />
         {tab === 'presets' && (
           <Tiles tall items={shown} value={preset} onChange={setPreset} label="Looks"
             lead={!q && (

@@ -4,7 +4,10 @@ import { createServer } from 'node:http'
 import { publicAddress, publicTarget, publicGet, requestPublic, extractBusinessPage } from '../server/publicPage.js'
 import { importBusinessPage } from '../server/core.js'
 import { adFormat, adValues, conceptText, approveAd } from '../src/lib/adStudio.js'
-import { runFormat } from '../src/lib/formats/runner.js'
+import { runFormat as runWithPlanning } from '../src/lib/formats/runner.js'
+import { offlineRequirements } from './fixtures/format-planning.mjs'
+// Main's runner preflights each run; checks inject offline requirements instead of a network call.
+const runFormat = (format, values, options) => runWithPlanning(format, values, { requirements: offlineRequirements, ...options })
 import { comfyVars } from '../shared/mapping.js'
 import { notOnCloud, podNeedsOf } from '../shared/modelFiles.js'
 import { readFileSync } from 'node:fs'
@@ -157,7 +160,8 @@ await partial.retry(safeFormat.outputs[1].step)
 assert.equal(safeCalls.length, 3)
 assert.equal(partial.results()[0], kept)
 assert.equal(partial.results().length, 2)
-assert.equal((await partial.retry(safeFormat.outputs[0].step)).ok, false)
+await partial.retry(safeFormat.outputs[0].step)
+assert.equal(safeCalls.length, 3, 'Retrying a render without failures pays for nothing')
 for (const aspect of ['3:4', '2:3']) {
   const format = adFormat({ id: 'marketing-studio', aspects: [aspect] })
   const step = format.steps.find((s) => !s.type)

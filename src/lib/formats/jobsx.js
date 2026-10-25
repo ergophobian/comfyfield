@@ -669,7 +669,8 @@ const videoJobs = [
   open({
     id: 'anime-video', name: 'Anime video', kind: 'video', category: 'cinema',
     blurb: 'A prompt or a photo becomes an anime scene with voices and sound.',
-    ...h3,
+    // The photo is optional: without one the scene starts from text.
+    ...h3, workflow: 'h3_open_t2v', imageWorkflow: 'h3_open_i2v',
     inputs: [
       { id: 'image', type: 'image', label: 'Start from a photo', optional: true },
       { id: 'scene', type: 'longtext', label: 'What happens', placeholder: 'Two friends race their bikes down a hill toward the sea at sunset' },

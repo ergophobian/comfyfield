@@ -8,6 +8,7 @@ import { preview } from 'vite'
 import { startBrowser, uiTimeout } from './browser.mjs'
 
 const requests = []
+const jobs = new Map()
 const product = { name: 'Linen tote', price: 'USD 48', description: 'Room for your day. Lifetime repairs. Rejected: fake five stars and 90% off.', images: ['/media/mock-product.png', '/media/mock-alternate.png'] }
 const brand = { name: 'Northfield Goods', logo: [], colors: ['#64775c'], about: 'Everyday goods, made to last.' }
 const svg = (result) => `<svg xmlns="http://www.w3.org/2000/svg" width="896" height="1120" viewBox="0 0 896 1120"><rect width="896" height="1120" fill="#efeae0"/><circle cx="710" cy="250" r="270" fill="#dde3d4"/><text x="70" y="100" font-size="24" font-family="sans-serif" fill="#485341">Northfield Goods · Mock ${result ? 'ad' : 'product'}</text><path d="M330 435V320C330 170 560 170 560 320V435" fill="none" stroke="#71795d" stroke-width="34"/><path d="M255 390H635L685 870Q450 920 205 870Z" fill="#a6ae8f"/><path d="M285 440H605L635 825H255Z" fill="#bbc2a6"/><text x="450" y="660" font-size="25" text-anchor="middle" font-family="sans-serif" fill="#485341">Northfield</text>${result ? '<text x="70" y="1010" font-size="46" font-family="serif" fill="#303c2d">Carry beautifully.</text><text x="70" y="1070" font-size="26" font-family="sans-serif" fill="#485341">Shop the linen tote · $48</text>' : ''}</svg>`
@@ -48,10 +49,28 @@ const server = await preview({ configFile: false, envFile: false, preview: { hos
       }
       if (!path.startsWith('/api/')) return next()
       res.setHeader('Content-Type', 'application/json')
+      if (path.startsWith('/api/jobs/')) return res.end(JSON.stringify(jobs.get(path.slice('/api/jobs/'.length))))
       if (req.method !== 'POST') return res.end(JSON.stringify(path.startsWith('/api/library/') || path === '/api/stitch/exports' ? [] : path === '/api/connections' ? { comfy: { connected: true }, google: { connected: true } } : {}))
       let raw = ''
       for await (const chunk of req) raw += chunk
-      const body = req.headers['content-type'] === 'application/json' ? JSON.parse(raw || '{}') : { bytes: raw.length }
+      let body = req.headers['content-type'] === 'application/json' ? JSON.parse(raw || '{}') : { bytes: raw.length }
+      if (path === '/api/comfy/requirements') {
+        return res.end(JSON.stringify({
+          connections: { comfy: { connected: true }, comfyRouter: { connected: true }, google: { connected: true } }, cloudConnected: true, pod: { phase: 'none' },
+          requirements: body.workflows.map(({ workflow }) => ({ workflow, notOnCloud: [], minVramGb: 0, target: 'cloud', selectedWorkflow: workflow })),
+        }))
+      }
+      // Generations run as server jobs; record the route the job runs and keep its answer as the job result.
+      if (path === '/api/jobs') {
+        const id = `job-${jobs.size + 1}`
+        const job = { route: body.route, body: body.body }
+        const fake = { statusCode: 200, setHeader() {}, end(text) { const data = JSON.parse(text); jobs.set(id, this.statusCode < 400 ? { id, status: 'done', files: data.files } : { id, status: 'failed', error: { message: data.error, status: this.statusCode } }) } }
+        answer(job.route, job.body, fake)
+        return res.end(JSON.stringify({ id }))
+      }
+      return answer(path, body, res)
+    })
+    function answer(path, body, res) {
       requests.push({ path, body })
       if (path === '/api/ads/import') {
         if (body.url.includes('blocked')) { res.statusCode = 422; return res.end(JSON.stringify({ error: 'That page blocks reading. Enter details by hand.' })) }
@@ -64,7 +83,7 @@ const server = await preview({ configFile: false, envFile: false, preview: { hos
       if (path === '/api/comfy/run') return res.end(JSON.stringify({ files: [{ url: body.workflow === 'qwen2511_ad' ? '/media/mock-result.png' : '/media/mock-result.mp4', kind: body.workflow === 'qwen2511_ad' ? 'image' : 'video' }] }))
       res.statusCode = 404
       res.end(JSON.stringify({ error: `Unexpected mock route ${path}` }))
-    })
+    }
   },
 }] })
 const origin = `http://127.0.0.1:${server.httpServer.address().port}`

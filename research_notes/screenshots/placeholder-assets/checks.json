@@ -1,0 +1,22 @@
+[
+  {
+    "command": "npx vite build",
+    "status": 0,
+    "elapsedSeconds": 3.148
+  },
+  {
+    "command": "node scripts/theme-check.mjs",
+    "status": 0,
+    "elapsedSeconds": 0.083
+  },
+  {
+    "command": "node scripts/verify.mjs",
+    "status": 0,
+    "elapsedSeconds": 49.733
+  },
+  {
+    "command": "node scripts/placeholder-assets-capture.mjs after",
+    "status": 0,
+    "elapsedSeconds": 15.945
+  }
+]

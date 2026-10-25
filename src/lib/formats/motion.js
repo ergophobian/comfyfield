@@ -248,7 +248,7 @@ const cinemaShot = open({
       { id: 'music-video', label: 'Music video', text: 'music video look, bold saturated colored light, stylized and energetic' },
       { id: 'commercial', label: 'Commercial', text: 'polished commercial look, bright clean lighting, glossy highlights, crisp color' },
     ] },
-    { id: 'model', type: 'choice', label: 'Model', half: true, default: 'minimax', options: [
+    { id: 'model', type: 'choice', label: 'Model', half: true, default: 'ltx', options: [
       { id: 'minimax', label: 'MiniMax H3', note: 'Highest quality, with sound' },
       { id: 'ltx', label: 'LTX-2.5', note: 'Fastest drafts' },
       { id: 'wan', label: 'Wan 2.2', note: 'Runs on smaller GPUs' },

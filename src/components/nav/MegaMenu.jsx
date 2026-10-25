@@ -1,3 +1,5 @@
+import { ArtImage } from '../Art.jsx'
+import { toolArt, modelArt } from '../../lib/formats/art.js'
 import { forwardRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { ToolIcon, ModelIcon } from './ToolIcon.jsx'
@@ -6,10 +8,10 @@ import { currentIn, modelRoute } from './navModel.js'
 export const Badge = ({ badge }) => badge ? <em className={`nav-badge ${badge.toLowerCase()}`}>{badge}</em> : null
 
 // One row in a menu: icon tile (badge on its corner, as on Higgsfield), name and one line.
-export function MenuItem({ to, icon, name, line, badge, on, ...rest }) {
+export function MenuItem({ to, icon, name, line, badge, on, art, ...rest }) {
   return (
     <Link to={to} className={`mega-item${on ? ' on' : ''}`} aria-current={on ? 'page' : undefined} {...rest}>
-      <span className="mega-icon">{icon}<Badge badge={badge} /></span>
+      <span className="mega-icon">{icon}{art && <ArtImage src={art} />}<Badge badge={badge} /></span>
       <span className="mega-text"><strong>{name}</strong>{line && <small>{line}</small>}</span>
     </Link>
   )
@@ -17,8 +19,8 @@ export function MenuItem({ to, icon, name, line, badge, on, ...rest }) {
 
 export function menuColumns(menu) {
   return [
-    { id: 'tools', label: 'Tools', items: menu.tools.map((t) => ({ id: t.id, to: t.route, name: t.name, line: t.blurb, badge: t.badge, icon: <ToolIcon id={t.id} /> })) },
-    { id: 'models', label: 'Open-weight models', items: menu.models.map((m) => ({ id: m.id, to: modelRoute(m), name: m.name, line: m.blurb, badge: m.badge, icon: <ModelIcon model={m} /> })) },
+    { id: 'tools', label: 'Tools', items: menu.tools.map((t) => ({ id: t.id, to: t.route, name: t.name, line: t.blurb, badge: t.badge, art: toolArt(t.id), icon: <ToolIcon id={t.id} /> })) },
+    { id: 'models', label: 'Open-weight models', items: menu.models.map((m) => ({ id: m.id, to: modelRoute(m), name: m.name, line: m.blurb, badge: m.badge, art: modelArt(m.kind, m.id), icon: <ModelIcon model={m} /> })) },
   ].filter((c) => c.items.length)
 }
 
