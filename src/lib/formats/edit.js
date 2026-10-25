@@ -199,7 +199,7 @@ const videoEdits = [
   }),
   open({
     id: 'motion-transfer', name: 'Motion transfer', kind: 'video', category: 'video-edit',
-    blurb: 'Make the character in a photo copy the moves in a video.',
+    blurb: 'Make the character in a photo copy the moves in a video. Clips up to 40 seconds.',
     runsOn: 'Wan Animate 2', workflow: 'wan_animate2',
     inputs: [
       { id: 'video', type: 'video', label: 'Motion video' },

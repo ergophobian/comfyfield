@@ -316,6 +316,31 @@ const multiShot = open({
   cover: covers.dusk,
 })
 
+// H3 renders up to 10 seconds a run. A longer run opens with 10 seconds, then h3_extend continues the
+// last second of each part on the server (shared/longVideo.js), so one prompt makes the whole video.
+const longVideo = open({
+  id: 'long-video', name: 'Long video', kind: 'video', category: 'cinema', layout: 'wide',
+  blurb: 'One prompt, one continuous video up to a minute long.',
+  runsOn: 'MiniMax H3', workflow: 'h3_open_t2v', imageWorkflow: 'h3_open_i2v', sizes: h3Sizes,
+  inputs: [
+    { id: 'scene', type: 'longtext', label: 'What happens', placeholder: 'A lone hiker crosses a misty ridge at dawn, stops at the edge, and watches the sun break through the clouds over the valley' },
+    { id: 'length', type: 'choice', label: 'Length', half: true, default: '30', options: [
+      { id: '20', label: '20 seconds', params: { duration: 20 } },
+      { id: '30', label: '30 seconds', params: { duration: 30 } },
+      { id: '45', label: '45 seconds', params: { duration: 45 } },
+      { id: '60', label: '1 minute', params: { duration: 60 } },
+    ] },
+    { id: 'shape', type: 'choice', label: 'Shape', half: true, default: 'wide', options: [
+      { id: 'wide', label: 'Wide, 16:9', params: { aspect: '16:9' } },
+      { id: 'tall', label: 'Tall, 9:16', params: { aspect: '9:16' } },
+    ] },
+    { id: 'image', type: 'image', label: 'Start from a photo', optional: true },
+  ],
+  prompt: '{scene} One continuous take that keeps the same characters, outfits, setting, lighting and sound from start to end.',
+  settings: { aspect: '16:9', duration: 30 },
+  cover: covers.night,
+})
+
 const storyboard = open({
   id: 'storyboard', name: 'Storyboard', kind: 'image', category: 'story', featured: true, layout: 'wide',
   blurb: 'Turn a story idea into a set of consistent shots.',
@@ -436,4 +461,4 @@ const explainers = [
   }),
 ]
 
-export const motion = [...cameraMoves, ...effects, cinemaShot, firstLastFrame, drawToVideo, multiShot, storyboard, transition, ...explainers]
+export const motion = [...cameraMoves, ...effects, cinemaShot, firstLastFrame, drawToVideo, multiShot, longVideo, storyboard, transition, ...explainers]

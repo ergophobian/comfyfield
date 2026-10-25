@@ -1279,6 +1279,7 @@ export const schemas = {
     "scail2_character_swap": [
       "duration",
       "image",
+      "previous",
       "prompt",
       "seed",
       "start",
@@ -1390,6 +1391,7 @@ export const schemas = {
     "wan_animate2": [
       "duration",
       "image",
+      "previous",
       "prompt",
       "seed",
       "start",
@@ -1479,8 +1481,14 @@ export const schemas = {
       "image3",
       "image4"
     ],
+    "scail2_character_swap": [
+      "previous"
+    ],
     "wan22_i2v": [
       "image2"
+    ],
+    "wan_animate2": [
+      "previous"
     ]
   },
   "router": {
