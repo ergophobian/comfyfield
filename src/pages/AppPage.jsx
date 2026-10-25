@@ -134,6 +134,7 @@ function AppView({ format, motion }) {
         <aside className="app-panel glass" aria-label={`${format.name} settings`}>
           <h2><Icon />{format.name}</h2>
           {format.output && <p className="sheet-output"><strong>You get</strong> {format.output}</p>}
+          {format.limits && <p className="sheet-limits"><strong>Good to know</strong> {format.limits}</p>}
           {rest.length > 0 ? rest.map((input) => (
             <Field key={input.id} input={input} value={values[input.id]} onChange={(v) => set(input.id, v)} setError={setError} />
           )) : (

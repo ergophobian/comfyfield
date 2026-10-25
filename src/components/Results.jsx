@@ -1,4 +1,5 @@
 import UseIn from './formats/UseIn.jsx'
+import ModelView from './ModelView.jsx'
 import { useApp } from '../lib/appContext.js'
 import { takeLabel, usePod } from '../lib/usePod.js'
 
@@ -17,6 +18,7 @@ export default function Results({ items, onUse, size }) {
           style={{ '--ar': it.kind === 'audio' ? '2 / 1' : ratio(it.aspect) }}>
           {it.pending ? <span>{takeLabel(it, status) || `Rendering with ${it.model}`}</span>
             : it.kind === 'video' ? <video src={it.url} autoPlay loop muted playsInline controls />
+            : it.kind === '3d' ? <ModelView url={it.url} alt={it.caption} />
             : it.kind === 'audio' ? <div className="audio-card"><p>{it.caption}</p><audio src={it.url} controls /></div>
             : <a href={it.url} target="_blank" rel="noreferrer"><img src={it.url} alt={it.caption} /></a>}
           {!it.pending && it.kind !== 'audio' && <div className="result-cap">{it.model} · {it.caption}</div>}

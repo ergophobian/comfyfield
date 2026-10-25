@@ -179,6 +179,7 @@ function ModelTab({ id, others }) {
           <h2>{f.name}</h2>
           <p>{f.blurb}</p>
           <p className="muted">{f.output}. Runs on {f.runsOn}.</p>
+          {f.limits && <p className="muted">{f.limits}</p>}
           <button type="button" className="btn-blue sm" onClick={() => openFormat(id)}>Open {f.name.toLowerCase()}</button>
         </div>
       </div>

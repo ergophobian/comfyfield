@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Segmented from '../Segmented.jsx'
 import UseIn from '../formats/UseIn.jsx'
+import ModelView, { saveStl } from '../ModelView.jsx'
 import { useApp } from '../../lib/appContext.js'
 import { IconCheck, IconDownload, IconCopy, IconTrash, IconClose, IconChevron } from '../Icons.jsx'
 
@@ -10,24 +11,31 @@ const filters = [
   { value: 'image', label: 'Images' },
   { value: 'video', label: 'Videos' },
   { value: 'audio', label: 'Audio' },
+  { value: '3d', label: '3D' },
   { value: 'approved', label: 'Approved' },
 ]
 const ratio = (a) => (a || '1:1').replace(':', ' / ')
-const ext = { image: 'png', video: 'mp4', audio: 'mp3' }
+const ext = { image: 'png', video: 'mp4', audio: 'mp3', '3d': 'glb' }
 
-function Media({ it, full }) {
+function Media({ it, full, onInfo }) {
+  if (it.kind === '3d') return <ModelView url={it.url} alt={it.caption} full={full} onInfo={onInfo} />
   if (it.kind === 'video') return <video src={it.url} autoPlay={full} loop muted={!full} playsInline controls={full} />
   if (it.kind === 'audio') return <div className="audio-card"><p>{it.caption}</p><audio src={it.url} controls /></div>
   return <img src={it.url} alt={it.caption} />
 }
 
-function Act({ label, on, onClick, children }) {
-  return <button type="button" className={`lib-act${on ? ' on' : ''}`} aria-label={label} title={label} onClick={(e) => { e.stopPropagation(); onClick() }}>{children}</button>
+// A slicer needs a closed surface, so the viewer says whether the mesh has any open edges.
+const meshNote = ({ faces, open }) => `${faces.toLocaleString()} faces · ${open ? `${open.toLocaleString()} open edges` : 'closed surface, ready to slice'}`
+
+function Act({ label, on, wide, onClick, children }) {
+  return <button type="button" className={`lib-act${on ? ' on' : ''}${wide ? ' wide' : ''}`} aria-label={label} title={label} onClick={(e) => { e.stopPropagation(); onClick() }}>{children}</button>
 }
 
 function Viewer({ items, at, setAt, gens, copy, onClose }) {
   const it = items[at]
   const { openFormat } = useApp()
+  const [mesh, setMesh] = useState(null)
+  useEffect(() => setMesh(null), [it?.id])
   useEffect(() => {
     const key = (e) => {
       if (e.key === 'Escape') onClose()
@@ -41,18 +49,19 @@ function Viewer({ items, at, setAt, gens, copy, onClose }) {
   return (
     <div className="viewer" onClick={onClose} role="dialog" aria-label="Viewer">
       <button className="viewer-nav prev" aria-label="Previous" disabled={at === 0} onClick={(e) => { e.stopPropagation(); setAt(at - 1) }}><IconChevron dir="left" /></button>
-      <div className="viewer-card glass pop" key={it.id} onClick={(e) => e.stopPropagation()}>
-        <div className="viewer-media"><Media it={it} full /></div>
+      <div className={`viewer-card glass pop${it.kind === '3d' ? ' model' : ''}`} key={it.id} onClick={(e) => e.stopPropagation()}>
+        <div className="viewer-media"><Media it={it} full onInfo={setMesh} /></div>
         <div className="viewer-foot">
           <div className="viewer-text">
             <p>{it.caption}</p>
-            <span>{it.model}{it.aspect ? ` · ${it.aspect}` : ''}</span>
+            <span>{it.model}{it.kind !== '3d' && it.aspect ? ` · ${it.aspect}` : ''}{mesh && ` · ${meshNote(mesh)}`}</span>
           </div>
           <div className="viewer-acts">
             {/* The viewer sits above the format sheet, so it closes first. */}
             <UseIn item={it} up onUse={(format, values) => { onClose(); openFormat(format, values) }} />
             <Act label={it.approved ? 'Remove approval' : 'Approve'} on={it.approved} onClick={() => gens.toggleApprove(it.id)}><IconCheck /></Act>
             <a className="lib-act" href={it.url} download={`${it.id}.${ext[it.kind] || 'png'}`} aria-label="Download" title="Download"><IconDownload /></a>
+            {it.kind === '3d' && <Act label="Save as STL for 3D printing" wide onClick={() => saveStl(it.url, it.id).catch(() => {})}>STL</Act>}
             <Act label="Copy prompt" onClick={() => copy(it)}><IconCopy /></Act>
             <Act label="Delete" onClick={() => { gens.dismiss(it.id); items.length === 1 ? onClose() : setAt(Math.min(at, items.length - 2)) }}><IconTrash /></Act>
           </div>
@@ -80,7 +89,7 @@ export default function Generations({ gens }) {
   if (!done.length) {
     return (
       <div className="empty glass">
-        <p>Nothing made yet. Your images, videos and audio land here.</p>
+        <p>Nothing made yet. Your images, videos, audio and 3D models land here.</p>
         <Link className="btn-blue" to="/">Start creating</Link>
       </div>
     )

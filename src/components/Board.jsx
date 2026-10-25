@@ -1,4 +1,5 @@
 import { takeLabel, usePod } from '../lib/usePod.js'
+import ModelView from './ModelView.jsx'
 
 const ratio = (a) => (/^\d+:\d+$/.test(a) ? a.replace(':', ' / ') : '1 / 1')
 
@@ -18,6 +19,7 @@ function Take({ it, onApprove, onDismiss }) {
       )
         : it.pending ? <span className="take-msg">{takeLabel(it, status) || (it.started ? 'Rendering' : 'Queued')}</span>
         : it.kind === 'video' ? <video src={it.url} autoPlay loop muted playsInline />
+        : it.kind === '3d' ? <ModelView url={it.url} alt={it.caption} />
         : it.kind === 'audio' ? <audio src={it.url} controls />
         : <img src={it.url} alt={it.caption} />}
       {!it.pending && !it.failed && (
