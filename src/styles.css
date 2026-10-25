@@ -1079,6 +1079,13 @@ code { font-size: .92em; }
 .apps-tabs .seg button:active { transform: scale(.96); }
 .apps-tabs .seg em { font-style: normal; font-size: var(--text-xs); font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
 .apps-tabs .seg button.on em { color: var(--blue); }
+.apps-import-btn { margin-left: auto; flex: none; }
+.apps-import { margin-top: 12px; padding: 16px; border-radius: var(--r-lg); display: grid; gap: 8px; font-size: var(--text-sm); }
+.apps-import-row, .app-share-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.apps-import-row input { flex: 1; min-width: 180px; }
+.app-share { display: grid; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line); font-size: var(--text-sm); }
+.app-share h3 { font-size: var(--text-sm); font-weight: 600; }
+.app-share a { color: var(--blue); overflow-wrap: anywhere; }
 
 .apps-sec { margin-top: 32px; }
 .apps-sec-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin: 0 2px 14px; }
@@ -1200,6 +1207,7 @@ code { font-size: .92em; }
 @media (max-width: 720px) {
   .apps-bar { flex-direction: column; align-items: stretch; }
   .apps-search { flex: none; }
+  .apps-import-btn { margin-left: 0; }
   .apps-sec-head h2 { font-size: var(--text-xl); }
   .app-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .app-strip { grid-auto-columns: 160px; gap: 10px; }

@@ -12,6 +12,7 @@ import { serveMedia } from './serveMedia.js'
 import { agentRoutes } from './agent-routes.js'
 import { createJobs } from './jobs.js'
 import { allowedApiRequest } from './local-access.js'
+import { userFormats } from './userFormats.js'
 
 export { providers } from './core.js'
 
@@ -286,6 +287,10 @@ function mount(server, harness) {
       if (url.pathname === '/api/pod/options' && req.method === 'GET') return send(res, 200, await core.podOptions())
       if (url.pathname.startsWith('/api/pod/') && req.method === 'POST') return send(res, 200, await podAction(url.pathname.slice('/api/pod/'.length), await body(req)))
       if (await agents(req, res, url)) return
+      if (url.pathname === '/api/formats' && req.method === 'GET') return send(res, 200, { formats: userFormats.list() })
+      if (url.pathname === '/api/formats/import' && req.method === 'POST') return send(res, 200, await userFormats.import(await body(req)))
+      if (url.pathname === '/api/formats/share' && req.method === 'POST') return send(res, 200, await userFormats.share((await body(req)).format))
+      if (url.pathname.startsWith('/api/formats/') && req.method === 'DELETE') return send(res, 200, { formats: userFormats.remove(decodeURIComponent(url.pathname.slice('/api/formats/'.length))) })
       if (url.pathname === '/api/connections' && req.method === 'GET') return send(res, 200, core.connections())
       if (url.pathname === '/api/connections' && req.method === 'POST') {
         const { id, values } = await body(req)
