@@ -132,6 +132,8 @@
 
   /* State */
   --disabled: .45;
+  --ghost: .6;
+  --ghost-dash: 6 6;
 
   /* Input widgets */
   --widget-gap: 8px;
@@ -988,6 +990,27 @@ code { font-size: .92em; }
 .consist p { margin: 0 0 10px; font-size: var(--text-sm); line-height: 1.4; color: var(--ink-2); }
 .consist-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .soon-tag { display: inline-flex; align-items: center; height: 22px; padding: 0 10px; border-radius: var(--r-pill); font-size: var(--text-xs); font-weight: 600; color: var(--muted); background: var(--ink-fill); }
+
+/* Flow drafts: ghost nodes and edges until Accept. */
+.flows .react-flow__node.ghost { pointer-events: none; }
+.flows .react-flow__node.ghost .fnode { opacity: var(--ghost); border: 1.5px dashed var(--blue-line); box-shadow: none; background: var(--blue-wash); }
+.flows .react-flow__edge.ghost .react-flow__edge-path { stroke-dasharray: var(--ghost-dash); opacity: var(--ghost); }
+.fdescribe { width: 340px; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+.fdescribe label { font-size: var(--text-sm); font-weight: 600; }
+.fdescribe p { margin: 0; font-size: var(--text-xs); line-height: 1.4; }
+.fdescribe .btn-blue { align-self: flex-end; }
+/* Fixed, so Accept stays on screen when the canvas is taller than the window. */
+.fdraft { position: fixed; z-index: 20; left: 50%; bottom: 18px; translate: -50% 0; width: min(560px, calc(100% - var(--gutter))); display: flex; align-items: center; gap: 12px;
+  padding: 10px 10px 10px 18px; border-radius: var(--r-xl); }
+.fdraft > div:first-child { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: var(--text-sm); }
+.fdraft strong { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fdraft summary { cursor: pointer; color: var(--warn); }
+.fdraft ul { margin: 4px 0 0; padding-left: 18px; max-height: 120px; overflow: auto; color: var(--ink-2); font-size: var(--text-xs); line-height: 1.4; }
+@media (max-width: 720px) {
+  .fdescribe { width: min(340px, calc(100vw - 32px)); }
+  .fdraft { flex-direction: column; align-items: stretch; bottom: 12px; }
+  .fdraft .fbtns { justify-content: flex-end; }
+}
 
 /* Five flow starters: one row on wide screens, three and two below that, never one alone. */
 .fempty { justify-content: safe center; padding-top: 64px; }
