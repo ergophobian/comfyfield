@@ -1,3 +1,4 @@
+import { ArtImage } from '../components/Art.jsx'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import Segmented from '../components/Segmented.jsx'
@@ -122,7 +123,7 @@ function Fan({ items }) {
     <div className="inf-fan" aria-hidden="true">
       {items.slice(0, 5).map((c, i) => (
         <span key={i} className="inf-fan-card" style={{ '--n': i - 2, background: c.cover }}>
-          {c.img ? <img src={c.img} alt="" /> : <TypeArt kind={c.type} />}
+          {c.img ? <img src={c.img} alt="" /> : <><TypeArt kind={c.type} /><ArtImage id={['character-scene', 'face-swap', 'headshot', 'look-phone-flash', 'human-video'][i]} /></>}
         </span>
       ))}
     </div>
@@ -179,7 +180,7 @@ function Explore({ onRecreate }) {
         <div className="inf-grid">
           {influencerPresets.map((p, i) => (
             <div key={p.id} className="inf-card" style={{ '--i': Math.min(i, 12) }}>
-              <span className="inf-card-cover" style={{ background: p.cover }}><TypeArt kind={p.picks.type} /></span>
+              <span className="inf-card-cover" style={{ background: p.cover }}><TypeArt kind={p.picks.type} /><ArtImage id={p.art} /></span>
               <span className="inf-card-foot">
                 <strong>{p.name}</strong>
                 <button type="button" className="btn-soft xs" onClick={() => onRecreate(p)}>Recreate</button>

@@ -2,8 +2,9 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
-import bundledFfmpeg from 'ffmpeg-static'
 import { appMediaFile, stitchMediaFile as localFile } from './stitchMedia.js'
+import { findFfmpeg } from './ffmpeg.js'
+export { findFfmpeg } from './ffmpeg.js'
 
 const fonts = fileURLToPath(new URL('./fonts/', import.meta.url))
 const dimensions = { '16:9': [1280, 720], '9:16': [720, 1280], '1:1': [720, 720], '4:5': [720, 900] }
@@ -25,12 +26,6 @@ export function ffmpeg(args, { binary = 'ffmpeg', cwd, allowFailure = false, tim
       else reject(new Error(`Stitch failed: ${stderr.slice(-2400)}`))
     })
   })
-}
-
-export async function findFfmpeg() {
-  try { await ffmpeg(['-version']); return 'ffmpeg' } catch {}
-  if (!bundledFfmpeg || !fs.existsSync(bundledFfmpeg)) throw new Error('ffmpeg is missing. Run npm install to install the bundled binary.')
-  return bundledFfmpeg
 }
 
 const seconds = (value, fallback, name) => {

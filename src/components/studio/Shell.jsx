@@ -1,3 +1,4 @@
+import { PageArt } from '../Art.jsx'
 import { useEffect, useId, useRef, useState } from 'react'
 import { IconChevron } from '../Icons.jsx'
 
@@ -36,7 +37,7 @@ export function Hero({ cards, title, text, children }) {
       <div className="sa-fan" aria-hidden="true">
         {cards.slice(0, 4).map((c, i) => (
           <span key={i} className={`sa-fan-card${i === 2 ? ' round' : ''}`} style={{ '--n': i, background: c.cover }}>
-            {c.img ? <img src={c.img} alt="" /> : c.art}
+            {c.img ? <img src={c.img} alt="" /> : <>{c.art}<PageArt className="fan-art" /></>}
           </span>
         ))}
       </div>

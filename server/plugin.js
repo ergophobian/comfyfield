@@ -11,8 +11,27 @@ import { upload } from './upload.js'
 import { serveMedia } from './serveMedia.js'
 import { agentRoutes } from './agent-routes.js'
 import { planStory } from './story.js'
+import { createJobs } from './jobs.js'
+import { allowedApiRequest } from './local-access.js'
 
 export { providers } from './core.js'
+
+// ComfyUI hands back its own address; the browser reaches it through the /comfy proxy.
+function comfyFiles(files) {
+  const base = (core.config('comfy').url || 'http://127.0.0.1:8188').replace(/\/+$/, '')
+  return files.map(({ path: localPath, ...f }) => ({ ...f, url: f.url.startsWith(`${base}/`) ? `/comfy${f.url.slice(base.length)}` : f.url }))
+}
+
+// The generation routes the browser can run as jobs, keyed by the route it would otherwise call directly.
+const runners = {
+  '/api/fal': (b, ctx) => core.runFal(b, ctx),
+  '/api/comfy/router': (b, ctx) => core.runComfyRouter(b, ctx),
+  '/api/comfy/run': async ({ workflow, vars }, ctx) => comfyFiles(await core.runComfy(workflow, vars, ctx)),
+  '/api/elevenlabs': (b) => core.runElevenLabs(b),
+  '/api/google': (b) => core.runGoogle(b),
+}
+let jobs
+const jobStore = () => (jobs ||= createJobs(path.join(core.home(), 'jobs.json')))
 
 async function body(req) {
   let raw = ''
@@ -236,11 +255,7 @@ export async function podAction(action, { workflow, now, minVramGb, gpu, volumeG
 // A page on another site can send a request to localhost even when it cannot read the answer.
 // Browsers mark those; tools like curl and the CLI send neither header.
 export function crossSite(headers) {
-  const site = headers['sec-fetch-site']
-  if (site && site !== 'same-origin' && site !== 'none') return true
-  const origin = headers.origin
-  if (!origin) return false
-  try { return new URL(origin).host !== headers.host } catch { return true }
+  return !allowedApiRequest(headers)
 }
 
 function mount(server, harness) {
@@ -251,8 +266,8 @@ function mount(server, harness) {
   server.httpServer?.once('close', () => { core.pod().stopMonitor(); agents.close().catch(() => {}) })
   server.middlewares.use(async (req, res, next) => {
     const url = new URL(req.url, 'http://local')
-    // Anything that spends money or changes saved data must come from ComfyField's own pages.
-    if (url.pathname.startsWith('/api/') && req.method !== 'GET' && crossSite(req.headers)) return send(res, 403, { error: 'Requests from other sites are refused.' })
+    // Validate even reads: a rebinding domain can present matching Host and Origin headers.
+    if ((url.pathname === '/api' || url.pathname.startsWith('/api/')) && crossSite(req.headers)) return send(res, 403, { error: 'Use the local ComfyField app. Requests from other sites are refused.' })
     try {
       if (url.pathname === '/api/pod' && req.method === 'GET') {
         const { mode, key } = core.config('comfy')
@@ -261,6 +276,12 @@ function mount(server, harness) {
         const suggest = mode === 'cloud' && status.phase === 'none' && status.connected ? await core.podSuggestion() : null
         // run: the generation type the user picked (null until they pick); tier: their Session tier.
         return send(res, 200, { ...status, mode, instant: Boolean(key), auto: core.podAutoStart(), suggest, run: core.runType(), tier: core.podTier() })
+      }
+      if (url.pathname === '/api/comfy/requirements' && req.method === 'POST') {
+        const input = await body(req)
+        if (!input || typeof input !== 'object' || Array.isArray(input) || !Array.isArray(input.workflows) ||
+          (input.runType != null && !['instant', 'session'].includes(input.runType))) return send(res, 400, { error: 'Supply workflows and a valid run type.' })
+        return send(res, 200, await core.formatRequirements(input.workflows, { run: input.runType ?? core.runType() }))
       }
       if (url.pathname === '/api/pod/quote') return send(res, 200, await podQuote(url.searchParams.get('workflow')))
       if (url.pathname === '/api/pod/options' && req.method === 'GET') return send(res, 200, await core.podOptions())
@@ -285,9 +306,18 @@ function mount(server, harness) {
       if (url.pathname === '/api/comfy/router' && req.method === 'POST') return send(res, 200, { files: await core.runComfyRouter(await body(req)) })
       if (url.pathname === '/api/comfy/run' && req.method === 'POST') {
         const { workflow, vars } = await body(req)
-        const files = await core.runComfy(workflow, vars)
-        const base = (core.config('comfy').url || 'http://127.0.0.1:8188').replace(/\/+$/, '')
-        return send(res, 200, { files: files.map(({ path: localPath, ...f }) => ({ ...f, url: f.url.startsWith(`${base}/`) ? `/comfy${f.url.slice(base.length)}` : f.url })) })
+        return send(res, 200, { files: comfyFiles(await core.runComfy(workflow, vars)) })
+      }
+      if (url.pathname === '/api/jobs' && req.method === 'POST') {
+        const { route, body: input } = await body(req)
+        const runner = runners[route]
+        if (!runner) return send(res, 404, { error: 'That run cannot be started as a job.' })
+        return send(res, 200, { id: jobStore().start((ctx) => runner(input || {}, ctx)) })
+      }
+      if (url.pathname.startsWith('/api/jobs/')) {
+        const id = url.pathname.slice('/api/jobs/'.length)
+        const job = req.method === 'DELETE' ? jobStore().cancel(id) : jobStore().get(id)
+        return job ? send(res, 200, job) : send(res, 404, { error: 'That run is gone. Run it again.' })
       }
       if (url.pathname === '/api/fal/schema') return send(res, 200, await core.falSchema(url.searchParams.get('id')))
       if (url.pathname === '/api/elevenlabs' && req.method === 'POST') {
@@ -313,6 +343,11 @@ function mount(server, harness) {
         return send(res, 200, await upload(req, core.saveMedia))
       }
       if (url.pathname === '/api/library/import' && req.method === 'POST') return send(res, 200, await importUrl(await body(req)))
+      if (url.pathname === '/api/library/generations' && req.method === 'GET') return send(res, 200, core.libraryImports())
+      if (url.pathname === '/api/library/generations' && req.method === 'DELETE') {
+        core.dismissLibraryImport((await body(req)).id)
+        return send(res, 200, { ok: true })
+      }
       if (url.pathname.startsWith('/api/library/') && await libraryRoute(req, res, url)) return
       if (url.pathname.startsWith('/media/')) {
         const file = core.mediaPath(url.pathname)
@@ -321,7 +356,7 @@ function mount(server, harness) {
       }
       if (url.pathname.startsWith('/comfy/')) return proxyComfy(req, res, url)
     } catch (e) {
-      return send(res, e.status || 500, { error: e.message, ...(e.code ? { code: e.code } : {}), ...(e.reason ? { reason: e.reason } : {}) })
+      return send(res, e.status || 500, { error: e.message, ...(e.requestId ? { requestId: e.requestId } : {}), ...(e.idempotencyKey ? { idempotencyKey: e.idempotencyKey } : {}), ...(e.code ? { code: e.code } : {}), ...(typeof e.retryable === 'boolean' ? { retryable: e.retryable } : {}), ...(e.reason ? { reason: e.reason } : {}), ...(e.fit ? { fit: e.fit } : {}) })
     }
     next()
   })

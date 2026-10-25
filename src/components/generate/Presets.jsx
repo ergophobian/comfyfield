@@ -1,3 +1,4 @@
+import { ArtImage } from '../Art.jsx'
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { IconClose } from '../Icons.jsx'
@@ -31,6 +32,7 @@ export function presetText(f, framed) {
 export function PresetCard({ preset, model, onChange }) {
   return (
     <div className="gen-preset" style={{ background: preset.cover }}>
+      <ArtImage id={preset.id} />
       <button type="button" className="gen-preset-change" onClick={onChange}><IconPen />Change</button>
       <span className="gen-preset-text">
         <strong>{preset.name}</strong>
@@ -44,7 +46,7 @@ function Tile({ f, on, onPick, i }) {
   return (
     <button type="button" className={`recipe-card gen-tile rise${on ? ' on' : ''}`} aria-pressed={on}
       style={{ '--d': `calc(${Math.min(i, 12)} * var(--stagger))` }} onClick={() => onPick(f)}>
-      <span className="recipe-cover" style={{ background: f.cover }} />
+      <span className="recipe-cover" style={{ background: f.cover }}><ArtImage id={f.id} alt={`${f.name} example`} /></span>
       <strong>{f.name}</strong>
       <small>{f.blurb}</small>
     </button>

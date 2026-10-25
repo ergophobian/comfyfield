@@ -1,0 +1,1109 @@
+[
+  {
+    "path": "public/art/covers/cinema-shot.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 46652,
+    "quality": 80,
+    "source": "cinema-shot",
+    "sourceSha256": "60e92557a87f592e8dc7b4f966f2c285cd6e1cc35e42f2c7d9b9f98074cafd97"
+  },
+  {
+    "path": "public/art/heroes/cinema.webp",
+    "width": 1600,
+    "height": 900,
+    "bytes": 141310,
+    "quality": 80,
+    "source": "cinema-shot",
+    "sourceSha256": "60e92557a87f592e8dc7b4f966f2c285cd6e1cc35e42f2c7d9b9f98074cafd97"
+  },
+  {
+    "path": "public/art/covers/character-sheet.webp",
+    "width": 768,
+    "height": 288,
+    "bytes": 26516,
+    "quality": 80,
+    "source": "character-sheet",
+    "sourceSha256": "65b3ffc0f31affdfd119f0b90409b4b64f85165cce2b4cb3d631df7583f68167"
+  },
+  {
+    "path": "public/art/heroes/character.webp",
+    "width": 1600,
+    "height": 600,
+    "bytes": 76982,
+    "quality": 80,
+    "source": "character-sheet",
+    "sourceSha256": "65b3ffc0f31affdfd119f0b90409b4b64f85165cce2b4cb3d631df7583f68167"
+  },
+  {
+    "path": "public/art/covers/library.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 44280,
+    "quality": 80,
+    "source": "library",
+    "sourceSha256": "6bd67bd2387357a9f34b5a723952c72b80183e2e721a57524563cf67ad2d6b1c"
+  },
+  {
+    "path": "public/art/heroes/library.webp",
+    "width": 1600,
+    "height": 900,
+    "bytes": 149272,
+    "quality": 80,
+    "source": "library",
+    "sourceSha256": "6bd67bd2387357a9f34b5a723952c72b80183e2e721a57524563cf67ad2d6b1c"
+  },
+  {
+    "path": "public/art/covers/moodboard.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 72618,
+    "quality": 74,
+    "source": "moodboard",
+    "sourceSha256": "7b1e068c1b7bcccd1dfffd23278fb7e59f6dfd5d3ac4c14fce94afc71372578d"
+  },
+  {
+    "path": "public/art/heroes/moodboard.webp",
+    "width": 1600,
+    "height": 900,
+    "bytes": 196288,
+    "quality": 56,
+    "source": "moodboard",
+    "sourceSha256": "7b1e068c1b7bcccd1dfffd23278fb7e59f6dfd5d3ac4c14fce94afc71372578d"
+  },
+  {
+    "path": "public/art/covers/fashion.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 22384,
+    "quality": 80,
+    "source": "fashion",
+    "sourceSha256": "b9ba7def252be045469ed2e6f39cdc6af05fec598588ee569d6f0d38d86f4512"
+  },
+  {
+    "path": "public/art/heroes/fashion.webp",
+    "width": 1600,
+    "height": 900,
+    "bytes": 56954,
+    "quality": 80,
+    "source": "fashion",
+    "sourceSha256": "b9ba7def252be045469ed2e6f39cdc6af05fec598588ee569d6f0d38d86f4512"
+  },
+  {
+    "path": "public/art/heroes/photodump.webp",
+    "width": 1600,
+    "height": 900,
+    "bytes": 56954,
+    "quality": 80,
+    "source": "fashion",
+    "sourceSha256": "b9ba7def252be045469ed2e6f39cdc6af05fec598588ee569d6f0d38d86f4512"
+  },
+  {
+    "path": "public/art/covers/expand.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 71372,
+    "quality": 74,
+    "source": "expand",
+    "sourceSha256": "bfa0f0d7aba5587ec31229d257297cd569154639314c1cee968ca2f56e632f7a"
+  },
+  {
+    "path": "public/art/heroes/image.webp",
+    "width": 1600,
+    "height": 900,
+    "bytes": 189062,
+    "quality": 62,
+    "source": "expand",
+    "sourceSha256": "bfa0f0d7aba5587ec31229d257297cd569154639314c1cee968ca2f56e632f7a"
+  },
+  {
+    "path": "public/art/covers/product-shot.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 41984,
+    "quality": 80,
+    "source": "product-shot",
+    "sourceSha256": "4f2b6a0f11e28664aa0f8c8aa94482df311684d63af51af89c8fa68ab2aad928"
+  },
+  {
+    "path": "public/art/covers/character-scene.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 73666,
+    "quality": 80,
+    "source": "character-scene",
+    "sourceSha256": "134f1d747a34666e668c0b13a06950fac32d4a7fd6a7f9783b31b8211929df50"
+  },
+  {
+    "path": "public/art/heroes/influencer.webp",
+    "width": 1600,
+    "height": 900,
+    "bytes": 192652,
+    "quality": 80,
+    "source": "character-scene",
+    "sourceSha256": "134f1d747a34666e668c0b13a06950fac32d4a7fd6a7f9783b31b8211929df50"
+  },
+  {
+    "path": "public/art/covers/cam-tracking.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 44326,
+    "quality": 80,
+    "source": "cam-tracking",
+    "sourceSha256": "a127618407874e1d4fdf1e8bf4a9d620bfa023eac49dbfd7c7c6590da3defda5"
+  },
+  {
+    "path": "public/art/heroes/video.webp",
+    "width": 1600,
+    "height": 900,
+    "bytes": 116584,
+    "quality": 80,
+    "source": "cam-tracking",
+    "sourceSha256": "a127618407874e1d4fdf1e8bf4a9d620bfa023eac49dbfd7c7c6590da3defda5"
+  },
+  {
+    "path": "public/art/heroes/motion.webp",
+    "width": 1600,
+    "height": 900,
+    "bytes": 116584,
+    "quality": 80,
+    "source": "cam-tracking",
+    "sourceSha256": "a127618407874e1d4fdf1e8bf4a9d620bfa023eac49dbfd7c7c6590da3defda5"
+  },
+  {
+    "path": "public/art/covers/ad-variants.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 62136,
+    "quality": 80,
+    "source": "ad-variants",
+    "sourceSha256": "a58046d3d87e6366dde4543b707aa1aca22285622d624cfadadeb877aa55edcc"
+  },
+  {
+    "path": "public/art/heroes/marketing.webp",
+    "width": 1600,
+    "height": 900,
+    "bytes": 174688,
+    "quality": 80,
+    "source": "ad-variants",
+    "sourceSha256": "a58046d3d87e6366dde4543b707aa1aca22285622d624cfadadeb877aa55edcc"
+  },
+  {
+    "path": "public/art/covers/product-ad.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 68004,
+    "quality": 80,
+    "source": "product-ad",
+    "sourceSha256": "201f26791a2e023921e76d7d1d24bd1f4e18770c99f546cf20dcb9a0f154778c"
+  },
+  {
+    "path": "public/art/heroes/ads.webp",
+    "width": 1600,
+    "height": 900,
+    "bytes": 189412,
+    "quality": 80,
+    "source": "product-ad",
+    "sourceSha256": "201f26791a2e023921e76d7d1d24bd1f4e18770c99f546cf20dcb9a0f154778c"
+  },
+  {
+    "path": "public/art/covers/faceless.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 67508,
+    "quality": 74,
+    "source": "faceless",
+    "sourceSha256": "f17a0037cf590f62324103cb55ec55cf8b42b9a33e8892cc2f8bb0d148fe51ba"
+  },
+  {
+    "path": "public/art/heroes/faceless.webp",
+    "width": 1600,
+    "height": 900,
+    "bytes": 191702,
+    "quality": 56,
+    "source": "faceless",
+    "sourceSha256": "f17a0037cf590f62324103cb55ec55cf8b42b9a33e8892cc2f8bb0d148fe51ba"
+  },
+  {
+    "path": "public/art/covers/short-sequence.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 35504,
+    "quality": 80,
+    "source": "short-sequence",
+    "sourceSha256": "5d6e74fa67fdb3814144f8c2228437e69dc2ba126c64474ba788131ea016a060"
+  },
+  {
+    "path": "public/art/heroes/shorts.webp",
+    "width": 1600,
+    "height": 900,
+    "bytes": 96476,
+    "quality": 80,
+    "source": "short-sequence",
+    "sourceSha256": "5d6e74fa67fdb3814144f8c2228437e69dc2ba126c64474ba788131ea016a060"
+  },
+  {
+    "path": "public/art/covers/explainer.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 43472,
+    "quality": 80,
+    "source": "explainer",
+    "sourceSha256": "a65be0e3a758a6056b8c818d3c4844bb6cb4968560714655b819dce9a2dca95f"
+  },
+  {
+    "path": "public/art/heroes/explainer.webp",
+    "width": 1600,
+    "height": 900,
+    "bytes": 130738,
+    "quality": 80,
+    "source": "explainer",
+    "sourceSha256": "a65be0e3a758a6056b8c818d3c4844bb6cb4968560714655b819dce9a2dca95f"
+  },
+  {
+    "path": "public/art/covers/talking-head.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 49512,
+    "quality": 80,
+    "source": "talking-head",
+    "sourceSha256": "5972656d5428b3bb8d1c6dff41930476198f9cc74159c7950ffcdcaa08349181"
+  },
+  {
+    "path": "public/art/heroes/lipsync.webp",
+    "width": 1600,
+    "height": 900,
+    "bytes": 125620,
+    "quality": 80,
+    "source": "talking-head",
+    "sourceSha256": "5972656d5428b3bb8d1c6dff41930476198f9cc74159c7950ffcdcaa08349181"
+  },
+  {
+    "path": "public/art/covers/music.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 48616,
+    "quality": 80,
+    "source": "music",
+    "sourceSha256": "c653da8d40d6d3547089ac63a737ecd50fd794bddf733e5f5c69837cdbadda01"
+  },
+  {
+    "path": "public/art/heroes/audio.webp",
+    "width": 1600,
+    "height": 900,
+    "bytes": 135546,
+    "quality": 80,
+    "source": "music",
+    "sourceSha256": "c653da8d40d6d3547089ac63a737ecd50fd794bddf733e5f5c69837cdbadda01"
+  },
+  {
+    "path": "public/art/covers/text-to-3d.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 24640,
+    "quality": 80,
+    "source": "text-to-3d",
+    "sourceSha256": "ba13f5d5f5fd5987f33936c0b177ee762449c5deb3d16e03a8bc3b13a169429c"
+  },
+  {
+    "path": "public/art/heroes/3d.webp",
+    "width": 1600,
+    "height": 900,
+    "bytes": 76182,
+    "quality": 80,
+    "source": "text-to-3d",
+    "sourceSha256": "ba13f5d5f5fd5987f33936c0b177ee762449c5deb3d16e03a8bc3b13a169429c"
+  },
+  {
+    "path": "public/art/covers/video-upscale.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 56538,
+    "quality": 80,
+    "source": "video-upscale",
+    "sourceSha256": "72c0b745b8f40a54c210b47c4b54595a1b704d274e11651f021b3330288bd87a"
+  },
+  {
+    "path": "public/art/heroes/upscale.webp",
+    "width": 1600,
+    "height": 900,
+    "bytes": 160262,
+    "quality": 80,
+    "source": "video-upscale",
+    "sourceSha256": "72c0b745b8f40a54c210b47c4b54595a1b704d274e11651f021b3330288bd87a"
+  },
+  {
+    "path": "public/art/covers/edit-video.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 77130,
+    "quality": 80,
+    "source": "edit-video",
+    "sourceSha256": "420502499e83c476fd08d4d8775814169717ba49b40dcea42e487f2bc26472dc"
+  },
+  {
+    "path": "public/art/heroes/video-edit.webp",
+    "width": 1600,
+    "height": 900,
+    "bytes": 174548,
+    "quality": 74,
+    "source": "edit-video",
+    "sourceSha256": "420502499e83c476fd08d4d8775814169717ba49b40dcea42e487f2bc26472dc"
+  },
+  {
+    "path": "public/art/covers/sketch-to-image.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 43954,
+    "quality": 80,
+    "source": "sketch-to-image",
+    "sourceSha256": "b00953f268a231d34c793372be44c3bf2430d40d626c002c78130c5b40617f9b"
+  },
+  {
+    "path": "public/art/heroes/edit.webp",
+    "width": 1600,
+    "height": 900,
+    "bytes": 160936,
+    "quality": 80,
+    "source": "sketch-to-image",
+    "sourceSha256": "b00953f268a231d34c793372be44c3bf2430d40d626c002c78130c5b40617f9b"
+  },
+  {
+    "path": "public/art/covers/mm-acid.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 75234,
+    "quality": 74,
+    "source": "mm-acid",
+    "sourceSha256": "6a795b6f71cea5219a40509c2496b2a32218e0b195ce7b51f15574aafaba56dd"
+  },
+  {
+    "path": "public/art/heroes/mixed-media.webp",
+    "width": 1600,
+    "height": 900,
+    "bytes": 188560,
+    "quality": 56,
+    "source": "mm-acid",
+    "sourceSha256": "6a795b6f71cea5219a40509c2496b2a32218e0b195ce7b51f15574aafaba56dd"
+  },
+  {
+    "path": "public/art/covers/shots.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 60710,
+    "quality": 80,
+    "source": "shots",
+    "sourceSha256": "36dc533ad2d1fed3c219ba2d2ac8d6408dff344d1dd677060905f7929aa41750"
+  },
+  {
+    "path": "public/art/covers/relight-photo.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 26468,
+    "quality": 80,
+    "source": "relight-photo",
+    "sourceSha256": "e9938a08ca37b5e0ba4a8566201d5b8f4f94177a8db4126571188dac152f70fe"
+  },
+  {
+    "path": "public/art/covers/game-style.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 70366,
+    "quality": 74,
+    "source": "game-style",
+    "sourceSha256": "b2f88bc3b5b48e62e4195be5eb5bd2d6e8d83d765d9c65bc54533019878f5721"
+  },
+  {
+    "path": "public/art/covers/plush-toy.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 33322,
+    "quality": 80,
+    "source": "plush-toy",
+    "sourceSha256": "044c50f8b6f4bc12a86db41ebf31fb4e50714eccf940876b2bf95694a06f39be"
+  },
+  {
+    "path": "public/art/covers/cloud-surfing.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 40752,
+    "quality": 80,
+    "source": "cloud-surfing",
+    "sourceSha256": "edbf56a2511420e1a6522dade80ebc3e1ebbe0164073e17ea08691118783c71e"
+  },
+  {
+    "path": "public/art/covers/turn-to-sand.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 61824,
+    "quality": 80,
+    "source": "turn-to-sand",
+    "sourceSha256": "d93f5383820ff15dab31c03a17adb46dcf0e7cfa73d340cb8bbd2c0416667ff6"
+  },
+  {
+    "path": "public/art/heroes/effects.webp",
+    "width": 1600,
+    "height": 900,
+    "bytes": 166932,
+    "quality": 74,
+    "source": "turn-to-sand",
+    "sourceSha256": "d93f5383820ff15dab31c03a17adb46dcf0e7cfa73d340cb8bbd2c0416667ff6"
+  },
+  {
+    "path": "public/art/covers/cam-dolly-out.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 61980,
+    "quality": 80,
+    "source": "cam-dolly-out",
+    "sourceSha256": "e0901c85320b0e196f8c9fad8156b1c53ceadbb0ac48a813b96fac11ffcc160e"
+  },
+  {
+    "path": "public/art/heroes/reframe.webp",
+    "width": 1600,
+    "height": 900,
+    "bytes": 187222,
+    "quality": 80,
+    "source": "cam-dolly-out",
+    "sourceSha256": "e0901c85320b0e196f8c9fad8156b1c53ceadbb0ac48a813b96fac11ffcc160e"
+  },
+  {
+    "path": "public/art/covers/storyboard.webp",
+    "width": 768,
+    "height": 288,
+    "bytes": 55904,
+    "quality": 80,
+    "source": "storyboard",
+    "sourceSha256": "bc564ee7e01fe3fb0b6dab41dfc3664809e2e76afbbdc208d17893fbfd295a28"
+  },
+  {
+    "path": "public/art/heroes/assistant.webp",
+    "width": 1600,
+    "height": 600,
+    "bytes": 182760,
+    "quality": 80,
+    "source": "storyboard",
+    "sourceSha256": "bc564ee7e01fe3fb0b6dab41dfc3664809e2e76afbbdc208d17893fbfd295a28"
+  },
+  {
+    "path": "public/art/covers/look-phone-flash.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 52624,
+    "quality": 80,
+    "source": "look-phone-flash",
+    "sourceSha256": "2c9d7e2daa0ccce3c8b3ba3e82df6e1f294e1f7c19c1688b9c193e06be410825"
+  },
+  {
+    "path": "public/art/covers/tts.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 33440,
+    "quality": 80,
+    "source": "tts",
+    "sourceSha256": "b504931bcb874bfff968c5f0ed940ab360e664bcb2277806738f6e9f65e6909d"
+  },
+  {
+    "path": "public/art/covers/voice-clone.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 25436,
+    "quality": 80,
+    "source": "voice-clone",
+    "sourceSha256": "e1a2fc7165327b457377094f0bc2a9b077c231f3deaf2bf9d6b138436c6c1c29"
+  },
+  {
+    "path": "public/art/covers/sound-effect.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 32946,
+    "quality": 80,
+    "source": "sound-effect",
+    "sourceSha256": "4c06c5d788dbb8effdcd79df18952f094112ed1fdc9692e91f068f5fa6f12423"
+  },
+  {
+    "path": "public/art/covers/cam-dolly-in.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 19716,
+    "quality": 80,
+    "source": "cam-dolly-in",
+    "sourceSha256": "682ab0eba59c56adffa31d14d32cc68d525dd29857a4b477b77a043c30da0538"
+  },
+  {
+    "path": "public/art/covers/roller-coaster.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 44890,
+    "quality": 80,
+    "source": "roller-coaster",
+    "sourceSha256": "dff9d5968277949be291401e3d3048604523cad171167ee5ee52edffe52ae830"
+  },
+  {
+    "path": "public/art/covers/transition.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 75488,
+    "quality": 80,
+    "source": "transition",
+    "sourceSha256": "8719e86b7c0d736850de8a486564807cea0ae842c7ca21e2406ec3f976e7f822"
+  },
+  {
+    "path": "public/art/covers/try-on.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 20452,
+    "quality": 80,
+    "source": "try-on",
+    "sourceSha256": "ae8d8a6d9b8a53302c09e06c05c5209cbd570d7e3dab722af7dc081c4fc4e803"
+  },
+  {
+    "path": "public/art/covers/swap-element.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 72546,
+    "quality": 74,
+    "source": "swap-element",
+    "sourceSha256": "feb7fb49f458669ea060223b3f85b27c336a630bbfb4d45373d4667028abad01"
+  },
+  {
+    "path": "public/art/covers/face-swap-video.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 27788,
+    "quality": 80,
+    "source": "face-swap-video",
+    "sourceSha256": "82ad0a750f125a71fdb01af9b2573389646573b3fddc59b4cf71448d75632ef9"
+  },
+  {
+    "path": "public/art/covers/video-bg-remove.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 17590,
+    "quality": 80,
+    "source": "video-bg-remove",
+    "sourceSha256": "b2cbd5632b7ecde7feee3fe902e85fd813cda21ccd06d2ca8ba134091db56d80"
+  },
+  {
+    "path": "public/art/covers/skin-retouch.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 26136,
+    "quality": 80,
+    "source": "skin-retouch",
+    "sourceSha256": "477f34afbd742fb118620e74e45a0e86ec87da40b9141a469d188d1bd012725c"
+  },
+  {
+    "path": "public/art/covers/face-swap.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 26216,
+    "quality": 80,
+    "source": "face-swap",
+    "sourceSha256": "69c126525e8eed3179860de44ed18b21a7a9057b874fb1c431f6369400864f6d"
+  },
+  {
+    "path": "public/art/covers/headshot.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 16044,
+    "quality": 80,
+    "source": "headshot",
+    "sourceSha256": "0a4db4c3791b354d9ea0af8fb50edc89f9f6719a6b4a9dfd577f72f37bc09115"
+  },
+  {
+    "path": "public/art/covers/character-swap.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 43482,
+    "quality": 80,
+    "source": "character-swap",
+    "sourceSha256": "66667478ee9742f11ff0bbe4f3dfe9b171dc63cc2cf7212ff2e93657f773710e"
+  },
+  {
+    "path": "public/art/covers/truck-ad.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 58142,
+    "quality": 80,
+    "source": "truck-ad",
+    "sourceSha256": "d25b8a37abdd31df3d77b9a8f079036ae9703ab1150f1abf609bba50b373972a"
+  },
+  {
+    "path": "public/art/covers/billboard.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 53564,
+    "quality": 80,
+    "source": "billboard",
+    "sourceSha256": "93445e5d3bfb92474042c4bd7dcca7ad1b48f562ca7fb8a243e1239b7c2bc3af"
+  },
+  {
+    "path": "public/art/covers/packshot.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 55522,
+    "quality": 80,
+    "source": "packshot",
+    "sourceSha256": "b8bcd3c01ea86569ca036a2aaa3b194f90b0757ed1c4ea11ba2fcf6f25c46201"
+  },
+  {
+    "path": "public/art/covers/meme.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 22530,
+    "quality": 80,
+    "source": "meme",
+    "sourceSha256": "fc7ef6f55582c973a7ea5816a195d6035e42c06f0457fad930e2835225ef786a"
+  },
+  {
+    "path": "public/art/covers/sticker.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 47038,
+    "quality": 80,
+    "source": "sticker",
+    "sourceSha256": "42393cfd122fb5ebb64be31e3c02c6336eca08a3b1b09f04c666d8f0c1b4cebc"
+  },
+  {
+    "path": "public/art/covers/figure-box.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 38860,
+    "quality": 80,
+    "source": "figure-box",
+    "sourceSha256": "880496588d5d250d7d37127a6ddc72114f6467921ff920845254d7c2e2bbbff2"
+  },
+  {
+    "path": "public/art/covers/behind-the-scenes.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 64772,
+    "quality": 80,
+    "source": "behind-the-scenes",
+    "sourceSha256": "2fe69a3ed283011a5d6b7e57a9a58f279840d1be3e1a3df4dc8b732c460b7b82"
+  },
+  {
+    "path": "public/art/covers/all-fine.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 59118,
+    "quality": 80,
+    "source": "all-fine",
+    "sourceSha256": "6a53b5626f5ee2c05edcc4740167b33010c664acc5035db964102900a4a25863"
+  },
+  {
+    "path": "public/art/covers/life-sim.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 75564,
+    "quality": 80,
+    "source": "life-sim",
+    "sourceSha256": "aac117f0835ce70eea17c898cb1e37c947a577c78e6898c2d3630b3309f2b61f"
+  },
+  {
+    "path": "public/art/covers/game-show.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 31682,
+    "quality": 80,
+    "source": "game-show",
+    "sourceSha256": "e20b44c9aabdd8d2a93280e71dbe1180f6887d0bf0f609fe1fce9fa2fd2b4715"
+  },
+  {
+    "path": "public/art/covers/video-character-swap.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 49130,
+    "quality": 80,
+    "source": "video-character-swap",
+    "sourceSha256": "0a0c350f65b1816b0429f7b5e841a63a3bf764ca2214247279f0801e76b46e00"
+  },
+  {
+    "path": "public/art/covers/angles.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 61988,
+    "quality": 80,
+    "source": "angles",
+    "sourceSha256": "88091c9662931da55e898d0193382d54fd0df143fe14de7c51f550a11f484589"
+  },
+  {
+    "path": "public/art/covers/ai-stylist.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 11806,
+    "quality": 80,
+    "source": "ai-stylist",
+    "sourceSha256": "c3cb5203de7017574ae3808b08f8a8548bae1ce64ec51c9e0fd2b8ce207b2bd1"
+  },
+  {
+    "path": "public/art/covers/asmr-classic.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 42178,
+    "quality": 80,
+    "source": "asmr-classic",
+    "sourceSha256": "a859a602d1c090dac758a80bcca637bf8b0e663ba84203c9d018b33ae01b96ee"
+  },
+  {
+    "path": "public/art/covers/paint-app.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 48818,
+    "quality": 80,
+    "source": "paint-app",
+    "sourceSha256": "8ece044327939be03113cbfc5c38c285fee7da53818d518f91e85ac7856e6a82"
+  },
+  {
+    "path": "public/art/covers/mural.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 75464,
+    "quality": 62,
+    "source": "mural",
+    "sourceSha256": "a9de45686f0e25d8ed024422d8de77a0f602bbe57db5a041ddf38be950e3d929"
+  },
+  {
+    "path": "public/art/covers/micro-beasts.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 72116,
+    "quality": 80,
+    "source": "micro-beasts",
+    "sourceSha256": "eced3faf982f99af9f7ab0f21acee73088b607b79a13e7aec9d66566b49cbc9c"
+  },
+  {
+    "path": "public/art/covers/image-bg-remove.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 23490,
+    "quality": 80,
+    "source": "image-bg-remove",
+    "sourceSha256": "982dda3d7ff4f08549398b36229ab5c1d0b117534836cafde201560aac13484e"
+  },
+  {
+    "path": "public/art/covers/surprise-kiss.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 54930,
+    "quality": 80,
+    "source": "surprise-kiss",
+    "sourceSha256": "22d6469c0280f806944455ed51d3e988d1da2ff14ae37c61fe9566a55a425fb1"
+  },
+  {
+    "path": "public/art/covers/glossy-vinyl.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 16560,
+    "quality": 80,
+    "source": "glossy-vinyl",
+    "sourceSha256": "47bdddd79994eed92200d68f3a437693925e16ca85939d7d00bf41f1fcc5bfb0"
+  },
+  {
+    "path": "public/art/covers/video-erase.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 60346,
+    "quality": 80,
+    "source": "video-erase",
+    "sourceSha256": "58735ec4e2053a29f702415d9ab0d3203678bc762a7e981c441180ec9cc7d812"
+  },
+  {
+    "path": "public/art/covers/video-remove-text.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 47642,
+    "quality": 80,
+    "source": "video-remove-text",
+    "sourceSha256": "3ba4b1d02121f94447f7819b8b5ea758e4269b2d7b8dc1971c8e19d0420b2e7e"
+  },
+  {
+    "path": "public/art/covers/image-to-3d.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 30004,
+    "quality": 80,
+    "source": "image-to-3d",
+    "sourceSha256": "338af06b9aea4e6c155c5017fc2e0228b7e5aa0c161166542d27b488c423032e"
+  },
+  {
+    "path": "public/art/covers/character-to-3d.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 46232,
+    "quality": 80,
+    "source": "character-to-3d",
+    "sourceSha256": "8687ce61a8402964d3b36bffe4c65bf2186a5ddbc893e754099e845bbe72d0e1"
+  },
+  {
+    "path": "public/art/covers/human-video.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 42894,
+    "quality": 80,
+    "source": "human-video",
+    "sourceSha256": "a93319d84e2643ff8d93abdd58e232d5db708e03faac34a26d6922666d086e11"
+  },
+  {
+    "path": "public/art/covers/origami-fold.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 52604,
+    "quality": 80,
+    "source": "origami-fold",
+    "sourceSha256": "fb335cd34235f5dddf5700ad46e8910f197f4427868b6590d147d8b08f4d6b1a"
+  },
+  {
+    "path": "public/art/covers/turntable.webp",
+    "width": 768,
+    "height": 320,
+    "bytes": 35812,
+    "quality": 80,
+    "source": "turntable",
+    "sourceSha256": "6ea38ec16f9c488841831789691aa51251c6d2456bb1871a76e512e9aedf5b28"
+  },
+  {
+    "path": "public/art/covers/snow-globe.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 69838,
+    "quality": 80,
+    "source": "snow-globe",
+    "sourceSha256": "e7fad225435f5bf5b6a67550d4b57bbd49d7e5aeb8aae0355f519f8fbe2a8f9c"
+  },
+  {
+    "path": "public/art/covers/paint-splash.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 63888,
+    "quality": 80,
+    "source": "paint-splash",
+    "sourceSha256": "d5f394278bde8f12d31438b68508d2a5b23a277105775c9b44ff5dba385ab7e3"
+  },
+  {
+    "path": "public/art/covers/burst-into-petals.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 49290,
+    "quality": 80,
+    "source": "burst-into-petals",
+    "sourceSha256": "981e155e5b71d1d64f477422b0fd0ab4fdc8d1319216ed90f9520dae098d043b"
+  },
+  {
+    "path": "public/art/covers/time-lapse.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 54838,
+    "quality": 80,
+    "source": "time-lapse",
+    "sourceSha256": "d91bba8f132cc9ba92402d08cf06a7f93ab514f19ad64433d89f2a9704eaf33a"
+  },
+  {
+    "path": "public/art/covers/floating-fall.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 36286,
+    "quality": 80,
+    "source": "floating-fall",
+    "sourceSha256": "b9f802467df56b1d7754b37d4e1e49d528e2c83a1da77be3df8cbf6a25e6af14"
+  },
+  {
+    "path": "public/art/covers/high-flip.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 19330,
+    "quality": 80,
+    "source": "high-flip",
+    "sourceSha256": "f0a3a65542c484f36822888690d9e55510bd5fdf5c1829b917d3910cc41c2a3c"
+  },
+  {
+    "path": "public/art/covers/studio-slide.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 48120,
+    "quality": 80,
+    "source": "studio-slide",
+    "sourceSha256": "91f17d9ac842002fa576a264c6fab654baf2578b9abbf5d6b4dcee35b2145caa"
+  },
+  {
+    "path": "public/art/covers/street-giant.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 45902,
+    "quality": 80,
+    "source": "street-giant",
+    "sourceSha256": "fc77ba86de7955a21de216aa3a8388e85c3dd26171a43035faea5eaac4bcf835"
+  },
+  {
+    "path": "public/art/covers/eyes-in.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 52566,
+    "quality": 80,
+    "source": "eyes-in",
+    "sourceSha256": "fe949af1dd98770a8bc82713d2fc6002cc3f7cc12f7465c57d77562bee00bfb0"
+  },
+  {
+    "path": "public/art/covers/world-morph.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 75304,
+    "quality": 62,
+    "source": "world-morph",
+    "sourceSha256": "46ff5a534d428c397842629c47f5af6735ac3225dea06eaaab38cc5ef5df3c60"
+  },
+  {
+    "path": "public/art/covers/cam-tilt-up.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 56580,
+    "quality": 80,
+    "source": "cam-tilt-up",
+    "sourceSha256": "a78ce9dada69744b030d83c838495b054b3aed70ebbe0b18092d7d8a2aa0e3cb"
+  },
+  {
+    "path": "public/art/covers/cam-pan-left.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 34078,
+    "quality": 80,
+    "source": "cam-pan-left",
+    "sourceSha256": "16097166bbbb84de512163c8d48799343b052a4c852fe5399cede73ce64f6e73"
+  },
+  {
+    "path": "public/art/covers/cam-pan-right.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 51582,
+    "quality": 80,
+    "source": "cam-pan-right",
+    "sourceSha256": "02a703b36d8696c0fe4c670081c86645c15490f26d4fa2adab717e9eb8338aa3"
+  },
+  {
+    "path": "public/art/covers/cam-tilt-reveal.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 58738,
+    "quality": 80,
+    "source": "cam-tilt-reveal",
+    "sourceSha256": "85f6744e5732cf8438ff2ffe3c0c6437b3fed99e5543bdb5d6d5933023a2f6ec"
+  },
+  {
+    "path": "public/art/covers/cam-tilt-down.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 69026,
+    "quality": 80,
+    "source": "cam-tilt-down",
+    "sourceSha256": "85cbc1f02c333d434b3f490981fa407c1cfa1a7060556b23764b05143336b23f"
+  },
+  {
+    "path": "public/art/covers/cam-zoom-in.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 24208,
+    "quality": 80,
+    "source": "cam-zoom-in",
+    "sourceSha256": "cf387c6e91b7f7f36e779e544b685ac237d335e0e9e93523bc708630291d9c7f"
+  },
+  {
+    "path": "public/art/covers/cam-static.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 51236,
+    "quality": 80,
+    "source": "cam-static",
+    "sourceSha256": "9f903a9f286ca0e7ee409ba51d64bd2a2bc7d335612b220c03482150295c8fca"
+  },
+  {
+    "path": "public/art/covers/cam-zoom-out.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 77458,
+    "quality": 74,
+    "source": "cam-zoom-out",
+    "sourceSha256": "9b6246ef890f5c4c4660194c354b6b1fc1312d3b980b01ec540db9b394795970"
+  },
+  {
+    "path": "public/art/covers/cam-handheld.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 44444,
+    "quality": 80,
+    "source": "cam-handheld",
+    "sourceSha256": "1251d9f13ab536ee329c2e0b4e56f1d42a3437ff29900f9d695a8ac1566fb7a6"
+  },
+  {
+    "path": "public/art/covers/look-studio-fashion.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 9504,
+    "quality": 80,
+    "source": "look-studio-fashion",
+    "sourceSha256": "5f47312efb1c40c6b71f4310f566c455c832194382a8dcc25bd510ec15c94482"
+  },
+  {
+    "path": "public/art/covers/look-golden-hour.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 62358,
+    "quality": 80,
+    "source": "look-golden-hour",
+    "sourceSha256": "61c93821607dbc7dbc929f7c4235653903c8ba4c5a48dac7aab39dbc4a5e23c0"
+  },
+  {
+    "path": "public/art/covers/look-street-style.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 60934,
+    "quality": 80,
+    "source": "look-street-style",
+    "sourceSha256": "38644e38abffa65789aa796054424028b63e03945d8dfc3f9d060f03481f9a94"
+  },
+  {
+    "path": "public/art/covers/look-watercolor.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 67870,
+    "quality": 74,
+    "source": "look-watercolor",
+    "sourceSha256": "e341b0aad253bb4c35fd1a3303fe89e448f9b6891145e8a3d38e2179fca5bd62"
+  },
+  {
+    "path": "public/art/covers/look-oil-painting.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 68684,
+    "quality": 74,
+    "source": "look-oil-painting",
+    "sourceSha256": "b14ee870493bd56ee69eb0d79e03dacc12b0f510eed7f8f9caf5a0a834466b95"
+  },
+  {
+    "path": "public/art/covers/look-film-noir.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 44120,
+    "quality": 80,
+    "source": "look-film-noir",
+    "sourceSha256": "05543f75547ddbccf188e230928eeed78ac1f9c9c3a016454fb56e95636d247b"
+  },
+  {
+    "path": "public/art/covers/look-ink-sketch.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 78180,
+    "quality": 74,
+    "source": "look-ink-sketch",
+    "sourceSha256": "35c5d00d5cb34d091a72bb2f06f288197c270141d297c8aad5053f1c157564ca"
+  },
+  {
+    "path": "public/art/covers/look-pixel-art.webp",
+    "width": 768,
+    "height": 432,
+    "bytes": 68656,
+    "quality": 80,
+    "source": "look-pixel-art",
+    "sourceSha256": "7f856a5a8c48be20c2c7985e1ea708e406cb3a62efa97dc604407be3470517c9"
+  }
+]

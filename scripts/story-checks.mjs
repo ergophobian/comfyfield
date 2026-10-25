@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict'
 import { parseShots, footageFormat, reviewStory, renderStory, shotFormat, storyNote, readStoryDocuments } from '../src/lib/storyStudios.js'
-import { runFormat } from '../src/lib/formats/runner.js'
+import { runFormat as runWithPlanning } from '../src/lib/formats/runner.js'
+import { offlineRequirements } from './fixtures/format-planning.mjs'
+// The runner preflights each run; inject offline requirements instead of a network call.
+const runFormat = (format, values, options) => runWithPlanning(format, values, { requirements: offlineRequirements, ...options })
 import { workflowNeeds } from '../server/core.js'
 import { planStory } from '../server/story.js'
 import { validateFormat } from '../src/lib/formats/validate.js'

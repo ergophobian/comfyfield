@@ -103,7 +103,7 @@ export default function CinemaSide({ view, go, projects, onNew, mini, onMini, st
         <div className="cs-tip">
           <button type="button" className="cs-mini-btn" aria-label="Hide this tip" onClick={() => setTip(false)}><IconClose /></button>
           <small>How projects work</small>
-          <strong>Set the director's panel once in a project and every shot you make there keeps that look.</strong>
+          <strong>{still ? "Set the director's panel once in a project and every shot you make there keeps that look." : 'Plan a scene, review each shot, then stitch the clips you approve. Every scene has a saved Flow.'}</strong>
           <button type="button" className="btn-soft sm" onClick={() => { setTip(false); onNew() }}>Start a project</button>
         </div>
       )}

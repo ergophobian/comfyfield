@@ -1,0 +1,16 @@
+{
+  "reconciliation": {
+    "completedMasters": 48,
+    "unmatchedMasters": 0,
+    "cancelledWithoutArtifact": [
+      "figure-box",
+      "sticker"
+    ],
+    "reason": "Stopped a queued batch after discovering its task snapshot omitted another completed batch; reconciled every saved master before continuing."
+  },
+  "final": {
+    "selectedOriginals": 98,
+    "unmatchedMasters": 0,
+    "cancelledPromptsResolved": true
+  }
+}

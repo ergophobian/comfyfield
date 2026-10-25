@@ -2,13 +2,16 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
 import { execFileSync } from 'node:child_process'
-import bundledFfmpeg from 'ffmpeg-static'
+import { createRequire } from 'node:module'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { createServer as createViteServer } from 'vite'
 import { findFfmpeg, ffmpeg, renderStitch, stitchOptions } from '../server/stitch.js'
 import * as core from '../server/core.js'
 import { createServer } from '../server/mcp.js'
+
+let bundledFfmpeg
+try { bundledFfmpeg = createRequire(import.meta.url)('ffmpeg-static') } catch {}
 
 const deadline = setTimeout(() => {
   console.error('Stitch checks exceeded 90 seconds. See the last progress message for the stalled operation.')
@@ -81,15 +84,17 @@ core.exportStitch(preview.url)
 assert.throws(() => core.exportStitch('/media/missing.mp4'), /preview/)
 console.log('ok    trims, mixed formats, ordering, captions, clip audio, preview and Library export')
 
-// Exercise the bundled binary even when system ffmpeg exists, as on this Windows machine.
-console.log(`check bundled preview with ${bundledFfmpeg}`)
-const mixed = await renderStitch({ clips: [{ url: blueUrl, start: 0, end: 1.2, caption: 'Bundled captions' }], aspect: '9:16', music: { url: musicUrl, volume: 0.4, fade: 0.3 } }, { home: core.home, mediaPath: core.mediaPath, binary: bundledFfmpeg, timeout: 30000, onProgress: console.log })
-assert.equal(frame(mixed.path, 0.5).length, 720 * 1280 * 3)
-const middle = rms(mixed.path, 0.55)
-assert.ok(middle > 0.015 && middle < 0.05, `Music volume applied (${middle})`)
-assert.ok(rms(mixed.path, 0.02) < middle * 0.5, 'Music fades in')
-assert.ok(rms(mixed.path, 1.1) < middle * 0.5, 'Music fades out')
-console.log('ok    bundled ffmpeg, portrait aspect, music looping, volume and fades')
+if (bundledFfmpeg) {
+  // Exercise the bundled binary even when system ffmpeg exists, as on this Windows machine.
+  console.log(`check bundled preview with ${bundledFfmpeg}`)
+  const mixed = await renderStitch({ clips: [{ url: blueUrl, start: 0, end: 1.2, caption: 'Bundled captions' }], aspect: '9:16', music: { url: musicUrl, volume: 0.4, fade: 0.3 } }, { home: core.home, mediaPath: core.mediaPath, binary: bundledFfmpeg, timeout: 30000, onProgress: console.log })
+  assert.equal(frame(mixed.path, 0.5).length, 720 * 1280 * 3)
+  const middle = rms(mixed.path, 0.55)
+  assert.ok(middle > 0.015 && middle < 0.05, `Music volume applied (${middle})`)
+  assert.ok(rms(mixed.path, 0.02) < middle * 0.5, 'Music fades in')
+  assert.ok(rms(mixed.path, 1.1) < middle * 0.5, 'Music fades out')
+  console.log('ok    bundled ffmpeg, portrait aspect, music looping, volume and fades')
+} else console.log('Optional ffmpeg binary unavailable; system ffmpeg fixtures passed')
 
 const specFile = path.join(dir, 'stitch.json')
 console.log('check CLI subprocess')

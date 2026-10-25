@@ -17,6 +17,7 @@ await ffmpeg(['-y', '-f', 'lavfi', '-i', 'color=c=skyblue:s=320x180:r=30:d=1', '
 await ffmpeg(['-y', '-f', 'lavfi', '-i', 'color=c=orange:s=320x180', '-frames:v', '1', mediaPath('image.png')], { binary })
 await ffmpeg(['-y', '-f', 'lavfi', '-i', 'sine=frequency=440:duration=2', mediaPath('voice.wav')], { binary })
 const requests = []
+const jobs = new Map()
 const exports = []
 let available = true
 const narration = 'Ice floats because it is less dense than water.'
@@ -43,10 +44,26 @@ const server = await preview({ configFile: false, envFile: false, plugins: [{ na
       req.resume()
       return reply({ url: '/media/footage.mp4' })
     }
+    if (url.pathname.startsWith('/api/jobs/')) return reply(jobs.get(url.pathname.slice('/api/jobs/'.length)))
     if (req.method !== 'POST') return reply({})
     let body = ''
     for await (const chunk of req) body += chunk
-    const input = JSON.parse(body)
+    let input = JSON.parse(body)
+    if (url.pathname === '/api/comfy/requirements') {
+      return reply({
+        connections: { comfy: { connected: true }, comfyRouter: { connected: true } }, cloudConnected: true, pod: { phase: 'none' },
+        requirements: input.workflows.map(({ workflow }) => ({ workflow, notOnCloud: [], minVramGb: 0, target: 'cloud', selectedWorkflow: workflow })),
+      })
+    }
+    // Generations run as server jobs; record the route each job runs.
+    if (url.pathname === '/api/jobs' && input.route === '/api/comfy/run') {
+      input = input.body
+      requests.push({ path: '/api/comfy/run', input })
+      const kind = input.workflow === 'chatterbox_tts' ? 'audio' : ['ltx25_i2v', 'bernini_restyle'].includes(input.workflow) ? 'video' : 'image'
+      const id = `job-${jobs.size + 1}`
+      jobs.set(id, { id, status: 'done', files: [{ url: `/media/${kind === 'audio' ? 'voice.wav' : kind === 'video' ? 'footage.mp4' : 'image.png'}`, kind }] })
+      return reply({ id })
+    }
     requests.push({ path: url.pathname, input })
     try {
       if (url.pathname === '/api/story/plan') return reply(await planStory(input, { connection: () => ({ run: 'session' }), status: () => ({ phase: 'ready', pod: { vramGb: 48, costPerHr: 1 } }), inspect: (url, range) => inspectStoryFootage(url, { mediaPath, binary, range }) }))
