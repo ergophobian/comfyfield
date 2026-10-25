@@ -77,9 +77,13 @@ try {
     const input = document.querySelector('[aria-label="Flow name"]')
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, 'My unsaved edit')
     input.dispatchEvent(new Event('input', { bubbles: true }))
-    const store = await (await fetch('/api/flows')).json()
-    store.flows[0].nodes.find((n) => n.id === 'prompt').data.text = 'An external edit'
-    await fetch('/api/flows', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(store) })
+    // Another writer: retry its own stale saves, like any client.
+    for (let i = 0; i < 20; i++) {
+      const store = await (await fetch('/api/flows')).json()
+      store.flows[0].nodes.find((n) => n.id === 'prompt').data.text = 'An external edit'
+      if ((await fetch('/api/flows', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(store) })).ok) return
+    }
+    throw new Error('The external save failed')
   })()`)
   await until(`document.querySelector('.react-flow__node[data-id="prompt"]')?.textContent.includes('An external edit')`)
   assert.equal(await evaluate(`document.querySelector('[aria-label="Flow name"]').value`), 'My unsaved edit', 'the local edit stays')
