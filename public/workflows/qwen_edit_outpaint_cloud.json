@@ -1,0 +1,306 @@
+{
+  "1": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "qwen_image_edit_2511_int8_convrot.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "2": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+      "type": "qwen_image",
+      "device": "default"
+    }
+  },
+  "3": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "qwen_image_vae.safetensors"
+    }
+  },
+  "4": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "{{image}}"
+    }
+  },
+  "5": {
+    "class_type": "GetImageSize",
+    "inputs": {
+      "image": [
+        "4",
+        0
+      ]
+    }
+  },
+  "6": {
+    "class_type": "ComfyMathExpression",
+    "inputs": {
+      "expression": "4.0 / (1.75 if '{{pad}}' == 'sides' else 1.75 if '{{pad}}' == 'top-bottom' else 1.69 if '{{pad}}' == 'all' else max(a, b) / min(a, b))",
+      "values.a": [
+        "5",
+        0
+      ],
+      "values.b": [
+        "5",
+        1
+      ]
+    },
+    "_meta": {
+      "title": "Source megapixels for a 2K canvas"
+    }
+  },
+  "7": {
+    "class_type": "ImageScaleToTotalPixels",
+    "inputs": {
+      "image": [
+        "4",
+        0
+      ],
+      "upscale_method": "lanczos",
+      "megapixels": [
+        "6",
+        0
+      ],
+      "resolution_steps": 32
+    }
+  },
+  "8": {
+    "class_type": "GetImageSize",
+    "inputs": {
+      "image": [
+        "7",
+        0
+      ]
+    }
+  },
+  "9": {
+    "class_type": "ComfyMathExpression",
+    "inputs": {
+      "expression": "max(a, b) if '{{pad}}' == 'square' else 32 * round(a * (1.75 if '{{pad}}' == 'sides' else 1.3 if '{{pad}}' == 'all' else 1) / 32)",
+      "values.a": [
+        "8",
+        0
+      ],
+      "values.b": [
+        "8",
+        1
+      ]
+    },
+    "_meta": {
+      "title": "Canvas width"
+    }
+  },
+  "10": {
+    "class_type": "ComfyMathExpression",
+    "inputs": {
+      "expression": "max(a, b) if '{{pad}}' == 'square' else 32 * round(b * (1.75 if '{{pad}}' == 'top-bottom' else 1.3 if '{{pad}}' == 'all' else 1) / 32)",
+      "values.a": [
+        "8",
+        0
+      ],
+      "values.b": [
+        "8",
+        1
+      ]
+    },
+    "_meta": {
+      "title": "Canvas height"
+    }
+  },
+  "12": {
+    "class_type": "EmptySD3LatentImage",
+    "inputs": {
+      "width": [
+        "9",
+        1
+      ],
+      "height": [
+        "10",
+        1
+      ],
+      "batch_size": "{{count}}"
+    }
+  },
+  "13": {
+    "class_type": "CFGGuider",
+    "inputs": {
+      "model": [
+        "22",
+        0
+      ],
+      "positive": [
+        "25",
+        0
+      ],
+      "negative": [
+        "26",
+        0
+      ],
+      "cfg": 1
+    }
+  },
+  "14": {
+    "class_type": "KSamplerSelect",
+    "inputs": {
+      "sampler_name": "euler"
+    }
+  },
+  "15": {
+    "class_type": "BasicScheduler",
+    "inputs": {
+      "model": [
+        "22",
+        0
+      ],
+      "scheduler": "simple",
+      "steps": 4,
+      "denoise": 1
+    }
+  },
+  "16": {
+    "class_type": "RandomNoise",
+    "inputs": {
+      "noise_seed": "{{seed}}"
+    }
+  },
+  "17": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": [
+        "16",
+        0
+      ],
+      "guider": [
+        "13",
+        0
+      ],
+      "sampler": [
+        "14",
+        0
+      ],
+      "sigmas": [
+        "15",
+        0
+      ],
+      "latent_image": [
+        "12",
+        0
+      ]
+    }
+  },
+  "18": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "17",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ]
+    }
+  },
+  "19": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "filename_prefix": "comfyfield/qwen_edit_outpaint",
+      "images": [
+        "18",
+        0
+      ]
+    }
+  },
+  "20": {
+    "class_type": "ModelSamplingAuraFlow",
+    "inputs": {
+      "model": [
+        "1",
+        0
+      ],
+      "shift": 3.1,
+      "sampling": "flow"
+    }
+  },
+  "21": {
+    "class_type": "CFGNorm",
+    "inputs": {
+      "model": [
+        "20",
+        0
+      ],
+      "strength": 1,
+      "pre_cfg": false
+    }
+  },
+  "22": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": {
+      "model": [
+        "21",
+        0
+      ],
+      "lora_name": "Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors",
+      "strength_model": 1
+    }
+  },
+  "23": {
+    "class_type": "TextEncodeQwenImageEditPlus",
+    "inputs": {
+      "clip": [
+        "2",
+        0
+      ],
+      "prompt": "{{prompt}}",
+      "vae": [
+        "3",
+        0
+      ],
+      "image1": [
+        "7",
+        0
+      ]
+    }
+  },
+  "24": {
+    "class_type": "TextEncodeQwenImageEditPlus",
+    "inputs": {
+      "clip": [
+        "2",
+        0
+      ],
+      "prompt": "",
+      "vae": [
+        "3",
+        0
+      ],
+      "image1": [
+        "7",
+        0
+      ]
+    }
+  },
+  "25": {
+    "class_type": "FluxKontextMultiReferenceLatentMethod",
+    "inputs": {
+      "conditioning": [
+        "23",
+        0
+      ],
+      "reference_latents_method": "index_timestep_zero"
+    }
+  },
+  "26": {
+    "class_type": "FluxKontextMultiReferenceLatentMethod",
+    "inputs": {
+      "conditioning": [
+        "24",
+        0
+      ],
+      "reference_latents_method": "index_timestep_zero"
+    }
+  }
+}

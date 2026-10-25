@@ -1,3 +1,5 @@
+import { heroArt, presetArt } from '../lib/formats/art.js'
+import { ArtImage } from '../components/Art.jsx'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Field } from '../components/formats/Fields.jsx'
@@ -30,7 +32,7 @@ function SetCard({ set, on, onPick, i }) {
   return (
     <button type="button" aria-pressed={on} className={`pd-set${on ? ' on' : ''}`} style={{ '--i': Math.min(i, 12) }} onClick={onPick}>
       <span className="pd-strip">
-        {set.scenes.slice(0, 4).map((s, k) => <span key={s} style={{ background: set.cover, '--k': k }}><em>{s}</em></span>)}
+        {set.scenes.slice(0, 4).map((s, k) => <span key={s} style={{ background: set.cover, '--k': k }}><ArtImage src={presetArt('photodump', set.id)} /><em>{s}</em></span>)}
       </span>
       <span className="pd-set-text">
         <strong>{set.name}</strong>
@@ -56,7 +58,7 @@ export default function Photodump() {
       <section className="pd-card glass rise" aria-label="Photodump">
         <header className="pd-head">
           <span className="pd-thumb" aria-hidden="true">
-            {photodumpSets.slice(0, 4).map((s) => <i key={s.id} style={{ background: s.cover }} />)}
+            {photodumpSets.slice(0, 4).map((s) => <i key={s.id} style={{ background: s.cover }}><ArtImage src={heroArt('photodump')} /></i>)}
           </span>
           <div>
             <span className="pd-tag">Photodump</span>

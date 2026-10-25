@@ -5,6 +5,7 @@ export default function FormatReview({ session, onActivityChange }) {
   const [state, setState] = useState(session.engine.state)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
+  const failure = session.error
   useEffect(() => {
     setState(session.engine.state)
     return session.engine.subscribe(() => setState(session.engine.state))
@@ -14,7 +15,10 @@ export default function FormatReview({ session, onActivityChange }) {
     setBusy(true)
     onActivityChange?.(true)
     setError(null)
-    try { await fn() } catch (e) { setError(e.message) }
+    try {
+      const result = await fn()
+      if (result?.ok === false) setError(result.reason?.message || result.reason)
+    } catch (e) { setError(e.message) }
     finally { setBusy(false); onActivityChange?.(false) }
   }
   const locked = busy || session.engine.isRunning()
@@ -49,6 +53,7 @@ export default function FormatReview({ session, onActivityChange }) {
         <button type="button" className="btn-blue sm" disabled={locked || !!limitError} onClick={() => act(() => session.send(node.id))}>Send</button>
       </div>
     })}
-    {error && <p className="sheet-error" role="alert">{error}</p>}
+    {failure && failure.code !== 'invalid_format' && <button type="button" className="btn-blue sm" disabled={busy || session.busy} onClick={() => act(() => session.retryFailed())}>Retry failed</button>}
+    {(error || failure) && <p className="sheet-error" role="alert">{error || failure.message}</p>}
   </div>
 }

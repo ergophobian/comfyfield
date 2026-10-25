@@ -2,7 +2,7 @@
 
 Research date: 2026-10-19. Family: `effects-loras`. Scope: the video effects in `src/lib/formats/presetsx.js` (`vfx`, `action`, `hub`, `fresh`), the `effect()` list in `motion.js`, the video format in `fun.js` (`cloud-surfing`) and the 45 `effect-*` formats in `effects.js`.
 
-Higgsfield's effects are trained effect LoRAs. Ours are prompts on `h3_i2v` (the paid MiniMax partner node) or `ltx_i2v` (LTX Video 2B). This note finds open effect LoRAs for MiniMax H3, LTX-2.5 and Wan 2.2 14B I2V on Hugging Face, keeps the ones whose card and samples hold up, and drafts one graph per base model that takes the LoRA as a parameter, so the Pod downloads whichever LoRA a run names.
+Higgsfield's effects are trained effect LoRAs. Ours were prompts on `h3_i2v` (the paid MiniMax partner node) or `ltx_i2v` (LTX Video 2B). The H3 ones now run on the open `h3_open_i2v`, and #123 removed `h3_i2v`. This note finds open effect LoRAs for MiniMax H3, LTX-2.5 and Wan 2.2 14B I2V on Hugging Face, keeps the ones whose card and samples hold up, and drafts one graph per base model that takes the LoRA as a parameter, so the Pod downloads whichever LoRA a run names.
 
 Tags: **[Verified: source]** means I read it in a primary source today. **[Inference]** means my conclusion. No weights were downloaded, no API key was used and no graph was queued. I read safetensors headers with HTTP range requests and pulled a few sample clips from the LoRA cards to look at their frames.
 
@@ -107,7 +107,7 @@ No open LoRA met the bar for these. They stay prompt-only.
 - **fun.js:** `cloud-surfing`.
 - **effects.js:** all 45 `effect-*` formats. They are writer-driven, 4 to 15 s, 9:16, with up to three reference images and several timed beats for a Seedance-class model. A one-effect LoRA does not fit them. The closest is `effect-dive-into-the-eye` with the Pupil Transition LoRA, but that format wants a 7 s clip built from a face and a location. [Verified: `research_notes/effect-specs.json`]
 
-The prompt-only graphs themselves need a fix. The `ltx` helper in presetsx and `effect()` in motion.js say `runsOn: 'LTX-2.5'` but point at `ltx_i2v`, which is LTX Video 2B. The `h3` helper points at `h3_i2v`, a paid partner node that cannot run on a Pod. For open weights on the Pod they should move to `ltx25_i2v` and `h3_open_i2v`. [Verified: format files, `public/workflows/ltx_i2v.json`, `h3_i2v.json`]
+The prompt-only graphs themselves need a fix. The `ltx` helper in presetsx and `effect()` in motion.js say `runsOn: 'LTX-2.5'` but point at `ltx_i2v`, which is LTX Video 2B. The `h3` helper pointed at `h3_i2v`, a paid partner node that cannot run on a Pod. For open weights on the Pod they should move to `ltx25_i2v` and `h3_open_i2v`. Update: the `h3` helpers now point at `h3_open_i2v`, and #123 removed `h3_i2v` and its picker row. [Verified: format files, `public/workflows/ltx_i2v.json`, `h3_i2v.json`]
 
 ## 6. Format and engine changes needed
 

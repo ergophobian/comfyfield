@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
-import { runFormat } from '../src/lib/formats/runner.js'
+import { runFormat as runWithPlanning } from '../src/lib/formats/runner.js'
 import { allFormats, formats } from '../src/lib/formats/index.js'
 import { effects } from '../src/lib/formats/effects.js'
 import { initialValues } from '../src/lib/recipes.js'
@@ -15,6 +15,9 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import research from '../research_notes/effect-specs.json' with { type: 'json' }
 
+import { offlineRequirements } from './fixtures/format-planning.mjs'
+const runFormat = (format, values, options) => runWithPlanning(format, values, { requirements: offlineRequirements, ...options })
+
 globalThis.fetch = () => { throw new Error('Network is forbidden in integration checks') }
 const photo = { url: '/media/photo.png', ratio: '9:16' }
 const valuesFor = (format) => ({ ...initialValues(format), ...Object.fromEntries(format.inputs.filter((i) => i.type === 'image').map((i) => [i.id, photo])) })
@@ -22,6 +25,8 @@ assert.equal(effects.length, 45)
 assert.deepEqual(formats, allFormats.filter((format) => validateFormat(format).length === 0))
 for (const id of ['ugc-product-review', 'ugc-unboxing', 'ugc-tutorial', 'ugc-talking-head', 'influencer-motion']) assert(formats.some((format) => format.id === id), `${id} is runnable`)
 assert(allFormats.length >= formats.length)
+assert.equal(formats.length, allFormats.filter((format) => !validateFormat(format).length).length)
+assert.equal(new Set(allFormats.map((format) => format.id)).size, allFormats.length)
 for (const [i, format] of effects.entries()) {
   assert.equal(format.steps[0].instructions, research.specs[i].writer_instructions)
   assert.deepEqual(validateFormat(format), [])

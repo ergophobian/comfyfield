@@ -32,11 +32,14 @@ Keys go in Connections (saved to `.comfyfield/keys.json`, gitignored) or `.env` 
 - `src/App.jsx`: route table, and the shared format sheet via `useApp().openFormat` (`src/lib/appContext.js`)
 - `src/pages/`: one page per tool (generators, studios, apps), plus Flows (Canvas), Library (Assets), Models and Connections
 - `src/lib/flowEngine.js`: Flows execution rules (see below)
+- `server/flows.js`, `shared/flowRules.js`: flows saved in `.comfyfield/flows.json`, shared by the app and the MCP flow tools; node types and connection rules (see `docs/flows-mcp.md`)
 - `src/lib/formats/`: formats as data (apps, presets, effects, looks, jobs). `index.js` holds categories, app hubs and helpers. `src/lib/recipes.js` keeps the teammate's fal recipes
 - `src/lib/skills.js`: the skill library on /skills (agent jobs, their prompts and the formats they run) and the agent setup snippets. Plain JS so `server/mcp.js` can import it
 - `public/workflows/`: ComfyUI workflows in API format with `{{placeholders}}`. Uploads: `{{image}}` to `{{image5}}`, `{{mask}}`, `{{video}}`, `{{audio}}`, `{{voice}}`; a node with `"_meta": { "optional": "<key>" }` drops out, with its links, when the run has no such file. `node scripts/graph-check.mjs` checks every graph against `scripts/fixtures/comfy-nodes.json` (rebuild it with `scripts/node-schema.mjs` after moving the ComfyUI pin or adding a pack; a pack the Comfy registry has no node scan for takes a hand schema from `scripts/fixtures/pack-nodes.json`)
 - `shared/modelFiles.js`: every model file and LoRA a Pod can download (pinned by sha256), the loaders that name them, and the node packs a Pod installs (pinned by commit), with the files a pack reads from its own folder. A graph's loaders and node classes decide what a Pod gets
 - `server/pod.js`, `server/podBoot.js`, `server/pod-statusd.py`: the Pod manager, its boot script and the status server that runs on the Pod
+- `server/pack-patches/<pack id>/`: ComfyField's fixes to a pinned node pack. The Pod writes each file over the pack's own after checkout
+- `scripts/comfy-paths-live.mjs`: one paid run per bundled workflow on a Pod, through the app's own routes. Needs `--allow-paid` and an approved budget; never in CI
 - `shared/gpuTiers.js`: the Session tiers (Budget, Balanced, Performance) and the GPU speed table they estimate cost and time per job from
 
 ## How we work
@@ -99,7 +102,7 @@ without removing their copy, controls, prompt templates or provider settings.
   A step's `from: [stepId]` overrides the default previous-step dependency;
   `from: []` starts an independent branch. `{ id, type: 'approve', from: [...] }`
   inserts an engine approval gate. Image outputs can feed the next fal model.
-  Comfy image and video uploads work on Comfy Cloud and the Pod, including `ltx_i2v` and `h3_i2v`.
+  Comfy image and video uploads work on Comfy Cloud and the Pod, including `ltx_i2v` and `h3_open_i2v`.
   Users never run ComfyUI on their own GPU; `COMFY_MODE=local` in `.env` is for development only.
   Other media chaining remains limited to the supported node/provider contracts.
 - `outputs`: `[{ step: stepId, kind: 'image' | 'video' | 'audio' | '3d' }]` selects
@@ -154,3 +157,17 @@ Windows/macOS/Linux CI matrix with Chrome installed through setup-chrome.
 - Model nodes with output never re-run except through their own Rerun.
 - Run fills gaps only; Regenerate all wipes and re-runs.
 - Any change to `flowEngine.js` needs a matching check in `scripts/flow-checks.mjs`.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in this repo's GitHub Issues, through the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five default triage roles, with `agent-ready` standing in for ready-for-agent. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.

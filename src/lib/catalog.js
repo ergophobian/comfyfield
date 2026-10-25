@@ -9,16 +9,24 @@ export const wanSizes = { '16:9': [1280, 720], '9:16': [720, 1280], '1:1': [960,
 // Pinned models in the composer. Any other fal model can be picked from the Models page.
 // provider 'comfy' runs public/workflows/<workflow>.json; 'fal' fills inputs from the model's schema.
 export const models = [
-  { id: 'comfy-router-flux', kind: 'image', provider: 'comfyRouter', name: 'Flux 2 Pro', note: 'Hosted through Comfy Router', model: 'bfl/flux-2-pro' },
-  { id: 'comfy-router-seedance', kind: 'video', provider: 'comfyRouter', name: 'Seedance 2.5', note: 'Hosted through Comfy Router', model: 'byteplus/dreamina-seedance-2-5-260628', durations: [5, 8, 10] },
+  // Router prices: docs.comfy.org/development/comfy-router/pricing, checked 2026-10-19.
+  { id: 'comfy-router-flux', kind: 'image', provider: 'comfyRouter', name: 'Flux 2 Pro', note: 'Images and edits with up to nine references. Uses Comfy credits.', model: 'bfl/flux-2-pro', maxImages: 9, price: { amount: 0.266 / 211, unit: 'gpu-second' } },
+  { id: 'comfy-router-flux-max', kind: 'image', provider: 'comfyRouter', name: 'Flux 2 max', note: 'Detailed images and edits with up to nine references.', model: 'bfl/flux-2-max', maxImages: 9, price: { amount: 0.266 / 211, unit: 'gpu-second' } },
+  { id: 'comfy-router-kontext', kind: 'image', provider: 'comfyRouter', name: 'Flux Kontext pro', note: 'Prompted edits with up to four references.', model: 'bfl/flux-kontext-pro', maxImages: 4, aspects: ['1:1', '16:9', '9:16', '4:5'], price: { amount: 0.04, unit: 'image' } },
+  { id: 'comfy-router-photon', kind: 'image', provider: 'comfyRouter', name: 'Photon flash', note: 'Low cost images from a text prompt.', model: 'luma/photon-flash-1', aspects: ['1:1', '16:9', '9:16', '4:3', '3:4', '21:9'], price: { amount: 0.5733 / 211, unit: 'image' } },
+  { id: 'comfy-router-seedream', kind: 'image', provider: 'comfyRouter', name: 'Seedream 5.0 flash', note: 'Low cost images and edits with up to ten references.', model: 'byteplus/seedream-5-0-flash-260915', maxImages: 10, price: { amount: 5.4311 / 211, unit: 'image' } },
+  { id: 'comfy-router-seedance', kind: 'video', provider: 'comfyRouter', name: 'Seedance 2.5', note: 'Video from text, a start image or multiple references. Uses Comfy credits.', model: 'byteplus/dreamina-seedance-2-5-260628', maxImages: 9, aspects: ['16:9', '9:16', '1:1', '4:3', '3:4', '21:9'], durations: [5, 8, 10], price: { amount: 15.301, unit: '1m tokens', estimate: true } },
+  { id: 'comfy-router-seedance-fast', kind: 'video', provider: 'comfyRouter', name: 'Seedance 1.0 pro fast', note: 'Low cost video from text or a start image, at 720p.', model: 'byteplus/seedance-1-0-pro-fast-251015', maxImages: 1, aspects: ['16:9', '9:16', '1:1', '4:3', '3:4', '21:9'], durations: [5, 8, 10], price: { amount: 1, unit: '1m tokens', estimate: true } },
+  { id: 'comfy-router-ltx', kind: 'video', provider: 'comfyRouter', name: 'Ltx 2.5 fast', note: 'Video with sound from a text prompt, at 720p.', model: 'ltx/ltx-2-5-fast', aspects: ['16:9', '9:16'], durations: [2, 3, 4, 5, 6, 8, 10], price: { amount: 0.1287, unit: 'second' } },
+  { id: 'comfy-router-speech', kind: 'audio', provider: 'comfyRouter', name: 'ElevenLabs v4 turbo', note: 'Low cost speech in the Rachel voice. Uses Comfy credits.', model: 'elevenlabs/eleven_v4_turbo', mode: 'speech', price: { amount: 0.0572, unit: '1000 characters' } },
+  { id: 'comfy-router-sfx', kind: 'audio', provider: 'comfyRouter', name: 'ElevenLabs sound effects', note: 'Describe a sound. Creates a five second clip.', model: 'elevenlabs/eleven_sfx_v2', mode: 'sfx', price: { amount: 0.14 / 60, unit: 'second' } },
   { id: 'comfy-ltx-i2v', kind: 'video', provider: 'comfy', name: 'LTX image to video', note: 'LTX Video 2B on Comfy Cloud or a Pod. Attach a start image.', workflow: 'ltx_i2v', durations: [3, 5, 8] },
-  { id: 'comfy-h3-i2v', kind: 'video', provider: 'comfy', name: 'MiniMax H3 image to video', note: 'Comfy partner node. Attach a start image. Uses Comfy credits.', workflow: 'h3_i2v', durations: [5, 8, 10] },
   { id: 'comfy-flux', kind: 'image', provider: 'comfy', name: 'FLUX', note: 'On Comfy Cloud or a Pod', workflow: 'image_flux' },
   { id: 'comfy-sdxl', kind: 'image', provider: 'comfy', name: 'SDXL', note: 'On Comfy Cloud or a Pod', workflow: 'image_sdxl' },
-  // Newest open image models. Comfy Cloud does not have their files yet, so they run on a Pod.
+  // Session keeps the newest image weights; Instant uses the compatible Cloud alternates below.
   // `pod`: a model file is not on Comfy Cloud (pod-checks keeps this in step with shared/modelFiles.js).
-  { id: 'comfy-flux3-klein', kind: 'image', provider: 'comfy', name: 'FLUX 3 Klein', note: 'Open weights from Black Forest Labs. Runs on a Pod.', workflow: 'flux3_klein_t2i', pod: true },
-  { id: 'comfy-qwen-image21', kind: 'image', provider: 'comfy', name: 'Qwen-Image 2.1', note: 'Open weights from Alibaba Qwen. Attach an image to edit it. Runs on a Pod.', workflow: 'qwen_image21_t2i', imageWorkflow: 'qwen_edit', pod: true,
+  { id: 'comfy-flux3-klein', kind: 'image', provider: 'comfy', name: 'FLUX 3 Klein', note: 'Session uses Flux 3 Klein. Instant uses Flux.2 Klein 4B.', workflow: 'flux3_klein_t2i', cloudWorkflow: 'flux3_klein_t2i_cloud', pod: true },
+  { id: 'comfy-qwen-image21', kind: 'image', provider: 'comfy', name: 'Qwen-Image 2.1', note: 'Session uses Qwen-Image 2.1. Instant uses Qwen Image 2512 or Edit 2511.', workflow: 'qwen_image21_t2i', imageWorkflow: 'qwen_edit', cloudWorkflow: 'qwen_image21_t2i_cloud', cloudImageWorkflow: 'qwen_edit_cloud', pod: true,
     sizes: qwenImageSizes },
   // On Comfy Cloud too: every file is in its listing. HiDream-O1 was trained at about 4 MP, so it keeps its own canvas.
   { id: 'comfy-z-image-turbo', kind: 'image', provider: 'comfy', name: 'Z-Image Turbo', note: 'Open weights from Alibaba Tongyi. On Comfy Cloud or a Pod.', workflow: 'z_image' },
@@ -57,8 +65,54 @@ export const models = [
   { id: 'fal:minimax/music-3', kind: 'audio', provider: 'fal', name: 'MiniMax Music 3', note: 'Songs, via fal', model: 'minimax/music-3' },
 ]
 
+// A writer is a text service, separate from the media picker.
+export const routerWriterModel = 'openai/gpt-4.1-nano'
+
 // Format graphs a big enough Pod runs on FreeVideo instead, as the catalog's H3 rows do.
 export const podWorkflows = { h3_flf2v: 'h3_freevideo_flf2v' }
+
+// Instant alternates. Session keeps the original graph and its newer model weights.
+export const cloudWorkflows = {
+  birefnet_qwen_background: 'birefnet_qwen_background_cloud',
+  birefnet_video_matte_scene: 'birefnet_video_matte_scene_cloud',
+  flux3_klein_t2i: 'flux3_klein_t2i_cloud',
+  flux_character_set: 'flux_character_set_cloud',
+  flux_look: 'flux_look_cloud',
+  flux_look_ref: 'flux_look_ref_cloud',
+  flux_trellis2: 'flux_trellis2_cloud',
+  h3_loop: 'h3_loop_cloud',
+  h3_truck_ad: 'h3_truck_ad_cloud',
+  klein_character: 'klein_character_cloud',
+  klein_character_swap: 'klein_character_swap_cloud',
+  klein_edit: 'klein_edit_cloud',
+  klein_edit_canvas: 'klein_edit_canvas_cloud',
+  klein_h3: 'klein_h3_cloud',
+  klein_headshot: 'klein_headshot_cloud',
+  klein_ltx: 'klein_ltx_cloud',
+  klein_moodboard: 'klein_moodboard_cloud',
+  klein_retouch: 'klein_retouch_cloud',
+  qwen_character_sheet: 'qwen_character_sheet_cloud',
+  qwen_edit: 'qwen_edit_cloud',
+  qwen_edit_mockup: 'qwen_edit_mockup_cloud',
+  qwen_edit_outpaint: 'qwen_edit_outpaint_cloud',
+  qwen_edit_place_product: 'qwen_edit_place_product_cloud',
+  qwen_edit_style_ref: 'qwen_edit_style_ref_cloud',
+  qwen_edit_try_on: 'qwen_edit_try_on_cloud',
+  qwen_edit_variants: 'qwen_edit_variants_cloud',
+  qwen_h3: 'qwen_h3_cloud',
+  qwen_image21_t2i: 'qwen_image21_t2i_cloud',
+  qwen_image_logo: 'qwen_image_logo_cloud',
+  qwen_image_ref: 'qwen_image_ref_cloud',
+  qwen_ltx: 'qwen_ltx_cloud',
+  qwen_mockup_ltx: 'qwen_mockup_ltx_cloud',
+  qwen_multi_h3: 'qwen_multi_h3_cloud',
+  qwen_restore: 'qwen_restore_cloud',
+  qwen_try_on_h3: 'qwen_try_on_h3_cloud',
+  qwen_zoom_grid: 'qwen_zoom_grid_cloud',
+  storyboard: 'storyboard_cloud',
+  storyboard_ref: 'storyboard_ref_cloud',
+  trellis2_character: 'trellis2_character_cloud',
+}
 
 // fal catalog categories the composer can run from a text prompt.
 export const falCategories = [

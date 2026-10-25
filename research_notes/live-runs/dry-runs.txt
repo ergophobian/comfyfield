@@ -1,0 +1,161 @@
+$ node scripts/live-run.mjs cloud --dry-run
+{
+  "backend": "cloud",
+  "dryRun": true,
+  "keyFile": ".comfyfield/keys.json",
+  "keys": {
+    "comfy.key": false
+  },
+  "estimate": 0.6,
+  "maximum": 1.5,
+  "ledgerTotal": 0,
+  "cap": 15,
+  "calls": [
+    {
+      "workflow": "image_flux",
+      "vars": {
+        "prompt": "A red ceramic cup on a wooden table in soft daylight",
+        "width": 512,
+        "height": 512,
+        "count": 1,
+        "seed": 71
+      },
+      "patch": {
+        "1": {
+          "ckpt_name": "flux1-schnell-fp8.safetensors"
+        },
+        "6": {
+          "steps": 4
+        }
+      },
+      "estimate": 0.1,
+      "maximum": 0.5
+    },
+    {
+      "workflow": "ltx25_t2v",
+      "vars": {
+        "prompt": "A red ceramic cup on a wooden table in soft daylight",
+        "width": 128,
+        "height": 128,
+        "count": 1,
+        "seed": 71,
+        "frames": 9
+      },
+      "estimate": 0.5,
+      "maximum": 1
+    }
+  ],
+  "target": "Comfy Cloud via core.runComfy and the SDK; never a Pod",
+  "library": ".comfyfield/media + generation-imports.json → /api/library/generations"
+}
+
+$ node scripts/live-run.mjs router --dry-run
+{
+  "backend": "router",
+  "dryRun": true,
+  "keyFile": ".comfyfield/keys.json",
+  "keys": {
+    "comfy.key": false
+  },
+  "estimate": 0.002717,
+  "maximum": 0.01,
+  "ledgerTotal": 0,
+  "cap": 15,
+  "calls": [
+    {
+      "model": "luma/photon-flash-1",
+      "input": {
+        "prompt": "A red ceramic cup on a wooden table in soft daylight",
+        "aspect_ratio": "1:1"
+      },
+      "estimate": 0.002717,
+      "maximum": 0.01
+    }
+  ],
+  "discovery": "GET https://api.comfy.org/v2/models, all pages; require luma/photon-flash-1",
+  "target": "POST https://api.comfy.org/v2/models/luma/photon-flash-1/requests via core.runComfyRouter",
+  "pricing": "Cheapest fixed-price text-to-image model in the published pricing snapshot; catalog has no prices",
+  "library": ".comfyfield/media + generation-imports.json → /api/library/generations"
+}
+
+$ node scripts/live-run.mjs pod --dry-run
+{
+  "backend": "pod",
+  "dryRun": true,
+  "keyFile": ".comfyfield/keys.json",
+  "keys": {
+    "runpod.key": false
+  },
+  "estimate": 1.5,
+  "maximum": 1.5,
+  "ledgerTotal": 0,
+  "cap": 15,
+  "calls": [
+    {
+      "action": "start",
+      "workflow": "image_sdxl",
+      "estimate": 1.5,
+      "maximum": 1.5
+    },
+    {
+      "workflow": "image_sdxl",
+      "vars": {
+        "prompt": "A red ceramic cup on a wooden table in soft daylight",
+        "width": 512,
+        "height": 512,
+        "count": 1,
+        "seed": 71
+      },
+      "estimate": 0,
+      "maximum": 0
+    },
+    {
+      "workflow": "image_sdxl",
+      "vars": {
+        "prompt": "A red ceramic cup on a wooden table in soft daylight",
+        "width": 512,
+        "height": 512,
+        "count": 1,
+        "seed": 72
+      },
+      "estimate": 0,
+      "maximum": 0
+    },
+    {
+      "action": "pause"
+    },
+    {
+      "action": "resume",
+      "workflow": "image_sdxl",
+      "estimate": 0,
+      "maximum": 0
+    },
+    {
+      "action": "check-model-survived",
+      "file": "checkpoints/sd_xl_base_1.0.safetensors"
+    },
+    {
+      "workflow": "image_sdxl",
+      "vars": {
+        "prompt": "A red ceramic cup on a wooden table in soft daylight",
+        "width": 512,
+        "height": 512,
+        "count": 1,
+        "seed": 73
+      },
+      "estimate": 0,
+      "maximum": 0
+    },
+    {
+      "action": "observe-idle-terminate",
+      "minutes": 10
+    },
+    {
+      "action": "terminate-and-verify-account"
+    }
+  ],
+  "library": ".comfyfield/media + generation-imports.json → /api/library/generations",
+  "safety": "10 minute idle, 45 minute absolute deadline, detached parent-death guard, final account sweep",
+  "gpu": "first in-stock ladder rung fitting image_sdxl; reject quote above reserved maximum",
+  "volumeGb": 120
+}

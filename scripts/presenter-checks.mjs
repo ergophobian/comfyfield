@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { presenterFormats } from '../src/lib/formats/presenters.js'
-import { compileFormat, runFormat } from '../src/lib/formats/runner.js'
+import { compileFormat, runFormat as runWithPlanning } from '../src/lib/formats/runner.js'
+import { offlineRequirements } from './fixtures/format-planning.mjs'
 import { createPresenterSession, presenterRequirements, presenterBlock, motionSeconds, speechProblem } from '../src/lib/formats/presenterSession.js'
 import { validateFormat } from '../src/lib/formats/validate.js'
 import { comfyVars, fill, dropOptional } from '../shared/mapping.js'
@@ -10,6 +11,8 @@ const character = { type: 'character', id: 'fictional-adult', name: 'Fictional p
 const product = { type: 'product', id: 'cup', name: 'Demo cup', images: ['https://example.test/product.png'] }
 const values = { character, product, rights: 'confirmed', brief: 'A reusable cup with a carrying handle.' }
 globalThis.fetch = () => { throw new Error('No network allowed') }
+// The runner preflights each run; inject offline requirements instead of a network call.
+const runFormat = (format, values, options) => runWithPlanning(format, values, { requirements: offlineRequirements, ...options })
 for (const format of presenterFormats) assert.deepEqual(validateFormat(format), [], format.id)
 assert.equal(presenterFormats.filter((format) => format.id.startsWith('ugc-')).length, 4)
 for (const format of presenterFormats.filter((format) => format.id.startsWith('ugc-'))) {

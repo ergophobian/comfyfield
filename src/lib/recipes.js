@@ -150,10 +150,12 @@ export const initialValues = (recipe) => Object.fromEntries(recipe.inputs.map((i
 // Inputs with `when: [choiceId, optionId]` only show, and only count, while that option is picked.
 export const visibleInputs = (recipe, values) => recipe.inputs.filter((i) => !i.when || values[i.when[0]] === i.when[1])
 
+// A motion drawing needs its arrows too: the graph reads them as its mask.
 export const missingInputs = (recipe, values) => visibleInputs(recipe, values)
   .filter((i) => !i.optional && (widgetTypes.includes(i.type) || (i.type === 'draw' && i.mode !== 'motion')
     ? !widgetReady(i.type === 'draw' ? 'mask' : i.type, values[i.id])
-    : textual.includes(i.type) ? !values[i.id]?.trim() : values[i.id] == null || values[i.id] === ''))
+    : i.type === 'draw' ? !values[i.id]?.url || !values[i.id]?.strokes
+      : textual.includes(i.type) ? !values[i.id]?.trim() : values[i.id] == null || values[i.id] === ''))
 
 // Picture-like inputs, in the order a ComfyUI graph's image, image2, ... slots take them.
 export const pictureTypes = ['image', 'draw', 'mask', 'face', 'crop', 'character', 'product']

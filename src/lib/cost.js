@@ -15,6 +15,11 @@ async function load(ids) {
   listeners.forEach((fn) => fn())
 }
 
+export async function modelPrices(models) {
+  await load(models.filter((m) => m.provider === 'fal').map((m) => m.model))
+  return Object.fromEntries(models.filter((m) => m.provider === 'fal').map((m) => [m.model, cache.get(m.model) || {}]))
+}
+
 export function useModelMeta(models) {
   const [, tick] = useState(0)
   const ids = models.filter((m) => m.provider === 'fal').map((m) => m.model)

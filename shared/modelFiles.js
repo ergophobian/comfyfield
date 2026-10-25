@@ -8,6 +8,11 @@
 // LTX-2.5's is measured (PatchWork run log, 2026-10-19) and H3's comes from PatchWork's fitted model; the
 // rest are estimates. `arch` marks a file only one GPU architecture runs: NVFP4 needs Blackwell.
 export const MODEL_FILES = {
+  // Instant alternates, verified against public Cloud listings and Hugging Face LFS metadata.
+  'flux-2-klein-4b-fp8.safetensors': { refSec: 4, repo: 'black-forest-labs/FLUX.2-klein-4b-fp8', path: 'flux-2-klein-4b-fp8.safetensors', dir: 'diffusion_models', gb: 4.07, vramGb: 16, cloud: true,
+    sha256: '97ed34fe0567e436200f2faee3939b88f2b5d99f8af2a4dc16532c4245c0ccb6' },
+  'qwen_image_2512_fp8_e4m3fn.safetensors': { refSec: 60, repo: 'Comfy-Org/Qwen-Image_ComfyUI', path: 'split_files/diffusion_models/qwen_image_2512_fp8_e4m3fn.safetensors', dir: 'diffusion_models', gb: 20.43, vramGb: 24, cloud: true,
+    sha256: '5dc80554d5d83390046a2f4a94ece06afb7700bf7b0aaf8bde9769793875876b' },
   'flux1-dev-fp8.safetensors': { refSec: 15, repo: 'Comfy-Org/flux1-dev', path: 'flux1-dev-fp8.safetensors', dir: 'checkpoints', gb: 17.25, vramGb: 24, cloud: true,
     sha256: '8e91b68084b53a7fc44ed2a3756d821e355ac1a7b6fe29be760c1db532f3d88a' },
   'flux1-schnell-fp8.safetensors': { refSec: 4, repo: 'Comfy-Org/flux1-schnell', path: 'flux1-schnell-fp8.safetensors', dir: 'checkpoints', gb: 17.24, vramGb: 24, cloud: true,

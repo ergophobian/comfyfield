@@ -13,6 +13,7 @@ mkdirSync(fixtures, { recursive: true })
 const clip = resolve(fixtures, 'mock-motion.mp4')
 await ffmpeg(['-y', '-f', 'lavfi', '-i', 'testsrc2=size=180x320:rate=12:duration=6', '-c:v', 'libx264', '-threads', '1', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', clip], { binary: await findFfmpeg() })
 const requests = []
+const jobs = new Map()
 let podStatus = { phase: 'ready', run: 'session', mode: 'cloud', pod: { vramGb: 32 } }
 let failWriter = true
 let releaseRender
@@ -45,6 +46,23 @@ const server = await preview({ configFile: false, envFile: false, plugins: [{
       if (url.pathname === '/api/library/brands' || url.pathname === '/api/stitch/exports') return res.end('[]')
       if (url.pathname === '/api/pod') return res.end(JSON.stringify(podStatus))
       if (url.pathname === '/api/connections') return res.end('{}')
+      if (url.pathname.startsWith('/api/jobs/')) return res.end(JSON.stringify(jobs.get(url.pathname.slice('/api/jobs/'.length))))
+      if (url.pathname === '/api/jobs') {
+        // Generations run as server jobs; record the route each job runs, and finish the job when the render does.
+        let body = ''
+        for await (const chunk of req) body += chunk
+        const { route, body: payload } = JSON.parse(body)
+        assert.equal(route, '/api/comfy/run', 'Only mocked Comfy generations are allowed')
+        requests.push({ path: route, body: payload })
+        const id = `job-${jobs.size + 1}`
+        jobs.set(id, { id, status: 'running' })
+        const image = payload.workflow === 'qwen2511_edit'
+        ;(async () => {
+          if (!image && delayRender) await new Promise((resolve) => { releaseRender = resolve })
+          jobs.set(id, { id, status: 'done', files: [{ url: image ? '/mock-stage.svg' : '/mock-motion.mp4', kind: image ? 'image' : 'video' }] })
+        })()
+        return res.end(JSON.stringify({ id }))
+      }
       if (url.pathname === '/api/prompt' || url.pathname === '/api/comfy/run' || url.pathname === '/api/upload') {
         if (url.pathname === '/api/upload') { req.resume(); return res.end(JSON.stringify({ url: '/mock-motion.mp4', type: 'video/mp4' })) }
         let body = ''
