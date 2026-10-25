@@ -146,6 +146,13 @@ m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
 cfg = dict(idle_after=780, heartbeat_deadline=600, max_life=7200, drain_grace=1800, boot_deadline=900, fatal_grace=180)
 base = dict(now=10000, booted=10000 - 1000, ready_at=9500, hb=9990, idle=0, busy=False, fatal=None, fatal_at=None)
 def d(**k): return m.decide(dict(base, **k), cfg)
+def sim(ticks):
+  # Runs the real clock at the real 15 s tick. Returns the tick where the idle clock reaches 10 minutes (the app's own guard), or None.
+  idle, unk = 0, 0
+  for i, t in enumerate(ticks):
+    idle, unk = m.next_idle(idle, t[0], t[1], len(t) > 2, 15, unk)
+    if idle >= 600: return i + 1
+  return None
 print(json.dumps({
   'healthy': d(),
   'proofDeadline': m.decide(dict(base, busy=True), dict(cfg, terminate_at=9999)),
@@ -161,7 +168,15 @@ print(json.dumps({
   'neverBeaten': d(hb=None, ready_at=10000 - 600),
   'idle': d(idle=780),
   'busy': [m.is_busy(0, False, 9990, 10000), m.is_busy(0, False, 9900, 10000), m.is_busy(0, False, None, 10000), m.is_busy(None, False, None, 10000), m.is_busy(2, False, None, 10000), m.is_busy(0, True, None, 10000)],
-  'nextIdle': [m.next_idle(30, 0, 0, False, 15), m.next_idle(30, 5, 0, False, 15), m.next_idle(30, None, 0, False, 15), m.next_idle(30, 0, None, False, 15), m.next_idle(30, 0, 0, True, 15)],
+  'nextIdle': [m.next_idle(30, 0, 0, False, 15), m.next_idle(30, 5, 0, False, 15), m.next_idle(30, None, 0, False, 15), m.next_idle(30, 0, None, False, 15), m.next_idle(30, 0, 0, True, 15), m.next_idle(30, 0, 1, False, 15)],
+  'residual': sim([(0, 8)] + [(3, 0)] * 60),
+  'residualShort': sim([(0, 8)] + [(3, 0)] * 38),
+  'blip': sim([(0, 20), (3, None), (3, None)] + [(3, 0)] * 60),
+  'longUnknown': sim([(0, 20)] + [(3, None)] * 60),
+  'busyUnknown': sim([(0, 20)] + [(90, None)] * 60),
+  'run': sim([(3, 0)] * 30 + [(95, 1)] * 10 + [(3, 0)] * 60),
+  'runShort': sim([(3, 0)] * 30 + [(95, 1)] * 10 + [(3, 0)] * 38),
+  'download': sim([(0, 0, True)] * 80),
 }))`
   const r = spawnSync(python[0], [...python.slice(1), '-c', code, statusd], { encoding: 'utf8' })
   assert.equal(r.status, 0, r.stderr)
@@ -180,7 +195,16 @@ print(json.dumps({
   assert.match(out.neverBeaten, /no heartbeat since it became ready/)
   assert.match(out.idle, /idle for 13 minutes/)
   assert.deepEqual(out.busy, [true, false, false, true, true, true], 'a run leased in the last minute keeps the Pod busy until its downloads or queue start')
-  assert.deepEqual(out.nextIdle, [45, 0, 0, 0, 0], 'only a known-idle GPU and queue count; unknown is busy')
+  assert.deepEqual(out.nextIdle, [[45, 0], [45, 0], [45, 0], [30, 1], [0, 0], [0, 0]], 'a job or download resets; GPU use alone does not; one unknown tick holds')
+  // 10 minutes is 40 ticks of 15 s. Each case starts with a reset tick, so 41 ticks is the earliest end.
+  assert.equal(out.residual, 41, 'residual GPU use with an empty queue reaches 10 minutes')
+  assert.equal(out.residualShort, null, 'and not a tick sooner')
+  assert.equal(out.blip, 43, 'two unknown ticks hold the clock: no reset, no count')
+  assert.equal(out.longUnknown, 1 + 8 + 40, 'a long unknown stretch stops holding the clock after 8 ticks')
+  assert.equal(out.busyUnknown, null, 'sustained GPU use with an unknown queue stays busy')
+  assert.equal(out.run, 30 + 10 + 40, 'a real run resets the clock')
+  assert.equal(out.runShort, null)
+  assert.equal(out.download, null, 'a download keeps the Pod busy')
 })
 
 await test('fixes: a ready pack that no longer loads after a ComfyUI start is marked failed, once per start', { skip: !python && 'no Python 3.9+ found' }, () => {
@@ -1304,7 +1328,7 @@ import importlib.util, json, sys
 spec = importlib.util.spec_from_file_location('statusd', sys.argv[1])
 m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
 m.RUNTIMES['freevideo'] = {'state': 'installing', 'error': None, 'startedAt': 0, 'endedAt': None}
-print(json.dumps([m.installing(), m.next_idle(600, 0, 0, m.downloading() or m.installing(), 15)]))`
+print(json.dumps([m.installing(), m.next_idle(600, 0, 0, m.downloading() or m.installing(), 15)[0]]))`
   const r = spawnSync(python[0], [...python.slice(1), '-c', code, statusd], { encoding: 'utf8' })
   assert.equal(r.status, 0, r.stderr)
   assert.deepEqual(JSON.parse(r.stdout), [true, 0], 'an install keeps the idle clock at zero, though the GPU is idle')
