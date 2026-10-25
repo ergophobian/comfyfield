@@ -20,7 +20,7 @@ async function api(url, method = 'GET', data) {
 const accept = (list) => { setUserFormats(list); emit({ list, ready: true, error: '' }) }
 
 export function loadUserFormats() {
-  loading ||= api('/api/formats').then((r) => accept(r.formats), (e) => { loading = null; emit({ ready: true, error: e.message }) })
+  loading ||= api('/api/formats').then((r) => accept(Array.isArray(r.formats) ? r.formats : []), (e) => { loading = null; emit({ ready: true, error: e.message }) })
   return loading
 }
 
