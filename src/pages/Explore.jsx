@@ -2,14 +2,14 @@ import { ArtImage } from '../components/Art.jsx'
 import { heroArt, toolArt, hubArt, modelArt } from '../lib/formats/art.js'
 import { useEffect, useRef, useState } from 'react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
-import { FormatGrid } from '../components/Recipes.jsx'
+import { FormatGrid } from '../components/Formats.jsx'
 import { IconChevron } from '../components/Icons.jsx'
 import { Badge } from '../components/nav/MegaMenu.jsx'
 import { ToolIcon, ModelIcon, KindIcon, Glyph } from '../components/nav/ToolIcon.jsx'
 import { allTools, modelRoute } from '../components/nav/navModel.js'
 import { useApp } from '../lib/appContext.js'
 import { toolById, openModels } from '../lib/tools.js'
-import { formats, formatsFor, hubs, isOpen } from '../lib/formats/index.js'
+import { formats, formatsFor, formatsForJob, hubs, isOpen, jobRail } from '../lib/formats/index.js'
 
 // The old Create studio kept its place in the query string. Send those links to the page that replaced each view.
 function legacyRoute(params) {
@@ -179,6 +179,52 @@ function Tile({ to, icon, kind, tag, name, badge, line, sub, i, art, artId }) {
   )
 }
 
+// Jobs first, then the formats for the picked job, featured first. Arrow keys move between jobs.
+function Jobs({ onOpen }) {
+  const rail = jobRail()
+  const [job, setJob] = useState(rail[0].id)
+  const [all, setAll] = useState(false)
+  const tabs = useRef(null)
+  const list = formatsForJob(job)
+  const shown = all ? list : list.slice(0, 12)
+  const pick = (id) => { setJob(id); setAll(false) }
+  const keys = (e) => {
+    const step = { ArrowRight: 1, ArrowLeft: -1 }[e.key]
+    if (!step) return
+    e.preventDefault()
+    const n = (rail.findIndex((j) => j.id === job) + step + rail.length) % rail.length
+    pick(rail[n].id)
+    tabs.current?.querySelectorAll('[role=tab]')[n]?.focus()
+  }
+  const current = rail.find((j) => j.id === job)
+  // At 390px the jobs scroll sideways; keep the picked one in view.
+  useEffect(() => {
+    const box = tabs.current
+    const el = box?.querySelector('[aria-selected=true]')
+    if (el && box.scrollWidth > box.clientWidth) box.scrollTo({ left: el.offsetLeft - (box.clientWidth - el.offsetWidth) / 2, behavior: calm() ? 'auto' : 'smooth' })
+  }, [job])
+  return (
+    <Row id="jobs" title="Formats by job" line="Pick what you are making, then a format to start from." more={list.length > 12 && (
+      <button type="button" className="link-btn" aria-expanded={all} aria-controls="ex-jobs-formats" onClick={() => setAll((v) => !v)}>
+        {all ? 'Show fewer' : `See all ${list.length}`}
+      </button>
+    )}>
+      <div className="pills ex-jobs" role="tablist" aria-label="Jobs" ref={tabs} onKeyDown={keys}>
+        {rail.map((j) => (
+          <button key={j.id} type="button" role="tab" id={`ex-job-${j.id}`} aria-selected={j.id === job} aria-controls="ex-jobs-formats"
+            tabIndex={j.id === job ? 0 : -1} className={j.id === job ? 'on' : ''} onClick={() => pick(j.id)}>
+            {j.name}<span className="lib-count">{j.count}</span>
+          </button>
+        ))}
+      </div>
+      <div id="ex-jobs-formats" role="tabpanel" aria-labelledby={`ex-job-${job}`} className="ex-jobs-panel">
+        <p className="ex-job-line muted" key={`line-${job}`}>{current.blurb}</p>
+        <FormatGrid key={job} list={shown} onOpen={onOpen} />
+      </div>
+    </Row>
+  )
+}
+
 const topIds = ['create-image', 'create-video', 'cinema-studio', 'influencer', 'canvas', 'ads', 'lipsync', 'text-to-speech']
 
 // Featured first, open weights before fal, as featuredFor ranks a kind.
@@ -195,10 +241,13 @@ function Home() {
   const apps = pick(formats.filter((f) => f.hub))
   const shown = allShown ? allTools : topIds.map(toolById)
   const openFx = (f) => (f.hub ? navigate(`/apps/${f.id}`) : openFormat(f))
+  const openAny = (f) => (f.category === 'camera' && !f.hub ? navigate(`/motion/${f.id}`) : openFx(f))
 
   return (
     <main className="page explore">
       <Hero />
+
+      <Jobs onOpen={openAny} />
 
       <Row id="tools" title="Top tools" line="Start with the main studios and generators." more={
         <button type="button" className="link-btn" aria-expanded={allShown} aria-controls="ex-tools" onClick={() => setAllShown((v) => !v)}>

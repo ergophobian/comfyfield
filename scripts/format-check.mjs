@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { comfyPlaceholders } from './comfy-placeholders.mjs'
-import { allFormats, formats } from '../src/lib/formats/index.js'
-import { recipes } from '../src/lib/recipes.js'
+import { allFormats, formats, jobs, jobRail, formatsForJob } from '../src/lib/formats/index.js'
+import { falFormats } from '../src/lib/formats/fal.js'
 import { schemas } from '../src/lib/formats/schemas.js'
 import { models } from '../src/lib/catalog.js'
 import { validateFormat } from '../src/lib/formats/validate.js'
@@ -25,12 +25,21 @@ for (const format of allFormats) {
   // A missing workflow is planned catalog data. Existing targets must remain valid.
   assert.deepEqual(reasons.filter((r) => !r.includes('Missing Comfy workflow')), [], format.id)
 }
-for (const recipe of recipes) assert.deepEqual(validateFormat(recipe), [], recipe.id)
-console.log(`Format check ok: ${formats.length} runnable, ${allFormats.length - formats.length} hidden, ${recipes.length} migrated recipes. No generation calls.`)
+for (const format of falFormats) assert.deepEqual(validateFormat(format), [], format.id)
+// Every format belongs to one job from the fixed list, and every job has something to run.
+const jobIds = jobs.map((j) => j.id)
+assert.deepEqual(jobIds.slice(0, 6), ['ugc', 'ads', 'influencer', 'cinematic', 'effects', 'edit'])
+for (const format of allFormats) assert(jobIds.includes(format.job), `${format.id}: job ${format.job} is not in the job list`)
+for (const format of falFormats) assert(jobIds.includes(format.job), `${format.id}: fal format without a job`)
+assert.deepEqual(jobRail().map((j) => j.id), jobIds, 'A job has no runnable format')
+assert.equal(jobs.reduce((n, j) => n + formatsForJob(j.id).length, 0), formats.length, 'Jobs must cover every runnable format once')
+assert(validateFormat({ ...falFormats[0], job: 'Turn a photo into chrome' }).some((r) => r.startsWith('Unknown job')), 'A one-liner is not a job')
+for (const effect of allFormats.filter((f) => f.id.startsWith('effect-'))) assert.notEqual(effect.blurb, effect.job, effect.id)
+console.log(`Format check ok: ${formats.length} runnable, ${allFormats.length - formats.length} hidden, ${falFormats.length} migrated fal formats. No generation calls.`)
 
 for (const model of models.filter((m) => m.provider === 'comfyRouter')) {
   const format = {
-    id: `check-${model.id}`, name: 'Router schema check', job: 'Check a mapped prompt', shape: 'tool', cover: 'sample', kind: model.kind,
+    id: `check-${model.id}`, name: 'Router schema check', job: 'photo', shape: 'tool', cover: 'sample', kind: model.kind,
     inputs: [{ id: 'prompt', type: 'text', label: 'Prompt' }, ...(model.maxImages ? [{ id: 'image', type: 'image', label: 'Reference' }] : [])],
     steps: [{ id: 'generate', model: model.id, prompt: '{prompt}', settings: { aspect: model.aspects?.[0] || '1:1', duration: 5 } }],
     outputs: [{ step: 'generate', kind: model.kind }],

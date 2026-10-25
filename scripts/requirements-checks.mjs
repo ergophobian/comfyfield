@@ -71,7 +71,7 @@ try {
     assert.equal(url, '/api/comfy/requirements')
     return request(JSON.parse(options.body))
   })
-  const format = { id: 'server-plan', name: 'Server plan', job: 'Check the runner', cover: '/mock-result.png', shape: 'preset', kind: 'image',
+  const format = { id: 'server-plan', name: 'Server plan', job: 'photo', cover: '/mock-result.png', shape: 'preset', kind: 'image',
     inputs: [{ id: 'subject', type: 'text', label: 'Subject' }],
     steps: [{ id: 'generate', provider: 'comfy', workflow: 'flux3_klein_t2i', kind: 'image', prompt: '{subject}' }],
     outputs: [{ step: 'generate', kind: 'image' }],

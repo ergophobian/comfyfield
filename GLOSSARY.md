@@ -72,6 +72,16 @@ _Avoid_: input size, base resolution
 The resolution Upscale delivers: 1080p, 1440p or 4K. Auto picks 1080p, or 4K when the source is already 1080p.
 _Avoid_: output size, final resolution
 
+## Formats
+
+**Format**:
+A saved generation setup with a few typed inputs, such as Relight or Turn to sand. It compiles to a small flow. Every format belongs to one job.
+_Avoid_: recipe, preset (for the whole set), template
+
+**Job**:
+What a person comes to make, from a fixed list: UGC, Ads from your link, AI influencer, Cinematic, Effects, Edit, Photo, Audio, 3D. Galleries show jobs first, then the formats for the picked job.
+_Avoid_: category (a finer grouping inside a job), use case
+
 ## Flows
 
 **Flows engine**:

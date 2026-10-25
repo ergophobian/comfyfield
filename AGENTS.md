@@ -33,7 +33,7 @@ Keys go in Connections (saved to `.comfyfield/keys.json`, gitignored) or `.env` 
 - `src/pages/`: one page per tool (generators, studios, apps), plus Flows (Canvas), Library (Assets), Models and Connections
 - `src/lib/flowEngine.js`: Flows execution rules (see below)
 - `server/flows.js`, `shared/flowRules.js`: flows saved in `.comfyfield/flows.json`, shared by the app and the MCP flow tools; node types and connection rules (see `docs/flows-mcp.md`)
-- `src/lib/formats/`: formats as data (apps, presets, effects, looks, jobs). `index.js` holds categories, app hubs and helpers. `src/lib/recipes.js` keeps the teammate's fal recipes
+- `src/lib/formats/`: formats as data (apps, presets, effects, looks, use cases). `index.js` holds categories, app hubs and helpers. `jobs.js` is the fixed job list every format belongs to. `fal.js` keeps the teammate's fal formats; `values.js` turns a format's input values into run options
 - `src/lib/skills.js`: the skill library on /skills (agent jobs, their prompts and the formats they run) and the agent setup snippets. Plain JS so `server/mcp.js` can import it
 - `public/workflows/`: ComfyUI workflows in API format with `{{placeholders}}`. Uploads: `{{image}}` to `{{image5}}`, `{{mask}}`, `{{video}}`, `{{audio}}`, `{{voice}}`; a node with `"_meta": { "optional": "<key>" }` drops out, with its links, when the run has no such file. `node scripts/graph-check.mjs` checks every graph against `scripts/fixtures/comfy-nodes.json` (rebuild it with `scripts/node-schema.mjs` after moving the ComfyUI pin or adding a pack; a pack the Comfy registry has no node scan for takes a hand schema from `scripts/fixtures/pack-nodes.json`)
 - `shared/modelFiles.js`: every model file and LoRA a Pod can download (pinned by sha256), the loaders that name them, and the node packs a Pod installs (pinned by commit), with the files a pack reads from its own folder. A graph's loaders and node classes decide what a Pod gets
@@ -72,11 +72,16 @@ Keys go in Connections (saved to `.comfyfield/keys.json`, gitignored) or `.env` 
 
 ## Format file spec
 
-Formats are plain data exported from `src/lib/formats/*.js` or `src/lib/recipes.js`.
+Formats are plain data exported from `src/lib/formats/*.js`.
 `defineFormat` in `src/lib/formats/spec.js` migrates the existing single-step entries
 without removing their copy, controls, prompt templates or provider settings.
 
-- `id`: stable unique slug. `name`: sentence case display name. `job`: what the user gets.
+- `id`: stable unique slug. `name`: sentence case display name. `blurb`: one display line,
+  what the user gets.
+- `job`: the job the format serves, an id from the fixed list in `src/lib/formats/jobs.js`
+  (`ugc`, `ads`, `influencer`, `cinematic`, `effects`, `edit`, `photo`, `audio`, `3d`).
+  `defineFormat` fills it from `category` and `kind` when the entry does not name one;
+  galleries show jobs first, then formats. `validateFormat` rejects an unknown job.
 - `shape`: `preset`, `tool`, `chain` or `pipeline`.
 - `inputs`: typed slots with unique `id`, `type`, `label`, optional `optional`, `default`
   and `when: [choiceId, optionId]`. Types: `text`, `longtext`, `choice`, `count`,
@@ -114,7 +119,7 @@ and `runsOn` remain supported):
 
 ```js
 {
-  id: 'photo-cutout', name: 'Photo cutout', job: 'Remove a photo background',
+  id: 'photo-cutout', name: 'Photo cutout', job: 'edit', blurb: 'Remove a photo background.',
   shape: 'tool', kind: 'image', cover: covers.sky,
   inputs: [{ id: 'image', type: 'image', label: 'Photo' }],
   steps: [{ id: 'cutout', provider: 'fal', endpoint: 'fal-ai/bria/background/remove', kind: 'image', params: {} }],
