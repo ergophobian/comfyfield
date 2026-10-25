@@ -546,7 +546,7 @@ function comfyError(response, data) {
   const code = response.headers?.get('X-Comfy-Error-Type') || data.error_type || data.error?.code
   const requestId = response.headers?.get('X-Comfy-Request-Id') || data.request_id
   const message = response.status === 402 || code === 'insufficient_credits'
-    ? 'Comfy has insufficient credits. Add credits to your Comfy workspace billing, then try again.'
+    ? 'Comfy has insufficient credits. Add credits at platform.comfy.org (profile menu, Manage plan, Add credits), then try again.'
     : `Comfy request failed (${code || response.status}): ${data.message || data.error?.message || (typeof data.detail === 'string' ? data.detail : '') || 'Check the request and your connection.'}`
   return Object.assign(new Error(`${message}${requestId ? ` Request ${requestId}.` : ''}`), { status: response.status >= 400 ? response.status : 502, requestId, code,
     retryable: data.retryable ?? (response.status === 408 || response.status === 429 || response.status >= 500) })

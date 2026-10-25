@@ -21,6 +21,7 @@ import { acceptsImage, uploadImage } from '../lib/providers.js'
 import { estimate, useBalance, useModelMeta } from '../lib/cost.js'
 import { flowFromBatch, openFlow } from '../lib/flowStore.js'
 import { covers } from '../lib/formats/parts.js'
+import CreditsLink from '../components/CreditsLink.jsx'
 
 const MAX_REFS = 8
 const fan = [covers.peach, covers.dusk, covers.sky, covers.rose]
@@ -162,7 +163,7 @@ export default function ImageStudio() {
         <Feed kind="image" gens={gens} batches={batches} size={view} empty={hero} />
       </section>
 
-      {(referenceError || error || gens.error) && <div className="notice glass error gen-notice">{referenceError || error || gens.error}{!referenceError && !error && gens.retry && <button type="button" className="link-btn" onClick={gens.retry}>{gens.retry.label || 'Retry'}</button>}</div>}
+      {(referenceError || error || gens.error) && <div className="notice glass error gen-notice">{referenceError || error || gens.error}<CreditsLink message={referenceError || error || gens.error} />{!referenceError && !error && gens.retry && <button type="button" className="link-btn" onClick={gens.retry}>{gens.retry.label || 'Retry'}</button>}</div>}
 
       <form className={`composer glass gen-bar${dragging ? ' dragging' : ''}`} onSubmit={(e) => { e.preventDefault(); go() }}
         onDragOver={(e) => { if (dropOk(e)) { e.preventDefault(); setDragging(true) } }}

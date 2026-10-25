@@ -15,6 +15,7 @@ import { useApp } from '../lib/appContext.js'
 import { estimate, useBalance, useModelMeta } from '../lib/cost.js'
 import { formatById } from '../lib/formats/index.js'
 import { covers } from '../lib/formats/parts.js'
+import CreditsLink from '../components/CreditsLink.jsx'
 
 const modes = [
   { value: 'speech', label: 'Text to speech' },
@@ -201,7 +202,7 @@ export default function AudioStudio() {
           <Segmented value={main} onChange={setMain} options={mainTabs} />
         </div>
         <Tip page="audio" onLearn={() => setMain('how')} />
-        {gens.error && <div className="notice glass error gen-notice">{gens.error}{gens.retry && <button type="button" className="link-btn" onClick={gens.retry}>{gens.retry.label || 'Retry'}</button>}</div>}
+        {gens.error && <div className="notice glass error gen-notice">{gens.error}<CreditsLink message={gens.error} />{gens.retry && <button type="button" className="link-btn" onClick={gens.retry}>{gens.retry.label || 'Retry'}</button>}</div>}
         {main === 'how' ? explainer : <Feed kind="audio" gens={gens} batches={[]} empty={explainer} />}
       </section>
     </main>

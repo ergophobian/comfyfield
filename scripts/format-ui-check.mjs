@@ -254,6 +254,11 @@ try {
   failRender = true
   await evaluate('[...document.querySelectorAll(".format-review button")].find((b) => b.textContent === "Send to render").click()')
   await wait(retryVisible)
+  // An insufficient credits failure links to the Comfy workspace to add credits.
+  assert.equal(await evaluate('document.querySelector(".format-review [role=alert] a")?.textContent'), 'Add Comfy credits')
+  assert.equal(await evaluate('document.querySelector(".format-review [role=alert] a").href'), 'https://platform.comfy.org/')
+  assert.equal(await evaluate('document.querySelector(".format-review [role=alert] a").target'), '_blank')
+  await screenshot('mock-app-credits-link-mobile')
   await evaluate('[...document.querySelectorAll(".format-review button")].find((b) => b.textContent === "Retry failed").click()')
   await wait('!document.querySelector(".format-review [role=alert]") && !document.querySelector(".app-results .pending")')
   assert.deepEqual(requests.slice(beforeRecovery).map((r) => r.path), ['/api/prompt', '/api/prompt', '/api/comfy/run', '/api/comfy/run'])
@@ -286,7 +291,7 @@ try {
   await wait('JSON.parse(localStorage.getItem("comfyfield.library") || "[]").length === 0')
   assert.equal(generationImports.length, 0, 'Delete persists to server imports')
   assert.deepEqual(errors, [], 'No browser runtime exceptions')
-  console.log('UI mock checks ok: app runner, shared sheet, Library after reload, 390px layout, Create generation/feed/camera presets and hidden invalid route. Failed writer and render sessions recover through Retry failed without repeating completed steps; no provider calls. First-run Connections notice and link checked at 390px. Labeled mock proof import deduplicates on reload and deletes on the server. Nine screenshots saved.')
+  console.log('UI mock checks ok: app runner, shared sheet, Library after reload, 390px layout, Create generation/feed/camera presets and hidden invalid route. Failed writer and render sessions recover through Retry failed without repeating completed steps, and insufficient credits links to Comfy; no provider calls. First-run Connections notice and link checked at 390px. Labeled mock proof import deduplicates on reload and deletes on the server. Ten screenshots saved.')
 } finally {
   await browser?.close()
   await server.close()

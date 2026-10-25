@@ -1,4 +1,5 @@
 import { takeLabel, usePod } from '../lib/usePod.js'
+import CreditsLink from './CreditsLink.jsx'
 
 const ratio = (a) => (/^\d+:\d+$/.test(a) ? a.replace(':', ' / ') : '1 / 1')
 
@@ -11,6 +12,7 @@ function Take({ it, onApprove, onDismiss }) {
           Failed
           {typeof it.failed === 'string' && <small title={it.failed}>{it.failed}</small>}
           <span className="take-acts">
+            <CreditsLink message={it.failed} />
             {it.retry && <button type="button" onClick={it.retry}>{it.retry.label || 'Retry'}</button>}
             <button type="button" onClick={() => onDismiss(it.id)}>Dismiss</button>
           </span>

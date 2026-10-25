@@ -27,6 +27,7 @@ import { estimate, useBalance, useModelMeta } from '../lib/cost.js'
 import { flowFromBatch, openFlow } from '../lib/flowStore.js'
 import { covers } from '../lib/formats/parts.js'
 import { measureVideo, planUpscale, sourcesFor, upscaleJob, upscalerModel } from '../lib/upscale.js'
+import CreditsLink from '../components/CreditsLink.jsx'
 
 const panelTabs = [
   { value: 'create', label: 'Create video' },
@@ -365,7 +366,7 @@ export default function VideoStudio() {
         </div>
         <Banner />
         <Tip page="video" onLearn={() => setMain('how')} />
-        {gens.error && <div className="notice glass error gen-notice">{gens.error}{gens.retry && <button type="button" className="link-btn" onClick={gens.retry}>{gens.retry.label || 'Retry'}</button>}</div>}
+        {gens.error && <div className="notice glass error gen-notice">{gens.error}<CreditsLink message={gens.error} />{gens.retry && <button type="button" className="link-btn" onClick={gens.retry}>{gens.retry.label || 'Retry'}</button>}</div>}
         {main === 'how' ? explainer : <Feed kind="video" gens={gens} batches={batches} empty={explainer} />}
       </section>
 

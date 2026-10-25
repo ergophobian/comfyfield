@@ -13,6 +13,7 @@ import { appsIn, categoryOf, formatById, formats, hubs, isWired } from '../lib/f
 import { initialValues, missingInputs, visibleInputs } from '../lib/recipes.js'
 import { providerInfo } from '../lib/catalog.js'
 import { estimate, money, useModelMeta } from '../lib/cost.js'
+import CreditsLink from '../components/CreditsLink.jsx'
 
 const calm = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 const icons = { image: IconImage, video: IconVideo, audio: IconAudio, '3d': IconCube }
@@ -165,6 +166,7 @@ function AppView({ format, motion }) {
           {failed.map((g) => (
             <p key={g.id} className="app-failed">
               <span>{g.failed}{g.restoreNote && <> {g.restoreNote}</>}</span>
+              <CreditsLink message={g.failed} className="link-btn" />
               {g.retry && <button type="button" className="link-btn" onClick={g.retry}>{g.retry.label || 'Retry'}</button>}
               <button type="button" className="link-btn" onClick={() => gens.dismiss(g.id)}>Dismiss</button>
             </p>
