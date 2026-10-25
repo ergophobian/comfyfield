@@ -543,6 +543,18 @@ await test('lifecycle: a lease waits for a starting Pod, downloads missing files
   assert.equal(pod.status().runs, 0, 'failed leases release themselves')
 })
 
+await test('quote: a stock level counts as in stock when RunPod leaves the GPU counts out', async () => {
+  const lowest = [{ uninterruptablePrice: 0.57, availableGpuCounts: null, stockStatus: 'Low' }, { uninterruptablePrice: 0.72, availableGpuCounts: null, stockStatus: null }, { uninterruptablePrice: 2.49, availableGpuCounts: [], stockStatus: 'High' }]
+  const net = async (url, init) => {
+    const body = JSON.parse(init.body)
+    const ids = [...body.query.matchAll(/(r\d+): gpuTypes/g)].map((m) => m[1])
+    return new Response(JSON.stringify({ data: Object.fromEntries(ids.map((id, i) => [id, [{ lowestPrice: lowest[i] || {} }]])) }), { status: 200 })
+  }
+  const pod = podManager({ fetch: net, keys: () => ({ key: 'k' }), dir: () => tmp })
+  const q = await pod.quote({ minVramGb: 24 })
+  assert.deepEqual(q.rungs.slice(0, 3).map((r) => r.inStock), [true, null, false], 'counts win when RunPod sends them')
+})
+
 await test('lifecycle: the sandbox runs a whole Pod life without RunPod', async () => {
   const dir = fs.mkdtempSync(path.join(tmp, 'sandbox-'))
   const clock = { t: Date.now() }

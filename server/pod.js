@@ -341,7 +341,9 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
     const out = { ...base, rungs: rungs.map((r, i) => {
       const lp = data[`r${i}`]?.[0]?.lowestPrice || {}
       const counts = Array.isArray(lp.availableGpuCounts) ? lp.availableGpuCounts.filter((n) => n > 0) : null
-      return { ...r, usdPerHr: lp.uninterruptablePrice ?? null, inStock: counts ? counts.length > 0 : null }
+      // RunPod's listing (checked 2026-10-25) leaves the counts null and gives a stock level instead.
+      const level = ['high', 'medium', 'low'].includes(String(lp.stockStatus).toLowerCase())
+      return { ...r, usdPerHr: lp.uninterruptablePrice ?? null, inStock: counts ? counts.length > 0 : level || null }
     }) }
     m.quote = { at: now(), min: tag, data: out }
     return out
