@@ -1,6 +1,6 @@
 # Live backend proofs
 
-Refs #71. This prepares the proofs; it does not close the issue's real-media acceptance criteria. No paid request or Pod was started while building this harness. The checked-in ledger is intentionally empty.
+Refs #71. The first real runs (two Pod proofs, 2026-10-25) are in [results-2026-10-25.md](results-2026-10-25.md); the ledger holds their rows with RunPod's billed amounts.
 
 ## Commands
 
@@ -10,6 +10,7 @@ Preview each complete backend proof without provider imports or network requests
 node scripts/live-run.mjs cloud --dry-run
 node scripts/live-run.mjs router --dry-run
 node scripts/live-run.mjs pod --dry-run
+node scripts/live-run.mjs podself --dry-run
 node scripts/live-run.mjs sweep --dry-run
 ```
 
@@ -19,15 +20,20 @@ Only after Kyle approves the spend, run one command per backend from this checko
 node scripts/live-run.mjs cloud --allow-paid
 node scripts/live-run.mjs router --allow-paid
 node scripts/live-run.mjs pod --allow-paid
+node scripts/live-run.mjs podself --allow-paid
 ```
+
+`podself` proves that a Pod ends itself when its app is gone. It starts a proof Pod with a 15-minute deadline, then only reads it: no heartbeat and no app-side guard. The Pod's watchdog must terminate it with RunPod's pod-scoped key. The outside guard acts only five minutes after the deadline, so a Pod that ends itself in time is not ended by the harness.
 
 `--cap 15` is the default total admission ceiling. It may be lowered, never raised above $15. `--max <dollars>` changes the command reservation; it cannot be below its planned estimate. Cloud splits that maximum 1:2 between its image and video. Pod reserves its entire maximum before creation, covering boot, all three generations, pause storage, resume, idle observation and teardown. Resume and Pod generations each have their own ledger row with zero *additional* cost because they draw from the original session reservation. Unknown or failed charges retain their maximum, including after a crash.
 
-Use this recovery command to list and terminate **every Pod whose name begins `comfyfield-` on the connected account**, including paused Pods and ones missing from local state. It preserves unrelated Pods. It remains available when a stale proof lock prevents generations:
+Use this recovery command to list and terminate **every live-proof Pod (name begins `comfyfield-live-`) on the connected account**, including paused Pods and ones missing from local state. It preserves the app's own Pods (`comfyfield-<time>`), which may be in use from another checkout, and unrelated Pods. Add `--all` to also end the app's Pods. It remains available when a stale proof lock prevents generations:
 
 ```sh
 node scripts/live-run.mjs sweep
 ```
+
+The harness sets `COMFYFIELD_POD_ADOPT_PREFIX=comfyfield-live-` before it loads the core, and passes it to its guard. Without it, `server/pod.js` adopts any ComfyField Pod it finds when this checkout has no `pod.json`, and its idle guard could then end the owner's Pod. The proof's empty-account checks also count only live-proof Pods.
 
 Sweep outputs only Pod id, name, status and termination result, then lists again and fails if any ComfyField Pod remains. No account access or sweep was performed during implementation.
 
