@@ -159,6 +159,8 @@ export function parseFlow(text) {
   return { ...strip(f), id: uid(), name: f.name || 'Imported flow', updated: Date.now() }
 }
 
+export const libraryChanged = 'comfyfield:library'
+
 // Planning stays pure in the browser; actions and run state belong to the server.
 const engines = new Map()
 export function engineFor(id) {
@@ -175,6 +177,8 @@ export function engineFor(id) {
     await flushFlows()
     const result = await api(`/api/flows/${id}/action`, 'POST', { action, node, item })
     await refreshFlows()
+    // The server saves each model output to the Library; useGenerations fetches them on this event.
+    globalThis.dispatchEvent?.(new Event(libraryChanged))
     return result
   }]))
   const proxy = { ...engine, ...actions, get state() { return engine.state } }

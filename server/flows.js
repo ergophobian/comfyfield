@@ -29,7 +29,9 @@ function withModel(type, data) {
   return { ...data, model: resolved, ...(['image', 'video', 'audio'].includes(resolved.kind) && { kind: resolved.kind }) }
 }
 
-export function createFlows({ directory = core.home, generate = core.generate, writePrompt = core.writePrompt, stitch = core.stitch, changed = () => {} } = {}) {
+// library saves model outputs to Library > Generations. It defaults on only for the app's own
+// folder, so checks that point flows at a scratch folder never write the real Library.
+export function createFlows({ directory = core.home, generate = core.generate, writePrompt = core.writePrompt, stitch = core.stitch, library = directory === core.home ? core.saveToLibrary : null, changed = () => {} } = {}) {
   const engines = new Map()
   const locks = new Set()
   let quiet = false
@@ -121,10 +123,23 @@ export function createFlows({ directory = core.home, generate = core.generate, w
     flow.edges.push(edge)
     return edge
   }
+  // A failed Library save never fails the step: the engine keeps the provider file either way.
+  const keep = (id, generator) => async (model, opts, unit = {}) => {
+    const files = await generator({ ...opts, model: model.id })
+    if (!library || !Array.isArray(files)) return files
+    try {
+      const flow = read().flows.find((f) => f.id === id)
+      await library(files.filter((f) => f?.url), {
+        model: model.name, kind: model.kind, provider: model.provider, caption: opts.prompt, aspect: opts.aspect,
+        flowId: id, flowName: flow?.name, flowNode: unit.stepId, from: '/flows',
+      })
+    } catch (e) { console.warn(`Flow "${id}": could not save to the Library. ${e.message}`) }
+    return files
+  }
   const engine = (id) => {
     if (!engines.has(id)) {
       const eng = createEngine({
-        run: (model, opts) => generate({ ...opts, model: model.id }),
+        run: keep(id, generate),
         writePrompt,
         stitch: (opts) => stitch({ ...opts, preview: true }),
         onChange: (state) => {
@@ -156,7 +171,7 @@ export function createFlows({ directory = core.home, generate = core.generate, w
       // Each invocation gets its own runner so a session can gate every provider call.
       const base = engine(id)
       const eng = guardedGenerate ? createEngine({
-        run: (model, opts) => guardedGenerate({ ...opts, model: model.id }),
+        run: keep(id, guardedGenerate),
         writePrompt: guardedWriter,
         stitch: guardedStitch,
         onChange: (state) => base.load(state),
