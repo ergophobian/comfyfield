@@ -9,7 +9,10 @@ process.env.COMFYFIELD_HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'cf-ads-'))
 const core = await import('../server/core.js')
 const { formatById, formats } = await import('../src/lib/formats/index.js')
 const { adAngles, defaultAngles, linkToAds } = await import('../src/lib/formats/ads.js')
-const { compileFormat, runFormat } = await import('../src/lib/formats/runner.js')
+const { compileFormat, runFormat: runWithPlanning } = await import('../src/lib/formats/runner.js')
+const { offlineRequirements } = await import('./fixtures/format-planning.mjs')
+// main's runner preflights each run; the fixture answers it without the network.
+const runFormat = (format, values, options) => runWithPlanning(format, values, { requirements: offlineRequirements, ...options })
 const { validateFormat } = await import('../src/lib/formats/validate.js')
 const { pageSummary } = await import('../src/lib/useLibrary.js')
 

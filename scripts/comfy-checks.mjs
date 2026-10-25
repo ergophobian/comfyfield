@@ -451,6 +451,8 @@ await test('A long script reads in parts on one seed and voice, joined into one 
       runs.push({ text: wf.json['2'].inputs.text, seed: wf.json['2'].inputs.seed })
       return { outputs: [{ type: 'audio', contentType: 'audio/flac', name: 'tts.flac', toBytes: async () => fs.readFileSync(tone) }] }
     }
+    // A Pod run submits, then waits, so a refused submit can be sent again.
+    client.submit = async (wf) => ({ id: `j${runs.length}`, status: 'succeeded', wait: async () => {}, ...(await client.run(wf)) })
     return client
   }
   const pod = { podPhase: async () => 'ready', podVram: () => 96, podRoom: () => ({}), podArch: () => null, lease: async () => ({ token: 'pod-token', baseUrl: 'https://pod.test', release() {}, reason: () => null }) }

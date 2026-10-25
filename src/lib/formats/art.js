@@ -2,6 +2,13 @@ import videoIds from '../../../public/art/video/index.json' with { type: 'json' 
 
 // Generated editorial art is optional; unmapped entries keep their original gradient.
 export const coverArt = {
+  // New formats borrow the closest existing cover until they get art of their own.
+  "music-video": "/art/covers/music.webp",
+  "ai-influencer-video": "/art/covers/talking-head.webp",
+  "pose-transfer": "/art/covers/character-scene.webp",
+  "illustration-to-real": "/art/covers/sketch-to-image.webp",
+  "old-footage": "/art/covers/video-upscale.webp",
+  "link-to-ads": "/art/covers/ad-variants.webp",
   "zooms": "/art/covers/shots.webp",
   "photo-grade": "/art/covers/look-golden-hour.webp",
   "look-golden-hour": "/art/covers/look-golden-hour.webp",

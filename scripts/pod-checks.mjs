@@ -2207,13 +2207,12 @@ await test('image services: every Comfy format that shows fills its graph with i
         const o = stepOptions(f, step, values)
         // A writer step writes the prompt when the format runs.
         if (f.writer || f.steps.some((s) => s.type === 'writer')) o.prompt = 'Written prompt'
-        // An upstream song reaches the step as its audio when the format runs.
-        const from = raw.from ?? [f.steps[f.steps.indexOf(raw) - 1]?.id]
-        if (from.some((id) => f.steps.find((s) => s.id === id)?.kind === 'audio')) o.audio = '/media/song.mp3'
-        if (o.aspect === 'auto') o.aspect = nearestAspect(o.shape)
-        // As in runFormat, an image from an upstream model step takes the first picture slot.
         const at = f.steps.indexOf(raw)
         const from = (raw.from ?? (at ? [f.steps[at - 1].id] : [])).map((id) => f.steps.find((s) => s.id === id))
+        // An upstream song reaches the step as its audio when the format runs.
+        if (from.some((s) => s?.kind === 'audio')) o.audio = '/media/song.mp3'
+        if (o.aspect === 'auto') o.aspect = nearestAspect(o.shape)
+        // As in runFormat, an image from an upstream model step takes the first picture slot.
         if (from.some((s) => !s.type && (s.kind || f.kind) === 'image')) {
           o.images = ['/media/upstream.png']
           if (o.slots) o.slots = { ...o.slots, pictures: ['/media/upstream.png', ...o.slots.pictures.slice(1)] }

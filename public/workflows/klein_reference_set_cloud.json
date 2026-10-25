@@ -1,0 +1,1032 @@
+{
+  "1": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "flux-2-klein-4b-fp8.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "2": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "qwen_3_4b.safetensors",
+      "type": "flux2",
+      "device": "default"
+    }
+  },
+  "3": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "flux2-vae.safetensors"
+    }
+  },
+  "10": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "{{image}}"
+    },
+    "_meta": {
+      "title": "Photo 1"
+    }
+  },
+  "11": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "{{image2}}"
+    },
+    "_meta": {
+      "title": "Photo 2",
+      "optional": "image2"
+    }
+  },
+  "12": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "{{image3}}"
+    },
+    "_meta": {
+      "title": "Photo 3",
+      "optional": "image3"
+    }
+  },
+  "13": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "{{image4}}"
+    },
+    "_meta": {
+      "title": "Photo 4",
+      "optional": "image4"
+    }
+  },
+  "14": {
+    "class_type": "EmptyFlux2LatentImage",
+    "inputs": {
+      "width": "{{width}}",
+      "height": "{{height}}",
+      "batch_size": 1
+    }
+  },
+  "15": {
+    "class_type": "PrimitiveStringMultiline",
+    "inputs": {
+      "value": "{{prompt}}"
+    },
+    "_meta": {
+      "title": "Who this is"
+    }
+  },
+  "16": {
+    "class_type": "RandomNoise",
+    "inputs": {
+      "noise_seed": "{{seed}}"
+    }
+  },
+  "17": {
+    "class_type": "KSamplerSelect",
+    "inputs": {
+      "sampler_name": "euler"
+    }
+  },
+  "18": {
+    "class_type": "Flux2Scheduler",
+    "inputs": {
+      "steps": 4,
+      "width": "{{width}}",
+      "height": "{{height}}"
+    }
+  },
+  "20": {
+    "class_type": "StringConcatenate",
+    "inputs": {
+      "string_a": "Use the person in the reference images, who are all the same person. Keep their face, features, skin tone, hair, age and build exactly the same. A head and shoulders portrait, facing the camera straight on, neutral relaxed expression, eyes to the lens. Plain light grey background, soft even daylight, sharp focus, natural skin, a real photograph.",
+      "string_b": [
+        "15",
+        0
+      ],
+      "delimiter": " "
+    },
+    "_meta": {
+      "title": "View: front"
+    }
+  },
+  "21": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": [
+        "20",
+        0
+      ],
+      "clip": [
+        "2",
+        0
+      ]
+    }
+  },
+  "22": {
+    "class_type": "ConditioningZeroOut",
+    "inputs": {
+      "conditioning": [
+        "21",
+        0
+      ]
+    }
+  },
+  "23": {
+    "class_type": "CFGGuider",
+    "inputs": {
+      "model": [
+        "1",
+        0
+      ],
+      "positive": [
+        "306",
+        0
+      ],
+      "negative": [
+        "307",
+        0
+      ],
+      "cfg": 1
+    }
+  },
+  "24": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": [
+        "16",
+        0
+      ],
+      "guider": [
+        "23",
+        0
+      ],
+      "sampler": [
+        "17",
+        0
+      ],
+      "sigmas": [
+        "18",
+        0
+      ],
+      "latent_image": [
+        "14",
+        0
+      ]
+    }
+  },
+  "25": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "24",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ]
+    }
+  },
+  "30": {
+    "class_type": "StringConcatenate",
+    "inputs": {
+      "string_a": "Use the person in the reference images, who are all the same person. Keep their face, features, skin tone, hair, age and build exactly the same. A head and shoulders portrait, head turned three quarters to the left, soft smile. Plain light grey background, soft even daylight, sharp focus, natural skin, a real photograph.",
+      "string_b": [
+        "15",
+        0
+      ],
+      "delimiter": " "
+    },
+    "_meta": {
+      "title": "View: three-quarter"
+    }
+  },
+  "31": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": [
+        "30",
+        0
+      ],
+      "clip": [
+        "2",
+        0
+      ]
+    }
+  },
+  "32": {
+    "class_type": "ConditioningZeroOut",
+    "inputs": {
+      "conditioning": [
+        "31",
+        0
+      ]
+    }
+  },
+  "33": {
+    "class_type": "CFGGuider",
+    "inputs": {
+      "model": [
+        "1",
+        0
+      ],
+      "positive": [
+        "406",
+        0
+      ],
+      "negative": [
+        "407",
+        0
+      ],
+      "cfg": 1
+    }
+  },
+  "34": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": [
+        "16",
+        0
+      ],
+      "guider": [
+        "33",
+        0
+      ],
+      "sampler": [
+        "17",
+        0
+      ],
+      "sigmas": [
+        "18",
+        0
+      ],
+      "latent_image": [
+        "14",
+        0
+      ]
+    }
+  },
+  "35": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "34",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ]
+    }
+  },
+  "40": {
+    "class_type": "StringConcatenate",
+    "inputs": {
+      "string_a": "Use the person in the reference images, who are all the same person. Keep their face, features, skin tone, hair, age and build exactly the same. A head and shoulders portrait in clean side profile, facing right. Plain light grey background, soft even daylight, sharp focus, natural skin, a real photograph.",
+      "string_b": [
+        "15",
+        0
+      ],
+      "delimiter": " "
+    },
+    "_meta": {
+      "title": "View: profile"
+    }
+  },
+  "41": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": [
+        "40",
+        0
+      ],
+      "clip": [
+        "2",
+        0
+      ]
+    }
+  },
+  "42": {
+    "class_type": "ConditioningZeroOut",
+    "inputs": {
+      "conditioning": [
+        "41",
+        0
+      ]
+    }
+  },
+  "43": {
+    "class_type": "CFGGuider",
+    "inputs": {
+      "model": [
+        "1",
+        0
+      ],
+      "positive": [
+        "506",
+        0
+      ],
+      "negative": [
+        "507",
+        0
+      ],
+      "cfg": 1
+    }
+  },
+  "44": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": [
+        "16",
+        0
+      ],
+      "guider": [
+        "43",
+        0
+      ],
+      "sampler": [
+        "17",
+        0
+      ],
+      "sigmas": [
+        "18",
+        0
+      ],
+      "latent_image": [
+        "14",
+        0
+      ]
+    }
+  },
+  "45": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "44",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ]
+    }
+  },
+  "50": {
+    "class_type": "StringConcatenate",
+    "inputs": {
+      "string_a": "Use the person in the reference images, who are all the same person. Keep their face, features, skin tone, hair, age and build exactly the same. A full body photo, standing relaxed, head to toe in frame, arms at the sides. Plain light grey background, soft even daylight, sharp focus, natural skin, a real photograph.",
+      "string_b": [
+        "15",
+        0
+      ],
+      "delimiter": " "
+    },
+    "_meta": {
+      "title": "View: full"
+    }
+  },
+  "51": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": [
+        "50",
+        0
+      ],
+      "clip": [
+        "2",
+        0
+      ]
+    }
+  },
+  "52": {
+    "class_type": "ConditioningZeroOut",
+    "inputs": {
+      "conditioning": [
+        "51",
+        0
+      ]
+    }
+  },
+  "53": {
+    "class_type": "CFGGuider",
+    "inputs": {
+      "model": [
+        "1",
+        0
+      ],
+      "positive": [
+        "606",
+        0
+      ],
+      "negative": [
+        "607",
+        0
+      ],
+      "cfg": 1
+    }
+  },
+  "54": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": [
+        "16",
+        0
+      ],
+      "guider": [
+        "53",
+        0
+      ],
+      "sampler": [
+        "17",
+        0
+      ],
+      "sigmas": [
+        "18",
+        0
+      ],
+      "latent_image": [
+        "14",
+        0
+      ]
+    }
+  },
+  "55": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "54",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ]
+    }
+  },
+  "60": {
+    "class_type": "BatchImagesNode",
+    "inputs": {
+      "images.image0": [
+        "25",
+        0
+      ],
+      "images.image1": [
+        "35",
+        0
+      ],
+      "images.image2": [
+        "45",
+        0
+      ],
+      "images.image3": [
+        "55",
+        0
+      ]
+    }
+  },
+  "61": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "filename_prefix": "comfyfield/klein_reference_set",
+      "images": [
+        "60",
+        0
+      ]
+    }
+  },
+  "300": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "21",
+        0
+      ],
+      "latent": [
+        "810",
+        0
+      ]
+    }
+  },
+  "301": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "22",
+        0
+      ],
+      "latent": [
+        "810",
+        0
+      ]
+    }
+  },
+  "302": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "300",
+        0
+      ],
+      "latent": [
+        "811",
+        0
+      ]
+    }
+  },
+  "303": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "301",
+        0
+      ],
+      "latent": [
+        "811",
+        0
+      ]
+    }
+  },
+  "304": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "302",
+        0
+      ],
+      "latent": [
+        "812",
+        0
+      ]
+    }
+  },
+  "305": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "303",
+        0
+      ],
+      "latent": [
+        "812",
+        0
+      ]
+    }
+  },
+  "306": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "304",
+        0
+      ],
+      "latent": [
+        "813",
+        0
+      ]
+    }
+  },
+  "307": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "305",
+        0
+      ],
+      "latent": [
+        "813",
+        0
+      ]
+    }
+  },
+  "400": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "31",
+        0
+      ],
+      "latent": [
+        "810",
+        0
+      ]
+    }
+  },
+  "401": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "32",
+        0
+      ],
+      "latent": [
+        "810",
+        0
+      ]
+    }
+  },
+  "402": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "400",
+        0
+      ],
+      "latent": [
+        "811",
+        0
+      ]
+    }
+  },
+  "403": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "401",
+        0
+      ],
+      "latent": [
+        "811",
+        0
+      ]
+    }
+  },
+  "404": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "402",
+        0
+      ],
+      "latent": [
+        "812",
+        0
+      ]
+    }
+  },
+  "405": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "403",
+        0
+      ],
+      "latent": [
+        "812",
+        0
+      ]
+    }
+  },
+  "406": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "404",
+        0
+      ],
+      "latent": [
+        "813",
+        0
+      ]
+    }
+  },
+  "407": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "405",
+        0
+      ],
+      "latent": [
+        "813",
+        0
+      ]
+    }
+  },
+  "500": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "41",
+        0
+      ],
+      "latent": [
+        "810",
+        0
+      ]
+    }
+  },
+  "501": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "42",
+        0
+      ],
+      "latent": [
+        "810",
+        0
+      ]
+    }
+  },
+  "502": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "500",
+        0
+      ],
+      "latent": [
+        "811",
+        0
+      ]
+    }
+  },
+  "503": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "501",
+        0
+      ],
+      "latent": [
+        "811",
+        0
+      ]
+    }
+  },
+  "504": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "502",
+        0
+      ],
+      "latent": [
+        "812",
+        0
+      ]
+    }
+  },
+  "505": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "503",
+        0
+      ],
+      "latent": [
+        "812",
+        0
+      ]
+    }
+  },
+  "506": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "504",
+        0
+      ],
+      "latent": [
+        "813",
+        0
+      ]
+    }
+  },
+  "507": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "505",
+        0
+      ],
+      "latent": [
+        "813",
+        0
+      ]
+    }
+  },
+  "600": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "51",
+        0
+      ],
+      "latent": [
+        "810",
+        0
+      ]
+    }
+  },
+  "601": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "52",
+        0
+      ],
+      "latent": [
+        "810",
+        0
+      ]
+    }
+  },
+  "602": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "600",
+        0
+      ],
+      "latent": [
+        "811",
+        0
+      ]
+    }
+  },
+  "603": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "601",
+        0
+      ],
+      "latent": [
+        "811",
+        0
+      ]
+    }
+  },
+  "604": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "602",
+        0
+      ],
+      "latent": [
+        "812",
+        0
+      ]
+    }
+  },
+  "605": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "603",
+        0
+      ],
+      "latent": [
+        "812",
+        0
+      ]
+    }
+  },
+  "606": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "604",
+        0
+      ],
+      "latent": [
+        "813",
+        0
+      ]
+    }
+  },
+  "607": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "605",
+        0
+      ],
+      "latent": [
+        "813",
+        0
+      ]
+    }
+  },
+  "710": {
+    "class_type": "ImageScaleToTotalPixels",
+    "inputs": {
+      "image": [
+        "10",
+        0
+      ],
+      "upscale_method": "lanczos",
+      "megapixels": 1,
+      "resolution_steps": 16
+    }
+  },
+  "711": {
+    "class_type": "ImageScaleToTotalPixels",
+    "inputs": {
+      "image": [
+        "11",
+        0
+      ],
+      "upscale_method": "lanczos",
+      "megapixels": 1,
+      "resolution_steps": 16
+    },
+    "_meta": {
+      "optional": "image2"
+    }
+  },
+  "712": {
+    "class_type": "ImageScaleToTotalPixels",
+    "inputs": {
+      "image": [
+        "12",
+        0
+      ],
+      "upscale_method": "lanczos",
+      "megapixels": 1,
+      "resolution_steps": 16
+    },
+    "_meta": {
+      "optional": "image3"
+    }
+  },
+  "713": {
+    "class_type": "ImageScaleToTotalPixels",
+    "inputs": {
+      "image": [
+        "13",
+        0
+      ],
+      "upscale_method": "lanczos",
+      "megapixels": 1,
+      "resolution_steps": 16
+    },
+    "_meta": {
+      "optional": "image4"
+    }
+  },
+  "810": {
+    "class_type": "VAEEncode",
+    "inputs": {
+      "pixels": [
+        "710",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ]
+    }
+  },
+  "811": {
+    "class_type": "VAEEncode",
+    "inputs": {
+      "pixels": [
+        "711",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ]
+    },
+    "_meta": {
+      "optional": "image2"
+    }
+  },
+  "812": {
+    "class_type": "VAEEncode",
+    "inputs": {
+      "pixels": [
+        "712",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ]
+    },
+    "_meta": {
+      "optional": "image3"
+    }
+  },
+  "813": {
+    "class_type": "VAEEncode",
+    "inputs": {
+      "pixels": [
+        "713",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ]
+    },
+    "_meta": {
+      "optional": "image4"
+    }
+  }
+}

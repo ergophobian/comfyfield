@@ -1215,6 +1215,16 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "klein_reference_set_cloud": [
+      "height",
+      "image",
+      "image2",
+      "image3",
+      "image4",
+      "prompt",
+      "seed",
+      "width"
+    ],
     "klein_retouch": [
       "image",
       "prompt",
@@ -1464,6 +1474,12 @@ export const schemas = {
       "width"
     ],
     "qwen_image21_faceswap": [
+      "image",
+      "image2",
+      "prompt",
+      "seed"
+    ],
+    "qwen_image21_faceswap_cloud": [
       "image",
       "image2",
       "prompt",
@@ -1893,6 +1909,11 @@ export const schemas = {
       "image3"
     ],
     "klein_reference_set": [
+      "image2",
+      "image3",
+      "image4"
+    ],
+    "klein_reference_set_cloud": [
       "image2",
       "image3",
       "image4"

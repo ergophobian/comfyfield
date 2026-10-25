@@ -68,7 +68,7 @@ try {
   await goto('/library')
   await wait('document.querySelector(".lib-card .model-view")')
   const webgl = await evaluate('Boolean(document.createElement("canvas").getContext("webgl2"))')
-  const filters = await evaluate('[...document.querySelectorAll(".lib-filters button")].map((b) => b.textContent)')
+  const filters = await evaluate('[...document.querySelectorAll(".seg-sm [role=tab]")].map((b) => b.textContent)')
   assert(filters.includes('3D'), 'the Library filters 3D models')
   assert.equal(await evaluate('document.querySelector(".lib-card a[download]").getAttribute("download")'), 'potion.glb', 'a model downloads as .glb')
   if (webgl) {
