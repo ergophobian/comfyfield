@@ -9,6 +9,7 @@ import { setTimeout as delay } from 'node:timers/promises'
 import { Comfy, JobFailed } from '@comfyorg/sdk'
 import { models as pinned, falCategories, podWorkflows, routerWriterModel } from '../src/lib/catalog.js'
 import { comfyVars, comfyRouterInput, falInput, estimate, fill, falEndpointFor, dropOptional } from '../shared/mapping.js'
+import { routerEntry } from '../shared/routerModels.js'
 import { renderStitch } from './stitch.js'
 import { draftInstructions, parseDraft } from '../shared/flowDraft.js'
 import { archOf, minVramOf, notOnCloud, podNeedsOf, volumeFor, RUNTIMES } from '../shared/modelFiles.js'
@@ -576,6 +577,27 @@ export async function listComfyRouterModels({ limit = 50, cursor } = {}) {
   const data = await response.json()
   if (!response.ok) throw comfyError(response, data)
   return data
+}
+
+// The whole Router catalog, shaped for the picker, cached for ten minutes per key.
+// Without a key it answers `connected: false` so the app can ask for one.
+export const ROUTER_MODELS_TTL = 10 * 60 * 1000
+let routerCatalog = null
+export async function comfyModels({ now = Date.now() } = {}) {
+  const { key } = config('comfy')
+  if (!key) return { connected: false, models: [] }
+  if (routerCatalog?.key === key && now - routerCatalog.at < ROUTER_MODELS_TTL) return { connected: true, models: routerCatalog.models, at: routerCatalog.at, cached: true }
+  const models = []
+  let cursor
+  for (let page = 0; page < 40; page++) {
+    const data = await listComfyRouterModels({ limit: 100, cursor })
+    models.push(...(Array.isArray(data.data) ? data.data : []).map(routerEntry).filter(Boolean))
+    if (!data.has_more) break
+    if (!data.next_cursor || data.next_cursor === cursor) throw new Error('The Comfy Router catalog stopped paging.')
+    cursor = data.next_cursor
+  }
+  routerCatalog = { key, at: now, models }
+  return { connected: true, models, at: now, cached: false }
 }
 
 // Router returns each partner's native JSON; normalize media for the shared generation callers.

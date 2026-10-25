@@ -300,6 +300,7 @@ function mount(server, harness) {
         return send(res, 200, { files: await core.runFal(await body(req)) })
       }
       if (url.pathname === '/api/fal/models') return send(res, 200, await core.falModels(url.searchParams.toString()))
+      if (url.pathname === '/api/comfy/models') return send(res, 200, await core.comfyModels())
       if (url.pathname === '/api/comfy/router/models') return send(res, 200, await core.listComfyRouterModels(Object.fromEntries(url.searchParams)))
       if (url.pathname === '/api/comfy/router' && req.method === 'POST') return send(res, 200, { files: await core.runComfyRouter(await body(req)) })
       if (url.pathname === '/api/comfy/run' && req.method === 'POST') {
