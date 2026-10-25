@@ -4,6 +4,7 @@ import crypto from 'node:crypto'
 import * as core from './core.js'
 import { createEngine, topoOrder } from '../src/lib/flowEngine.js'
 import { nodeLabels, nodeDefaults, unknownType, missingNode, connectionProblem } from '../shared/flowRules.js'
+import { STALE } from '../shared/flowMerge.js'
 
 export const problem = (message, status = 400) => Object.assign(new Error(message), { status })
 export const clone = (value) => structuredClone(value)
@@ -35,6 +36,7 @@ export function createFlows({ directory = core.home, generate = core.generate, w
   const engines = new Map()
   const locks = new Set()
   let quiet = false
+  let own = null
   const file = () => path.join(directory(), 'flows.json')
   const read = () => {
     try { return { runs: {}, ...JSON.parse(fs.readFileSync(file(), 'utf8')) } } catch (e) {
@@ -46,8 +48,20 @@ export function createFlows({ directory = core.home, generate = core.generate, w
     fs.mkdirSync(directory(), { recursive: true })
     fs.writeFileSync(`${file()}.tmp`, JSON.stringify(store))
     fs.renameSync(`${file()}.tmp`, file())
+    try { own = fs.statSync(file()).mtimeMs } catch {}
     changed({ type: 'flows', revision: store.revision })
     return clone(store)
+  }
+  // A standalone MCP server (npx comfyfield mcp) is another process that writes the same file, also
+  // run state that keeps the revision. Polling the file passes its writes on to every open page.
+  const watch = () => {
+    const target = file()
+    const seen = (cur, prev) => {
+      if (cur.mtimeMs === prev.mtimeMs || cur.mtimeMs === own) return
+      try { changed({ type: 'flows', revision: read().revision }) } catch {}
+    }
+    fs.watchFile(target, { interval: 250, persistent: false }, seen)
+    return () => fs.unwatchFile(target, seen)
   }
   const get = (id) => {
     const { flows } = read()
@@ -86,7 +100,7 @@ export function createFlows({ directory = core.home, generate = core.generate, w
   }
   const save = ({ revision, flows, current, runs }) => {
     const store = read()
-    if (revision !== store.revision) throw problem('Flows changed elsewhere. Reload flows before editing again.', 409)
+    if (revision !== store.revision) throw problem(STALE, 409)
     if (!Array.isArray(flows)) throw problem('Send flows as an array.')
     const ids = flows.map((f) => f?.id)
     const twice = ids.find((id, i) => ids.indexOf(id) !== i)
@@ -198,7 +212,7 @@ export function createFlows({ directory = core.home, generate = core.generate, w
     return { flow_id: id, ran: result.ran ?? 0, waiting_for_send: waiting, writers_waiting_for_send: writers, blocked, failed, outputs: made, next }
   }
   return {
-    read, get, save, engine, perform, validate, report,
+    read, get, save, engine, perform, validate, report, watch,
     create: ({ name, nodes = [], edges = [] }) => {
       if (typeof name !== 'string' || !name.trim()) throw problem('Give the flow a name.')
       const flow = { id: shortId(), name: name.trim(), nodes: [], edges: [], updated: Date.now() }

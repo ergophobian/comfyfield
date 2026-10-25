@@ -9,6 +9,7 @@ import { Link } from 'react-router-dom'
 import { useFlowStorage, engineFor, starters, makeNode, blankFlow, exportJson, shareFileName, importSharedFlow, shareGist, nodeLabels } from '../lib/flowStore.js'
 import { originLabel } from '../../shared/flowShare.js'
 import { reloadFlows } from '../lib/remoteFlows.js'
+import { cleanNode } from '../../shared/flowMerge.js'
 import AssistantPanel from '../components/AssistantPanel.jsx'
 import { AgentPresence, useAgentPresence } from '../components/flow/AgentPresence.jsx'
 import { getConnections } from '../lib/providers.js'
@@ -151,7 +152,11 @@ function Canvas({ picker }) {
     try { await engine.regenerateAll(flow) } catch (e) { setNote(e.message) }
   }
 
-  const selected = flow.nodes.filter((n) => n.selected)
+  // Selection and measured sizes belong to this page, so remote changes never clear them.
+  const [picked, setView] = useState({ flow: flow.id, selected: [], measured: {} })
+  const local = picked.flow === flow.id ? picked : { flow: flow.id, selected: [], measured: {} }
+  const nodes = useMemo(() => flow.nodes.map((n) => ({ ...cleanNode(n), selected: local.selected.includes(n.id), measured: local.measured[n.id] })), [flow.nodes, local])
+  const selected = flow.nodes.filter((n) => local.selected.includes(n.id))
   const node = selected.length === 1 ? selected[0] : null
   const busy = Object.values(state).some((s) => s.running > 0)
   const hasOutput = engine.hasOutput(flow)
@@ -159,14 +164,25 @@ function Canvas({ picker }) {
   const edges = useMemo(() => flow.edges.map((e) => ({ ...e, animated: (state[e.source]?.running || 0) > 0 })), [flow.edges, state])
 
   const ghostIds = useMemo(() => new Set(draft?.nodes.map((n) => n.id) || []), [draft])
-  const shown = useMemo(() => (draft ? [...flow.nodes, ...draft.nodes] : flow.nodes), [flow.nodes, draft])
+  const shown = useMemo(() => (draft ? [...nodes, ...draft.nodes] : nodes), [nodes, draft])
   const shownEdges = useMemo(() => (draft ? [...edges, ...draft.edges] : edges), [edges, draft])
-  const onNodesChange = useCallback((c) => {
-    const ghost = c.filter((x) => ghostIds.has(x.id))
+  const onNodesChange = useCallback((all) => {
+    const ghost = all.filter((x) => ghostIds.has(x.id))
     if (ghost.length) setDraft((d) => d && { ...d, nodes: applyNodeChanges(ghost, d.nodes) })
-    const real = c.filter((x) => !ghostIds.has(x.id))
-    if (real.length) update((f) => ({ ...f, nodes: applyNodeChanges(real, f.nodes) }))
-  }, [update, ghostIds])
+    const changes = all.filter((x) => !ghostIds.has(x.id))
+    const id = flow.id
+    const own = changes.filter((c) => c.type === 'select' || c.type === 'dimensions')
+    const shared = changes.filter((c) => !own.includes(c))
+    if (own.length) setView((v) => {
+      const next = v.flow === id ? { ...v, measured: { ...v.measured } } : { flow: id, selected: [], measured: {} }
+      for (const c of own) {
+        if (c.type === 'select') next.selected = c.selected ? [...new Set([...next.selected, c.id])] : next.selected.filter((x) => x !== c.id)
+        else if (c.dimensions) next.measured[c.id] = c.dimensions
+      }
+      return next
+    })
+    if (shared.length) update((f) => ({ ...f, nodes: applyNodeChanges(shared, f.nodes).map(cleanNode) }))
+  }, [update, flow.id, ghostIds])
   const onEdgesChange = useCallback((c) => update((f) => ({ ...f, edges: applyEdgeChanges(c.filter((x) => !x.id?.startsWith('ghost:')), f.edges) })), [update])
   const onConnect = useCallback((c) => update((f) => ({ ...f, edges: addEdge({ ...c, id: `${c.source}-${c.target}` }, f.edges) })), [update])
   const valid = useCallback((c) => !connectionProblem(flow, c.source, c.target), [flow])
@@ -174,7 +190,9 @@ function Canvas({ picker }) {
   const add = (type) => {
     const c = rf.screenToFlowPosition({ x: window.innerWidth / 2 - 120, y: window.innerHeight / 2 - 80 })
     const jitter = (flow.nodes.length % 5) * 24
-    update((f) => ({ ...f, nodes: [...f.nodes.map((n) => ({ ...n, selected: false })), { ...makeNode(type, { x: c.x + jitter, y: c.y + jitter }), selected: true }] }))
+    const made = makeNode(type, { x: c.x + jitter, y: c.y + jitter })
+    update((f) => ({ ...f, nodes: [...f.nodes, made] }))
+    setView((v) => ({ ...v, flow: flow.id, selected: [made.id], measured: v.flow === flow.id ? v.measured : {} }))
   }
   const remove = (id) => update((f) => ({ ...f, nodes: f.nodes.filter((n) => n.id !== id), edges: f.edges.filter((e) => e.source !== id && e.target !== id) }))
 

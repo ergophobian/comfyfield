@@ -69,18 +69,28 @@ try {
   await click('Stop session')
   await until(`document.body.textContent.includes('Agent 1 · Stopped')`)
   await click('Close assistant')
+  await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1080, deviceScaleFactor: 1, mobile: false })
+  // Live sync: select a node and rename the flow here while another writer changes a prompt.
+  await evaluate(`document.querySelector('.react-flow__node[data-id="output"]').dispatchEvent(new MouseEvent('click', { bubbles: true }))`)
+  await until(`document.querySelector('.fpanel h3')?.textContent === 'Output'`)
   await evaluate(`(async () => {
     const input = document.querySelector('[aria-label="Flow name"]')
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, 'My unsaved edit')
     input.dispatchEvent(new Event('input', { bubbles: true }))
-    const store = await (await fetch('/api/flows')).json()
-    store.flows[0].name = 'External edit'
-    await fetch('/api/flows', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(store) })
+    // Another writer: retry its own stale saves, like any client.
+    for (let i = 0; i < 20; i++) {
+      const store = await (await fetch('/api/flows')).json()
+      store.flows[0].nodes.find((n) => n.id === 'prompt').data.text = 'An external edit'
+      if ((await fetch('/api/flows', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(store) })).ok) return
+    }
+    throw new Error('The external save failed')
   })()`)
-  await until(`document.body.textContent.includes('Export unsaved flow')`)
-  assert.equal(await evaluate(`document.querySelector('[aria-label="Flow name"]').value`), 'My unsaved edit')
-  await click('Reload flows')
-  await until(`document.querySelector('[aria-label="Flow name"]').value === 'External edit'`)
+  await until(`document.querySelector('.react-flow__node[data-id="prompt"]')?.textContent.includes('An external edit')`)
+  assert.equal(await evaluate(`document.querySelector('[aria-label="Flow name"]').value`), 'My unsaved edit', 'the local edit stays')
+  assert.equal(await evaluate(`document.querySelector('.fpanel h3')?.textContent`), 'Output', 'the selection stays')
+  await until(`fetch('/api/flows').then((r) => r.json()).then((s) => s.flows[0].name === 'My unsaved edit' && s.flows[0].nodes[0].data.text === 'An external edit')`)
+  assert.ok(!(await evaluate(`document.body.textContent.includes('Export unsaved flow')`)), 'no conflict error')
+  await screenshot('canvas-live-sync-desktop.png')
   await send('Page.navigate', { url: `${setupOrigin}/assistant` })
   await until(`document.body.textContent.includes('Set up a local agent') && document.body.textContent.includes('codex login')`)
   assert.equal(await evaluate(`[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Start session')?.disabled`), true)
@@ -89,7 +99,7 @@ try {
   await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1080, deviceScaleFactor: 1, mobile: false })
   await screenshot('assistant-setup-desktop.png')
   assert.equal(errors.length, 0, JSON.stringify(errors))
-  console.log('ok    desktop/mobile chat, approval, canvas presence, stop, conflicting edits and missing-agent setup; screenshots saved')
+  console.log('ok    desktop/mobile chat, approval, canvas presence, stop, live sync with local selection and missing-agent setup; screenshots saved')
 } finally {
   await browser?.close()
   await Promise.all(fixtures.map((server) => server.close()))
