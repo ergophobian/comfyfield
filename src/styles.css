@@ -600,6 +600,8 @@ code { font-size: .92em; }
 .page-head:has(.seg) p { margin-bottom: 16px; }
 .page-head .seg { margin-bottom: 24px; }
 /* backwards, not both: a filled transform would trap the fixed editors and viewer inside this box */
+.library-page .page-head > .seg { max-width: 100%; overflow-x: auto; }
+.library-page .page-head > .seg button { flex-shrink: 0; }
 .lib-body { animation: rise var(--dur-rise) var(--spring) backwards; }
 .lib-filters { display: flex; justify-content: flex-start; margin-bottom: 16px; }
 .lib-filters .seg { margin: 0; }
@@ -2956,6 +2958,8 @@ a.skill-chip:active { transform: scale(.96); }
 }
 
 .reframe-source { display: block; width: 100%; height: 100%; object-fit: contain; }
+.ad-rights { display: flex; align-items: center; gap: var(--widget-gap); margin-block: var(--widget-space); }
+.ad-rights input { width: auto; }
 /* Art stays inside existing glass layouts and never stands in for saved results. */
 .art-image { display: block; width: 100%; height: 100%; object-fit: cover; }
 .art-media { position: relative; aspect-ratio: var(--art-card-ratio); overflow: hidden; }

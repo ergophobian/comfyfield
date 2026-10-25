@@ -92,6 +92,18 @@ if (bundledFfmpeg) {
   console.log('ok    bundled ffmpeg, portrait aspect, music looping, volume and fades')
 } else console.log('Optional ffmpeg binary unavailable; system ffmpeg fixtures passed')
 
+console.log('check narration plays once, then silence')
+assert.throws(() => stitchOptions({ clips: [blue], narration: { url: music, volume: 3 } }), /Narration volume/)
+assert.throws(() => stitchOptions({ clips: [blue], narration: { url: '' } }), /Narration needs/)
+const narrated = await renderStitch({ clips: [{ url: blue, end: 1.2 }], narration: { url: music, volume: 1 } }, { home: core.home, mediaPath: core.mediaPath, binary: bundledFfmpeg, timeout: 30000 })
+assert.equal(narrated.duration, 1.2)
+assert(rms(narrated.path, 0.1) > 0.03, 'Narration is audible initially')
+assert(rms(narrated.path, 0.7) < 0.001, 'Short narration does not repeat')
+assert(rms(narrated.path, 1.1) < 0.001, 'Narration tail is silent through the video end')
+const both = await renderStitch({ clips: [{ url: blue, end: 1.2 }], music: { url: music, volume: 0.2, fade: 0 }, narration: { url: music, volume: 1 } }, { home: core.home, mediaPath: core.mediaPath, binary: bundledFfmpeg, timeout: 30000 })
+assert(rms(both.path, 0.1) > rms(both.path, 0.7) * 3, 'Narration and looping music can coexist')
+console.log('ok    narration plays once, pads silence, preserves video duration and coexists with music')
+
 const specFile = path.join(dir, 'stitch.json')
 console.log('check CLI subprocess')
 fs.writeFileSync(specFile, JSON.stringify({ clips: [{ url: blue, end: 0.2 }], aspect: '4:5' }))

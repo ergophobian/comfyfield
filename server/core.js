@@ -14,6 +14,7 @@ import { renderStitch } from './stitch.js'
 import { draftInstructions, parseDraft } from '../shared/flowDraft.js'
 import { renderBlender, blenderVersion } from './blender.js'
 import { renderThree } from './threejs.js'
+import { importBusinessPage as readBusinessPage } from './publicPage.js'
 import { archOf, minVramOf, notOnCloud, podNeedsOf, volumeFor, RUNTIMES } from '../shared/modelFiles.js'
 import { CLOUD_USD_PER_GPU_SEC, DEFAULT_TIER, TIER_IDS } from '../shared/gpuTiers.js'
 
@@ -1350,3 +1351,6 @@ export async function saveFiles(files, dir) {
   }
   return saved
 }
+
+// Business-page import stays isolated from provider execution.
+export const importBusinessPage = (options, deps = {}) => readBusinessPage(options, { save: saveMedia, ...deps })

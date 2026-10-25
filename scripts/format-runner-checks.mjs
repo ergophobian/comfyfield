@@ -499,3 +499,40 @@ const once = await failedRun(routerFormat, { subject: 'A meadow' }, { run: async
 await Promise.all([once.retry('generate'), once.retry('generate')])
 assert.equal(onceCalls, 2)
 console.log('Runner review regressions ok: edited options, terminal key rotation, Pod warnings and queued Library retries.')
+
+// Retrying one failed render keeps sibling output and its Library identity.
+const retryFormat = { ...imageRecipe, id: 'test-targeted-retry', shape: 'pipeline',
+  steps: [{ id: 'concept', type: 'writer', instructions: 'Draft a concept' }, { id: 'approval', type: 'approve' },
+    ...['success', 'failure'].map((id) => ({ ...imageRecipe.steps[0], id, from: ['approval'] }))],
+  outputs: ['success', 'failure'].map((step) => ({ step, kind: 'image' })),
+}
+const attempts = []
+let failRender = true
+const targetedSession = await runFormat(retryFormat, valuesFor(retryFormat), {
+  writePrompt: async () => 'Reviewed concept',
+  run: async (_, opts, meta) => {
+    attempts.push(meta.stepId)
+    if (meta.stepId === 'failure' && failRender) throw new Error('One render failed')
+    return [{ url: `https://example.test/${meta.stepId}.png`, prompt: opts.prompt }]
+  },
+})
+await targetedSession.sendWriter('concept')
+await assert.rejects(targetedSession.send('approval'), /One render failed/)
+const preserved = targetedSession.results()[0]
+targetedSession.engine.editWriter(targetedSession.flow, 'concept', 'Reviewed concept')
+// The stored render failure stays reported until it is retried, but review still reopens.
+await assert.rejects(targetedSession.sendWriter('concept'), /One render failed/)
+assert.equal(targetedSession.engine.gate('approval').status, 'reviewing', 'Stored render failure does not prevent reopening review')
+failRender = false
+await targetedSession.send('approval')
+assert.deepEqual(attempts, ['success', 'failure', 'failure'])
+failRender = true
+await targetedSession.engine.rerun(targetedSession.flow, 'failure')
+await assert.rejects(targetedSession.retry('failure'), /One render failed/)
+failRender = false
+await targetedSession.retry('failure')
+assert.equal(attempts.filter((id) => id === 'success').length, 1)
+assert.equal(targetedSession.results()[0], preserved)
+await targetedSession.retry('success')
+assert.equal(attempts.filter((id) => id === 'success').length, 1, 'Retrying a step without failures pays for nothing')
+console.log('Targeted format retry checks ok: stored failures, reopened gates, repeated failures and preserved sibling outputs')

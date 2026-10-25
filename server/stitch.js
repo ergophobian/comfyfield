@@ -6,7 +6,7 @@ import { findFfmpeg } from './ffmpeg.js'
 export { findFfmpeg } from './ffmpeg.js'
 
 const fonts = fileURLToPath(new URL('./fonts/', import.meta.url))
-const dimensions = { '16:9': [1280, 720], '9:16': [720, 1280], '1:1': [720, 720], '4:5': [720, 900] }
+const dimensions = { '16:9': [1280, 720], '9:16': [720, 1280], '1:1': [720, 720], '4:5': [720, 900], '3:4': [720, 960], '2:3': [640, 960] }
 const invalid = (message) => Object.assign(new Error(message), { status: 400 })
 
 export function ffmpeg(args, { binary = 'ffmpeg', cwd, allowFailure = false, timeout = 10 * 60 * 1000 } = {}) {
@@ -32,9 +32,9 @@ const seconds = (value, fallback, name) => {
   return n
 }
 
-export function stitchOptions({ clips, aspect = '16:9', music } = {}) {
+export function stitchOptions({ clips, aspect = '16:9', music, narration } = {}) {
   if (!Array.isArray(clips) || !clips.length || clips.length > 50) throw invalid('Choose between 1 and 50 clips.')
-  if (!dimensions[aspect]) throw invalid('Choose 16:9, 9:16, 1:1 or 4:5 for the output aspect.')
+  if (!dimensions[aspect]) throw invalid('Choose a supported output aspect (16:9, 9:16, 1:1, 4:5, 3:4 or 2:3).')
   const ordered = clips.map((clip) => {
     const c = typeof clip === 'string' ? { url: clip } : clip
     if (!c || typeof c.url !== 'string' || !c.url.trim()) throw invalid('Each clip needs a URL or file path.')
@@ -50,7 +50,14 @@ export function stitchOptions({ clips, aspect = '16:9', music } = {}) {
     if (volume > 2) throw invalid('Music volume must be between 0 and 2.')
     track = { url: music.url, volume, fade: seconds(music.fade, 1, 'Music fade') }
   }
-  return { clips: ordered, aspect, music: track }
+  let speech
+  if (narration != null) {
+    if (typeof narration.url !== 'string' || !narration.url.trim()) throw invalid('Narration needs a URL or file path.')
+    const volume = seconds(narration.volume, 1, 'Narration volume')
+    if (volume > 2) throw invalid('Narration volume must be between 0 and 2.')
+    speech = { url: narration.url, volume }
+  }
+  return { clips: ordered, aspect, music: track, narration: speech }
 }
 
 async function localFile(url, dir, name, mediaPath) {
@@ -123,6 +130,8 @@ export async function renderStitch(options, { home, mediaPath, binary, timeout, 
   }
   fs.writeFileSync(path.join(dir, 'clips.txt'), opts.clips.map((_, i) => `file 'clip-${i}.mp4'`).join('\n'))
   const args = ['-y', '-f', 'concat', '-safe', '1', '-i', 'clips.txt']
+  const filters = []
+  const tracks = ['[0:a]']
   if (opts.music) {
     const file = await localFile(opts.music.url, dir, 'music-input', mediaPath)
     const track = await inspect(file, binary, timeout)
@@ -131,9 +140,22 @@ export async function renderStitch(options, { home, mediaPath, binary, timeout, 
     // A finite playlist avoids ffmpeg 6's looped-input shutdown hang on Apple Silicon.
     fs.writeFileSync(path.join(dir, 'music.txt'), Array.from({ length: Math.ceil(duration / track.duration) }, () => "file 'music-source'").join('\n'))
     const fade = Math.min(opts.music.fade, duration / 2)
-    args.push('-f', 'concat', '-safe', '1', '-i', 'music.txt',
-      '-filter_complex', `[1:a]aresample=48000,volume=${opts.music.volume},atrim=duration=${duration},afade=t=in:d=${fade},afade=t=out:st=${duration - fade}:d=${fade}[music];[0:a][music]amix=inputs=2:duration=first:normalize=0[audio]`,
-      '-map', '0:v:0', '-map', '[audio]')
+    args.push('-f', 'concat', '-safe', '1', '-i', 'music.txt')
+    filters.push(`[1:a]aresample=48000,volume=${opts.music.volume},atrim=duration=${duration},afade=t=in:d=${fade},afade=t=out:st=${duration - fade}:d=${fade}[music]`)
+    tracks.push('[music]')
+  }
+  if (opts.narration) {
+    const file = await localFile(opts.narration.url, dir, 'narration-input', mediaPath)
+    const track = await inspect(file, binary, timeout)
+    if (!track.audio || track.duration <= 0) throw invalid('The narration track has no playable audio.')
+    args.push('-i', file)
+    // Narration is read once; apad supplies silence through the remaining video.
+    filters.push(`[${tracks.length}:a]aresample=48000,volume=${opts.narration.volume},apad,atrim=duration=${duration}[narration]`)
+    tracks.push('[narration]')
+  }
+  if (filters.length) {
+    filters.push(`${tracks.join('')}amix=inputs=${tracks.length}:duration=first:normalize=0[audio]`)
+    args.push('-filter_complex', filters.join(';'), '-map', '0:v:0', '-map', '[audio]')
   } else args.push('-map', '0:v:0', '-map', '0:a:0')
   args.push('-t', String(duration), '-c:v', 'copy', '-c:a', 'aac', '-movflags', '+faststart', 'result.mp4')
   onProgress('Join clips and mix audio')

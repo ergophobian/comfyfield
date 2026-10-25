@@ -337,6 +337,7 @@ function mount(server, harness) {
       if (url.pathname === '/api/balance') return send(res, 200, await core.balances())
       if (url.pathname === '/api/prompts' && req.method === 'POST') return send(res, 200, { prompts: await core.writePrompts(await body(req)) })
       if (url.pathname === '/api/flow-draft' && req.method === 'POST') return send(res, 200, { draft: await core.draftFlow(await body(req)) })
+      if (url.pathname === '/api/ads/import' && req.method === 'POST') return send(res, 200, await core.importBusinessPage(await body(req)))
       if (url.pathname === '/api/prompt' && req.method === 'POST') return send(res, 200, { text: await core.writePrompt(await body(req)) })
       if (url.pathname === '/api/google' && req.method === 'POST') {
         return send(res, 200, { files: await core.runGoogle(await body(req)) })
