@@ -61,6 +61,16 @@
   --sky-3: #6f94ea;
   --sky: linear-gradient(180deg, #fff 0%, #f4f6ff 26%, var(--sky-2) 58%, var(--sky-3) 100%);
   --cloud: radial-gradient(closest-side, rgb(255 255 255 / .95), rgb(255 255 255 / 0));
+  /* ASCII backdrop: the canvas reads these in src/lib/asciiField.js */
+  --ascii-bg: linear-gradient(180deg, #fff 0%, var(--sky-1) 40%, #e6ecff 100%);
+  --ascii-ink: rgb(47 63 232 / .42);
+  --ascii-font: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --ascii-type: 13px;
+  --ascii-cell-w: 10px;
+  --ascii-cell-h: 16px;
+  --ascii-frame: 66ms;
+  --ascii-drift: 20s;
+  --ascii-floor: .25;
   --glass: rgb(255 255 255 / .62);
   --glass-strong: rgb(255 255 255 / .86);
   --glass-line: rgb(255 255 255 / .9);
@@ -215,6 +225,9 @@ input, textarea { font: inherit; color: inherit; }
 .sky i:nth-child(3) { width: 80vw; height: 36vh; left: 12vw; top: 72vh; animation-duration: 46s; }
 .sky i:nth-child(4) { width: 40vw; height: 20vh; left: 30vw; top: 38vh; opacity: .8; animation-duration: 60s; }
 .sky i:nth-child(5) { width: 55vw; height: 28vh; right: 20vw; top: 86vh; animation-duration: 38s; }
+/* ASCII backdrop: a canvas field of characters, see AsciiField.jsx. */
+.ascii-bg { position: fixed; inset: 0; z-index: -1; overflow: hidden; background: var(--ascii-bg); }
+.ascii-bg canvas { display: block; width: 100%; height: 100%; }
 @keyframes float { from { transform: translateX(-3vw); } to { transform: translateX(3vw); } }
 
 /* Glass */
@@ -270,6 +283,11 @@ input, textarea { font: inherit; color: inherit; }
 .menu a { display: flex; flex-direction: column; gap: 1px; padding: 8px 10px; border-radius: var(--r-md); font-size: var(--text-md); font-weight: 500; transition: background var(--dur-fast); }
 .menu a:hover { background: var(--blue-hover); }
 .menu a.on { background: var(--blue-select); color: var(--blue); }
+.menu-pick { display: flex; gap: 4px; padding: 0 4px 4px; }
+.mnav .menu-pick { padding: 0 10px; }
+:is(.menu, .mnav) .menu-pick button { display: flex; flex: 1; align-items: center; justify-content: center; padding: 6px 10px; border-radius: var(--r-pill); background: var(--ink-fill); font-size: var(--text-md); font-weight: 500; }
+:is(.menu, .mnav) .menu-pick button:hover { background: var(--ink-fill-hover); }
+:is(.menu, .mnav) .menu-pick button.on { background: var(--blue-select); color: var(--blue); }
 
 /* Create */
 

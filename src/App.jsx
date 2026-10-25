@@ -44,6 +44,8 @@ import { usePodPolling } from './lib/usePod.js'
 import PodSheet from './components/pod/PodSheet.jsx'
 import RunToasts from './components/RunToasts.jsx'
 import { usePicker } from './lib/usePicker.js'
+import { useBackdrop } from './lib/backdrop.js'
+import AsciiField from './components/AsciiField.jsx'
 
 export default function App() {
   // Lifted here so a render keeps going when you switch pages.
@@ -52,6 +54,7 @@ export default function App() {
   const [connections, setConnections] = useState({})
   const picker = usePicker(connections)
   const [sheet, setSheet] = useState(null)
+  const backdrop = useBackdrop()
   useEffect(() => { getConnections().then(setConnections) }, [])
   usePodPolling()
 
@@ -67,7 +70,7 @@ export default function App() {
 
   return (
     <AppCtx.Provider value={ctx}>
-      <div className="sky" aria-hidden="true"><i /><i /><i /><i /><i /></div>
+      {backdrop === 'ascii' ? <AsciiField /> : <div className="sky" aria-hidden="true"><i /><i /><i /><i /><i /></div>}
       <TopBar />
       {Object.keys(connections).length > 0 && !Object.values(connections).some((c) => c.connected) && pathname !== '/connections' && (
         <p className="notice" role="status">No keys yet. <Link to="/connections">Open Connections</Link> to add a provider key when you are ready to generate.</p>
