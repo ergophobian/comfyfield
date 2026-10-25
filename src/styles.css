@@ -2257,6 +2257,15 @@ button.gen-step:active { transform: scale(.97); }
 .inf-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 2px 4px 0; }
 .inf-card-foot strong { min-width: 0; font-size: var(--text-md); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .inf-card-tags { padding: 0 4px; font-size: var(--text-xs); color: var(--muted); }
+.inf-trends { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 18px; }
+.inf-trends strong { font-size: var(--text-sm); font-weight: 600; color: var(--ink-2); }
+.inf-trend-acts { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.inf-error { color: var(--danger); }
+.inf-history { display: flex; flex-direction: column; gap: 14px; padding-top: 14px; }
+.inf-run { display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: var(--r-lg); background: var(--glass-strong); border: 1px solid var(--glass-line); animation: rise var(--dur-rise) var(--spring) backwards; }
+.inf-run-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+.inf-run-foot .plist-note { margin: 0 auto 0 0; }
+.inf-history-head { margin: 8px 0 0; font-size: var(--text-md); font-weight: 600; }
 
 @media (max-width: 720px) {
   .inf { grid-template-columns: minmax(0, 1fr); }

@@ -94,3 +94,37 @@ export const lookbookPoses = [
   { id: 'walking', label: 'Walking' },
   { id: 'seated', label: 'Seated' },
 ]
+
+// The builder's picks as one plain description, for the persona format's prompt. Groups left open stay out,
+// so the model picks them.
+const animals = ['insect', 'frog', 'cat', 'dog', 'rodent', 'bird']
+const looks = { bold: 'with a bold, striking look', extreme: 'with an exaggerated, stylized look' }
+export function personaText(picks = {}) {
+  const label = (id) => {
+    const group = builder.find((g) => g.id === id)
+    const value = picks[id]
+    if (group.multi) return (value || []).map((v) => group.options.find((o) => o.id === v)?.label.toLowerCase()).filter(Boolean)
+    return group.options.find((o) => o.id === value)?.label.toLowerCase() || ''
+  }
+  const and = (xs) => (xs.length > 1 ? `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}` : xs[0] || '')
+  const gender = ['woman', 'man'].includes(picks.gender) ? label('gender') : ['non-binary', 'androgynous'].includes(picks.gender) ? `${label('gender')} person` : 'person'
+  const subject = animals.includes(picks.type)
+    ? `an anthropomorphic ${label('type')} character${gender !== 'person' ? `, a ${gender}` : ''}`
+    : [label('age'), picks.ethnicity && label('ethnicity').replace(/\b\w/g, (c) => c.toUpperCase()), gender].filter(Boolean).join(' ').replace(/^/, 'a ').replace(/^a ([aeiou])/i, 'an $1')
+  const hair = picks.hair === 'bald' ? 'a bald head' : [label('hair'), label('hairColor')].filter(Boolean).join(' ') && `${[label('hair'), label('hairColor')].filter(Boolean).join(' ')} hair`
+  const traits = [
+    picks.build && `${/^[aeiou]/.test(label('build')) ? 'an' : 'a'} ${label('build')} build`,
+    picks.height && `${label('height')} height`,
+    picks.proportions && `${label('proportions')} proportions`,
+    picks.skin && `${label('skin')} skin`,
+    hair,
+    picks.head && `${label('head')} face shape`,
+    picks.neck && `${label('neck')} neck`,
+    (picks.eyes || picks.eyeColor) && `${[label('eyes'), label('eyeColor')].filter(Boolean).join(' ')} eyes`,
+    ...label('features'),
+    picks.facialHair && (picks.facialHair === 'none' ? 'a clean-shaven face' : label('facialHair')),
+    ...label('marks'),
+  ].filter(Boolean)
+  const wear = [picks.style && `${label('style').replace('y2k', 'Y2K')} clothes`, ...label('accessories').map((a) => (a === 'hat' ? 'a hat' : a))].filter(Boolean)
+  return [subject, looks[picks.type], traits.length && `with ${and(traits)}`, wear.length && `wearing ${and(wear)}`].filter(Boolean).join(', ')
+}

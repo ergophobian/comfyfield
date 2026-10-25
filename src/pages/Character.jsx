@@ -1,18 +1,21 @@
 import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import PhotoGrid from '../components/studio/PhotoGrid.jsx'
-import { GoButton, Hero, NotWired, UseMenu } from '../components/studio/Shell.jsx'
+import { Hero, UseMenu } from '../components/studio/Shell.jsx'
 import { TypeArt } from '../components/studio/Art.jsx'
 import { IconCheck, IconClose, IconPlus } from '../components/Icons.jsx'
 import { useApp } from '../lib/appContext.js'
-import { useLibrary, toRef } from '../lib/useLibrary.js'
+import { useLibrary } from '../lib/useLibrary.js'
+import { characterUses } from '../lib/characterUses.js'
 import { formatById } from '../lib/formats/index.js'
 import { covers } from '../lib/formats/parts.js'
 
-const MIN = 20
-const MAX = 80
-// The Assets editor keeps six reference images per character, so a save without training does too.
+const MAX = 20
+// The Assets editor keeps six reference images per character, so a plain save does too.
 const KEEP = 6
+// The reference set reads the first four photos and gives four views back, which lead the six pictures.
+const SOURCES = 4
+const refSet = formatById('character-reference-set')
 
 const good = [
   'Different angles and expressions',
@@ -28,38 +31,40 @@ const avoid = [
   'Group shots',
 ]
 
-// Formats that take a saved character, with any extra value they need to use it.
-const targets = [
-  ['character-scene', {}],
-  ['influencer-post', {}],
-  ['ai-influencer-video', {}],
-  ['multi-shot', {}],
-  ['ugc-ad', {}],
-  ['face-swap', {}],
-  ['character-swap', {}],
-  ['face-swap-video', { source: 'character' }],
-]
-
-// Rough guide from the audit: 3 minutes at 20 photos, up to 5 at 80.
-const minutes = (n) => (n < MIN ? null : Math.round(3 + ((Math.min(n, MAX) - MIN) / (MAX - MIN)) * 2))
-
-function Builder({ onClose }) {
+function Builder({ onClose, onBuilt }) {
   const lib = useLibrary()
+  const { gens } = useApp()
   const [name, setName] = useState('')
   const [photos, setPhotos] = useState([])
   const [consent, setConsent] = useState(false)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
   const n = photos.length
-  const est = minutes(n)
 
   const saveOnly = async () => {
-    if (!name.trim()) { setMsg('Give the character a name first.'); return }
+    if (!name.trim()) { setMsg('Give the character a name first.'); return null }
     setBusy(true); setMsg('')
     try {
-      await lib.create('characters', { name: name.trim(), notes: '', images: photos.slice(0, KEEP).map((p) => p.url) })
+      const item = await lib.create('characters', { name: name.trim(), notes: '', images: photos.slice(0, KEEP).map((p) => p.url) })
       onClose(name.trim())
-    } catch (e) { setMsg(e.message); setBusy(false) }
+      return item
+    } catch (e) { setMsg(e.message); setBusy(false); return null }
+  }
+
+  // Same face, no LoRA: the character is saved at once with its photos, and the four views take the
+  // front places when the run finishes.
+  const buildSet = async () => {
+    const item = await saveOnly()
+    if (!item) return
+    const values = Object.fromEntries(photos.slice(0, SOURCES).map((p, i) => [i ? 'image' + (i + 1) : 'image', { url: p.url, name: p.name }]))
+    onBuilt(item.name, 'building')
+    try {
+      const session = await gens.generateFormat(refSet, values)
+      const views = session.results().map((f) => f.url).filter(Boolean)
+      if (!views.length) throw new Error('The reference set came back empty.')
+      await lib.update('characters', item.id, { images: [...views, ...item.images].slice(0, KEEP), refset: new Date().toISOString() })
+      onBuilt(item.name, 'done')
+    } catch (e) { onBuilt(item.name, 'failed', e.message) }
   }
 
   return (
@@ -67,13 +72,13 @@ function Builder({ onClose }) {
       <div className="chr-build-head">
         <div>
           <h2>New character</h2>
-          <p>Upload {MIN} to {MAX} photos of one person. More variety makes a steadier face.</p>
+          <p>Upload up to {MAX} photos of one person. The first {SOURCES} build a reference set: the same face in every format, with no training.</p>
         </div>
         <button type="button" className="icon-btn" aria-label="Close" onClick={() => onClose()}><IconClose /></button>
       </div>
       <div className="chr-cols">
         <div className="chr-left">
-          <PhotoGrid label="Photos" value={photos} setValue={setPhotos} min={MIN} max={MAX}
+          <PhotoGrid label="Photos" value={photos} setValue={setPhotos} max={MAX}
             hint={`Photos ${960}px or larger on the long side give the sharpest face.`} />
         </div>
         <div className="chr-right">
@@ -94,16 +99,19 @@ function Builder({ onClose }) {
       </div>
       <div className="chr-foot">
         <div className="chr-time">
-          <strong>{est ? `Training takes about ${est} minutes` : `Training takes 3 to 5 minutes once you have ${MIN} photos`}</strong>
-          <NotWired runsOn="a FLUX LoRA trainer on ComfyUI" />
+          <strong>Builds a front, three-quarter, profile and full-body view</strong>
+          <span className="muted">Runs on {refSet.runsOn}. No LoRA training.</span>
         </div>
         {msg && <p className="plist-note">{msg}</p>}
         <div className="chr-acts">
           <button type="button" className="btn-soft" disabled={busy || !n || !consent} onClick={saveOnly}
-            title={`Saves the name and the first ${KEEP} photos to Assets, untrained`}>
-            {busy ? 'Saving' : 'Save without training'}
+            title="Saves the name and the first six photos to Assets, with no reference set">
+            {busy ? 'Saving' : 'Save photos only'}
           </button>
-          <GoButton label="Train" />
+          <button type="button" className="btn-blue" disabled={busy || !n || !consent} onClick={buildSet}
+            title="Saves the character, then builds four views from the first four photos">
+            Build reference set
+          </button>
         </div>
       </div>
     </section>
@@ -112,14 +120,7 @@ function Builder({ onClose }) {
 
 function CharacterCard({ item, i }) {
   const { openFormat } = useApp()
-  const ref = toRef('character', item)
-  const items = targets
-    .map(([id, extra]) => [formatById(id), extra])
-    .filter(([f]) => f)
-    .map(([f, extra]) => {
-      const input = f.inputs.find((x) => x.type === 'character')
-      return { label: f.name, note: f.kind === 'video' ? 'Video' : 'Image', onClick: () => openFormat(f.id, { ...extra, [input.id]: ref }) }
-    })
+  const items = characterUses(item, openFormat)
   return (
     <div className="asset glass chr-card" style={{ '--i': Math.min(i, 12) }}>
       <div className="asset-cover">
@@ -127,7 +128,7 @@ function CharacterCard({ item, i }) {
         {item.images?.length > 1 && <i>{item.images.length}</i>}
       </div>
       <strong>{item.name}</strong>
-      <span className="muted">{item.trained ? 'Trained' : `${item.images?.length || 0} reference ${item.images?.length === 1 ? 'image' : 'images'}`}</span>
+      <span className="muted">{item.refset ? 'Reference set' : (item.images?.length || 0) + (item.images?.length === 1 ? ' reference image' : ' reference images')}</span>
       <div className="chr-card-acts">
         <UseMenu items={items} />
         <Link className="link-btn" to="/assets?tab=characters">Edit</Link>
@@ -145,6 +146,12 @@ export default function Character() {
   const art = ['average', 'bold', 'average', 'extreme'].map((k, i) => ({ cover: [covers.peach, covers.sky, covers.sun, covers.lilac][i], art: <TypeArt kind={k} /> }))
   const cards = [...faces, ...art].slice(0, 4)
 
+  // The reference set renders after the builder closes, so its progress shows above the list.
+  const built = (name, stage, why) => {
+    if (stage === 'building') setSaved(name + ' is saved. The reference set is rendering and takes the first pictures when it is done.')
+    else if (stage === 'done') setSaved(name + ' has a reference set. Use them in any format below.')
+    else setSaved(name + ' is saved with your photos, but the reference set failed: ' + why)
+  }
   const done = (name) => {
     setBuilding(false)
     if (name) {
@@ -157,11 +164,11 @@ export default function Character() {
     <main className="page chr">
       {!building && (
         <Hero cards={cards} title="Make a character that stays the same"
-          text="Upload photos from a few angles and train once. The same face then shows up in every image and video you make.">
+          text="Upload photos from a few angles and build a reference set once. The same face then shows up in every image and video you make.">
           <button type="button" className="btn-blue" onClick={() => { setSaved(''); setBuilding(true) }}><IconPlus />Create character</button>
         </Hero>
       )}
-      {building && <Builder onClose={done} />}
+      {building && <Builder onClose={done} onBuilt={built} />}
 
       <div className="studio-sub" ref={listRef}>
         <h2>Your characters</h2>
