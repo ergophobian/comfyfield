@@ -503,6 +503,19 @@ await test('lifecycle: a restarted server adopts its Pod, and a lost pod.json is
   assert.equal(b.rp.calls.findLast((c) => c.path === '/heartbeat').auth, 'Bearer tok')
 })
 
+await test('lifecycle: a live proof adopts only its own Pods, never the app Pod on the same account', async () => {
+  const c = setup()
+  c.opts.adoptPrefix = 'comfyfield-live-'
+  const pod = c.make()
+  c.rp.listExtra.push({ id: 'owners', name: 'comfyfield-mvo3nol4', desiredStatus: 'RUNNING', costPerHr: 0.7, env: { POD_TOKEN: 'tok' }, createdAt: new Date(c.clock.t).toISOString() })
+  c.rp.statusd = readyStatus()
+  assert.equal((await pod.tick()).phase, 'none', 'the app Pod is not adopted')
+  assert(!c.rp.calls.some((x) => x.method === 'DELETE'), 'and never ended')
+  const s = await pod.start()
+  assert.notEqual(s.pod.id, 'owners')
+  assert.throws(() => podManager({ ...c.opts, adoptPrefix: 'other-' }), /ComfyField Pods/)
+})
+
 await test('lifecycle: a lease waits for a starting Pod, downloads missing files and reports failures', async () => {
   await assert.rejects(setup().pod.lease(), (e) => e.code === 'no_pod' && e.message === NO_POD)
 
@@ -528,6 +541,18 @@ await test('lifecycle: a lease waits for a starting Pod, downloads missing files
   rp.statusd = readyStatus({ downloads: { 'checkpoints/c.safetensors': { state: 'failed', error: 'disk full' } } })
   await assert.rejects(pod.lease({ files: [{ repo: 'org/c', path: 'c.safetensors', dir: 'checkpoints', name: 'c.safetensors' }] }), /disk is too small for this run. Remove models on the Pods page, or start a Pod with a bigger disk/)
   assert.equal(pod.status().runs, 0, 'failed leases release themselves')
+})
+
+await test('quote: a stock level counts as in stock when RunPod leaves the GPU counts out', async () => {
+  const lowest = [{ uninterruptablePrice: 0.57, availableGpuCounts: null, stockStatus: 'Low' }, { uninterruptablePrice: 0.72, availableGpuCounts: null, stockStatus: null }, { uninterruptablePrice: 2.49, availableGpuCounts: [], stockStatus: 'High' }]
+  const net = async (url, init) => {
+    const body = JSON.parse(init.body)
+    const ids = [...body.query.matchAll(/(r\d+): gpuTypes/g)].map((m) => m[1])
+    return new Response(JSON.stringify({ data: Object.fromEntries(ids.map((id, i) => [id, [{ lowestPrice: lowest[i] || {} }]])) }), { status: 200 })
+  }
+  const pod = podManager({ fetch: net, keys: () => ({ key: 'k' }), dir: () => tmp })
+  const q = await pod.quote({ minVramGb: 24 })
+  assert.deepEqual(q.rungs.slice(0, 3).map((r) => r.inStock), [true, null, false], 'counts win when RunPod sends them')
 })
 
 await test('lifecycle: the sandbox runs a whole Pod life without RunPod', async () => {
