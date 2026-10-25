@@ -350,7 +350,11 @@
         0
       ],
       "video_frame_offset": 0,
-      "previous_frame_count": 5
+      "previous_frame_count": 5,
+      "previous_frames": [
+        "91",
+        0
+      ]
     }
   },
   "26": {
@@ -444,6 +448,29 @@
       "format": "mp4",
       "codec": "h264",
       "format.codec": "h264"
+    }
+  },
+  "90": {
+    "class_type": "LoadVideo",
+    "inputs": {
+      "file": "{{previous}}"
+    },
+    "_meta": {
+      "title": "Previous segment (optional)",
+      "optional": "previous"
+    }
+  },
+  "91": {
+    "class_type": "GetVideoComponents",
+    "inputs": {
+      "video": [
+        "90",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Previous segment frames (optional)",
+      "optional": "previous"
     }
   }
 }

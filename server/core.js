@@ -9,7 +9,8 @@ import { setTimeout as delay } from 'node:timers/promises'
 import { Comfy, JobFailed } from '@comfyorg/sdk'
 import { models as pinned, falCategories, podWorkflows, routerWriterModel } from '../src/lib/catalog.js'
 import { comfyVars, comfyRouterInput, falInput, estimate, fill, falEndpointFor, dropOptional, PICTURE_SLOTS } from '../shared/mapping.js'
-import { renderStitch, ffmpeg, findFfmpeg } from './stitch.js'
+import { renderStitch, ffmpeg, findFfmpeg, probeVideo, normalizeClip, cutFrames, joinChunks } from './stitch.js'
+import { CHAINS, clipChunks, extendChunks } from '../shared/longVideo.js'
 import { archOf, minVramOf, notOnCloud, podNeedsOf, volumeFor, RUNTIMES } from '../shared/modelFiles.js'
 import { DEFAULT_TIER, TIER_IDS } from '../shared/gpuTiers.js'
 import { REAL_LOOK } from '../shared/realism.js'
@@ -1000,7 +1001,7 @@ const unsetInput = (template, vars) => [...JSON.stringify(template).matchAll(/\{
 // edit's clip, and audio (a recording, or a saved voice's sample).
 export const UPLOAD_KEYS = {
   LoadImage: ['image', [...PICTURE_SLOTS, 'mask']],
-  LoadVideo: ['file', ['video', 'clipvideo']],
+  LoadVideo: ['file', ['video', 'clipvideo', 'previous']],
   LoadAudio: ['audio', ['audio', 'voice']],
 }
 export const uploadsOf = (template) => Object.entries(template).flatMap(([id, node]) => {
@@ -1086,6 +1087,94 @@ async function submitAndWait(client, wf, { apiKey, timeoutMs, signal, split }, o
   return job
 }
 
+// A run longer than one chunk of its graph (shared/longVideo.js) renders chunk by chunk, each one
+// continuing the one before, and returns one joined video. The chunks stay out of the Library; when a
+// chunk fails, the finished ones stay in the media folder so the error can say how far the run got.
+async function runChain(workflow, vars, opts) {
+  const spec = CHAINS[workflow]
+  const chunkOpts = { ...opts, chunk: true }
+  const one = () => runComfy(workflow, vars, chunkOpts)
+  if (spec.mode === 'extend' ? !(Number(vars.duration) > spec.first) : !vars.video) return one()
+  const binary = await findFfmpeg()
+  const base = path.join(home(), 'chain')
+  fs.mkdirSync(base, { recursive: true })
+  const dir = fs.mkdtempSync(path.join(base, 'run-'))
+  const made = []
+  const local = async (url, name) => {
+    const { buf, mime } = await comfyMedia(url)
+    const file = path.join(dir, `${name}.${mimeExt(mime)}`)
+    fs.writeFileSync(file, buf)
+    return file
+  }
+  const upload = (file) => {
+    const saved = saveMedia(fs.readFileSync(file), 'mp4')
+    made.push(saved.path)
+    return saved.url
+  }
+  const render = async (graph, chunkVars, i, total) => {
+    let files
+    try {
+      files = await runComfy(graph, chunkVars, chunkOpts)
+    } catch (e) {
+      // needs_pod and pod_too_small reach the app as they are, so it can still offer a Pod.
+      if (e.code) throw e
+      throw Object.assign(new Error(`Segment ${i + 1} of ${total} failed. ${e.message}`), { status: e.status })
+    }
+    made.push(...files.map((f) => f.path).filter(Boolean))
+    const video = files.find((f) => f.kind === 'video')
+    if (!video) throw new Error(`Segment ${i + 1} of ${total} returned no video.`)
+    return video
+  }
+  let joined
+  if (spec.mode === 'clip') {
+    const source = await local(vars.video, 'source')
+    // A clip ffmpeg cannot read goes to the graph as it is, which says what is wrong with it.
+    const probed = await probeVideo(source, { binary }).catch(() => null)
+    if (!probed) {
+      fs.rmSync(dir, { recursive: true, force: true })
+      return one()
+    }
+    const fps = Math.min(30, probed.fps)
+    const clip = await normalizeClip(source, path.join(dir, 'clip.mp4'), { start: Number(vars.start) || 0, duration: Number(vars.duration) || undefined, fps, binary })
+    const chunks = clipChunks(clip.frames, spec, fps)
+    if (chunks.length < 2) {
+      fs.rmSync(dir, { recursive: true, force: true })
+      return one()
+    }
+    const parts = []
+    let previous
+    for (const [i, c] of chunks.entries()) {
+      const cut = await cutFrames(clip.path, path.join(dir, `cut-${i}.mp4`), { from: c.from, count: c.count, fps, binary })
+      // The graph reads the whole cut; `previous` anchors its first frames to the chunk before.
+      const video = await render(workflow, { ...vars, video: upload(cut), start: 0, duration: c.count / fps + 1, previous }, i, chunks.length)
+      previous = video.url
+      parts.push({ file: await local(video.url, `chunk-${i}`), overlap: c.overlap })
+    }
+    joined = await joinChunks(parts, path.join(dir, 'joined.mp4'), { fps, blend: spec.blend, audio: clip.audio ? clip.path : undefined, binary })
+  } else {
+    const total = Number(vars.duration)
+    const seconds = extendChunks(total, spec)
+    const first = await render(workflow, { ...vars, duration: seconds[0], frames: seconds[0] * spec.fps + 1 }, 0, seconds.length)
+    const parts = [{ file: await local(first.url, 'chunk-0'), overlap: 0 }]
+    for (const [k, add] of seconds.slice(1).entries()) {
+      const i = k + 1
+      const last = parts[parts.length - 1].file
+      const frames = (await probeVideo(last, { binary })).frames
+      const count = Math.min(spec.tail, frames)
+      const tail = await cutFrames(last, path.join(dir, `tail-${i}.mp4`), { from: frames - count, count, fps: spec.fps, sound: true, binary })
+      // h3_extend returns the tail it was given, then the new frames.
+      const prompt = `Continue the video seamlessly from its last frame with the same subjects, camera, lighting and pace. ${vars.prompt || ''}`.trim()
+      const video = await render(spec.extend, { prompt, seed: vars.seed, video: upload(tail), start: 0, duration: count / spec.fps + 1, seconds: add }, i, seconds.length)
+      parts.push({ file: await local(video.url, `chunk-${i}`), overlap: count })
+    }
+    joined = await joinChunks(parts, path.join(dir, 'joined.mp4'), { fps: spec.fps, audio: 'chunks', duration: total, binary })
+  }
+  const file = { ...saveMedia(fs.readFileSync(joined.path), 'mp4'), kind: 'video', name: `${workflow}-long.mp4` }
+  for (const p of made) fs.rmSync(p, { force: true })
+  fs.rmSync(dir, { recursive: true, force: true })
+  return [file]
+}
+
 // Runs a bundled workflow on Comfy Cloud or the Pod, or in development on a local ComfyUI, and returns file URLs.
 // Speech models stay steady for about 20 to 30 seconds of speech; Chatterbox drifts and hisses past that.
 // A longer script, such as an audiobook chapter, reads in parts of at most this many characters.
@@ -1144,6 +1233,7 @@ async function runSpeechParts(workflow, vars, opts, max) {
 export async function runComfy(workflow, vars = {}, opts = {}) {
   const max = SPEECH_PARTS[workflow]
   if (max && !opts.part && typeof vars.prompt === 'string' && vars.prompt.length > max) return runSpeechParts(workflow, vars, opts, max)
+  if (CHAINS[workflow] && !opts.chunk) return runChain(workflow, vars, opts)
   const { createClient = (key, baseUrl) => comfyClient(baseUrl, key), lease = (o) => pod().lease(o), podPhase = () => pod().phaseNow(), podVram = () => pod().vramGb(), podRoom = () => pod().room(), podArch = () => pod().arch(), run = runType(), signal, retried = 0, pause = (ms, s) => delay(ms, undefined, s ? { signal: s } : undefined), patchGraph = (g) => g, onSubmitted, onComplete = () => {}, timeoutMs } = opts
   signal?.throwIfAborted()
   const original = workflowGraph(workflow, vars)

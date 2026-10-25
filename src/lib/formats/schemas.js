@@ -1616,6 +1616,7 @@ export const schemas = {
     "scail2_character_swap": [
       "duration",
       "image",
+      "previous",
       "prompt",
       "seed",
       "start",
@@ -1747,6 +1748,7 @@ export const schemas = {
     "wan_animate2": [
       "duration",
       "image",
+      "previous",
       "prompt",
       "seed",
       "start",
@@ -1931,6 +1933,12 @@ export const schemas = {
     ],
     "ugc_ad": [
       "audio"
+    ],
+    "scail2_character_swap": [
+      "previous"
+    ],
+    "wan_animate2": [
+      "previous"
     ]
   },
   "router": {

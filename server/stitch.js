@@ -144,3 +144,84 @@ export async function renderStitch(options, { home, mediaPath, binary, timeout, 
   fs.renameSync(path.join(dir, 'result.mp4'), output)
   return { url: `/media/${name}`, path: output, kind: 'video', aspect: opts.aspect, duration, width, height }
 }
+
+// Long video chains (shared/longVideo.js): read a clip's frame rate and frame count, cut chunks by frame
+// number, and join the rendered chunks over their overlap.
+export async function probeVideo(file, { binary, timeout } = {}) {
+  binary ||= await findFfmpeg()
+  const log = await ffmpeg(['-i', file, '-map', '0:v:0', '-c', 'copy', '-f', 'null', '-'], { binary, timeout, allowFailure: true })
+  const stream = /Stream #.*Video:.*/.exec(log)?.[0] || ''
+  const size = /, (\d{2,5})x(\d{2,5})/.exec(stream)
+  const fps = Number(/([\d.]+) fps/.exec(stream)?.[1] || /([\d.]+) tbr/.exec(stream)?.[1])
+  const frames = Number([...log.matchAll(/frame=\s*(\d+)/g)].pop()?.[1])
+  if (!size || !(fps > 0)) throw invalid('Could not read the clip frame rate. Use a supported video file.')
+  return { width: Number(size[1]), height: Number(size[2]), fps, frames: frames || 0, audio: /Stream #.*Audio:/.test(log) }
+}
+
+const chunkVideo = ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', '14', '-pix_fmt', 'yuv420p']
+
+// The trimmed part of a clip at a constant frame rate, so chunks cut by frame number line up.
+export async function normalizeClip(file, out, { start = 0, duration, fps, binary, timeout } = {}) {
+  binary ||= await findFfmpeg()
+  const info = await probeVideo(file, { binary, timeout })
+  const args = ['-y', '-ss', String(start), ...(duration ? ['-t', String(duration)] : []), '-i', file,
+    '-map', '0:v:0', ...(info.audio ? ['-map', '0:a:0', '-c:a', 'aac', '-ar', '48000', '-ac', '2'] : []),
+    '-vf', `fps=${fps},scale=trunc(iw/2)*2:trunc(ih/2)*2,setsar=1`, ...chunkVideo, out]
+  await ffmpeg(args, { binary, timeout })
+  return { ...(await probeVideo(out, { binary, timeout })), fps, path: out }
+}
+
+// `sound` keeps the clip's sound over the same frames, when it has any.
+export async function cutFrames(file, out, { from, count, fps, sound = false, binary, timeout } = {}) {
+  binary ||= await findFfmpeg()
+  const audio = sound && (await probeVideo(file, { binary, timeout })).audio
+  await ffmpeg(['-y', '-i', file, '-map', '0:v:0', '-vf', `trim=start_frame=${from}:end_frame=${from + count},setpts=PTS-STARTPTS`, '-r', String(fps), ...chunkVideo,
+    ...(audio ? ['-map', '0:a:0', '-af', `atrim=start=${from / fps}:end=${(from + count) / fps},asetpts=PTS-STARTPTS`, '-c:a', 'aac', '-ar', '48000', '-ac', '2'] : ['-an']), out], { binary, timeout })
+  return out
+}
+
+// Joins chunks whose first `overlap` frames repeat the end of the chunk before. With `blend` the overlap
+// crossfades; without it those frames drop. `audio` is a file to lay under the whole video, or 'chunks'
+// to join each chunk's own sound with its overlap dropped. `duration` trims the end.
+export async function joinChunks(chunks, out, { fps, blend = false, audio, duration, binary, timeout } = {}) {
+  binary ||= await findFfmpeg()
+  if (!chunks.length) throw invalid('Nothing to join.')
+  if (blend && audio === 'chunks') throw invalid('A blended join takes its sound from one file.')
+  const infos = []
+  for (const c of chunks) infos.push(await probeVideo(c.file, { binary, timeout }))
+  const { width, height } = infos[0]
+  const args = ['-y']
+  for (const c of chunks) args.push('-i', c.file)
+  const filters = chunks.map((c, i) => `[${i}:v]fps=${fps},scale=${width}:${height},setsar=1,format=yuv420p,settb=AVTB${blend ? '' : `,trim=start_frame=${c.overlap},setpts=PTS-STARTPTS`}[v${i}]`)
+  let length = 0
+  if (blend) {
+    let last = 'v0'
+    length = infos[0].frames / fps
+    chunks.slice(1).forEach((c, k) => {
+      const i = k + 1
+      const fade = Math.max(1, c.overlap) / fps
+      filters.push(`[${last}][v${i}]xfade=transition=fade:duration=${fade}:offset=${Math.max(0, length - fade)}[x${i}]`)
+      length += infos[i].frames / fps - fade
+      last = `x${i}`
+    })
+    filters.push(`[${last}]null[video]`)
+  } else {
+    length = chunks.reduce((sum, c, i) => sum + (infos[i].frames - c.overlap) / fps, 0)
+    if (audio === 'chunks') {
+      chunks.forEach((c, i) => {
+        filters.push(infos[i].audio ? `[${i}:a]aresample=48000,atrim=start=${c.overlap / fps}:end=${infos[i].frames / fps},asetpts=PTS-STARTPTS,apad=whole_dur=${(infos[i].frames - c.overlap) / fps}[a${i}]`
+          : `anullsrc=r=48000:cl=stereo,atrim=duration=${(infos[i].frames - c.overlap) / fps}[a${i}]`)
+      })
+      filters.push(`${chunks.map((_, i) => `[v${i}][a${i}]`).join('')}concat=n=${chunks.length}:v=1:a=1[video][sound]`)
+    } else filters.push(`${chunks.map((_, i) => `[v${i}]`).join('')}concat=n=${chunks.length}:v=1:a=0[video]`)
+  }
+  const total = duration ? Math.min(duration, length) : length
+  const sound = audio && audio !== 'chunks' ? chunks.length : null
+  if (sound != null) args.push('-i', audio)
+  args.push('-filter_complex', filters.join(';'), '-map', '[video]')
+  if (audio === 'chunks') args.push('-map', '[sound]')
+  else if (sound != null) args.push('-map', `${sound}:a:0?`)
+  args.push('-t', String(total), ...chunkVideo.slice(0, 4), '-crf', '18', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-ar', '48000', '-ac', '2', '-movflags', '+faststart', out)
+  await ffmpeg(args, { binary, timeout })
+  return { path: out, duration: total, width, height }
+}

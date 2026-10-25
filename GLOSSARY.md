@@ -72,6 +72,10 @@ _Avoid_: input size, base resolution
 The resolution Upscale delivers: 1080p, 1440p or 4K. Auto picks 1080p, or 4K when the source is already 1080p.
 _Avoid_: output size, final resolution
 
+**Segment**:
+One run of a graph inside a longer video. A clip longer than one segment of SCAIL-2 or Wan Animate 2, or an H3 run longer than 10 seconds, renders segment by segment, each continuing the one before, and the generation engine joins them into one video.
+_Avoid_: chunk (in copy), part, window
+
 ## Flows
 
 **Flows engine**:
