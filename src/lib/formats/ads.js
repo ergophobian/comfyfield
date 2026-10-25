@@ -39,7 +39,7 @@ export function linkToAds(angleIds) {
     settings: { aspect: '1:1' },
     steps: picked.map((angle) => ({
       id: angle.id, provider: 'comfy', workflow: 'klein_edit_canvas', kind: 'image', from: [],
-      prompt: `A {size} for the product in the first image. The product page says: {page}. This ad should ${angle.text}. Keep the product exactly as it is in the photo, with the same shape, label and colors. Clean layout, sharp commercial light, every word spelled right and easy to read. In the colors of the brand {brand}, if one is named.`,
+      prompt: `A {size} for the product in the first image. This ad should ${angle.text}. Keep the product exactly as it is in the photo, with the same shape, label and colors. Clean layout, sharp commercial light, every word spelled right and easy to read. In the colors of the brand {brand}, if one is named. What the product page says: {page}`,
       bindings: { count: 'count' }, settings: { aspect: '1:1' },
     })),
     outputs: picked.map((angle) => ({ step: angle.id, kind: 'image' })),
