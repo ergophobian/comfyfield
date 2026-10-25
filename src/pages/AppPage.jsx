@@ -9,7 +9,9 @@ import { AppGrid } from '../components/apps/AppCard.jsx'
 import { mainInput, pathFor, valuesFrom } from '../components/apps/data.js'
 import { IconAudio, IconChevron, IconCube, IconImage, IconSpark, IconVideo } from '../components/Icons.jsx'
 import { useApp } from '../lib/appContext.js'
-import { appsIn, categoryOf, formatById, formats, hubs, isWired } from '../lib/formats/index.js'
+import { appsIn, categoryOf, formatById, formats, hubs, isWired, yoursHub } from '../lib/formats/index.js'
+import { downloadFormat, removeFormat, shareFormatGist, useUserFormats } from '../lib/userFormats.js'
+import { originLabel } from '../../shared/flowShare.js'
 import { initialValues, missingInputs, visibleInputs } from '../lib/recipes.js'
 import { providerInfo } from '../lib/catalog.js'
 import { estimate, money, useModelMeta } from '../lib/cost.js'
@@ -24,6 +26,7 @@ export default function AppPage() {
   const { id } = useParams()
   const { pathname } = useLocation()
   const motion = pathname.startsWith('/motion')
+  const { ready } = useUserFormats()
   const found = formatById(id)
   const format = found && isWired(found) ? found : null
   const home = motion ? { to: '/motion', name: 'Motion presets' } : { to: '/apps', name: 'Apps' }
@@ -37,7 +40,7 @@ export default function AppPage() {
         <span aria-hidden="true">/</span>
         <span aria-current="page">{format ? format.name : 'Not found'}</span>
       </nav>
-      {format ? <AppView key={format.id} format={format} motion={motion} /> : (
+      {format ? <AppView key={format.id} format={format} motion={motion} /> : !ready ? null : (
         <div className="empty glass rise">
           <strong>Nothing lives at this address.</strong>
           <p>The {motion ? 'preset' : 'app'} may have been renamed or removed.</p>
@@ -85,7 +88,7 @@ function AppView({ format, motion }) {
     const pool = format.hub ? appsIn(format.hub) : formats.filter((f) => f.category === format.category)
     return pool.filter((f) => f.id !== format.id).slice(0, 10)
   }, [format])
-  const where = format.hub ? hubs.find((h) => h.id === format.hub)?.name : categoryOf(format.category, format.kind)?.name
+  const where = format.hub ? [yoursHub, ...hubs].find((h) => h.id === format.hub)?.name : categoryOf(format.category, format.kind)?.name
   const seeAll = motion ? '/motion' : format.hub ? `/apps?hub=${format.hub}` : homes[format.category] || `/apps?hub=${format.category}`
 
   const run = async (e) => {
@@ -143,6 +146,7 @@ function AppView({ format, motion }) {
           )}
           {error && !session && <p className="sheet-error">{error}</p>}
           {session && <FormatReview key={session.flow.id + session.flow.values.renderer} session={session} />}
+          <ShareFormat format={format} github={connections.github?.connected} />
           <div className="app-go">
             <button className="btn-blue" disabled={running || !wired || missing.length > 0 || !connected}>
               {running ? 'Working' : `Generate ${nouns[format.kind] || ''}`}
@@ -186,5 +190,40 @@ function AppView({ format, motion }) {
         </section>
       )}
     </>
+  )
+}
+
+// Download or gist a format, see where an imported one came from, or remove it from Yours.
+function ShareFormat({ format, github }) {
+  const navigate = useNavigate()
+  const [busy, setBusy] = useState(false)
+  const [gist, setGist] = useState('')
+  const [error, setError] = useState('')
+  const mine = format.hub === yoursHub.id
+  const when = format.origin?.at && new Date(format.origin.at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+  const share = async () => {
+    setBusy(true)
+    setError('')
+    try { setGist((await shareFormatGist(format)).url) } catch (e) { setError(e.message) } finally { setBusy(false) }
+  }
+  const remove = async () => {
+    try { await removeFormat(format.id); navigate('/apps') } catch (e) { setError(e.message) }
+  }
+  return (
+    <section className="app-share" aria-label="Share this format">
+      <h3>Share this format</h3>
+      {mine && format.origin && (
+        <p className="muted">{format.origin.url ? <a href={format.origin.url} target="_blank" rel="noreferrer">{originLabel(format.origin)}</a> : originLabel(format.origin)}{when ? `, ${when}` : ''}</p>
+      )}
+      <div className="app-share-row">
+        <button type="button" className="btn-soft sm" onClick={() => downloadFormat(format)}>Download format file</button>
+        {github
+          ? <button type="button" className="btn-soft sm" disabled={busy} onClick={share}>{busy ? 'Making the gist' : 'Share as a secret gist'}</button>
+          : <Link className="link-btn" to="/connections">Add a GitHub token to share a gist</Link>}
+        {mine && <button type="button" className="btn-soft sm" onClick={remove}>Remove from Yours</button>}
+      </div>
+      {gist && <p role="status">Secret gist ready: <a href={gist} target="_blank" rel="noreferrer">{gist}</a></p>}
+      {error && <p className="sheet-error" role="alert">{error}</p>}
+    </section>
   )
 }
