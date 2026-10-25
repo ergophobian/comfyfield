@@ -1,6 +1,6 @@
 // Flow execution rules, ported from PatchWork's WORKFLOW-SPEC.
 // Pure: no React, no fetch. Inject run(model, opts) -> files, writePrompt(input) -> text and
-// render(type, opts) -> file for nodes that render outside a provider (Blender).
+// render(type, opts) -> file for nodes that render outside a provider (Blender, Three.js).
 import { widgetTypes, widgetReady, widgetOptions } from '../../shared/widgetInputs.js'
 import { stitchInputs } from './stitch.js'
 
@@ -8,9 +8,10 @@ const byId = (flow, id) => flow.nodes.find((n) => n.id === id)
 const sources = (flow, id) => flow.edges.filter((e) => e.target === id).map((e) => e.source)
 const targets = (flow, id) => flow.edges.filter((e) => e.source === id).map((e) => e.target)
 const cmp = (a, b) => (a.row - b.row) || (a.take - b.take)
-export const executableTypes = ['model', 'writer', 'stitch', 'blender']
+export const renderTypes = ['blender', 'threejs']
+export const executableTypes = ['model', 'writer', 'stitch', ...renderTypes]
 const executable = (n) => executableTypes.includes(n.type)
-const renderKind = (n) => (n.data.output === 'video' ? 'video' : 'image')
+const renderKind = (n) => (n.type === 'threejs' || n.data.output === 'video' ? 'video' : 'image')
 
 export function topoOrder(flow) {
   const left = new Map(flow.nodes.map((n) => [n.id, sources(flow, n.id).length]))
@@ -104,7 +105,7 @@ export function createEngine({ run, writePrompt, stitch, render, onChange = () =
     if (n.type === 'image') return n.data.url ? [{ id: n.id, kind: 'image', url: n.data.url, row: 0, take: 0, prompt: '' }] : []
     if (n.type === 'model') return doneItems(id)
     if (n.type === 'stitch') return doneItems(id).filter((item) => !item.stale)
-    if (n.type === 'blender') return doneItems(id)
+    if (renderTypes.includes(n.type)) return doneItems(id)
     if (n.type === 'writer') return S[id]?.sent ? doneItems(id) : null
     if (n.type === 'approve') return gate(id).status === 'sent' ? gate(id).sent : null
     return []
@@ -143,6 +144,11 @@ export function createEngine({ run, writePrompt, stitch, render, onChange = () =
       const opts = { script, output: renderKind(n) }
       return script.trim() ? { blocked: false, units: [{ key: 'blender', row: 0, take: 0, opts, signature: JSON.stringify(opts) }] } : { blocked: true, units: [] }
     }
+    if (n.type === 'threejs') {
+      const { script = '', duration, width, height, fps } = n.data
+      const opts = { script, duration, width, height, fps }
+      return script.trim() ? { blocked: false, units: [{ key: 'threejs', row: 0, take: 0, opts, signature: JSON.stringify(opts) }] } : { blocked: true, units: [] }
+    }
     if (n.type === 'stitch') {
       const input = stitchInputs(flow, id, itemsOf, running)
       return { blocked: input.blocked, units: input.blocked ? [] : [{ key: 'stitch', row: 0, take: 0, opts: input.options, signature: input.signature }] }
@@ -151,6 +157,7 @@ export function createEngine({ run, writePrompt, stitch, render, onChange = () =
     if (!model) return { blocked: true, units: [] }
     let texts = []
     const images = []
+    const clips = []
     const inputs = {}
     let widgetOpts = {}
     let blocked = false
@@ -164,6 +171,8 @@ export function createEngine({ run, writePrompt, stitch, render, onChange = () =
           const written = out.filter((i) => i.kind === 'text').map((i) => i.text)
           if (written.length) { promptEdge = true; texts.push(...written) }
           images.push(...out.filter((i) => i.kind === 'image' && !i.inputType))
+          // A rendered or generated video (Three.js, Blender, Stitch, a video model) can be the model's video input.
+          clips.push(...out.filter((i) => i.kind === 'video' && !i.inputType))
           for (const item of out.filter((i) => i.inputType)) {
             inputs[item.id] = item.value
             widgetOpts = { ...widgetOpts, ...widgetOptions(item.inputType, item.value) }
@@ -173,11 +182,13 @@ export function createEngine({ run, writePrompt, stitch, render, onChange = () =
     }
     if (promptEdge && !texts.length) blocked = true
     if (!promptEdge && n.data.prompt?.trim()) texts = [n.data.prompt.trim()]
-    if (!texts.length && !images.length && !Object.keys(inputs).length) blocked = true
+    if (!texts.length && !images.length && !clips.length && !Object.keys(inputs).length) blocked = true
     if (blocked) return { blocked: true, units: [] }
 
     const takes = Math.max(1, n.data.takes || 1)
-    const base = { aspect: n.data.aspect, duration: n.data.duration, count: n.data.count || 1, ...widgetOpts, ...(Object.keys(inputs).length && { inputs }) }
+    // Like a Video input node, the first upstream clip is the video input; it does not add runs.
+    const clip = !widgetOpts.video && clips[0] ? { video: clips[0].url } : {}
+    const base = { aspect: n.data.aspect, duration: n.data.duration, count: n.data.count || 1, ...widgetOpts, ...clip, ...(Object.keys(inputs).length && { inputs }) }
     const units = []
     if (images.length) {
       images.forEach((img, k) => {
@@ -241,7 +252,7 @@ export function createEngine({ run, writePrompt, stitch, render, onChange = () =
     const n = byId(flow, id)
     const units = todo(flow, id)
     if (!units.length) return 0
-    const model = n.type === 'stitch' ? { kind: 'video' } : n.type === 'blender' ? { kind: renderKind(n) } : n.data.model || { kind: 'text' }
+    const model = n.type === 'stitch' ? { kind: 'video' } : renderTypes.includes(n.type) ? { kind: renderKind(n) } : n.data.model || { kind: 'text' }
     const pending = units.map((u) => ({
       id: `${id}:${u.key}`, unit: u.key, row: u.row, take: u.take, prompt: u.opts.prompt,
       kind: model.kind, aspect: u.opts.aspect, signature: u.signature, status: 'pending',
@@ -252,9 +263,9 @@ export function createEngine({ run, writePrompt, stitch, render, onChange = () =
       try {
         const files = await limit(async () => {
           if (n.type === 'stitch') return [await stitch(u.opts)]
-          if (n.type === 'blender') {
+          if (renderTypes.includes(n.type)) {
             if (!render) throw new Error('Local renders are not connected.')
-            return [await render('blender', u.opts, { stepId: id, unitId: u.key })]
+            return [await render(n.type, u.opts, { stepId: id, unitId: u.key })]
           }
           if (n.type !== 'writer') return run(model, u.opts, { stepId: id, unitId: u.key })
           if (!writePrompt) throw new Error('Prompt writing is not connected.')

@@ -13,6 +13,7 @@ import { routerEntry } from '../shared/routerModels.js'
 import { renderStitch } from './stitch.js'
 import { draftInstructions, parseDraft } from '../shared/flowDraft.js'
 import { renderBlender, blenderVersion } from './blender.js'
+import { renderThree } from './threejs.js'
 import { archOf, minVramOf, notOnCloud, podNeedsOf, volumeFor, RUNTIMES } from '../shared/modelFiles.js'
 import { CLOUD_USD_PER_GPU_SEC, DEFAULT_TIER, TIER_IDS } from '../shared/gpuTiers.js'
 
@@ -533,9 +534,19 @@ export async function blender(options, { render = renderBlender } = {}) {
   return item
 }
 
+// A Three.js node's render: headless Chrome draws the scene, ffmpeg makes an MP4 for media and the Library.
+export async function threejs(options, { render = renderThree } = {}) {
+  const file = await render(options, {
+    keep: (from) => ({ ...saveMedia(fs.readFileSync(from), 'mp4'), kind: 'video' }),
+  })
+  const [item] = await saveToLibrary([file], { model: 'Three.js', caption: 'Three.js render' })
+  return item
+}
+
 // Flow nodes that render on this machine (or a host it reaches) instead of a provider.
 export const render = (type, options) => {
   if (type === 'blender') return blender(options)
+  if (type === 'threejs') return threejs(options)
   throw Object.assign(new Error(`No local renderer for ${type} nodes.`), { status: 400 })
 }
 
