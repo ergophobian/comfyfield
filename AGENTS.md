@@ -29,7 +29,8 @@ Keys go in Connections (saved to `.comfyfield/keys.json`, gitignored) or `.env` 
 - `server/mcp.js`, `bin/comfyfield.js`: MCP server and CLI
 - `shared/mapping.js`: maps composer settings onto each model's inputs, and cost estimates
 - `src/lib/tools.js`: every tool page (name, nav menu, route, badge) and the open-weight models per kind. The top nav and Explore read from it
-- `src/App.jsx`: route table, and the shared format sheet via `useApp().openFormat` (`src/lib/appContext.js`)
+- `src/App.jsx`: route table, and `useApp().openFormat` (`src/lib/appContext.js`), which opens an image, video or audio format inside that composer (3D formats, with no composer yet, still open in the sheet)
+- `src/components/FormatPicker.jsx`, `ComposerFormat.jsx`: the composer's stacked picker (job, format, variant, with search) and the picked format's inputs inline
 - `src/pages/`: one page per tool (generators, studios, apps), plus Flows (Canvas), Library (Assets), Models and Connections
 - `src/lib/flowEngine.js`: Flows execution rules (see below)
 - `server/flows.js`, `shared/flowRules.js`: flows saved in `.comfyfield/flows.json`, shared by the app and the MCP flow tools; node types and connection rules (see `docs/flows-mcp.md`)
@@ -149,7 +150,7 @@ those planned workflows.
 `node scripts/format-ui-check.mjs` serves the production build (run `npx vite build`
 first) and uses local headless Chrome (`CHROME_PATH` overrides
 discovery) and a separate mock API, without loading provider routes or keys. It
-checks the app page, shared sheet, Library persistence, Create generation and
+checks the app page, Use in opening a format in the composer, Library persistence, Create generation and
 presets, and the 390px layout. It runs on all three CI operating systems and writes labeled mock screenshots
 under `research_notes/format-runner/`. `node scripts/verify.mjs` discovers and runs
 every `scripts/*-check*.mjs` check, including browser fixtures. All run in the

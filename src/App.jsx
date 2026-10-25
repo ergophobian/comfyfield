@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom'
+import { Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-router-dom'
 import TopBar from './components/nav/TopBar.jsx'
 import { FormatSheet } from './components/Formats.jsx'
 import Explore from './pages/Explore.jsx'
@@ -45,6 +45,8 @@ import PodSheet from './components/pod/PodSheet.jsx'
 import RunToasts from './components/RunToasts.jsx'
 import { usePicker } from './lib/usePicker.js'
 
+const composers = ['image', 'video', 'audio']
+
 export default function App() {
   // Lifted here so a render keeps going when you switch pages.
   const gens = useGenerations()
@@ -52,18 +54,22 @@ export default function App() {
   const [connections, setConnections] = useState({})
   const picker = usePicker(connections)
   const [sheet, setSheet] = useState(null)
+  const navigate = useNavigate()
   useEffect(() => { getConnections().then(setConnections) }, [])
   usePodPolling()
 
-  // One format sheet for the whole app, so any page, card or "Use in" menu can open a format.
+  // Any page, card or "Use in" menu can open a format. Image, video and audio formats open inside that
+  // medium's composer; 3D has no composer yet, so its formats still open in the sheet.
   const ctx = useMemo(() => ({
     gens, picker, connections,
     refreshConnections: () => getConnections().then(setConnections),
     openFormat: (f, initial) => {
       const format = typeof f === 'string' ? formatById(f) : f
-      if (format && isWired(format)) setSheet({ format, initial })
+      if (!format || !isWired(format)) return
+      if (composers.includes(format.kind)) navigate(`/${format.kind}`, { state: { handoff: { format: format.id, values: initial || {} } } })
+      else setSheet({ format, initial })
     },
-  }), [gens, picker, connections])
+  }), [gens, picker, connections, navigate])
 
   return (
     <AppCtx.Provider value={ctx}>

@@ -21,6 +21,8 @@ import { acceptsImage, uploadImage } from '../lib/providers.js'
 import { estimate, useBalance, useModelMeta } from '../lib/cost.js'
 import { flowFromBatch, openFlow } from '../lib/flowStore.js'
 import { covers } from '../lib/formats/parts.js'
+import FormatPicker from '../components/FormatPicker.jsx'
+import { FormatFields, FormatGo, useComposerFormat } from '../components/ComposerFormat.jsx'
 
 const MAX_REFS = 8
 const fan = [covers.peach, covers.dusk, covers.sky, covers.rose]
@@ -52,6 +54,7 @@ export default function ImageStudio() {
   const navigate = useNavigate()
   const balance = useBalance()
   const metaOf = useModelMeta([model])
+  const fmt = useComposerFormat('image')
   useHandoff((h) => {
     chooseModel(picker, h.model)
     if (h.prompt != null) { setBatchMode(false); setPrompt(h.prompt) }
@@ -164,12 +167,13 @@ export default function ImageStudio() {
 
       {(referenceError || error || gens.error) && <div className="notice glass error gen-notice">{referenceError || error || gens.error}{!referenceError && !error && gens.retry && <button type="button" className="link-btn" onClick={gens.retry}>{gens.retry.label || 'Retry'}</button>}</div>}
 
-      <form className={`composer glass gen-bar${dragging ? ' dragging' : ''}`} onSubmit={(e) => { e.preventDefault(); go() }}
+      <form className={`composer glass gen-bar${dragging ? ' dragging' : ''}${fmt.format ? ' has-format' : ''}`} onSubmit={(e) => { e.preventDefault(); if (fmt.format) fmt.run(); else go() }}
         onDragOver={(e) => { if (dropOk(e)) { e.preventDefault(); setDragging(true) } }}
         onDragLeave={(e) => !e.currentTarget.contains(e.relatedTarget) && setDragging(false)}
-        onDrop={(e) => { if (!canAttach) return; e.preventDefault(); setDragging(false); attach(e.dataTransfer.files) }}>
+        onDrop={(e) => { if (!canAttach || fmt.format) return; e.preventDefault(); setDragging(false); attach(e.dataTransfer.files) }}>
         <div className="composer-inner">
-          {(uploads.length > 0 || uploading > 0 || refs.length > 0) && (
+          {fmt.format && <FormatFields fmt={fmt} />}
+          {!fmt.format && (uploads.length > 0 || uploading > 0 || refs.length > 0) && (
             <div className="gen-attached">
               {uploads.map((u) => (
                 <span key={u.url} className="gen-thumb pop">
@@ -181,7 +185,7 @@ export default function ImageStudio() {
               <RefTags refs={refs} setRefs={setRefs} />
             </div>
           )}
-          <div className="gen-bar-body">
+          {!fmt.format && <div className="gen-bar-body">
             <div className="gen-bar-text" key={batchMode ? 'b' : 's'}>
               {batchMode ? <PromptList rows={rows} setRows={setRows} kind="image" /> : (
                 <MentionText up value={prompt} onChange={setPrompt} onPick={mention} rows={2} aria-label="Prompt"
@@ -191,9 +195,11 @@ export default function ImageStudio() {
             </div>
             <Segmented className="seg-sm" value={batchMode ? 'batch' : 'single'} onChange={(v) => setBatchMode(v === 'batch')}
               options={[{ value: 'single', label: 'Single' }, { value: 'batch', label: 'Batch' }]} />
-          </div>
+          </div>}
           <div className="gen-bar-foot">
             <div className="chips">
+              <FormatPicker kind="image" current={fmt.format} values={fmt.values} onPick={fmt.pick} onClear={fmt.clear} />
+              {!fmt.format && <>
               <div className="chip gen-icon">
                 <button type="button" aria-label="Add reference images" title={attachTitle} disabled={!canAttach || pictures.length + uploading >= maxRefs}
                   className={uploads.length ? 'lit' : ''} onClick={() => setPicking(true)}><IconPlus /></button>
@@ -218,13 +224,14 @@ export default function ImageStudio() {
                 </Pop>
               )}
               <Stepper value={count} onChange={setCount} label="Images per run" />
+              </>}
             </div>
-            <div className="foot-actions">
+            {fmt.format ? <FormatGo fmt={fmt} /> : <div className="foot-actions">
               {batchMode && prompts.length > 0 && !model.open && <button type="button" className="btn-soft" onClick={openAsFlow}>Open as flow</button>}
               <GoButton total={total} cost={costText(cost)} disabled={!total || !connected || uploading > 0 || enhancing || Boolean(referenceError)} />
-            </div>
+            </div>}
           </div>
-          <div className="gen-bar-note">
+          {!fmt.format && <div className="gen-bar-note">
             <StatusNote model={model} connected={connected} />
             {connected && (total > 0 ? (
               <span>
@@ -233,7 +240,7 @@ export default function ImageStudio() {
               </span>
             ) : <span>{batchMode ? 'Add prompts to see the total' : 'The cost shows on Generate before you run'}</span>)}
             {bal && <span>{bal}</span>}
-          </div>
+          </div>}
         </div>
         <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden
           onChange={(e) => { attach(e.target.files); e.target.value = '' }} />

@@ -1,5 +1,5 @@
 import { PageArt } from '../components/Art.jsx'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import Segmented from '../components/Segmented.jsx'
 import ModelPicker from '../components/ModelPicker.jsx'
@@ -20,6 +20,8 @@ import { IconAt, IconBook, IconFolder, IconMute, IconPlay, IconSound } from '../
 import { IconAspect, IconClock, IconImage, IconSpark, IconStack, IconVideo } from '../components/Icons.jsx'
 import { useApp } from '../lib/appContext.js'
 import { chooseModel, useHandoff } from '../lib/handoff.js'
+import FormatPicker from '../components/FormatPicker.jsx'
+import { FormatFields, FormatGo, useComposerFormat } from '../components/ComposerFormat.jsx'
 import { usePod } from '../lib/usePod.js'
 import { acceptsImage } from '../lib/providers.js'
 import { openModels } from '../lib/tools.js'
@@ -305,6 +307,7 @@ export default function VideoStudio() {
   const [error, setError] = useState(null)
   const [batches, addBatch] = useBatches('video')
   const [panel, sticks] = useSticky()
+  const fmt = useComposerFormat('video')
 
   const setTab = (t) => {
     const next = new URLSearchParams(params)
@@ -313,6 +316,8 @@ export default function VideoStudio() {
     setParams(next, { replace: true })
   }
   const choosePreset = (f) => { setPreset(f); if (tab !== 'create') setTab('create') }
+  // A format handed over from another page opens in Create.
+  useEffect(() => { if (fmt.format && tab !== 'create') setTab('create') }, [fmt.format])
 
   const explainer = tab === 'motion' ? (
     <div className="gen-explain">
@@ -353,10 +358,23 @@ export default function VideoStudio() {
       <aside className={`gen-panel glass${sticks ? ' stick' : ''}`} ref={panel} aria-label="Video settings">
         <PanelTabs tabs={panelTabs} value={tab} onChange={setTab} label="Video tools" />
         {error && <p className="gen-status error">{error}</p>}
-        {tab === 'motion' ? <MotionControl setError={setError} /> : (
-          <CreateVideo preset={preset} onPresets={() => setPicking(true)} setError={setError}
-            onRan={() => setMain('history')} addBatch={addBatch} />
-        )}
+        {tab === 'motion' ? <MotionControl setError={setError} /> : <>
+          <div className="fc-pick">
+            <FormatPicker kind="video" up={false} current={fmt.format} values={fmt.values} onPick={fmt.pick} onClear={fmt.clear} />
+            {!fmt.format && <span>or set up a shot below</span>}
+          </div>
+          {fmt.format && (
+            <form className="gen-form" onSubmit={(e) => { e.preventDefault(); fmt.run() }}>
+              <FormatFields fmt={fmt} />
+              <div className="gen-go-row"><FormatGo fmt={fmt} /></div>
+            </form>
+          )}
+          {/* Kept mounted while a format is open, so the shot setup is still there after Remove. */}
+          <div hidden={Boolean(fmt.format)}>
+            <CreateVideo preset={preset} onPresets={() => setPicking(true)} setError={setError}
+              onRan={() => setMain('history')} addBatch={addBatch} />
+          </div>
+        </>}
       </aside>
 
       <section className="gen-main">
