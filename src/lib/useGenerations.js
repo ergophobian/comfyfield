@@ -5,6 +5,7 @@ import { runFormat } from './formats/runner.js'
 import { preflightFlow } from './formats/preflight.js'
 import { waitJob, cancelJob, Cancelled } from './jobs.js'
 import { createRouterBatch } from './routerBatch.js'
+import { libraryChanged } from './flowStore.js'
 
 const KEY = 'comfyfield.library'
 const MAX_PARALLEL = 3
@@ -39,9 +40,13 @@ export function useGenerations() {
     setItems((xs) => [...files.filter((file) => !xs.some((item) => item.id === file.id)), ...xs])
   }
   const patch = (id, fn) => setItems((xs) => xs.map((x) => (x.id === id ? fn(x) : x)))
+  // Flow runs save on the server, so pick up new files after each flow action and when the Library opens.
+  const refresh = () => fetch('/api/library/generations').then((res) => res.ok ? res.json() : []).then(add).catch(() => {})
   useEffect(() => {
     fetch('/api/stitch/exports').then((res) => res.ok ? res.json() : []).then(add).catch(() => {})
-    fetch('/api/library/generations').then((res) => res.ok ? res.json() : []).then(add).catch(() => {})
+    refresh()
+    window.addEventListener(libraryChanged, refresh)
+    return () => window.removeEventListener(libraryChanged, refresh)
   }, [])
 
   useEffect(() => {
@@ -217,5 +222,5 @@ export function useGenerations() {
     setItems((xs) => xs.filter((x) => x.id !== id))
   }
 
-  return { items, error, retry: retryLast, busy, generate, generateFormat, add, cancel, toggleApprove, dismiss, clear: () => setItems([]) }
+  return { items, error, retry: retryLast, busy, generate, generateFormat, add, refresh, cancel, toggleApprove, dismiss, clear: () => setItems([]) }
 }

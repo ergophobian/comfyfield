@@ -43,11 +43,13 @@ export default function Generations({ gens }) {
   const q = query.trim().toLowerCase()
   const items = done.filter((i) => (filter === 'all' ? true : filter === 'approved' ? i.approved : i.kind === filter))
     .filter((i) => folder === 'all' || fs.of[i.id] === folder)
-    .filter((i) => !q || [i.caption, i.prompt, i.model].some((t) => t && String(t).toLowerCase().includes(q)))
+    .filter((i) => !q || [i.caption, i.prompt, i.model, i.flowName].some((t) => t && String(t).toLowerCase().includes(q)))
   const chosen = done.filter((i) => picked.includes(i.id))
   const current = fs.folders.find((f) => f.id === folder)
 
   useEffect(() => { if (folder !== 'all' && !current) setFolder('all') }, [folder, current])
+  // Flow runs and agents save on the server; fetch them each time the Library opens.
+  useEffect(() => { gens.refresh?.() }, [])
 
   const stopSelecting = () => { setSelecting(false); setPicked([]) }
   useEffect(() => {
@@ -146,6 +148,7 @@ export default function Generations({ gens }) {
                   </div>
                 )}
                 {copied === it.id && <span className="lib-toast pop">Prompt copied</span>}
+                {it.flowName && <span className="lib-flow" title={`Made in the flow ${it.flowName}`}>Flow · {it.flowName}</span>}
                 {it.kind !== 'audio' && <div className="result-cap">{it.model} · {it.caption}</div>}
               </div>
             )
