@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { run, writePrompt } from './providers.js'
-import { modelPrices } from './cost.js'
+import { modelPrices, runCost } from './cost.js'
+import { checkSpend } from './spendCap.js'
 import { runFormat } from './formats/runner.js'
 import { preflightFlow } from './formats/preflight.js'
 import { waitJob, cancelJob, Cancelled } from './jobs.js'
@@ -135,7 +136,9 @@ export function useGenerations() {
 
   // `after` also follows a retried take. Stable ids and the session retry adapter retain completed
   // format steps; the saved run retains outstanding Router calls and their request keys on reload.
-  function execute(model, opts, meta = {}, after, id = crypto.randomUUID(), retryStep) {
+  // `spendExtra` adds a follow-on run's estimate (Upscale) to this run's spend check; `spendCounted`
+  // marks that follow-on, already counted. Neither is kept on the item.
+  function execute(model, opts, { spendExtra = 0, spendCounted = false, ...meta } = {}, after, id = crypto.randomUUID(), retryStep) {
     cancelled.current.delete(id)
     // A Router input the model cannot take fails this item, not the caller's loop.
     let setupError
@@ -148,7 +151,14 @@ export function useGenerations() {
     const owner = meta.formatRunId || id
     clearError(meta.formatRunId ? owner : errorOwner.current)
     setItems((xs) => [{ id, pending: true, ...base, jobs: opts.routerBatch?.calls.map((call) => call.jobId).filter(Boolean) || [] }, ...xs.filter((x) => x.id !== id)])
-    return new Promise((resolve, reject) => {
+    // A run that would pass the session's spend cap asks first. A run resumed after a reload was counted when it started.
+    const own = runCost(model, opts)
+    const allowed = previous?.pending || spendCounted ? Promise.resolve(true) : checkSpend(own == null ? null : own + spendExtra)
+    return new Promise((resolve, reject) => allowed.then((ok) => {
+      if (!ok) {
+        setItems((xs) => xs.filter((x) => x.id !== id))
+        return reject(new Cancelled())
+      }
       waiting.current.push(async () => {
         if (cancelled.current.has(id)) return reject(new Cancelled())
         patch(id, (x) => ({ ...x, started: true }))
@@ -181,7 +191,7 @@ export function useGenerations() {
         }
       })
       pump()
-    })
+    }))
   }
 
   const generate = (model, opts, meta, after) => { execute(model, opts, meta, after).catch(() => {}) }

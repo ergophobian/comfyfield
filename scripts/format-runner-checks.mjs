@@ -288,7 +288,8 @@ for (const [format, values, options, code] of planningCases) {
 const details = await preflight(cloudMissing, { subject: 'A meadow' }, { requirements: offlineRequirements, runType: 'instant' })
 assert(details.steps[1].notOnCloud.length > 0)
 assert(details.steps[1].minVramGb > 0)
-assert.equal(details.cost.total, null, 'Unknown GPU prices stay unknown')
+assert.equal(details.cost.total.approx, true, 'Comfy Cloud steps are priced from GPU seconds, marked approximate')
+assert(details.cost.total.usd > 0)
 const alternate = { ...comfy, steps: [{ ...comfy.steps[0], workflow: 'flux3_klein_t2i' }] }
 const alternateCalls = []
 const cloudAlternate = await runFormat(alternate, { subject: 'A meadow' }, { runType: 'instant', run: async (model) => { alternateCalls.push(model.workflow); return [{ url: 'https://example.test/alternate.png' }] } })
@@ -354,8 +355,10 @@ for (const unit of ['gpu-second', 'GPU seconds', 'gpu_second']) {
   assert.deepEqual(estimate({}, meta, { executionSeconds: 12 }), { usd: 0.24, approx: false })
 }
 const gpuQuote = await preflight(routerFormat, { subject: 'A meadow' }, { requirements: offlineRequirements })
-assert.equal(gpuQuote.cost.steps[0].usd, null)
-assert.equal(gpuQuote.cost.total, null)
+// A GPU-second Router price with a typical run time gives an approximate quote.
+assert(gpuQuote.cost.steps[0].usd > 0)
+assert.equal(gpuQuote.cost.total.approx, true)
+assert.deepEqual(estimate({}, { price: { amount: 0.02, unit: 'gpu-second', seconds: 10 } }, { count: 2 }), { usd: 0.4, approx: true })
 
 const invalidSession = await failedRun(imageRecipe, {}, { run: async () => assert.fail('Invalid input cannot spend') })
 assert.equal(invalidSession.reason.code, 'invalid_format')

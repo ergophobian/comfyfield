@@ -26,6 +26,10 @@ export const GPU_SPEED = {
   'NVIDIA H100 80GB HBM3': 1.2,
   'NVIDIA H200': 1.35,
 }
+// Comfy Cloud bills GPU seconds on the reference GPU. About $4.54 per GPU hour: Comfy's published
+// RTX PRO 6000 rate, which matches the Cloud workflow rate.
+export const CLOUD_USD_PER_GPU_SEC = 4.54 / 3600
+
 export const speedOf = (rung) => rung.speed ?? GPU_SPEED[rung.gpuTypeId] ?? 1
 
 // A job's run time on the reference GPU: the longest `refSec` of its model files (shared/modelFiles.js),

@@ -698,6 +698,8 @@ code { font-size: .92em; }
 .form-sheet h3 { margin: 0; font-size: var(--text-xl); font-weight: 600; letter-spacing: -.02em; }
 .form-sheet-foot { display: flex; align-items: center; gap: 8px; padding-top: 6px; }
 .form-sheet-foot .grow { flex: 1; }
+.spend-ask p { margin: 0; font-size: var(--text-md); }
+.spend-ask p.muted { font-size: var(--text-sm); }
 .row2 { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; }
 .import { display: flex; align-items: center; gap: 8px; padding: 4px 4px 4px 14px; border-radius: var(--r-pill); background: var(--paper); border: 1px solid var(--blue-line); color: var(--muted); transition: border-color var(--dur-fast), box-shadow var(--dur-fast); }
 .import input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; font-size: var(--text-md); color: var(--ink); }

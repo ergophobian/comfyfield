@@ -4,6 +4,8 @@ import { providerInfo, plannedAccounts } from '../lib/catalog.js'
 import { getConnections, saveConnection, testConnection } from '../lib/providers.js'
 import { useApp } from '../lib/appContext.js'
 import { refreshPod } from '../lib/usePod.js'
+import { setSpendCap, useSpend } from '../lib/spendCap.js'
+import { money } from '../lib/cost.js'
 
 function Provider({ id, info, state, onSaved }) {
   const [values, setValues] = useState({})
@@ -58,6 +60,41 @@ function Provider({ id, info, state, onSaved }) {
   )
 }
 
+// Not a key: the optional spend cap for this session, kept in this browser.
+function SpendCap() {
+  const { cap, spent } = useSpend()
+  const [value, setValue] = useState('')
+  const [msg, setMsg] = useState(null)
+  const save = () => {
+    const n = parseFloat(value)
+    if (!(n > 0)) return setMsg('The cap is a dollar amount above 0.')
+    setSpendCap(n)
+    setValue('')
+    setMsg('Saved')
+  }
+  const off = () => { setSpendCap(0); setMsg('Cap removed') }
+
+  return (
+    <div className="conn glass spend-cap">
+      <div className="conn-top">
+        <h3>Spend cap</h3>
+        <span className={`status${cap ? ' ok' : ''}`}>{cap ? `${money(cap)} per session` : 'Off'}</span>
+      </div>
+      <p>Optional. A run that would take this session past the cap asks first. It counts the estimate of each run you start in this tab, on Comfy Cloud, Comfy Router and every provider with a price.</p>
+      <div className="field">
+        <label htmlFor="spend-cap">Cap in US dollars</label>
+        <input id="spend-cap" inputMode="decimal" value={value} onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && save()} placeholder={cap ? String(cap) : 'For example 5'} autoComplete="off" />
+      </div>
+      <div className="conn-actions">
+        <button className="btn-blue" onClick={save} disabled={!value.trim()}>Save cap</button>
+        {cap && <button type="button" className="link-btn" onClick={off}>Remove</button>}
+        <span className="muted">{msg || (spent > 0 ? `This session: about ${money(spent)}` : 'Nothing spent this session')}</span>
+      </div>
+    </div>
+  )
+}
+
 export default function Connections() {
   const { refreshConnections } = useApp()
   const [state, setState] = useState({})
@@ -74,6 +111,7 @@ export default function Connections() {
         {Object.entries(providerInfo).filter(([, i]) => !i.soon).map(([id, info]) => (
           <Provider key={id} id={id} info={info} state={state[id]} onSaved={refresh} />
         ))}
+        <SpendCap />
       </div>
       <div className="note glass">
         <strong>Coming next: account sign-in</strong>

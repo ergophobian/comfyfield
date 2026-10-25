@@ -161,7 +161,10 @@ await test('Router references keep their order, unsupported inputs fail, and pri
   const multi = comfyRouterInput('byteplus/dreamina-seedance-2-5-260628', { prompt: 'Blend', aspect: '16:9', images })
   assert.deepEqual(multi.content.slice(1).map((item) => [item.image_url.url, item.role]), images.map((url) => [url, 'reference_image']))
   assert.equal(multi.ratio, '16:9')
-  assert.equal(await core.estimateCost({ model: 'comfy-router-flux-max' }), null)
+  // GPU-second prices use a typical run time and say so.
+  const fluxMax = await core.estimateCost({ model: 'comfy-router-flux-max' })
+  assert.equal(fluxMax.approx, true)
+  assert(Math.abs(fluxMax.usd - 56 * 0.266 / 211) < 1e-10)
   assert.equal((await core.estimateCost({ model: 'comfy-router-kontext', count: 3 })).usd, 0.12)
   assert(Math.abs((await core.estimateCost({ model: 'comfy-router-ltx', duration: 10 })).usd - 1.287) < 1e-10)
   assert.equal((await core.estimateCost({ model: 'comfy-router-speech', prompt: 'a'.repeat(1000) })).usd, 0.0572)
