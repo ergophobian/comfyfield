@@ -43,14 +43,14 @@ export const music = [
     blurb: 'Add a song and get a music video cut to it.',
     job: 'A music video cut to your song', shape: 'pipeline',
     runsOn: 'LTX-2.5 audio to video',
-    output: 'Six shots that follow the song, joined into one video with it',
+    output: 'Six shots that follow the song, joined into one video with it (18 to 30 seconds)',
     inputs: [
       { id: 'song', type: 'audio', label: 'Song' },
       artist, story, look,
       { id: 'pace', type: 'choice', label: 'Cut every', default: '5', options: [
-        { id: '3', label: '3 seconds (18 second video)', params: { duration: 3 } },
-        { id: '4', label: '4 seconds (24 second video)', params: { duration: 4 } },
-        { id: '5', label: '5 seconds (30 second video)', params: { duration: 5 } },
+        { id: '3', label: '3 seconds', params: { duration: 3 } },
+        { id: '4', label: '4 seconds', params: { duration: 4 } },
+        { id: '5', label: '5 seconds', params: { duration: 5 } },
       ] },
       shape,
     ],
