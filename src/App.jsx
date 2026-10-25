@@ -43,6 +43,7 @@ import { useGenerations } from './lib/useGenerations.js'
 import { usePodPolling } from './lib/usePod.js'
 import PodSheet from './components/pod/PodSheet.jsx'
 import RunToasts from './components/RunToasts.jsx'
+import SpendAsk from './components/SpendAsk.jsx'
 import { usePicker } from './lib/usePicker.js'
 
 export default function App() {
@@ -115,6 +116,7 @@ export default function App() {
       </div>
       <PodSheet />
       <RunToasts />
+      <SpendAsk />
       {sheet && <RecipeSheet key={sheet.format.id} recipe={sheet.format} initial={sheet.initial} gens={gens} connections={connections} onClose={() => setSheet(null)} />}
     </AppCtx.Provider>
   )

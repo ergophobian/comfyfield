@@ -34,6 +34,14 @@ export function useModelMeta(models) {
 
 export { estimate }
 
+// One run's estimate from what is already loaded, for the spend cap. Null when the price is unknown.
+export function runCost(model, opts = {}) {
+  // A Pod-only model bills by the hour on the Pod, not per run.
+  if (model.provider === 'comfy' && model.pod) return null
+  const meta = model.provider === 'fal' ? cache.get(model.model) || {} : { price: model.price }
+  return estimate(model, meta, { ...opts, takes: 1, chars: opts.prompt?.length || 0 })?.usd ?? null
+}
+
 export const money = (n) => (n < 0.01 ? '<$0.01' : n < 10 ? `$${n.toFixed(2)}` : `$${Math.round(n)}`)
 
 export function useBalance() {

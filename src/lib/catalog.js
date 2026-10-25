@@ -10,8 +10,10 @@ export const wanSizes = { '16:9': [1280, 720], '9:16': [720, 1280], '1:1': [960,
 // provider 'comfy' runs public/workflows/<workflow>.json; 'fal' fills inputs from the model's schema.
 export const models = [
   // Router prices: docs.comfy.org/development/comfy-router/pricing, checked 2026-10-19.
-  { id: 'comfy-router-flux', kind: 'image', provider: 'comfyRouter', name: 'Flux 2 Pro', note: 'Images and edits with up to nine references. Uses Comfy credits.', model: 'bfl/flux-2-pro', maxImages: 9, price: { amount: 0.266 / 211, unit: 'gpu-second' } },
-  { id: 'comfy-router-flux-max', kind: 'image', provider: 'comfyRouter', name: 'Flux 2 max', note: 'Detailed images and edits with up to nine references.', model: 'bfl/flux-2-max', maxImages: 9, price: { amount: 0.266 / 211, unit: 'gpu-second' } },
+  // Flux 2 bills GPU seconds. `seconds` is a typical image, for the estimate before a run: fal lists Flux 2
+  // Pro at $0.03 and max at $0.07 per megapixel, about 24 and 56 seconds at this rate.
+  { id: 'comfy-router-flux', kind: 'image', provider: 'comfyRouter', name: 'Flux 2 Pro', note: 'Images and edits with up to nine references. Uses Comfy credits.', model: 'bfl/flux-2-pro', maxImages: 9, price: { amount: 0.266 / 211, unit: 'gpu-second', seconds: 24 } },
+  { id: 'comfy-router-flux-max', kind: 'image', provider: 'comfyRouter', name: 'Flux 2 max', note: 'Detailed images and edits with up to nine references.', model: 'bfl/flux-2-max', maxImages: 9, price: { amount: 0.266 / 211, unit: 'gpu-second', seconds: 56 } },
   { id: 'comfy-router-kontext', kind: 'image', provider: 'comfyRouter', name: 'Flux Kontext pro', note: 'Prompted edits with up to four references.', model: 'bfl/flux-kontext-pro', maxImages: 4, aspects: ['1:1', '16:9', '9:16', '4:5'], price: { amount: 0.04, unit: 'image' } },
   { id: 'comfy-router-photon', kind: 'image', provider: 'comfyRouter', name: 'Photon flash', note: 'Low cost images from a text prompt.', model: 'luma/photon-flash-1', aspects: ['1:1', '16:9', '9:16', '4:3', '3:4', '21:9'], price: { amount: 0.5733 / 211, unit: 'image' } },
   { id: 'comfy-router-seedream', kind: 'image', provider: 'comfyRouter', name: 'Seedream 5.0 flash', note: 'Low cost images and edits with up to ten references.', model: 'byteplus/seedream-5-0-flash-260915', maxImages: 10, price: { amount: 5.4311 / 211, unit: 'image' } },

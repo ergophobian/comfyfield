@@ -79,7 +79,9 @@ export default function ImageStudio() {
   const prompts = batchMode ? rows.map((r) => r.text.trim()).filter(Boolean) : prompt.trim() ? [prompt.trim()] : []
   const total = prompts.length * count
   const avgChars = prompts.reduce((n, p) => n + p.length, 0) / Math.max(1, prompts.length)
-  const each = estimate(model, metaOf(model), { aspect: ratio, count: perCall, duration: 5, takes: calls, chars: avgChars })
+  // A Pod bills by the hour, not per run, so a Pod run shows no per-run estimate.
+  const onPod = model.provider === 'comfy' && (pod?.phase === 'ready' || model.pod)
+  const each = onPod ? null : estimate(model, metaOf(model), { aspect: ratio, count: perCall, duration: 5, takes: calls, chars: avgChars })
   const cost = each && prompts.length ? { usd: each.usd * prompts.length, approx: each.approx } : null
   const bal = !model.open && balanceText(balance, model.provider)
 

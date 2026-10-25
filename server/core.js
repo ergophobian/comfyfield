@@ -12,7 +12,7 @@ import { comfyVars, comfyRouterInput, falInput, estimate, fill, falEndpointFor, 
 import { routerEntry } from '../shared/routerModels.js'
 import { renderStitch } from './stitch.js'
 import { archOf, minVramOf, notOnCloud, podNeedsOf, volumeFor, RUNTIMES } from '../shared/modelFiles.js'
-import { DEFAULT_TIER, TIER_IDS } from '../shared/gpuTiers.js'
+import { CLOUD_USD_PER_GPU_SEC, DEFAULT_TIER, TIER_IDS } from '../shared/gpuTiers.js'
 
 import { podManager, GPU_LADDER, IDLE_CHOICES, POD_VOLUMES, STOPPED_DISK_USD_GB_MONTH, idleMinutes } from './pod.js'
 import { sandboxFetch } from './podSandbox.js'
@@ -65,9 +65,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 // The one Pod manager for this process. COMFYFIELD_POD_SANDBOX swaps RunPod and the Pod for fakes.
 let podOne
 const sandboxed = () => Boolean(process.env.COMFYFIELD_POD_SANDBOX)
+export { CLOUD_USD_PER_GPU_SEC }
 // Comfy Cloud runs of the last day, so the app can say when a session would cost less on a Pod.
-// About $4.54 per GPU hour: Comfy's published RTX PRO 6000 rate, which matches the Cloud workflow rate.
-export const CLOUD_USD_PER_GPU_SEC = 4.54 / 3600
 const HOUR = 3_600_000
 const cloudRunsFile = () => path.join(home(), 'cloud-runs.json')
 function readCloudRuns() {
