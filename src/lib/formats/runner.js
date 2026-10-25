@@ -1,5 +1,5 @@
 import { createEngine, downstreamOf } from '../flowEngine.js'
-import { initialValues, missingInputs, visibleInputs } from '../recipes.js'
+import { initialValues, missingInputs, visibleInputs } from './values.js'
 import { stepModel, stepOptions } from './options.js'
 import { validateFormat } from './validate.js'
 import { preflightFlow } from './preflight.js'

@@ -2,12 +2,12 @@ import React, { useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { useGenerations } from '../src/lib/useGenerations.js'
 import { BrowserRouter } from 'react-router-dom'
-import { RecipeSheet } from '../src/components/Recipes.jsx'
+import { FormatSheet } from '../src/components/Formats.jsx'
 import { models } from '../src/lib/catalog.js'
 import Results from '../src/components/Results.jsx'
 
 const format = {
-  id: 'hook-runner', name: 'Hook runner', job: 'Check the runner', cover: '/mock-result.png', shape: 'preset', kind: 'image',
+  id: 'hook-runner', name: 'Hook runner', job: 'photo', cover: '/mock-result.png', shape: 'preset', kind: 'image',
   inputs: [{ id: 'subject', type: 'text', label: 'Subject' }],
   steps: [{ id: 'generate', model: 'comfy-router-photon', kind: 'image', prompt: '{subject}' }],
   outputs: [{ step: 'generate', kind: 'image' }],
@@ -31,7 +31,7 @@ function Fixture() {
       }).catch(() => {})
     }}>Generate cancellable takes</button>
     <button id="writer-sheet" onClick={() => setSheet(true)}>Open writer sheet</button>
-    {sheet && <RecipeSheet recipe={{ ...format, writer: 'Write a fixture prompt' }} gens={gens} connections={{ comfy: { connected: true } }} initial={{ subject: 'Sheet writer' }} onClose={() => setSheet(false)} />}
+    {sheet && <FormatSheet format={{ ...format, writer: 'Write a fixture prompt' }} gens={gens} connections={{ comfy: { connected: true } }} initial={{ subject: 'Sheet writer' }} onClose={() => setSheet(false)} />}
     <button id="batch" onClick={() => gens.generate(model, { prompt: 'A quiet field at sunrise', aspect: '1:1', count: 3 })}>Generate three</button>
     <button id="cancel" disabled={!gens.items.some((i) => i.pending && i.jobs?.length)} onClick={() => gens.cancel(gens.items.find((i) => i.pending).id)}>Cancel run</button>
     <button id="retry" disabled={!gens.retry} onClick={gens.retry}>Retry</button>

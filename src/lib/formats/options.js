@@ -1,4 +1,4 @@
-import { recipeOptions } from '../recipes.js'
+import { formatOptions } from './values.js'
 import { models } from '../catalog.js'
 
 export function selectedStep(format, step, values = {}) {
@@ -22,7 +22,7 @@ export function stepModel(format, step, values) {
 
 export function stepOptions(format, step, values) {
   step = selectedStep(format, step, values)
-  const opts = recipeOptions({ ...format, prompt: step.prompt ?? format.prompt ?? '', params: step.params || {}, settings: step.settings || format.settings || {} }, values)
+  const opts = formatOptions({ ...format, prompt: step.prompt ?? format.prompt ?? '', params: step.params || {}, settings: step.settings || format.settings || {} }, values)
   for (const [field, slot] of Object.entries(step.bindings || {})) {
     const value = bindingValue(values, slot)
     // An empty optional field can stand for a value the model reads, such as MiniMax's [Instrumental].

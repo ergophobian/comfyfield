@@ -75,7 +75,7 @@ export function SkillRow({ skill, i = 0 }) {
 
 export function SkillCard({ skill, i = 0 }) {
   return (
-    <Link to={`/skills/${skill.id}`} className="recipe-card skill-card rise" style={{ '--d': `calc(${Math.min(i, 12)} * var(--stagger))` }}>
+    <Link to={`/skills/${skill.id}`} className="format-card skill-card rise" style={{ '--d': `calc(${Math.min(i, 12)} * var(--stagger))` }}>
       <SkillCover skill={skill} />
       <strong>{skill.name}</strong>
       <small>{skill.blurb}</small>

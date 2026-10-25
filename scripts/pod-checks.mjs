@@ -2047,7 +2047,7 @@ await test('uploads: a graph takes more pictures, a mask and audio, and an optio
   assert.equal(dropOptional(graph, { image: 'a', image3: 'b' }), graph, 'with the file, nothing changes')
   assert.deepEqual(core.uploadsOf(graph).map((u) => `${u.id}.${u.field}=${u.key}`), ['1.image=image', '2.image=image3', '5.image=mask', '6.audio=audio', '7.audio=voice'], 'only known slots upload')
 
-  const { fileSlots } = await import('../src/lib/recipes.js')
+  const { fileSlots } = await import('../src/lib/formats/values.js')
   const tryOn = { inputs: [{ id: 'person', type: 'image' }, { id: 'garment', type: 'image' }, { id: 'garment2', type: 'image', optional: true }, { id: 'character', type: 'character' }, { id: 'track', type: 'audio' }] }
   const slots = fileSlots(tryOn, { person: { url: '/p.png' }, garment: { url: '/g.png' }, garment2: null, character: { name: 'Mia', images: ['/mia.png'] }, track: { url: '/a.mp3' } })
   assert.deepEqual(slots, { pictures: ['/p.png', '/g.png', null, '/mia.png'], audio: '/a.mp3', voice: null }, 'an empty optional input keeps its slot')

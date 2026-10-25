@@ -86,7 +86,7 @@ export default function Motion() {
       )}
 
       {list.length > 0 ? (
-        <div className="recipe-grid app-grid" key={tab}>
+        <div className="format-grid app-grid" key={tab}>
           {list.map((f, i) => (picking
             ? <AppCard key={f.id} format={f} i={i} rise={false} picked={picked.includes(f.id)} disabled={!canMix(f)} onPick={toggle} />
             : <AppCard key={f.id} format={f} i={i} rise={!touched} to={`/motion/${f.id}`} />))}

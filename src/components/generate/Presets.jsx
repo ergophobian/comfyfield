@@ -44,9 +44,9 @@ export function PresetCard({ preset, model, onChange }) {
 
 function Tile({ f, on, onPick, i }) {
   return (
-    <button type="button" className={`recipe-card gen-tile rise${on ? ' on' : ''}`} aria-pressed={on}
+    <button type="button" className={`format-card gen-tile rise${on ? ' on' : ''}`} aria-pressed={on}
       style={{ '--d': `calc(${Math.min(i, 12)} * var(--stagger))` }} onClick={() => onPick(f)}>
-      <span className="recipe-cover" style={{ background: f.cover }}><ArtImage id={f.id} alt={`${f.name} example`} /></span>
+      <span className="format-cover" style={{ background: f.cover }}><ArtImage id={f.id} alt={`${f.name} example`} /></span>
       <strong>{f.name}</strong>
       <small>{f.blurb}</small>
     </button>
@@ -82,13 +82,13 @@ export function PresetPicker({ value, onPick, onClose }) {
           <button type="button" className="icon-btn" onClick={onClose} aria-label="Close"><IconClose /></button>
         </header>
         <div className="gen-presets-body">
-          <div className="recipe-grid">
+          <div className="format-grid">
             <Tile f={general} i={0} on={value.id === general.id} onPick={pick} />
           </div>
           {groupsOf(list).map(([g, fs]) => (
             <section key={g}>
               <h3>{g}<span className="muted">{fs.length}</span></h3>
-              <div className="recipe-grid">
+              <div className="format-grid">
                 {fs.map((f, i) => <Tile key={f.id} f={f} i={i} on={f.id === value.id} onPick={pick} />)}
               </div>
             </section>

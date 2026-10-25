@@ -15,6 +15,8 @@ import { useApp } from '../lib/appContext.js'
 import { estimate, useBalance, useModelMeta } from '../lib/cost.js'
 import { formatById } from '../lib/formats/index.js'
 import { covers } from '../lib/formats/parts.js'
+import FormatPicker from '../components/FormatPicker.jsx'
+import { FormatFields, FormatGo, useComposerFormat } from '../components/ComposerFormat.jsx'
 
 const modes = [
   { value: 'speech', label: 'Text to speech' },
@@ -83,6 +85,7 @@ export default function AudioStudio() {
   const [main, setMain] = useState('history')
   const [error, setError] = useState(null)
   const [panel, sticks] = useSticky()
+  const fmt = useComposerFormat('audio')
   const balance = useBalance()
   const metaOf = useModelMeta([model])
 
@@ -131,7 +134,17 @@ export default function AudioStudio() {
       <aside className={`gen-panel glass${sticks ? ' stick' : ''}`} ref={panel} aria-label="Audio settings">
         <PanelTabs tabs={modes} value={mode} onChange={setMode} label="Audio modes" />
         {error && <p className="gen-status error">{error}</p>}
-        <form className="gen-form" onSubmit={go} key={mode}>
+        <div className="fc-pick">
+          <FormatPicker kind="audio" up={false} current={fmt.format} values={fmt.values} onPick={fmt.pick} onClear={fmt.clear} />
+          {!fmt.format && <span>or write a script below</span>}
+        </div>
+        {fmt.format && (
+          <form className="gen-form" onSubmit={(e) => { e.preventDefault(); fmt.run() }}>
+            <FormatFields fmt={fmt} />
+            <div className="gen-go-row"><FormatGo fmt={fmt} /></div>
+          </form>
+        )}
+        <form className="gen-form" onSubmit={go} key={mode} hidden={Boolean(fmt.format)}>
           {mode === 'speech' && (
             <>
               {speech && <VoicePicker value={voice} onChange={setVoice} tag="Optional" />}

@@ -28,7 +28,7 @@ Video times are seconds. The uploaded source is preserved. Trim start/end and th
 
 `shared/widgetInputs.js` exports `widgetTypes`, `widgetReady` and `widgetOptions`.
 
-`recipeOptions(format, values)` keeps every ready widget in `opts.inputs[input.id]`. It also fills the existing image URLs, explicit provider fields, video media URLs and mask `media[<id>Strokes]` for compatibility. Conditional and optional slots follow the existing rules. Required slots remain incomplete while a mask or face selection is unsaved.
+`formatOptions(format, values)` keeps every ready widget in `opts.inputs[input.id]`. It also fills the existing image URLs, explicit provider fields, video media URLs and mask `media[<id>Strokes]` for compatibility. Conditional and optional slots follow the existing rules. Required slots remain incomplete while a mask or face selection is unsaved.
 
 Flow nodes store the same value at `node.data.value`. Their outputs carry `inputType` and `value`, including through approval gates. Plans expose the full values in `opts.inputs[node.id]`, with convenience options from `widgetOptions`: `image`/`mask`, `image`/`face`, `video`/`trim`/`poster`/`posterTime`, or `image`/`crop`/`cropAspect`. Widget references supplement source image rows rather than creating extra generations. Use `opts.inputs` when combining several selections; convenience fields describe the last connected widget of each kind. Existing source image rows supply `opts.image` when present.
 

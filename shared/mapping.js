@@ -35,7 +35,7 @@ export function dropOptional(graph, vars) {
   }]))
 }
 
-// A motion drawing's arrows, as recipeOptions keeps them, stand in for a mask.
+// A motion drawing's arrows, as formatOptions keeps them, stand in for a mask.
 const motionStrokes = (o) => Object.entries(o.media || {}).find(([k]) => k.endsWith('Strokes'))?.[1]
 
 // Upload slots a graph can take besides `image` and `video`.
@@ -43,7 +43,7 @@ export const PICTURE_SLOTS = ['image', 'image2', 'image3', 'image4', 'image5']
 
 // `sizes` lets a model use its own canvas per aspect ratio, for example multiples of 64 for LTX-2.5.
 // A video edit reads the trimmed part of its clip: `start` and `duration` in seconds. A format's
-// pictures fill image, image2, ... in the order it lists them (`slots`, from recipeOptions), and a
+// pictures fill image, image2, ... in the order it lists them (`slots`, from formatOptions), and a
 // saved character or product stands in with its first image (a brand logo never does). Without slots (the composer) attached images fill them.
 export function comfyVars(kind, o, sizes) {
   // Audio and 3D runs have no shape; their graphs read no canvas, so a square stands in.

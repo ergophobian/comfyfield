@@ -46,7 +46,7 @@ export const remove = async (type, id) => {
 
 export const importUrl = (url) => call('/api/library/import', 'POST', { url })
 
-// Shared across the app: composer, recipes and flows read the same lists.
+// Shared across the app: composer, formats and flows read the same lists.
 export function useLibrary() {
   const snap = useSyncExternalStore(subscribe, () => state)
   useEffect(() => { if (!started) { started = true; refresh() } }, [])

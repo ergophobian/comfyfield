@@ -8,7 +8,7 @@ responses. It does not load the real provider routes or read keys. Media labeled
 - [Desktop app result](mock-relight-desktop.png): upload, lighting choice and completed format result.
 - [390px app result](mock-relight-mobile.png): the same app and result without horizontal overflow.
 - [Library after reload](mock-library-desktop.png): persisted format output.
-- [Shared format sheet](mock-shared-sheet-desktop.png): Library “Use in” prefills Upscale; Run saves a second result.
+- [Use in, in the composer](mock-use-in-composer-desktop.png): Library “Use in” opens Upscale in the image composer with the result attached; Generate saves a second result.
 
 The script also checks Create still generates, displays format outputs in its
 feed, and retains its complete prompt-only camera preset picker. Missing workflow

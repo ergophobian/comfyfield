@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
-import { recipes, initialValues, recipeOptions } from '../src/lib/recipes.js'
+import { falFormats } from '../src/lib/formats/fal.js'
+import { initialValues, formatOptions } from '../src/lib/formats/values.js'
 import { allFormats, formats, formatProblems } from '../src/lib/formats/index.js'
 import { compileFormat, runFormat as runWithPlanning, preflight } from '../src/lib/formats/runner.js'
 import { validateFormat } from '../src/lib/formats/validate.js'
@@ -25,25 +26,25 @@ const photo = { url: 'https://example.test/photo.png', ratio: '4:5', name: 'Phot
 const valuesFor = (f) => ({ ...initialValues(f), ...Object.fromEntries(f.inputs.filter((i) => i.type === 'image').map((i) => [i.id, photo])) })
 let checked = 0
 
-for (const recipe of recipes) {
-  const defaults = valuesFor(recipe)
-  const variants = [defaults, ...recipe.inputs.flatMap((input) => input.type === 'choice'
+for (const format of falFormats) {
+  const defaults = valuesFor(format)
+  const variants = [defaults, ...format.inputs.flatMap((input) => input.type === 'choice'
     ? input.options.map((o) => ({ ...defaults, [input.id]: o.id })) : input.type === 'text' ? [{ ...defaults, [input.id]: 'Keep the original face' }] : [])]
   for (const values of variants) {
     const calls = []
     const library = []
-    const result = await runFormat(recipe, values, { run: async (model, opts, metadata) => {
-      const files = [{ url: `https://example.test/${recipe.id}.png`, kind: recipe.kind }]
+    const result = await runFormat(format, values, { run: async (model, opts, metadata) => {
+      const files = [{ url: `https://example.test/${format.id}.png`, kind: format.kind }]
       calls.push({ model, opts })
       library.push(...files.map((f) => ({ ...f, ...metadata })))
       return files
     } })
-    assert.equal(calls.length, 1, `${recipe.id} should run once, including multi-image tools`)
-    assert.equal(calls[0].model.model, recipe.model)
-    const props = schemas.fal[recipe.model].properties
-    assert.deepEqual(falInput(props, calls[0].opts), falInput(props, recipeOptions(recipe, values)), `${recipe.id} changed its provider payload`)
+    assert.equal(calls.length, 1, `${format.id} should run once, including multi-image tools`)
+    assert.equal(calls[0].model.model, format.model)
+    const props = schemas.fal[format.model].properties
+    assert.deepEqual(falInput(props, calls[0].opts), falInput(props, formatOptions(format, values)), `${format.id} changed its provider payload`)
     assert.equal(calls[0].opts.shape, photo.ratio)
-    assert.equal(library[0].formatId, recipe.id)
+    assert.equal(library[0].formatId, format.id)
     assert.equal(library[0].stepId, 'generate')
     assert(library[0].formatRunId)
     assert.equal(library[0].batch, undefined, 'Format output must stay visible in Create singles')
@@ -54,15 +55,15 @@ for (const recipe of recipes) {
   }
 }
 
-const imageRecipe = recipes.find((f) => f.id === 'nine-shots')
-const videoRecipe = recipes.find((f) => f.id === 'melt')
+const imageFormat = falFormats.find((f) => f.id === 'nine-shots')
+const videoFormat = falFormats.find((f) => f.id === 'melt')
 const chain = {
-  ...imageRecipe, id: 'test-chain', shape: 'chain',
-  inputs: videoRecipe.inputs,
+  ...imageFormat, id: 'test-chain', shape: 'chain',
+  inputs: videoFormat.inputs,
   steps: [
-    { ...imageRecipe.steps[0], id: 'draft', takes: 2 },
+    { ...imageFormat.steps[0], id: 'draft', takes: 2 },
     { id: 'review', type: 'approve' },
-    { ...videoRecipe.steps[0], id: 'animate' },
+    { ...videoFormat.steps[0], id: 'animate' },
   ],
   outputs: [{ step: 'animate', kind: 'video' }],
 }
@@ -90,7 +91,7 @@ assert.equal(session.engine.gate('review').status, 'reviewing')
 await session.send('review')
 assert.equal(calls.length, 5, 'Send must preserve downstream output')
 
-const parallel = { ...imageRecipe, id: 'test-parallel', shape: 'pipeline', steps: ['a', 'b', 'c', 'd'].map((id) => ({ ...imageRecipe.steps[0], id, from: [] })), outputs: [{ step: 'd', kind: 'image' }] }
+const parallel = { ...imageFormat, id: 'test-parallel', shape: 'pipeline', steps: ['a', 'b', 'c', 'd'].map((id) => ({ ...imageFormat.steps[0], id, from: [] })), outputs: [{ step: 'd', kind: 'image' }] }
 let active = 0
 let peak = 0
 await runFormat(parallel, valuesFor(parallel), { concurrency: 2, run: async () => {
@@ -102,19 +103,19 @@ await runFormat(parallel, valuesFor(parallel), { concurrency: 2, run: async () =
 } })
 assert.equal(peak, 2, 'Runner must use engine concurrency')
 
-assert.throws(() => compileFormat(imageRecipe, {}), /Still needed/)
-assert.throws(() => compileFormat(imageRecipe, { image: {} }), /Add a file/)
-assert.throws(() => compileFormat(recipes.find((r) => r.id === 'new-angle'), { image: photo, angle: 'invalid' }), /Invalid choice/)
-assert.throws(() => compileFormat({ ...imageRecipe, steps: [{ ...imageRecipe.steps[0], from: ['generate'] }] }, valuesFor(imageRecipe)), /loop/)
-assert(validateFormat({ ...imageRecipe, name: '' }).some((r) => r.includes('Missing name')))
-assert(validateFormat({ ...imageRecipe, steps: [{ ...imageRecipe.steps[0], bindings: { nonsense: 'image' } }] }).some((r) => r.includes('Unknown model field')))
-assert(validateFormat({ ...imageRecipe, steps: [{ ...imageRecipe.steps[0], params: { output_format: 'wrong' } }] }).some((r) => r.includes('must be one of')))
-assert(validateFormat({ ...imageRecipe, steps: [{ ...imageRecipe.steps[0], prompt: '{missing}' }] }).some((r) => r.includes('unknown prompt slot')))
-assert(validateFormat({ ...imageRecipe, inputs: [...imageRecipe.inputs, { id: 'audio', type: 'audio', label: 'Audio' }] }).some((r) => r.includes('does not map')))
-assert(validateFormat({ ...imageRecipe, steps: [{ id: 'generate', model: 'unknown' }] }).some((r) => r.includes('Unknown model')))
-assert(validateFormat({ ...imageRecipe, outputs: [{ step: 'unknown', kind: 'image' }] }).some((r) => r.includes('Invalid output')))
+assert.throws(() => compileFormat(imageFormat, {}), /Still needed/)
+assert.throws(() => compileFormat(imageFormat, { image: {} }), /Add a file/)
+assert.throws(() => compileFormat(falFormats.find((r) => r.id === 'new-angle'), { image: photo, angle: 'invalid' }), /Invalid choice/)
+assert.throws(() => compileFormat({ ...imageFormat, steps: [{ ...imageFormat.steps[0], from: ['generate'] }] }, valuesFor(imageFormat)), /loop/)
+assert(validateFormat({ ...imageFormat, name: '' }).some((r) => r.includes('Missing name')))
+assert(validateFormat({ ...imageFormat, steps: [{ ...imageFormat.steps[0], bindings: { nonsense: 'image' } }] }).some((r) => r.includes('Unknown model field')))
+assert(validateFormat({ ...imageFormat, steps: [{ ...imageFormat.steps[0], params: { output_format: 'wrong' } }] }).some((r) => r.includes('must be one of')))
+assert(validateFormat({ ...imageFormat, steps: [{ ...imageFormat.steps[0], prompt: '{missing}' }] }).some((r) => r.includes('unknown prompt slot')))
+assert(validateFormat({ ...imageFormat, inputs: [...imageFormat.inputs, { id: 'audio', type: 'audio', label: 'Audio' }] }).some((r) => r.includes('does not map')))
+assert(validateFormat({ ...imageFormat, steps: [{ id: 'generate', model: 'unknown' }] }).some((r) => r.includes('Unknown model')))
+assert(validateFormat({ ...imageFormat, outputs: [{ step: 'unknown', kind: 'image' }] }).some((r) => r.includes('Invalid output')))
 
-const comfy = { ...imageRecipe, inputs: [{ id: 'subject', type: 'text', label: 'Subject' }], prompt: '{subject}', steps: [{ id: 'generate', provider: 'comfy', workflow: 'image_flux', kind: 'image', prompt: '{subject}', params: {} }] }
+const comfy = { ...imageFormat, inputs: [{ id: 'subject', type: 'text', label: 'Subject' }], prompt: '{subject}', steps: [{ id: 'generate', provider: 'comfy', workflow: 'image_flux', kind: 'image', prompt: '{subject}', params: {} }] }
 assert.deepEqual(validateFormat(comfy), [])
 let comfyCall
 await runFormat(comfy, { subject: 'A meadow' }, { run: async (model, opts) => { comfyCall = { model, opts }; return [{ url: 'test.png' }] } })
@@ -124,11 +125,11 @@ assert.equal(comfyCall.opts.prompt, 'A meadow')
 assert.equal(comfyVars('image', { ...comfyCall.opts, params: { seed: 42 }, fields: { prompt: 'Bound prompt' } }).seed, 42)
 assert.equal(comfyVars('image', { ...comfyCall.opts, fields: { prompt: 'Bound prompt' } }).prompt, 'Bound prompt')
 
-const failedSession = await failedRun(imageRecipe, valuesFor(imageRecipe), { run: async () => { throw new Error('Mock provider failure') } })
+const failedSession = await failedRun(imageFormat, valuesFor(imageFormat), { run: async () => { throw new Error('Mock provider failure') } })
 assert.equal(failedSession.error.message, 'Mock provider failure')
 assert.equal(failedSession.engine.state.generate.items[0].status, 'failed')
-const writerFormat = { ...imageRecipe, writer: 'Describe the scene' }
-assert.match((await failedRun(writerFormat, valuesFor(imageRecipe), { run: async () => { throw new Error('Must not run') } })).error.message, /writing is not connected/)
+const writerFormat = { ...imageFormat, writer: 'Describe the scene' }
+assert.match((await failedRun(writerFormat, valuesFor(imageFormat), { run: async () => { throw new Error('Must not run') } })).error.message, /writing is not connected/)
 let writerPrompt
 const writerSession = await runFormat(writerFormat, valuesFor(writerFormat), {
   writePrompt: async ({ instructions, inputs }) => { assert.equal(instructions, writerFormat.writer); assert.equal(inputs.image.url, photo.url); return 'Written prompt' },
@@ -298,8 +299,8 @@ assert(cloudAlternate.preflight.steps[0].notOnCloud.length)
 assert.equal(cloudAlternate.preflight.steps[0].cloud.notOnCloud.length, 0)
 assert.equal(cloudAlternate.preflight.steps[0].selectedWorkflow, 'flux3_klein_t2i_cloud')
 
-const priced = { ...chain, steps: [{ ...imageRecipe.steps[0], id: 'first', takes: 2 }, { id: 'review', type: 'approve' }, { ...videoRecipe.steps[0], id: 'second', settings: { duration: 4 } }], outputs: [{ step: 'second', kind: 'video' }] }
-const prices = { [imageRecipe.model]: { price: { amount: 0.01, unit: 'image' } }, [videoRecipe.model]: { price: { amount: 0.02, unit: 'second' } } }
+const priced = { ...chain, steps: [{ ...imageFormat.steps[0], id: 'first', takes: 2 }, { id: 'review', type: 'approve' }, { ...videoFormat.steps[0], id: 'second', settings: { duration: 4 } }], outputs: [{ step: 'second', kind: 'video' }] }
+const prices = { [imageFormat.model]: { price: { amount: 0.01, unit: 'image' } }, [videoFormat.model]: { price: { amount: 0.02, unit: 'second' } } }
 const quote = await preflight(priced, valuesFor(priced), { requirements: offlineRequirements, prices })
 const { stepModel } = await import('../src/lib/formats/options.js')
 const { estimate } = await import('../shared/mapping.js')
@@ -357,7 +358,7 @@ const gpuQuote = await preflight(routerFormat, { subject: 'A meadow' }, { requir
 assert.equal(gpuQuote.cost.steps[0].usd, null)
 assert.equal(gpuQuote.cost.total, null)
 
-const invalidSession = await failedRun(imageRecipe, {}, { run: async () => assert.fail('Invalid input cannot spend') })
+const invalidSession = await failedRun(imageFormat, {}, { run: async () => assert.fail('Invalid input cannot spend') })
 assert.equal(invalidSession.reason.code, 'invalid_format')
 assert.equal(invalidSession.results().length, 0)
 assert.equal(invalidSession.busy, false)
@@ -373,7 +374,7 @@ const sourceOf = async (f, extra) => {
 }
 assert.equal(await sourceOf(allFormats.find((f) => f.id === 'image-upscale')), photo.url)
 assert.equal(await sourceOf(allFormats.find((f) => f.id === 'erase'), { target: 'The sign' }), photo.url)
-assert.equal(await sourceOf(imageRecipe), undefined, 'Only edits and upscales carry a source')
+assert.equal(await sourceOf(imageFormat), undefined, 'Only edits and upscales carry a source')
 assert.equal(formats.length, 450)
 assert.equal(allFormats.length, 479, 'Do not delete planned formats')
 assert.equal(allFormats.filter((f) => f.category === 'camera').length > 0, true, 'Keep Create prompt presets')
@@ -391,7 +392,7 @@ const motion = formats.find((f) => f.inputs.some((i) => i.type === 'draw' && i.m
 const frame = { url: '/media/frame.png', name: 'frame.png', ratio: '16:9' }
 assert.throws(() => compileFormat(motion, { ...valuesFor(motion), image: frame }), /Still needed/)
 assert.doesNotThrow(() => compileFormat(motion, { ...valuesFor(motion), image: { ...frame, strokes: 'data:image/png;base64,AA==' } }))
-console.log(`Format runner checks ok: ${checked} recipe cases, approval and batching, concurrency, schema rejection, Comfy placeholders, writer handoff and provider failures. No network calls.`)
+console.log(`Format runner checks ok: ${checked} format cases, approval and batching, concurrency, schema rejection, Comfy placeholders, writer handoff and provider failures. No network calls.`)
 
 // A writer edit changes the request even when the downstream text unit keeps its unit id.
 const editedCalls = []

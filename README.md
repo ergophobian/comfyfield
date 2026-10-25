@@ -47,7 +47,7 @@ Flow tools: `list_flows`, `get_flow`, `create_flow`, `add_node`, `connect_nodes`
 
 The Skills page (`/skills`) lists ready-made jobs to run from your agent, each with a prompt to copy. Their slash commands are not wired into the MCP server yet.
 
-Recipes are not wired into the MCP server yet. TODO: add `list_recipes` and `run_recipe`.
+Formats are not wired into the MCP server yet. TODO: add `list_formats` and `run_format`.
 
 CLI:
 

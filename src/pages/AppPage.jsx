@@ -10,7 +10,7 @@ import { mainInput, pathFor, valuesFrom } from '../components/apps/data.js'
 import { IconAudio, IconChevron, IconCube, IconImage, IconSpark, IconVideo } from '../components/Icons.jsx'
 import { useApp } from '../lib/appContext.js'
 import { appsIn, categoryOf, formatById, formats, hubs, isWired } from '../lib/formats/index.js'
-import { initialValues, missingInputs, visibleInputs } from '../lib/recipes.js'
+import { initialValues, missingInputs, visibleInputs } from '../lib/formats/values.js'
 import { providerInfo } from '../lib/catalog.js'
 import { estimate, money, useModelMeta } from '../lib/cost.js'
 
@@ -121,7 +121,7 @@ function AppView({ format, motion }) {
             )}
             <h1>{format.name}</h1>
             <p>{format.blurb}</p>
-            <span className="recipe-tags app-tags">
+            <span className="format-tags app-tags">
               {format.runsOn && <em title={format.runsOn}>{format.runsOn}</em>}
               {!wired && <em className="todo">Not wired yet</em>}
             </span>

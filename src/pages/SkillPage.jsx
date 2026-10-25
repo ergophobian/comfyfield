@@ -116,7 +116,7 @@ function SkillView({ skill }) {
             </div>
             <Link className="link-btn" to="/skills?group=all">See all<IconChevron /></Link>
           </div>
-          <div className="recipe-grid app-grid">
+          <div className="format-grid app-grid">
             {related.map((s, i) => <SkillCard key={s.id} skill={s} i={i} />)}
           </div>
         </section>
