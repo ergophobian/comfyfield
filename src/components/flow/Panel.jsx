@@ -11,6 +11,7 @@ import { WriterReview } from './nodes.jsx'
 import { widgetTypes } from '../../../shared/widgetInputs.js'
 import { Field } from '../formats/Fields.jsx'
 import StitchPanel from './StitchPanel.jsx'
+import { blenderScript, blenderVideoScript } from '../../../shared/flowRules.js'
 
 const blurbs = {
   approve: 'Nothing passes this gate until you approve takes and press Send. Send only starts nodes after it that have no results yet.',
@@ -109,6 +110,25 @@ function ImagePanel({ node, patch, upload, uploading = {} }) {
   )
 }
 
+function BlenderPanel({ node, patch }) {
+  const { id, data } = node
+  // An untouched starter script follows the output, so Video starts with a script that writes an MP4.
+  const setOutput = (output) => {
+    const starter = [blenderScript, blenderVideoScript].includes(data.script)
+    patch(id, { output, ...(starter && { script: output === 'video' ? blenderVideoScript : blenderScript }) })
+  }
+  return (
+    <>
+      <Segmented className="seg-sm" value={data.output === 'video' ? 'video' : 'image'} onChange={setOutput}
+        options={[{ value: 'image', label: 'Image' }, { value: 'video', label: 'Video' }]} />
+      <div className="fp-field"><label htmlFor="blender-script">Python script</label>
+        <textarea id="blender-script" className="fp-text fp-code" rows={12} spellCheck={false} value={data.script || ''} onChange={(e) => patch(id, { script: e.target.value })} />
+      </div>
+      <p className="muted fp-blurb">Runs <code>blender -b -P script.py -- --output file</code> where Connections says. Save the render to the path after <code>--output</code>: a PNG for an image, an MP4 for a video. The result goes to the Library and to the next node.</p>
+    </>
+  )
+}
+
 function WriterPanel({ node, patch }) {
   const { id, data } = node
   return (
@@ -141,6 +161,7 @@ export default function Panel({ node, patch, picker, connections, upload, upload
       {node.type === 'writer' && <WriterPanel node={node} patch={patch} />}
       {node.type === 'model' && <ModelPanel node={node} patch={patch} picker={picker} connections={connections} />}
       {node.type === 'stitch' && <StitchPanel node={node} patch={patch} />}
+      {node.type === 'blender' && <BlenderPanel node={node} patch={patch} />}
       {blurbs[node.type] && <p className="muted fp-blurb">{blurbs[node.type]}</p>}
       <button type="button" className="btn-soft sm fp-del" onClick={() => remove(node.id)}>Delete node</button>
     </aside>

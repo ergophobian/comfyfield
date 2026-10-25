@@ -139,6 +139,11 @@ export const providerInfo = {
   elevenlabs: { name: 'ElevenLabs', blurb: 'Your ElevenLabs key for voices and sound effects.', fields: [
     { id: 'key', label: 'API key', placeholder: 'xi-api-key', secret: true },
   ], link: 'https://elevenlabs.io/app/settings/api-keys' },
+  // Not a key: where Blender nodes in Flows run. Empty fields use blender on this machine's PATH.
+  blender: { name: 'Blender', blurb: 'Blender nodes in Flows run your Python script with blender -b on this machine, or on another one over SSH. Leave both empty to use blender on PATH. With an SSH host, the path is Blender on that host; key login must work without a password.', fields: [
+    { id: 'path', label: 'Blender path', placeholder: 'blender, or the full path to the Blender program' },
+    { id: 'host', label: 'SSH host', placeholder: 'user@host, optional' },
+  ], link: 'https://www.blender.org/download/', linkLabel: 'Get Blender', on: 'Saved', off: 'Uses PATH' },
 }
 
 // Account sign-ins for later. These need each site's own login, not an API key.

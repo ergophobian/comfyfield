@@ -5,6 +5,7 @@ import { nodeTypes, FlowCtx } from '../components/flow/nodes.jsx'
 import Panel from '../components/flow/Panel.jsx'
 import { IconClose } from '../components/Icons.jsx'
 import { connectionProblem } from '../../shared/flowRules.js'
+import { executableTypes } from '../lib/flowEngine.js'
 import { useFlowStorage, engineFor, starters, makeNode, blankFlow, exportJson, parseFlow, nodeLabels } from '../lib/flowStore.js'
 import { reloadFlows } from '../lib/remoteFlows.js'
 import AssistantPanel from '../components/AssistantPanel.jsx'
@@ -22,11 +23,12 @@ const addable = [
   ['crop', 'Choose an aspect and crop area'],
   ['model', 'Any image, video or audio model'],
   ['stitch', 'Join clips, captions and music locally'],
+  ['blender', 'Render a Blender script, here or over SSH'],
   ['approve', 'A gate you open with Send'],
   ['output', 'A gallery of results'],
   ['note', 'A note for yourself'],
 ]
-const miniColor = { prompt: 'var(--muted)', image: 'var(--muted)', writer: 'var(--blue)', stitch: 'var(--blue-hi)', model: 'var(--blue-hi)', approve: 'var(--warn)', output: 'var(--success)', note: 'var(--faint)' }
+const miniColor = { prompt: 'var(--muted)', image: 'var(--muted)', writer: 'var(--blue)', stitch: 'var(--blue-hi)', blender: 'var(--blue-hi)', model: 'var(--blue-hi)', approve: 'var(--warn)', output: 'var(--success)', note: 'var(--faint)' }
 
 function Pop({ label, children, align = 'left' }) {
   const [open, setOpen] = useState(false)
@@ -182,7 +184,7 @@ function Canvas({ picker }) {
           </Pop>
           <button type="button" className="btn-soft" onClick={download} disabled={!flow.nodes.length}>Export</button>
           {hasOutput && <button type="button" className="btn-soft" onClick={regenerate} disabled={busy}>{wipe ? 'Wipe and re-run?' : 'Regenerate all'}</button>}
-          <button type="button" className="btn-blue sm" onClick={run} disabled={!ready || busy || !flow.nodes.some((n) => ['model', 'writer', 'stitch'].includes(n.type))}>{busy ? 'Running' : 'Run'}</button>
+          <button type="button" className="btn-blue sm" onClick={run} disabled={!ready || busy || !flow.nodes.some((n) => executableTypes.includes(n.type))}>{busy ? 'Running' : 'Run'}</button>
         </div>
 
         <ReactFlow key={flow.id} nodes={flow.nodes} edges={edges} nodesDraggable={ready} nodesConnectable={ready} nodeTypes={nodeTypes}

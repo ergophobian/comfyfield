@@ -21,8 +21,8 @@ function Provider({ id, info, state, onSaved }) {
       setSaving(false)
       return
     }
-    const ok = await testConnection(id).catch(() => false)
-    setMsg(ok ? 'Connected' : 'Saved, but the test call failed. Check the key.')
+    const test = await testConnection(id).catch(() => ({ ok: false }))
+    setMsg(test.ok ? 'Connected' : test.error ? `Saved, but the test failed. ${test.error}` : 'Saved, but the test call failed. Check the key.')
     setValues({})
     setSaving(false)
     onSaved()
@@ -32,7 +32,7 @@ function Provider({ id, info, state, onSaved }) {
     <div className="conn glass">
       <div className="conn-top">
         <h3>{info.name}</h3>
-        <span className={`status${state?.connected ? ' ok' : ''}`}>{state?.connected ? 'Connected' : 'Not connected'}</span>
+        <span className={`status${state?.connected ? ' ok' : ''}`}>{state?.connected ? info.on || 'Connected' : info.off || 'Not connected'}</span>
       </div>
       <p>{info.blurb}</p>
       {info.page && <Link className="link-btn" to={info.page.to}>{info.page.label}</Link>}
@@ -51,8 +51,8 @@ function Provider({ id, info, state, onSaved }) {
       ))}
       <div className="conn-actions">
         <button className="btn-blue" onClick={save} disabled={saving}>{saving ? 'Checking' : 'Save and test'}</button>
-        {msg && <span className="muted">{msg}</span>}
-        <a href={info.link} target="_blank" rel="noreferrer">Get a key ›</a>
+        {msg && <span className="muted conn-msg" role="status">{msg}</span>}
+        {info.link && <a href={info.link} target="_blank" rel="noreferrer">{info.linkLabel || 'Get a key'} ›</a>}
       </div>
     </div>
   )

@@ -13,7 +13,7 @@ const unwrap = (result) => {
   try { return JSON.parse(text) } catch { return text }
 }
 
-export function createHarness({ adapters = { claude: claudeAdapter, codex: codexAdapter }, setup = adapterSetup, directory = core.home, generate = core.generate, writePrompt = core.writePrompt, stitch = core.stitch, estimate = core.estimateCost, handlers: overrides = {} } = {}) {
+export function createHarness({ adapters = { claude: claudeAdapter, codex: codexAdapter }, setup = adapterSetup, directory = core.home, generate = core.generate, writePrompt = core.writePrompt, stitch = core.stitch, render = core.render, estimate = core.estimateCost, handlers: overrides = {} } = {}) {
   const sessions = new Map()
   const listeners = new Set()
   let sequence = 0
@@ -22,7 +22,7 @@ export function createHarness({ adapters = { claude: claudeAdapter, codex: codex
     listeners.forEach((fn) => fn(value))
     return value
   }
-  const flows = createFlows({ directory, generate, writePrompt, stitch, changed: publish })
+  const flows = createFlows({ directory, generate, writePrompt, stitch, render, changed: publish })
   const handlers = new Map()
   createServer({ handlers, flowService: flows })
   for (const [name, fn] of Object.entries(overrides)) handlers.set(name, fn)
@@ -66,6 +66,8 @@ export function createHarness({ adapters = { claude: claudeAdapter, codex: codex
     let snapshot
     let state
     const allowance = new Map()
+    // Blender renders are free but run code on the user's machine, so only planned ones may run.
+    const renders = []
     const jobKey = ({ model, prompt, aspect, duration, count }) => JSON.stringify({ model, prompt, aspect, duration, count })
     try {
       if (name === 'run_flow') {
@@ -81,6 +83,7 @@ export function createHarness({ adapters = { claude: claudeAdapter, codex: codex
           },
           writePrompt: async (input) => { writes.push(input); return 'Prompt awaiting review' },
           stitch: async (input) => { stitches.push(input); return { kind: 'video', url: '/media/estimate-stitch.mp4' } },
+          render: async (type, input) => { renders.push({ type, input }); return { kind: input.output === 'video' ? 'video' : 'image', url: `/media/estimate-${type}` } },
         })
         dry.load(state)
         await dry.runNew(snapshot)
@@ -89,6 +92,7 @@ export function createHarness({ adapters = { claude: claudeAdapter, codex: codex
         const steps = await Promise.all(jobs.map(async (job) => ({ model: job.model, prompt: job.prompt, aspect: job.aspect, duration: job.duration, count: job.count, usd: (await estimate(job).catch(() => null))?.usd ?? null })))
         steps.push(...writes.map((input) => ({ model: 'Google Gemini writer', prompt: input.instructions, usd: null })))
         steps.push(...stitches.map(() => ({ model: 'Local Stitch', prompt: 'Join clips locally', usd: 0 })))
+        steps.push(...renders.map(({ input }) => ({ model: 'Blender, runs this script on your machine', prompt: input.script.slice(0, 4000), usd: 0 })))
         await approval(session, { title: `Run ${snapshot.name}`, tool: name, args, flow: snapshot, steps, usd: steps.every((s) => s.usd != null) ? steps.reduce((n, s) => n + s.usd, 0) : null })
         if (flowSignature(snapshot) !== flowSignature(flows.get(args.flow_id)) || JSON.stringify(state) !== JSON.stringify(flows.engine(args.flow_id).state)) throw problem('The flow changed. Request a fresh plan before running.', 409)
       } else if (['generate', 'write_prompts'].includes(name)) {
@@ -118,6 +122,10 @@ export function createHarness({ adapters = { claude: claudeAdapter, codex: codex
         }, stitch: (input) => {
           if (session.stopped) throw new Error('Session stopped')
           return stitch({ ...input, preview: true })
+        }, render: (type, input) => {
+          if (session.stopped) throw new Error('Session stopped')
+          if (!renders.some((r) => r.type === type && JSON.stringify(r.input) === JSON.stringify(input))) throw new Error('This render was not in the approved plan. Request a fresh plan.')
+          return render(type, input)
         } })
         result = flows.report(args.flow_id, result)
       } else result = unwrap(await handlers.get(name)(args))

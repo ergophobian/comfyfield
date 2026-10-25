@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
 import * as core from './core.js'
-import { createEngine, topoOrder } from '../src/lib/flowEngine.js'
+import { createEngine, topoOrder, executableTypes } from '../src/lib/flowEngine.js'
 import { nodeLabels, nodeDefaults, unknownType, missingNode, connectionProblem } from '../shared/flowRules.js'
 
 export const problem = (message, status = 400) => Object.assign(new Error(message), { status })
@@ -29,7 +29,7 @@ function withModel(type, data) {
   return { ...data, model: resolved, ...(['image', 'video', 'audio'].includes(resolved.kind) && { kind: resolved.kind }) }
 }
 
-export function createFlows({ directory = core.home, generate = core.generate, writePrompt = core.writePrompt, stitch = core.stitch, changed = () => {} } = {}) {
+export function createFlows({ directory = core.home, generate = core.generate, writePrompt = core.writePrompt, stitch = core.stitch, render = core.render, changed = () => {} } = {}) {
   const engines = new Map()
   const locks = new Set()
   let quiet = false
@@ -112,7 +112,7 @@ export function createFlows({ directory = core.home, generate = core.generate, w
     if (id !== undefined && !idPattern.test(id)) throw problem(`Node id "${id}" is not valid. Use 1 to 64 letters, digits, "-" or "_".`)
     if (id !== undefined && flow.nodes.some((n) => n.id === id)) throw problem(`Flow "${flow.name}" already has a node "${id}". Pick another id or leave id out.`)
     const last = flow.nodes.at(-1)?.position
-    return { id: id ?? `${type}-${shortId()}`, type, position: position || (last ? { x: last.x + 340, y: last.y } : { x: 0, y: 40 }), data: withModel(type, { ...nodeDefaults(type), ...data }) }
+    return { id: id ?? `${type}-${shortId()}`, type, position: position || (last ? { x: last.x + 340, y: last.y } : { x: 0, y: 40 }), data: withModel(type, { ...nodeDefaults(type, data), ...data }) }
   }
   const link = (flow, { source, target }) => {
     const issue = connectionProblem(flow, source, target)
@@ -127,6 +127,7 @@ export function createFlows({ directory = core.home, generate = core.generate, w
         run: (model, opts) => generate({ ...opts, model: model.id }),
         writePrompt,
         stitch: (opts) => stitch({ ...opts, preview: true }),
+        render,
         onChange: (state) => {
           if (quiet) return
           const store = read()
@@ -146,7 +147,7 @@ export function createFlows({ directory = core.home, generate = core.generate, w
     }
     return eng
   }
-  const perform = async (id, action, node, item, { flow = get(id), generate: guardedGenerate, writePrompt: guardedWriter, stitch: guardedStitch } = {}) => {
+  const perform = async (id, action, node, item, { flow = get(id), generate: guardedGenerate, writePrompt: guardedWriter, stitch: guardedStitch, render: guardedRender } = {}) => {
     if (!actions.includes(action)) throw problem(`Unknown flow action "${action}". Use one of: ${actions.join(', ')}.`)
     if (node) { const missing = missingNode(flow, node); if (missing) throw problem(missing, 404) }
     if (!['runNew', 'regenerateAll'].includes(action) && !node) throw problem(`Choose a node for ${action}.`)
@@ -159,6 +160,7 @@ export function createFlows({ directory = core.home, generate = core.generate, w
         run: (model, opts) => guardedGenerate({ ...opts, model: model.id }),
         writePrompt: guardedWriter,
         stitch: guardedStitch,
+        render: guardedRender,
         onChange: (state) => base.load(state),
       }) : base
       if (eng !== base) eng.load(base.state)
@@ -173,7 +175,7 @@ export function createFlows({ directory = core.home, generate = core.generate, w
     const waiting = flow.nodes.filter((n) => n.type === 'approve' && eng.gate(n.id).status === 'reviewing').map((n) => n.id)
     const writers = flow.nodes.filter((n) => n.type === 'writer' && !eng.state[n.id]?.sent && eng.state[n.id]?.items?.some((i) => i.status === 'done')).map((n) => n.id)
     const failed = flow.nodes.flatMap((n) => (eng.state[n.id]?.items || []).filter((i) => i.status === 'failed').map((i) => ({ node: n.id, error: i.error })))
-    const blocked = flow.nodes.filter((n) => ['model', 'writer', 'stitch'].includes(n.type) && !eng.state[n.id]?.items?.some((i) => i.status === 'done') && eng.plan(flow, n.id).blocked).map((n) => n.id)
+    const blocked = flow.nodes.filter((n) => executableTypes.includes(n.type) && !eng.state[n.id]?.items?.some((i) => i.status === 'done') && eng.plan(flow, n.id).blocked).map((n) => n.id)
     const made = Object.fromEntries(flow.nodes.map((n) => [n.id, (eng.state[n.id]?.items || []).filter((i) => i.status === 'done').map(({ kind, url, text, prompt }) => ({ kind, url, text, prompt }))]).filter(([, items]) => items.length))
     const next = [
       ...waiting.map((n) => `${name(flow.nodes.find((x) => x.id === n))} is waiting for review. The user must pick takes and press Send in Flows; agents cannot send it.`),

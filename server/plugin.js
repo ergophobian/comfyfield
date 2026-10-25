@@ -294,7 +294,7 @@ function mount(server, harness) {
       }
       if (url.pathname === '/api/connections/test' && req.method === 'POST') {
         const { id } = await body(req)
-        return send(res, 200, { ok: await core.testConnection(id).catch(() => false) })
+        return send(res, 200, await core.testConnection(id).then((ok) => ({ ok }), (e) => ({ ok: false, error: e.message })))
       }
       if (url.pathname === '/api/fal' && req.method === 'POST') {
         return send(res, 200, { files: await core.runFal(await body(req)) })
