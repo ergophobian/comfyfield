@@ -65,6 +65,8 @@ npx comfyfield dev
 
 `generate` spends your credits and prints an estimated cost first. Run `comfyfield --help` for every option.
 
+Cinema studio plans a multi-shot scene and renders it with LTX-2.5 on Comfy Cloud: see [Cinema on LTX-2.5](docs/cinema-ltx.md).
+
 ## Stitch clips locally
 
 In **Flows**, add a **Stitch** node. Connect video results (through an Approve node if you want to choose takes), upload clips, or select videos from the Library. Select Stitch to change clip order, trim start/end in seconds, and add text to burn into each clip. Music loops to fill the joined video; volume and fade apply to the music while clip audio stays intact.

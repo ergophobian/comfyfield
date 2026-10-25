@@ -206,8 +206,8 @@ export default function CinemaComposer({ still, onKind, shot, set, setRefs }) {
 
         <p className="cs-director">
           <IconSpark />
-          <span>AI director: paste a script and it drafts each shot's prompt and settings. You still press Generate.</span>
-          <span className="soon-tag">Not wired yet</span>
+          <span>AI director: describe an idea and it plans each shot, then LTX-2.5 renders the scene on Comfy Cloud.</span>
+          <button type="button" className="link-btn" onClick={() => onKind(false)}>Plan a scene in Video</button>
         </p>
       </div>
       <p className="cs-foot"><NotWired runsOn={still ? runsOn.image : runsOn.video} /></p>
