@@ -10,6 +10,9 @@ const requests = []
 let generationImports = []
 const jobs = new Map()
 let connected = true
+// A Comfy render that reports live progress, as the Cloud SDK's events() stream does, until the check finishes it.
+let progressRender = false
+let progressJob = null
 let failPrompt = false
 let failRender = false
 const svg = (label) => `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="750" viewBox="0 0 600 750"><rect width="600" height="750" fill="#e4e9ff"/><circle cx="300" cy="280" r="120" fill="#9b8cf5"/><path d="M100 680 Q100 380 300 390 Q500 380 500 680Z" fill="#6f7fd8"/><text x="300" y="720" text-anchor="middle" font-family="sans-serif" font-size="28" fill="#30384d">${label}</text></svg>`
@@ -69,6 +72,11 @@ const server = await preview({ configFile: false, envFile: false, plugins: [{
         const files = [{ url: '/mock-result.svg', kind: 'image' }]
         if (!job) return res.end(JSON.stringify({ files }))
         const id = `job-${jobs.size + 1}`
+        if (!failed && progressRender && path === '/api/comfy/run') {
+          progressJob = { id, files }
+          jobs.set(id, { id, status: 'running', progress: { where: 'Comfy Cloud', status: 'running', value: 0.42, step: 8, steps: 20, nodesDone: 4, nodesTotal: 9, node: 'KSampler' } })
+          return res.end(JSON.stringify({ id }))
+        }
         jobs.set(id, failed ? { id, status: 'failed', error: { message: 'Mock insufficient credits', status: 402, code: 'insufficient_credits' } } : { id, status: 'done', files })
         return res.end(JSON.stringify({ id }))
       }
@@ -228,7 +236,19 @@ try {
   await cdp('Emulation.setDeviceMetricsOverride', { width: 390, height: 1100, deviceScaleFactor: 1, mobile: true })
   assert(await evaluate('document.documentElement.scrollWidth <= 390'), 'Effect review must fit 390px')
   await screenshot('mock-writer-review-mobile')
+  progressRender = true
   await evaluate('[...document.querySelectorAll("button")].find((b) => b.textContent === "Send to render").click()')
+  // Live Cloud progress shows on the generation tile while the job runs.
+  await wait('document.querySelector(".result-wait [role=progressbar]")')
+  assert.match(await evaluate('document.querySelector(".result-wait").innerText'), /Rendering 42%, step 8 of 20/)
+  assert.equal(await evaluate('document.querySelector(".result-wait [role=progressbar]").getAttribute("aria-valuenow")'), '42')
+  await evaluate('document.querySelector(".app-results")?.scrollIntoView()')
+  await pause(300)
+  const progressShot = await cdp('Page.captureScreenshot', { format: 'png' })
+  mkdirSync('research_notes/format-runner', { recursive: true })
+  writeFileSync('research_notes/format-runner/mock-cloud-progress-mobile.png', Buffer.from(progressShot.data, 'base64'))
+  progressRender = false
+  jobs.set(progressJob.id, { id: progressJob.id, status: 'done', files: progressJob.files })
   await wait('JSON.parse(localStorage.getItem("comfyfield.library") || "[]").length === 4')
   assert.equal(requests[4].path, '/api/comfy/run')
   assert.equal(requests[4].body.workflow, 'ltx25_i2v')
@@ -286,7 +306,7 @@ try {
   await wait('JSON.parse(localStorage.getItem("comfyfield.library") || "[]").length === 0')
   assert.equal(generationImports.length, 0, 'Delete persists to server imports')
   assert.deepEqual(errors, [], 'No browser runtime exceptions')
-  console.log('UI mock checks ok: app runner, shared sheet, Library after reload, 390px layout, Create generation/feed/camera presets and hidden invalid route. Failed writer and render sessions recover through Retry failed without repeating completed steps; no provider calls. First-run Connections notice and link checked at 390px. Labeled mock proof import deduplicates on reload and deletes on the server. Nine screenshots saved.')
+  console.log('UI mock checks ok: app runner, shared sheet, Library after reload, 390px layout, Create generation/feed/camera presets and hidden invalid route. Failed writer and render sessions recover through Retry failed without repeating completed steps; no provider calls. First-run Connections notice and link checked at 390px. Labeled mock proof import deduplicates on reload and deletes on the server. Live Comfy progress on the render tile. Ten screenshots saved.')
 } finally {
   await browser?.close()
   await server.close()

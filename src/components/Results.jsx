@@ -4,6 +4,8 @@ import Viewer, { Act, ext } from './Viewer.jsx'
 import { useApp } from '../lib/appContext.js'
 import { takeLabel, usePod } from '../lib/usePod.js'
 import { IconCheck, IconDownload, IconTrash } from './Icons.jsx'
+import { progressText } from '../lib/jobs.js'
+import ProgressBar from './ProgressBar.jsx'
 
 const ratio = (a) => (/^\d+:\d+$/.test(a) ? a.replace(':', ' / ') : '1 / 1')
 const viewable = (it) => !it.pending && it.url && it.kind !== 'audio'
@@ -41,7 +43,8 @@ export default function Results({ items, onUse, size }) {
           })}>
           {it.pending ? (
             <span className="result-wait">
-              {takeLabel(it, status) || (it.started || it.jobs ? `Rendering with ${it.model}` : 'Queued')}
+              {takeLabel(it, status) || progressText(it.progress) || (it.started || it.jobs ? `Rendering with ${it.model}` : 'Queued')}
+              {!takeLabel(it, status) && <ProgressBar progress={it.progress} />}
               {it.restoreNote && <small>{it.restoreNote}</small>}
               {app?.gens?.cancel && <button type="button" className="btn-soft xs" onClick={() => app.gens.cancel(it.id)}>Cancel</button>}
             </span>

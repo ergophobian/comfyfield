@@ -16,10 +16,12 @@ export function createJobs(file) {
     }
   } catch {}
 
+  const withoutProgress = ({ progress, ...job }) => job
+
   const save = () => {
     try {
       fs.mkdirSync(path.dirname(file), { recursive: true })
-      fs.writeFileSync(file, JSON.stringify([...jobs.values()].filter((j) => Date.now() - j.created < DAY)))
+      fs.writeFileSync(file, JSON.stringify([...jobs.values()].filter((j) => Date.now() - j.created < DAY).map(withoutProgress)))
     } catch {}
   }
 
@@ -27,13 +29,20 @@ export function createJobs(file) {
   function start(task) {
     const id = crypto.randomUUID()
     const controller = new AbortController()
-    const ctx = { signal: controller.signal, abort: () => controller.abort(), cancelled: false, stops: [], onCancel(fn) { this.stops.push(fn) } }
+    const ctx = {
+      signal: controller.signal, abort: () => controller.abort(), cancelled: false, stops: [], onCancel(fn) { this.stops.push(fn) },
+      // Live progress is kept in memory only: a reload polls it again, and a restart loses the run anyway.
+      onProgress(progress) {
+        const job = jobs.get(id)
+        if (job?.status === 'running') jobs.set(id, { ...job, progress })
+      },
+    }
     jobs.set(id, { id, status: 'running', created: Date.now() })
     live.set(id, ctx)
     save()
     Promise.resolve().then(() => task(ctx)).then(
-      (files) => { if (!ctx.cancelled) jobs.set(id, { ...jobs.get(id), status: 'done', files }) },
-      (e) => { if (!ctx.cancelled) jobs.set(id, { ...jobs.get(id), status: 'failed', error: { message: e.message, status: e.status, code: e.code, requestId: e.requestId, idempotencyKey: e.idempotencyKey, retryable: e.retryable, reason: e.reason, fit: e.fit } }) },
+      (files) => { if (!ctx.cancelled) jobs.set(id, { ...withoutProgress(jobs.get(id)), status: 'done', files }) },
+      (e) => { if (!ctx.cancelled) jobs.set(id, { ...withoutProgress(jobs.get(id)), status: 'failed', error: { message: e.message, status: e.status, code: e.code, requestId: e.requestId, idempotencyKey: e.idempotencyKey, retryable: e.retryable, reason: e.reason, fit: e.fit } }) },
     ).finally(() => { live.delete(id); save() })
     return id
   }
@@ -48,7 +57,7 @@ export function createJobs(file) {
       ctx.cancelled = true
       ctx.abort()
       for (const stop of ctx.stops) Promise.resolve().then(stop).catch(() => {})
-      jobs.set(id, { ...job, status: 'cancelled' })
+      jobs.set(id, { ...withoutProgress(job), status: 'cancelled' })
       save()
     }
     return jobs.get(id)

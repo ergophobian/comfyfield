@@ -1,4 +1,6 @@
 import { takeLabel, usePod } from '../lib/usePod.js'
+import { progressText } from '../lib/jobs.js'
+import ProgressBar from './ProgressBar.jsx'
 
 const ratio = (a) => (/^\d+:\d+$/.test(a) ? a.replace(':', ' / ') : '1 / 1')
 
@@ -16,7 +18,7 @@ function Take({ it, onApprove, onDismiss }) {
           </span>
         </span>
       )
-        : it.pending ? <span className="take-msg">{takeLabel(it, status) || (it.started ? 'Rendering' : 'Queued')}</span>
+        : it.pending ? <span className="take-msg">{takeLabel(it, status) || progressText(it.progress) || (it.started ? 'Rendering' : 'Queued')}{!takeLabel(it, status) && <ProgressBar progress={it.progress} />}</span>
         : it.kind === 'video' ? <video src={it.url} autoPlay loop muted playsInline />
         : it.kind === 'audio' ? <audio src={it.url} controls />
         : <img src={it.url} alt={it.caption} />}

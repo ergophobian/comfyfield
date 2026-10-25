@@ -116,7 +116,8 @@ export function useGenerations() {
         if (!jobs?.length) continue
         // A Pod fallback supersedes the failed Cloud job in this same run.
         const currentJobs = base.run?.model.provider === 'comfyRouter' ? jobs : jobs.slice(-1)
-        Promise.all(currentJobs.map(waitJob)).then(
+        const onProgress = (progress) => patch(id, (x) => ({ ...x, progress }))
+        Promise.all(currentJobs.map((job) => waitJob(job, { onProgress }))).then(
           (files) => { if (!cancelled.current.has(id)) finish(id, base, files.flat()) },
           (e) => {
             if (e instanceof Cancelled || cancelled.current.has(id)) setItems((xs) => xs.filter((x) => x.id !== id))
@@ -152,6 +153,7 @@ export function useGenerations() {
             isCancelled: () => cancelled.current.has(id),
             onFiles: (files, index) => partial(id, base, files, index),
             onPod: () => patch(id, (x) => ({ ...x, pod: true })),
+            onProgress: (progress) => patch(id, (x) => ({ ...x, progress })),
             onJob: (job) => {
               patch(id, (x) => ({ ...x, jobs: [...(x.jobs || []), job] }))
               if (cancelled.current.has(id)) cancelJob(job)
