@@ -140,11 +140,25 @@ def is_busy(queue, work, leased_at, now):
   return (queue or 0) > 0 or queue is None or bool(work) or (leased_at is not None and now - leased_at < LEASE_FRESH)
 
 
-def next_idle(idle, util, queue, downloading, tick):
-  # An unanswered probe counts as busy: failing closed costs money, failing open loses a run.
-  if util is None or queue is None or downloading:
-    return 0
-  return idle + tick if util == 0 and queue == 0 else 0
+BUSY_UTIL = 50    # percent: sustained use this high counts as a run, residual driver use does not
+UNKNOWN_TICKS = 8  # unanswered queue probes in a row that hold the clock (2 minutes at a 15 s tick)
+
+
+def next_idle(idle, util, queue, downloading, tick, unknown=0):
+  """The idle clock and the count of unanswered queue probes in a row, after one tick.
+
+  Idle means no queued or running job and no download or install. GPU use does not matter while the
+  queue answers: ComfyUI and the driver keep a little load after a run, and that must not hold the Pod.
+  """
+  if downloading:
+    return 0, 0
+  if queue is None:
+    unknown += 1
+    if (util or 0) >= BUSY_UTIL:
+      return 0, unknown
+    # A short gap in the probe holds the clock. A long one counts as idle, or a hung ComfyUI keeps the Pod forever.
+    return (idle if unknown <= UNKNOWN_TICKS else idle + tick), unknown
+  return (idle + tick if queue == 0 else 0), 0
 
 
 def log(msg):
@@ -477,7 +491,7 @@ def watchdog():
       S['queue'], S['gpu'] = queue, gpu
       # An install downloads and compiles with the GPU idle, so it counts as work.
       work = downloading() or installing()
-      S['idle'] = next_idle(S['idle'], gpu and gpu['util'], queue, work, TICK)
+      S['idle'], S['unknown'] = next_idle(S['idle'], gpu and gpu['util'], queue, work, TICK, S.get('unknown', 0))
       busy = is_busy(queue, work, S.get('leased_at'), time.time())
       state = dict(S, now=time.time(), booted=BOOTED, busy=busy)
       done = S['ending']
