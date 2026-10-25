@@ -938,10 +938,18 @@ export const schemas = {
       "width"
     ],
     "image_grade": [
+      "desat",
+      "glow",
       "grain",
+      "grain_base",
       "image",
-      "preset",
-      "temperature"
+      "matte",
+      "matte_amount",
+      "punch",
+      "seed",
+      "temperature",
+      "tint",
+      "tint_amount"
     ],
     "image_sdxl": [
       "count",

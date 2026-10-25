@@ -6,184 +6,245 @@
     }
   },
   "2": {
-    "class_type": "StringCompare",
+    "class_type": "ImageRGBToYUV",
     "inputs": {
-      "string_a": "{{preset}}",
-      "string_b": "split_tone",
-      "mode": "Equal",
-      "case_sensitive": true
-    }
-  },
-  "3": {
-    "class_type": "StringCompare",
-    "inputs": {
-      "string_a": "{{preset}}",
-      "string_b": "soft_skin",
-      "mode": "Equal",
-      "case_sensitive": true
-    }
-  },
-  "4": {
-    "class_type": "StringCompare",
-    "inputs": {
-      "string_a": "{{preset}}",
-      "string_b": "old_lens",
-      "mode": "Equal",
-      "case_sensitive": true
-    }
-  },
-  "5": {
-    "class_type": "StringCompare",
-    "inputs": {
-      "string_a": "{{preset}}",
-      "string_b": "16mm",
-      "mode": "Equal",
-      "case_sensitive": true
-    }
-  },
-  "6": {
-    "class_type": "StringCompare",
-    "inputs": {
-      "string_a": "{{preset}}",
-      "string_b": "faded",
-      "mode": "Equal",
-      "case_sensitive": true
-    }
-  },
-  "7": {
-    "class_type": "StringCompare",
-    "inputs": {
-      "string_a": "{{preset}}",
-      "string_b": "mono",
-      "mode": "Equal",
-      "case_sensitive": true
-    }
-  },
-  "8": {
-    "class_type": "StringCompare",
-    "inputs": {
-      "string_a": "{{preset}}",
-      "string_b": "warm_70s",
-      "mode": "Equal",
-      "case_sensitive": true
-    }
-  },
-  "9": {
-    "class_type": "GLSLShader",
-    "inputs": {
-      "fragment_shader": "#version 300 es\nprecision highp float;\n\n// ComfyField photo-grade looks. One bool per look; all false is Natural (no change).\nuniform sampler2D u_image0;\nuniform vec2 u_resolution;\nuniform bool u_bool0; // split_tone: teal shadows, warm highlights\nuniform bool u_bool1; // soft_skin: gentle glow, softer contrast\nuniform bool u_bool2; // old_lens: halation glow and vignette\nuniform bool u_bool3; // 16mm: lifted blacks, softer colour (grain comes from the grain pass)\nuniform bool u_bool4; // faded: matte blacks, rolled highlights, washed colour\nuniform bool u_bool5; // mono: punchy black and white\nuniform bool u_bool6; // warm_70s: golden, soft, lifted\n\nin vec2 v_texCoord;\nlayout(location = 0) out vec4 fragColor0;\n\nconst vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);\n\nfloat luma(vec3 c) { return dot(c, LUMA); }\nvec3 contrast(vec3 c, float k) { return (c - 0.5) * k + 0.5; }\nvec3 lift(vec3 c, float l) { return c * (1.0 - l) + l; }\nvec3 sat(vec3 c, float s) { return mix(vec3(luma(c)), c, s); }\n\n// 16-tap golden-angle disc blur of the source, radius in pixels.\nvec3 blur(vec2 uv, float radiusPx) {\n    vec2 px = radiusPx / u_resolution;\n    vec3 acc = texture(u_image0, uv).rgb;\n    float wsum = 1.0;\n    for (int i = 0; i < 16; i++) {\n        float a = float(i) * 2.3999632;\n        float r = sqrt((float(i) + 0.5) / 16.0);\n        float w = 1.0 - 0.5 * r;\n        acc += texture(u_image0, uv + vec2(cos(a), sin(a)) * r * px).rgb * w;\n        wsum += w;\n    }\n    return acc / wsum;\n}\n\nfloat vignette(vec2 uv, float strength) {\n    float aspect = u_resolution.x / u_resolution.y;\n    vec2 d = (uv - 0.5) * vec2(aspect, 1.0);\n    float r = length(d) / length(vec2(aspect, 1.0) * 0.5);\n    return 1.0 - strength * smoothstep(0.35, 1.0, r);\n}\n\nvoid main() {\n    vec4 tex = texture(u_image0, v_texCoord);\n    vec3 c = tex.rgb;\n    float shortSide = min(u_resolution.x, u_resolution.y);\n\n    if (u_bool0) {\n        float l = luma(c);\n        float sh = 1.0 - smoothstep(0.05, 0.55, l);\n        float hi = smoothstep(0.45, 0.95, l);\n        c += sh * vec3(-0.05, 0.015, 0.06) + hi * vec3(0.06, 0.025, -0.045);\n        c = contrast(c, 1.06);\n    }\n    if (u_bool1) {\n        vec3 b = blur(v_texCoord, shortSide * 0.006);\n        c = mix(c, max(c, b), 0.35);\n        c = contrast(c, 0.93);\n        c = lift(c, 0.02);\n        c += vec3(0.015, 0.005, -0.01);\n        c = sat(c, 0.95);\n    }\n    if (u_bool2) {\n        vec3 b = blur(v_texCoord, shortSide * 0.012);\n        c += b * smoothstep(0.55, 1.0, luma(b)) * 0.35;\n        c = mix(c, b, 0.15);\n        c *= vignette(v_texCoord, 0.45);\n        c = sat(c, 0.9);\n        c += vec3(0.01, 0.0, -0.01);\n    }\n    if (u_bool3) {\n        float l = luma(c);\n        c = lift(c, 0.06);\n        c += (1.0 - smoothstep(0.0, 0.5, l)) * vec3(0.0, 0.015, -0.01);\n        c = contrast(c, 1.04);\n        c = sat(c, 0.85);\n        c *= vignette(v_texCoord, 0.2);\n    }\n    if (u_bool4) {\n        c = mix(vec3(0.10, 0.10, 0.11), vec3(0.93, 0.92, 0.90), clamp(c, 0.0, 1.0));\n        c = sat(c, 0.72);\n    }\n    if (u_bool5) {\n        float l = clamp(dot(c, vec3(0.30, 0.59, 0.11)), 0.0, 1.0);\n        l = mix(l, l * l * (3.0 - 2.0 * l), 0.6);\n        l = (l - 0.5) * 1.12 + 0.5;\n        c = vec3(l);\n    }\n    if (u_bool6) {\n        c += vec3(0.06, 0.025, -0.05);\n        c = lift(c, 0.04);\n        c = contrast(c, 0.95);\n        c = sat(c, 0.9);\n        vec3 b = blur(v_texCoord, shortSide * 0.008);\n        c = mix(c, max(c, b), 0.2);\n    }\n    fragColor0 = vec4(clamp(c, 0.0, 1.0), tex.a);\n}\n",
-      "size_mode": "from_input",
-      "images.image0": [
+      "image": [
         "1",
-        0
-      ],
-      "bools.u_bool0": [
-        "2",
-        0
-      ],
-      "bools.u_bool1": [
-        "3",
-        0
-      ],
-      "bools.u_bool2": [
-        "4",
-        0
-      ],
-      "bools.u_bool3": [
-        "5",
-        0
-      ],
-      "bools.u_bool4": [
-        "6",
-        0
-      ],
-      "bools.u_bool5": [
-        "7",
-        0
-      ],
-      "bools.u_bool6": [
-        "8",
         0
       ]
     }
   },
-  "10": {
-    "class_type": "PrimitiveFloat",
+  "3": {
+    "class_type": "ImageBlend",
     "inputs": {
-      "value": "{{temperature}}"
+      "image1": [
+        "1",
+        0
+      ],
+      "image2": [
+        "2",
+        0
+      ],
+      "blend_factor": "{{desat}}",
+      "blend_mode": "normal"
+    },
+    "_meta": {
+      "title": "Saturation (blend toward luma)"
     }
   },
-  "11": {
-    "class_type": "GLSLShader",
+  "4": {
+    "class_type": "EmptyImage",
     "inputs": {
-      "fragment_shader": "#version 300 es\nprecision highp float;\n\nuniform sampler2D u_image0;\nuniform float u_float0; // temperature (-100 to 100)\nuniform float u_float1; // tint (-100 to 100)\nuniform float u_float2; // vibrance (-100 to 100)\nuniform float u_float3; // saturation (-100 to 100)\n\nin vec2 v_texCoord;\nout vec4 fragColor;\n\nconst float INPUT_SCALE = 0.01;\nconst float TEMP_TINT_PRIMARY = 0.3;\nconst float TEMP_TINT_SECONDARY = 0.15;\nconst float VIBRANCE_BOOST = 2.0;\nconst float SATURATION_BOOST = 2.0;\nconst float SKIN_PROTECTION = 0.5;\nconst float EPSILON = 0.001;\nconst vec3 LUMA_WEIGHTS = vec3(0.299, 0.587, 0.114);\n\nvoid main() {\n    vec4 tex = texture(u_image0, v_texCoord);\n    vec3 color = tex.rgb;\n    \n    // Scale inputs: -100/100 → -1/1\n    float temperature = u_float0 * INPUT_SCALE;\n    float tint = u_float1 * INPUT_SCALE;\n    float vibrance = u_float2 * INPUT_SCALE;\n    float saturation = u_float3 * INPUT_SCALE;\n    \n    // Temperature (warm/cool): positive = warm, negative = cool\n    color.r += temperature * TEMP_TINT_PRIMARY;\n    color.b -= temperature * TEMP_TINT_PRIMARY;\n    \n    // Tint (green/magenta): positive = green, negative = magenta\n    color.g += tint * TEMP_TINT_PRIMARY;\n    color.r -= tint * TEMP_TINT_SECONDARY;\n    color.b -= tint * TEMP_TINT_SECONDARY;\n    \n    // Single clamp after temperature/tint\n    color = clamp(color, 0.0, 1.0);\n    \n    // Vibrance with skin protection\n    if (vibrance != 0.0) {\n        float maxC = max(color.r, max(color.g, color.b));\n        float minC = min(color.r, min(color.g, color.b));\n        float sat = maxC - minC;\n        float gray = dot(color, LUMA_WEIGHTS);\n        \n        if (vibrance < 0.0) {\n            // Desaturate: -100 → gray\n            color = mix(vec3(gray), color, 1.0 + vibrance);\n        } else {\n            // Boost less saturated colors more\n            float vibranceAmt = vibrance * (1.0 - sat);\n            \n            // Branchless skin tone protection\n            float isWarmTone = step(color.b, color.g) * step(color.g, color.r);\n            float warmth = (color.r - color.b) / max(maxC, EPSILON);\n            float skinTone = isWarmTone * warmth * sat * (1.0 - sat);\n            vibranceAmt *= (1.0 - skinTone * SKIN_PROTECTION);\n            \n            color = mix(vec3(gray), color, 1.0 + vibranceAmt * VIBRANCE_BOOST);\n        }\n    }\n    \n    // Saturation\n    if (saturation != 0.0) {\n        float gray = dot(color, LUMA_WEIGHTS);\n        float satMix = saturation < 0.0\n            ? 1.0 + saturation                      // -100 → gray\n            : 1.0 + saturation * SATURATION_BOOST;  // +100 → 3x boost\n        color = mix(vec3(gray), color, satMix);\n    }\n    \n    fragColor = vec4(clamp(color, 0.0, 1.0), tex.a);\n}",
-      "size_mode": "from_input",
-      "images.image0": [
+      "width": 64,
+      "height": 64,
+      "batch_size": 1,
+      "color": "{{tint}}"
+    }
+  },
+  "5": {
+    "class_type": "ImageBlend",
+    "inputs": {
+      "image1": [
+        "3",
+        0
+      ],
+      "image2": [
+        "4",
+        0
+      ],
+      "blend_factor": "{{tint_amount}}",
+      "blend_mode": "soft_light"
+    },
+    "_meta": {
+      "title": "Look tint"
+    }
+  },
+  "6": {
+    "class_type": "EmptyImage",
+    "inputs": {
+      "width": 64,
+      "height": 64,
+      "batch_size": 1,
+      "color": "{{matte}}"
+    }
+  },
+  "7": {
+    "class_type": "ImageBlend",
+    "inputs": {
+      "image1": [
+        "5",
+        0
+      ],
+      "image2": [
+        "6",
+        0
+      ],
+      "blend_factor": "{{matte_amount}}",
+      "blend_mode": "normal"
+    },
+    "_meta": {
+      "title": "Matte: lift blacks, roll highlights"
+    }
+  },
+  "8": {
+    "class_type": "ImageBlend",
+    "inputs": {
+      "image1": [
+        "7",
+        0
+      ],
+      "image2": [
+        "7",
+        0
+      ],
+      "blend_factor": "{{punch}}",
+      "blend_mode": "overlay"
+    },
+    "_meta": {
+      "title": "Contrast"
+    }
+  },
+  "9": {
+    "class_type": "ImageScaleBy",
+    "inputs": {
+      "image": [
+        "8",
+        0
+      ],
+      "upscale_method": "area",
+      "scale_by": 0.125
+    }
+  },
+  "10": {
+    "class_type": "ImageBlur",
+    "inputs": {
+      "image": [
         "9",
         0
       ],
-      "floats.u_float0": [
+      "blur_radius": 6,
+      "sigma": 3
+    }
+  },
+  "11": {
+    "class_type": "ImageBlend",
+    "inputs": {
+      "image1": [
+        "8",
+        0
+      ],
+      "image2": [
         "10",
         0
       ],
-      "floats.u_float1": 0.0,
-      "floats.u_float2": 0.0,
-      "floats.u_float3": 0.0
+      "blend_factor": "{{glow}}",
+      "blend_mode": "screen"
+    },
+    "_meta": {
+      "title": "Glow"
     }
   },
   "12": {
-    "class_type": "PrimitiveFloat",
+    "class_type": "ComfyMathExpression",
     "inputs": {
-      "value": "{{grain}}"
+      "expression": "max(a, 0) / 100",
+      "values.a": "{{temperature}}"
     }
   },
   "13": {
     "class_type": "ComfyMathExpression",
     "inputs": {
-      "expression": "max(a, 25 * b) / 100",
-      "values.a": [
-        "12",
-        0
-      ],
-      "values.b": [
-        "5",
-        0
-      ]
+      "expression": "max(0 - a, 0) / 100",
+      "values.a": "{{temperature}}"
     }
   },
   "14": {
-    "class_type": "GLSLShader",
+    "class_type": "EmptyImage",
     "inputs": {
-      "fragment_shader": "#version 300 es\nprecision highp float;\n\nuniform sampler2D u_image0;\nuniform vec2 u_resolution;\nuniform float u_float0; // grain amount      [0.0 – 1.0]   typical: 0.2–0.8\nuniform float u_float1; // grain size        [0.3 – 3.0]   lower = finer grain\nuniform float u_float2; // color amount      [0.0 – 1.0]   0 = monochrome, 1 = RGB grain\nuniform float u_float3; // luminance bias    [0.0 – 1.0]   0 = uniform, 1 = shadows only\nuniform int   u_int0;   // noise mode        [0 or 1]      0 = smooth, 1 = grainy\n\nin vec2 v_texCoord;\nlayout(location = 0) out vec4 fragColor0;\n\n// High-quality integer hash (pcg-like)\nuint pcg(uint v) {\n    uint state = v * 747796405u + 2891336453u;\n    uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;\n    return (word >> 22u) ^ word;\n}\n\n// 2D -> 1D hash input\nuint hash2d(uvec2 p) {\n    return pcg(p.x + pcg(p.y));\n}\n\n// Hash to float [0, 1]\nfloat hashf(uvec2 p) {\n    return float(hash2d(p)) / float(0xffffffffu);\n}\n\n// Hash to float with offset (for RGB channels)\nfloat hashf(uvec2 p, uint offset) {\n    return float(pcg(hash2d(p) + offset)) / float(0xffffffffu);\n}\n\n// Convert uniform [0,1] to roughly Gaussian distribution\n// Using simple approximation: average of multiple samples\nfloat toGaussian(uvec2 p) {\n    float sum = hashf(p, 0u) + hashf(p, 1u) + hashf(p, 2u) + hashf(p, 3u);\n    return (sum - 2.0) * 0.7;  // Centered, scaled\n}\n\nfloat toGaussian(uvec2 p, uint offset) {\n    float sum = hashf(p, offset) + hashf(p, offset + 1u) \n              + hashf(p, offset + 2u) + hashf(p, offset + 3u);\n    return (sum - 2.0) * 0.7;\n}\n\n// Smooth noise with better interpolation\nfloat smoothNoise(vec2 p) {\n    vec2 i = floor(p);\n    vec2 f = fract(p);\n    \n    // Quintic interpolation (less banding than cubic)\n    f = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);\n    \n    uvec2 ui = uvec2(i);\n    float a = toGaussian(ui);\n    float b = toGaussian(ui + uvec2(1u, 0u));\n    float c = toGaussian(ui + uvec2(0u, 1u));\n    float d = toGaussian(ui + uvec2(1u, 1u));\n    \n    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);\n}\n\nfloat smoothNoise(vec2 p, uint offset) {\n    vec2 i = floor(p);\n    vec2 f = fract(p);\n    \n    f = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);\n    \n    uvec2 ui = uvec2(i);\n    float a = toGaussian(ui, offset);\n    float b = toGaussian(ui + uvec2(1u, 0u), offset);\n    float c = toGaussian(ui + uvec2(0u, 1u), offset);\n    float d = toGaussian(ui + uvec2(1u, 1u), offset);\n    \n    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);\n}\n\nvoid main() {\n    vec4 color = texture(u_image0, v_texCoord);\n    \n    // Luminance (Rec.709)\n    float luma = dot(color.rgb, vec3(0.2126, 0.7152, 0.0722));\n    \n    // Grain UV (resolution-independent)\n    vec2 grainUV = v_texCoord * u_resolution / max(u_float1, 0.01);\n    uvec2 grainPixel = uvec2(grainUV);\n    \n    float g;\n    vec3 grainRGB;\n    \n    if (u_int0 == 1) {\n        // Grainy mode: pure hash noise (no interpolation = no banding)\n        g = toGaussian(grainPixel);\n        grainRGB = vec3(\n            toGaussian(grainPixel, 100u),\n            toGaussian(grainPixel, 200u),\n            toGaussian(grainPixel, 300u)\n        );\n    } else {\n        // Smooth mode: interpolated with quintic curve\n        g = smoothNoise(grainUV);\n        grainRGB = vec3(\n            smoothNoise(grainUV, 100u),\n            smoothNoise(grainUV, 200u),\n            smoothNoise(grainUV, 300u)\n        );\n    }\n    \n    // Luminance weighting (less grain in highlights)\n    float lumWeight = mix(1.0, 1.0 - luma, clamp(u_float3, 0.0, 1.0));\n    \n    // Strength\n    float strength = u_float0 * 0.15;\n    \n    // Color vs monochrome grain\n    vec3 grainColor = mix(vec3(g), grainRGB, clamp(u_float2, 0.0, 1.0));\n    \n    color.rgb += grainColor * strength * lumWeight;\n    fragColor0 = vec4(clamp(color.rgb, 0.0, 1.0), color.a);\n}\n",
-      "size_mode": "from_input",
-      "images.image0": [
-        "11",
-        0
-      ],
-      "floats.u_float0": [
-        "13",
-        0
-      ],
-      "floats.u_float1": 1.5,
-      "floats.u_float2": 0.0,
-      "floats.u_float3": 0.5,
-      "ints.u_int0": 0
+      "width": 64,
+      "height": 64,
+      "batch_size": 1,
+      "color": 16747069
     }
   },
   "15": {
-    "class_type": "SplitImageWithAlpha",
+    "class_type": "ImageBlend",
+    "inputs": {
+      "image1": [
+        "11",
+        0
+      ],
+      "image2": [
+        "14",
+        0
+      ],
+      "blend_factor": [
+        "12",
+        0
+      ],
+      "blend_mode": "soft_light"
+    },
+    "_meta": {
+      "title": "Warmer"
+    }
+  },
+  "16": {
+    "class_type": "EmptyImage",
+    "inputs": {
+      "width": 64,
+      "height": 64,
+      "batch_size": 1,
+      "color": 4033279
+    }
+  },
+  "17": {
+    "class_type": "ImageBlend",
+    "inputs": {
+      "image1": [
+        "15",
+        0
+      ],
+      "image2": [
+        "16",
+        0
+      ],
+      "blend_factor": [
+        "13",
+        0
+      ],
+      "blend_mode": "soft_light"
+    },
+    "_meta": {
+      "title": "Cooler"
+    }
+  },
+  "18": {
+    "class_type": "ComfyMathExpression",
+    "inputs": {
+      "expression": "max(a, b) * 0.0012",
+      "values.a": "{{grain}}",
+      "values.b": "{{grain_base}}"
+    }
+  },
+  "19": {
+    "class_type": "ImageAddNoise",
     "inputs": {
       "image": [
-        "14",
+        "17",
+        0
+      ],
+      "seed": "{{seed}}",
+      "strength": [
+        "18",
         0
       ]
     }
   },
-  "16": {
+  "20": {
     "class_type": "SaveImage",
     "inputs": {
       "images": [
-        "15",
+        "19",
         0
       ],
       "filename_prefix": "comfyfield/image_grade"
