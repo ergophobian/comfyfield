@@ -117,6 +117,8 @@ async function ensurePod() {
 
 // The app's run adapter for a Comfy step, with the Pod started up front instead of by the sheet.
 async function comfyRun(model, opts) {
+  // A format's join step stitches locally; it costs nothing.
+  if (model.provider === 'stitch') return [await post('/api/stitch', { clips: opts.clips, aspect: opts.aspect, music: opts.music, preview: true })]
   const vars = comfyVars(model.kind, opts, model.sizes)
   const workflow = vars.image && model.imageWorkflow ? model.imageWorkflow : model.workflow
   hit.add(workflow)

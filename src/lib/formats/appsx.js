@@ -782,20 +782,29 @@ const trending = [
   open({
     id: 'rap-video', name: 'Rap video', kind: 'video', category: 'fun', hub: 'trending',
     blurb: 'Your photo performs a rap with fresh lyrics and a beat.',
-    runsOn: 'Qwen3.8, MiniMax Music 3 and InfiniteTalk', workflow: 'rap_video',
+    job: 'A rap verse performed by the person in your photo', shape: 'pipeline',
+    runsOn: 'MiniMax Music 3 and LTX-2.5 audio to video',
     inputs: [
       photo,
       { id: 'topic', type: 'text', label: 'What the verse is about', optional: true, placeholder: 'Being the first one up on a Monday' },
       { id: 'beat', type: 'choice', label: 'Beat', default: 'boom-bap', options: [
-        { id: 'boom-bap', label: 'Boom bap', text: 'a dusty boom bap' },
-        { id: 'trap', label: 'Trap', text: 'a hard hitting trap' },
-        { id: 'old-school', label: 'Old school', text: 'a bouncy old school' },
-        { id: 'lofi', label: 'Lo-fi', text: 'a mellow lo-fi' },
+        { id: 'boom-bap', label: 'Boom bap', text: 'Dusty boom bap hip hop, 90 bpm, punchy drums, vinyl crackle, a confident rap vocal' },
+        { id: 'trap', label: 'Trap', text: 'Hard hitting trap, 140 bpm, booming 808s and rolling hi-hats, a confident rap vocal' },
+        { id: 'old-school', label: 'Old school', text: 'Bouncy old school hip hop, 100 bpm, funky break beat and scratches, a playful rap vocal' },
+        { id: 'lofi', label: 'Lo-fi', text: 'Mellow lo-fi hip hop, 80 bpm, dusty keys and soft drums, a relaxed rap vocal' },
       ] },
     ],
-    prompt: 'Write a short, clean, playful rap verse about {topic}, produce {beat} beat with the vocal on it, and make the person in the photo perform it to the camera with accurate lip sync, head nods and hand gestures in a moody music video set with colored lights.',
+    settings: { aspect: '9:16', duration: 10 },
+    steps: [
+      { id: 'lyrics', type: 'writer', target: 'Rap lyrics', review: 'Review your lyrics',
+        instructions: 'Write a short, clean, playful rap verse of four lines about the user note, or about the person in the photo when there is no note. Keep it friendly, with no profanity. Start with the line [Verse] and put each rap line on its own line. Return only the lyrics.' },
+      // The beat picks the song's style; the written verse is its lyrics.
+      { id: 'song', kind: 'audio', provider: 'comfy', workflow: 'minimax_music3_lyrics', prompt: '{topic}', bindings: { style: 'beat' } },
+      { id: 'video', kind: 'video', provider: 'comfy', workflow: 'ltx25_ia2v', sizes: ltx25Sizes, params: { shot: 0 },
+        prompt: 'The person in the photo performs a rap verse straight to the camera with accurate lip sync, head nods and hand gestures, in a moody music video set with colored lights. Handheld camera that moves with the beat.' },
+    ],
+    outputs: [{ step: 'video', kind: 'video' }],
     output: 'A music video with lyrics and a beat',
-    settings: { aspect: '9:16', duration: 15 },
     cover: covers.night,
   }),
   template({

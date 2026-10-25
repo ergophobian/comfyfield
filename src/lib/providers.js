@@ -63,6 +63,8 @@ export async function run(model, opts, hooks = {}) {
     if (hooks.isCancelled?.()) throw new Cancelled()
     return runJob(route, payload, hooks)
   }
+  // A format's join step: the local stitch, kept out of the exports list like a Flows preview.
+  if (model.provider === 'stitch') return [await post('/api/stitch', { clips: opts.clips, aspect: opts.aspect, music: opts.music, preview: true })]
   if (model.provider === 'comfyRouter') {
     const batch = opts.routerBatch ||= createRouterBatch(model, opts)
     return runRouterBatch(batch, (payload, call) => {

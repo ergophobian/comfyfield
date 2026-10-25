@@ -387,8 +387,8 @@ assert.match(dubCalls[0].opts.prompt, /conversational Mandarin/)
 const dubVars = comfyVars('video', dubCalls[0].opts)
 assert.deepEqual([dubVars.start, dubVars.duration, dubVars.video], [2, 30, '/media/talk.mp4'])
 assert.equal(dub.inputs.find((i) => i.id === 'language').options[0].id, 'es', 'Spanish stays the first dub language')
-assert.equal(formats.length, 457)
-assert.equal(allFormats.length, 482, 'Do not delete planned formats')
+assert.equal(formats.length, 460)
+assert.equal(allFormats.length, 484, 'Do not delete planned formats')
 assert.equal(allFormats.filter((f) => f.category === 'camera').length > 0, true, 'Keep Create prompt presets')
 assert(allFormats.filter((f) => !formats.includes(f)).every((f) => formatProblems.get(f.id).length))
 
@@ -440,6 +440,55 @@ assert(!ugcOpts(ugcValues).prompt.includes('<Audio 1>'), 'No voice sample, no <A
 const voiced = ugcOpts({ ...ugcValues, voice: { url: '/media/voice.wav', name: 'voice.wav' } })
 assert.equal(voiced.slots.audio, '/media/voice.wav')
 assert(voiced.prompt.includes('the voice from <Audio 1>'))
+// A music video renders one shot per slice of the song, hands the song to each, then joins the shots in order.
+const song = { url: '/media/song.mp3', name: 'song.mp3' }
+const musicRuns = []
+const musicSession = await runFormat(formats.find((f) => f.id === 'song-music-video'), { ...valuesFor(formats.find((f) => f.id === 'song-music-video')), brief: 'Synth pop', artist: null, pace: '4' }, {
+  run: async (model, opts, metadata) => {
+    musicRuns.push({ model, opts, metadata })
+    if (model.provider === 'stitch') return [{ url: '/media/joined.mp4', kind: 'video' }]
+    return [{ url: model.kind === 'audio' ? song.url : `/media/${metadata.stepId}.mp4`, kind: model.kind }]
+  },
+})
+const musicShots = musicRuns.filter((r) => r.model.kind === 'video' && r.model.provider === 'comfy')
+assert.equal(musicRuns[0].model.workflow, 'minimax_music3')
+assert.equal(comfyVars('audio', musicRuns[0].opts).duration, 30, 'The song is as long as the six shots')
+assert.equal(musicShots.length, 6)
+assert.deepEqual(musicShots.map((r) => comfyVars('video', r.opts, r.model.sizes).audio), Array(6).fill(song.url), 'Every shot hears the song')
+assert.deepEqual(musicShots.map((r) => r.opts.params.shot), [0, 1, 2, 3, 4, 5])
+const stitched = musicRuns.find((r) => r.model.provider === 'stitch')
+assert.deepEqual(stitched.opts.clips.map((c) => c.url), [1, 2, 3, 4, 5, 6].map((n) => `/media/shot${n}.mp4`), 'Shots join in song order')
+assert.equal(stitched.opts.aspect, '16:9')
+assert.equal(stitched.metadata.formatId, 'song-music-video')
+assert.deepEqual(musicSession.results().map((r) => r.url), ['/media/joined.mp4'])
+const uploaded = formats.find((f) => f.id === 'music-video')
+const uploadFlow = compileFormat(uploaded, { ...valuesFor(uploaded), song, pace: '3', shape: 'tall' })
+assert.equal(uploadFlow.nodes.filter((n) => n.type === 'model').length, 6)
+assert.equal(uploadFlow.nodes.find((n) => n.type === 'stitch').data.aspect, '9:16')
+const firstShot = uploadFlow.nodes.find((n) => n.id === 'shot2').data.model.formatStep.options
+assert.equal(comfyVars('video', firstShot).audio, song.url)
+assert.equal(comfyVars('video', firstShot).duration, 3, 'The pace sets the clip length the graph slices by')
+assert.deepEqual(uploadFlow.edges.filter((e) => e.target === 'join').map((e) => e.source), ['shot1', 'shot2', 'shot3', 'shot4', 'shot5', 'shot6'])
+assert.deepEqual(validateFormat({ ...uploaded, steps: [...uploaded.steps, { id: 'bad', type: 'stitch', from: [] }] }).filter((p) => p.startsWith('bad')), ['bad: A join needs upstream video steps'])
+
+// The rap video writes a verse, sings it on the chosen beat, and performs it from the photo.
+const rap = formats.find((f) => f.id === 'rap-video')
+const rapRuns = []
+const rapSession = await runFormat(rap, { ...valuesFor(rap), topic: 'Monday mornings', beat: 'trap' }, {
+  writePrompt: async () => '[Verse] Up at six',
+  run: async (model, opts) => { rapRuns.push({ model, opts }); return [{ url: model.kind === 'audio' ? song.url : '/media/rap.mp4', kind: model.kind }] },
+})
+assert.equal(rapRuns.length, 0, 'The verse waits for review')
+await rapSession.sendWriter('lyrics')
+assert.deepEqual(rapRuns.map((r) => r.model.workflow), ['minimax_music3_lyrics', 'ltx25_ia2v'])
+const rapSong = comfyVars('audio', rapRuns[0].opts)
+assert.equal(rapSong.prompt, '[Verse] Up at six')
+assert.match(rapSong.style, /^Hard hitting trap/)
+const rapVideo = comfyVars('video', rapRuns[1].opts, rapRuns[1].model.sizes)
+assert.equal(rapVideo.audio, song.url)
+assert.equal(rapVideo.image, photo.url)
+assert.equal(rapVideo.shot, 0)
+
 console.log(`Format runner checks ok: ${checked} recipe cases, approval and batching, concurrency, schema rejection, Comfy placeholders, writer handoff and provider failures. No network calls.`)
 
 // A writer edit changes the request even when the downstream text unit keeps its unit id.
