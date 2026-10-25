@@ -865,6 +865,30 @@ await test('fixes: the CLI and MCP see a new Pod at once, and never remove a new
   assert.equal(JSON.parse(fs.readFileSync(path.join(a.dir, 'pod-ledger.json'), 'utf8')).pod, 'pod2', 'only the app writes the ledger')
 })
 
+await test('fixes: an app that watched an old Pod never ends a new Pod another app started', async () => {
+  const a = setup()
+  const other = podManager({ ...a.opts })
+  await a.pod.start()
+  a.rp.statusd = readyStatus()
+  assert.equal((await other.tick()).phase, 'ready') // the other app saw pod1 ready and answering
+  a.rp.statusd = null
+  await a.pod.terminate({ now: true })
+  a.clock.t += 30 * 60_000
+  await a.pod.start() // pod2 still boots, so its status server does not answer yet
+  await new Promise((r) => setTimeout(r, 1100))
+  const s = await other.tick()
+  assert.equal(s.phase, 'starting')
+  assert.equal(s.event, null)
+  assert.equal(a.rp.count((c) => c.method === 'DELETE' && c.path.endsWith('/pod2')), 0)
+})
+
+await test('fixes: a failed start shows its reason in the status', async () => {
+  const { pod, rp } = setup()
+  rp.create.push({ status: 400, data: { error: 'bad image' } })
+  await assert.rejects(pod.start(), /bad image/)
+  assert.match(pod.status().event.text, /bad image/)
+})
+
 await test('fixes: requests from other sites are refused', async () => {
   const { crossSite } = await import('../server/plugin.js')
   const host = 'localhost:5173'
