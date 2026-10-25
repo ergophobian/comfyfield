@@ -115,12 +115,6 @@ export function blankFlow() {
   return { id: uid(), name: 'Untitled flow', nodes: [], edges: [], updated: Date.now() }
 }
 
-const strip = (f) => ({
-  ...f,
-  nodes: f.nodes.map(({ id, type, position, data }) => ({ id, type, position, data })),
-  edges: f.edges.map(({ id, source, target }) => ({ id, source, target })),
-})
-
 // Before server storage, flows lived in this browser's localStorage. initFlows moves them to the
 // server once; the browser copy stays as a fallback.
 export function loadFlows() {
@@ -146,17 +140,20 @@ export async function openFlow(flow) {
   await flushFlows()
 }
 
-export function exportJson(flow) {
-  return JSON.stringify({ comfyfield: 'flow', version: 1, flow: strip(flow) }, null, 2)
+export { shareText as exportJson, shareFileName } from '../../shared/flowShare.js'
+
+// Import and gist share go through the server: it checks the flow against the model catalog, stamps
+// where it came from and holds the GitHub token. Unsaved canvas edits are saved first.
+export async function importSharedFlow(input) {
+  await flushFlows()
+  const flow = await api('/api/flows/import', 'POST', input)
+  await refreshFlows()
+  return flow
 }
 
-export function parseFlow(text) {
-  const raw = JSON.parse(text)
-  const f = raw.flow || raw
-  if (!Array.isArray(f.nodes) || !Array.isArray(f.edges)) throw new Error('This file is not a ComfyField flow')
-  const types = Object.keys(nodeLabels)
-  if (f.nodes.some((n) => !types.includes(n.type))) throw new Error('This flow uses a node type this version does not know')
-  return { ...strip(f), id: uid(), name: f.name || 'Imported flow', updated: Date.now() }
+export async function shareGist(id) {
+  await flushFlows()
+  return api('/api/flows/share', 'POST', { id })
 }
 
 export const libraryChanged = 'comfyfield:library'

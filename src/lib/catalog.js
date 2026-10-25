@@ -145,6 +145,9 @@ export const providerInfo = {
   elevenlabs: { name: 'ElevenLabs', blurb: 'Your ElevenLabs key for voices and sound effects.', fields: [
     { id: 'key', label: 'API key', placeholder: 'xi-api-key', secret: true },
   ], link: 'https://elevenlabs.io/app/settings/api-keys' },
+  github: { name: 'GitHub', blurb: 'A GitHub token with the gist scope shares flows and formats as secret gists: anyone with the link can open them. Importing a gist needs no token.', fields: [
+    { id: 'key', label: 'Token', placeholder: 'Classic token with the gist scope', secret: true },
+  ], link: 'https://github.com/settings/tokens/new?scopes=gist&description=ComfyField' },
 }
 
 // Account sign-ins for later. These need each site's own login, not an API key.

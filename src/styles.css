@@ -879,6 +879,15 @@ code { font-size: .92em; }
 .fl-row { display: flex; align-items: center; }
 .fl-row > button:first-child { flex: 1; min-width: 0; }
 .fl-row .fl-x { width: 30px; flex: 0 0 30px; align-items: center; justify-content: center; padding: 6px 0; color: var(--muted); }
+/* Gist import, a made gist and "Imported from" sit under the toolbar, left. */
+.fshare, .forigin { position: absolute; z-index: 14; top: var(--agent-toolbar); left: var(--agent-inset); max-width: calc(100% - var(--agent-pad)); border-radius: var(--r-md); }
+.fshare { width: 420px; padding: var(--agent-gap); display: grid; gap: var(--agent-small-gap); font-size: var(--text-sm); }
+.fshare label, .fshare strong { font-weight: 600; }
+.fshare a { color: var(--blue); overflow-wrap: anywhere; }
+.fshare-row { display: flex; gap: var(--agent-small-gap); align-items: center; flex-wrap: wrap; }
+.fshare-row input { flex: 1; min-width: 160px; }
+.forigin { margin: 0; padding: 6px 12px; font-size: var(--text-xs); color: var(--ink-2); }
+.forigin a { color: var(--blue); }
 
 .fnode { position: relative; width: 250px; border-radius: var(--r-lg); padding: 12px 14px 12px; background: var(--glass-strong); backdrop-filter: var(--blur-md);
   border: 1px solid var(--glass-line); box-shadow: var(--shadow); transition: box-shadow var(--dur-press) var(--spring), transform var(--dur-press) var(--spring); animation: rise var(--dur-rise) var(--spring) backwards; }
@@ -967,6 +976,7 @@ code { font-size: .92em; }
 @media (max-width: 720px) {
   .flows { height: calc(100vh - 72px); }
   .ftool { border-radius: var(--r-xl); flex-wrap: wrap; }
+  .fshare, .forigin { top: var(--agent-toolbar-mobile); }
   .fpanel { left: 12px; right: 12px; top: auto; bottom: 12px; width: auto; max-height: 55%; }
   .fnote { display: none; }
 }

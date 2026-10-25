@@ -5,7 +5,9 @@ import { nodeTypes, FlowCtx } from '../components/flow/nodes.jsx'
 import Panel from '../components/flow/Panel.jsx'
 import { IconClose } from '../components/Icons.jsx'
 import { connectionProblem } from '../../shared/flowRules.js'
-import { useFlowStorage, engineFor, starters, makeNode, blankFlow, exportJson, parseFlow, nodeLabels } from '../lib/flowStore.js'
+import { Link } from 'react-router-dom'
+import { useFlowStorage, engineFor, starters, makeNode, blankFlow, exportJson, shareFileName, importSharedFlow, shareGist, nodeLabels } from '../lib/flowStore.js'
+import { originLabel } from '../../shared/flowShare.js'
 import { reloadFlows } from '../lib/remoteFlows.js'
 import AssistantPanel from '../components/AssistantPanel.jsx'
 import { AgentPresence, useAgentPresence } from '../components/flow/AgentPresence.jsx'
@@ -84,6 +86,9 @@ function Canvas({ picker }) {
   const [wipe, setWipe] = useState(false)
   const [draft, setDraft] = useState(null)
   const [drafting, setDrafting] = useState(false)
+  // share: null, { gist: true } while typing a link, or { url } once a gist is made.
+  const [share, setShare] = useState(null)
+  const [sharing, setSharing] = useState(false)
   const importer = useRef(null)
   const rf = useReactFlow()
   const flow = store.flows.find((f) => f.id === store.current) || store.flows[0]
@@ -184,16 +189,26 @@ function Canvas({ picker }) {
   const download = () => {
     const a = document.createElement('a')
     a.href = URL.createObjectURL(new Blob([exportJson(flow)], { type: 'application/json' }))
-    a.download = `${flow.name.replace(/[^\w-]+/g, '-').toLowerCase() || 'flow'}.json`
+    a.download = shareFileName(flow.name)
     a.click()
     setTimeout(() => URL.revokeObjectURL(a.href), 1000)
   }
-  const importFile = async (file) => {
+  const bring = async (input) => {
+    setSharing(true)
     try {
-      const f = parseFlow(await file.text())
-      setStore((s) => ({ current: f.id, flows: [f, ...s.flows.filter((x) => x.nodes.length)] }))
-    } catch (e) { setNote(e.message) }
+      await importSharedFlow(input)
+      setShare(null)
+      setTimeout(() => rf.fitView({ padding: 0.25, duration: 500 }), 60)
+    } catch (e) { if (input.gist != null) setShare((v) => ({ ...v, error: e.message })); else setNote(e.message) } finally { setSharing(false) }
   }
+  const importFile = async (file) => bring({ text: await file.text(), name: file.name })
+  const makeGist = async () => {
+    setSharing(true)
+    try { setShare({ url: (await shareGist(flow.id)).url }) } catch (e) { setNote(e.message) } finally { setSharing(false) }
+  }
+  const copy = (text) => navigator.clipboard?.writeText(text).then(() => setNote('Link copied'), () => setNote('Copy the link from the address'))
+  const origin = flow.origin
+  const when = origin?.at && new Date(origin.at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 
   useEffect(() => { setDraft(null) }, [flow.id])
   const describe = async (description) => {
@@ -225,12 +240,13 @@ function Canvas({ picker }) {
           <Pop label={<>Flows<span className="fcount">{store.flows.filter((f) => f.nodes.length).length || ''}</span></>}>
             {store.flows.map((f) => (
               <div key={f.id} className="fl-row">
-                <button type="button" className={f.id === flow.id ? 'on' : ''} onClick={() => open(f.id)}>{f.name}<small>{f.nodes.length} nodes</small></button>
+                <button type="button" className={f.id === flow.id ? 'on' : ''} onClick={() => open(f.id)}>{f.name}<small>{f.nodes.length} nodes{f.origin ? ` · ${originLabel(f.origin).replace('Imported from', 'from')}` : ''}</small></button>
                 <button type="button" className="fl-x" aria-label={`Delete ${f.name}`} onClick={() => drop(f.id)}><IconClose /></button>
               </div>
             ))}
             <button type="button" onClick={newFlow}>New flow</button>
-            <button type="button" onClick={() => importer.current.click()}>Import a flow file</button>
+            <button type="button" onClick={() => importer.current.click()}>Import a flow file<small>A .comfyfield.json file</small></button>
+            <button type="button" onClick={() => setShare({ gist: true, link: '' })}>Import from a gist<small>Paste a gist.github.com link</small></button>
           </Pop>
           <input ref={importer} type="file" accept=".json,application/json" hidden onChange={(e) => { e.target.files[0] && importFile(e.target.files[0]); e.target.value = '' }} />
           <input className="fname" value={flow.name} aria-label="Flow name" onChange={(e) => update((f) => ({ ...f, name: e.target.value }))} />
@@ -241,10 +257,43 @@ function Canvas({ picker }) {
           <Pop label="Add">
             {addable.map(([t, d]) => <button key={t} type="button" onClick={() => add(t)}>{nodeLabels[t]}<small>{d}</small></button>)}
           </Pop>
-          <button type="button" className="btn-soft" onClick={download} disabled={!flow.nodes.length}>Export</button>
+          {flow.nodes.length > 0 && (
+            <Pop label="Share" align="right">
+              <button type="button" onClick={download}>Download flow file<small>{shareFileName(flow.name)}</small></button>
+              {connections.github?.connected
+                ? <button type="button" onClick={makeGist} disabled={sharing}>{sharing ? 'Making the gist…' : 'Share as a secret gist'}<small>Anyone with the link can open it</small></button>
+                : <Link to="/connections">Share as a secret gist<small>Add a GitHub token in Connections first</small></Link>}
+              <h6>Shared flows leave out keys, results and uploaded media.</h6>
+            </Pop>
+          )}
           {hasOutput && <button type="button" className="btn-soft" onClick={regenerate} disabled={busy}>{wipe ? 'Wipe and re-run?' : 'Regenerate all'}</button>}
           <button type="button" className="btn-blue sm" onClick={run} disabled={!ready || busy || !flow.nodes.some((n) => ['model', 'writer', 'stitch'].includes(n.type))}>{busy ? 'Running' : 'Run'}</button>
         </div>
+
+        {share?.gist && (
+          <form className="fshare glass pop" onSubmit={(e) => { e.preventDefault(); bring({ gist: share.link }) }}>
+            <label htmlFor="gist-link">Import from a gist</label>
+            <div className="fshare-row">
+              <input id="gist-link" className="fp-text" autoFocus value={share.link} placeholder="https://gist.github.com/…" onChange={(e) => setShare({ gist: true, link: e.target.value })} />
+              <button type="submit" className="btn-blue sm" disabled={sharing || !share.link.trim()}>{sharing ? 'Importing' : 'Import'}</button>
+              <button type="button" className="btn-soft sm" onClick={() => setShare(null)}>Cancel</button>
+            </div>
+            {share.error && <p className="fstat bad" role="alert">{share.error}</p>}
+          </form>
+        )}
+        {share?.url && (
+          <div className="fshare glass pop" role="status">
+            <strong>Secret gist ready</strong>
+            <a href={share.url} target="_blank" rel="noreferrer">{share.url}</a>
+            <div className="fshare-row">
+              <button type="button" className="btn-blue sm" onClick={() => copy(share.url)}>Copy link</button>
+              <button type="button" className="btn-soft sm" onClick={() => setShare(null)}>Done</button>
+            </div>
+          </div>
+        )}
+        {!share && ready && origin && (
+          <p className="forigin glass">{origin.url ? <a href={origin.url} target="_blank" rel="noreferrer">{originLabel(origin)}</a> : originLabel(origin)}{when ? `, ${when}` : ''}</p>
+        )}
 
         <ReactFlow key={flow.id} nodes={shown} edges={shownEdges} nodesDraggable={ready} nodesConnectable={ready} nodeTypes={nodeTypes}
           onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect} isValidConnection={valid}
