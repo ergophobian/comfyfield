@@ -133,13 +133,13 @@ const professional = [
       photo,
       { id: 'look', type: 'choice', label: 'Look', default: 'natural', options: [
         { id: 'natural', label: 'Natural', note: 'Clean and true', params: grade({}) },
-        { id: 'split-tone', label: 'Split tone', note: 'Teal shadows, warm highlights', params: grade({ tint: 0xffa060, tint_amount: 0.3, matte: 0x0f2a30, matte_amount: 0.08, punch: 0.15 }) },
+        { id: 'split-tone', label: 'Split tone', note: 'Teal shadows, warm highlights', params: grade({ tint: 0xffa060, tint_amount: 0.4, matte: 0x0f2a30, matte_amount: 0.08, punch: 0.15 }) },
         { id: 'soft-skin', label: 'Soft skin', note: 'Gentle and flattering', params: grade({ desat: 0.05, tint: 0xffb080, tint_amount: 0.1, matte: 0x8a8078, matte_amount: 0.07, glow: 0.2 }) },
         { id: 'old-lens', label: 'Old lens', note: 'Soft glow and halation', params: grade({ desat: 0.1, tint: 0xffb070, tint_amount: 0.12, matte: 0x605850, matte_amount: 0.08, glow: 0.3 }) },
         { id: '16mm', label: '16mm', note: 'Grain and lifted blacks', params: grade({ desat: 0.15, matte: 0x283028, matte_amount: 0.08, punch: 0.05, grain_base: 25 }) },
         { id: 'faded', label: 'Faded film', note: 'Matte and washed', params: grade({ desat: 0.28, matte: 0x84827e, matte_amount: 0.18 }) },
         { id: 'mono', label: 'Black and white', note: 'Punchy contrast', params: grade({ desat: 1, punch: 0.35 }) },
-        { id: 'warm-70s', label: 'Warm 70s', note: 'Golden and soft', params: grade({ desat: 0.1, tint: 0xffa050, tint_amount: 0.35, matte: 0x504030, matte_amount: 0.06, glow: 0.15 }) },
+        { id: 'warm-70s', label: 'Warm 70s', note: 'Golden and soft', params: grade({ desat: 0.1, tint: 0xffa050, tint_amount: 0.5, matte: 0x504030, matte_amount: 0.06, glow: 0.15 }) },
       ] },
       { id: 'warmth', type: 'choice', label: 'Temperature', half: true, default: 'neutral', options: [
         { id: 'cool', label: 'Cooler', params: { temperature: -20 } },

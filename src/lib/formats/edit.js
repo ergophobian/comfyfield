@@ -138,11 +138,11 @@ const imageEdits = [
   }),
   open({
     id: 'pose-transfer', name: 'Copy a pose', kind: 'image', category: 'image-edit', hub: 'professional',
-    blurb: 'Put the person in your photo into the pose from another picture.',
+    blurb: 'Put the person in your photo into the pose from another picture. One person, full body, works best.',
     // AnyPose base and helper LoRAs at 0.7 each with Lightning, and the prompt from the AnyPose card.
     runsOn: 'Qwen-Image Edit 2511 with AnyPose', workflow: 'qwen2511_anypose',
     inputs: [
-      { id: 'image', type: 'image', label: 'One person, full body works best' },
+      { id: 'image', type: 'image', label: 'Person' },
       { id: 'pose', type: 'image', label: 'Pose to copy' },
       { id: 'background', type: 'choice', label: 'Background', default: 'keep', options: [
         { id: 'keep', label: 'Keep mine', text: 'Remove the background of image 2, and replace it with the background of image 1.' },

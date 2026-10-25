@@ -2296,7 +2296,7 @@ await test('edits and enhance: Bernini-R, VOID, SCAIL-2, SeedVR2, RIFE and BiRef
   const lease = async (o) => { leases.push(o); return { baseUrl: 'https://p-8189.proxy.runpod.net', token: 't', sandbox: false, signal: new AbortController().signal, reason: () => null, release() {} } }
   const png = 'data:image/png;base64,iVBORw0KGgo='
   const vars = { prompt: 'A look', seed: 1, start: 0, duration: 3, video: 'data:video/mp4;base64,AAAAIGZ0eXBpc29t', image: png, image2: png, image3: png,
-    fps: 12, strength: 0.65, target: 'person', trajectory: 'arc_left', orbit: false, upscale_factor: 2, multiplier: 2, output: 'alpha', background: 'A beach', preset: 'natural', temperature: 0, grain: 0 }
+    fps: 12, strength: 0.65, target: 'person', trajectory: 'arc_left', orbit: false, upscale_factor: 2, multiplier: 2, output: 'alpha', background: 'A beach', desat: 0, tint: 8421504, tint_amount: 0, matte: 8421504, matte_amount: 0, punch: 0, glow: 0, grain_base: 0, temperature: 0, grain: 0 }
   const run = (w, phase = 'none', vram = 24) => core.runComfy(w, vars, { createClient: () => client, lease, podPhase: async () => phase, podVram: () => vram, podRoom: () => ({}) })
   for (const w of ['bernini_mixed', 'bernini_grade', 'bernini_clone_edit', 'bernini_recreate_ad', 'void_inpaint', 'video_bg_change', 'scail2_character_swap', 'recammaster',
     'seedvr2_image', 'seedvr2_video', 'image_upscale', 'image_upscale_esrgan', 'rife_interpolate', 'birefnet_image', 'birefnet_video_matte', 'birefnet_video_matte_alpha', 'image_grade']) {
