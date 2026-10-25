@@ -13,12 +13,11 @@ const media = {
   audio: { accept: 'audio/*', hint: 'Drop an audio file or click to choose', noun: 'an audio file' },
 }
 
-// Library list and tab behind each pick. There is no voices list yet, so voice picks stay empty.
+// Library list and tab behind each saved asset pick.
 const picks = {
   character: { list: 'characters', noun: 'characters' },
   product: { list: 'products', noun: 'products' },
   brand: { list: 'brands', noun: 'brand kits' },
-  voice: { list: 'voices', noun: 'voices' },
 }
 
 const textual = ['text', 'longtext']
@@ -237,6 +236,18 @@ function LibraryPick({ input, value, onChange, labelId }) {
   )
 }
 
+// A voice is a real uploaded sample, using the runner's existing voice.sample contract.
+function VoiceField({ value, onChange, ...props }) {
+  return (
+    <div>
+      <MediaField {...props} input={{ type: 'audio' }} value={value?.sample ? { ...value, url: value.sample } : null}
+        onChange={(v) => onChange({ name: v.name, sample: v.url })} />
+      <p className="sheet-note">Use a voice sample only with the speaker's prior consent or another legal right to use their voice.</p>
+      {value?.sample && <button type="button" className="link-btn" onClick={() => onChange(null)}>Clear voice sample</button>}
+    </div>
+  )
+}
+
 export function Field({ input, value, onChange, setError = () => {} }) {
   const id = useId()
   const labelId = `${id}-label`
@@ -244,6 +255,7 @@ export function Field({ input, value, onChange, setError = () => {} }) {
   const props = { input, value, onChange, labelId }
   let body
   if (widgetTypes.includes(type) || (type === 'draw' && input.mode !== 'motion')) body = <InputWidget type={type === 'draw' ? 'mask' : type} {...props} setError={setError} />
+  else if (type === 'voice') body = <VoiceField {...props} setError={setError} />
   else if (media[type]) body = <MediaField {...props} setError={setError} />
   else if (type === 'draw') body = <DrawField {...props} setError={setError} />
   else if (type === 'text') body = <input id={id} value={value ?? ''} onChange={(e) => onChange(e.target.value)} placeholder={input.placeholder} />

@@ -377,8 +377,8 @@ const sourceOf = async (f, extra) => {
 assert.equal(await sourceOf(allFormats.find((f) => f.id === 'image-upscale')), photo.url)
 assert.equal(await sourceOf(allFormats.find((f) => f.id === 'erase'), { target: 'The sign' }), photo.url)
 assert.equal(await sourceOf(imageRecipe), undefined, 'Only edits and upscales carry a source')
-assert.equal(formats.length, 450)
-assert.equal(allFormats.length, 479, 'Do not delete planned formats')
+assert.equal(formats.length, 452)
+assert.equal(allFormats.length, 481, 'Do not delete planned formats')
 assert.equal(allFormats.filter((f) => f.category === 'camera').length > 0, true, 'Keep Create prompt presets')
 assert(allFormats.filter((f) => !formats.includes(f)).every((f) => formatProblems.get(f.id).length))
 
