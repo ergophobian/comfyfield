@@ -727,6 +727,14 @@ export const schemas = {
       "seed",
       "voice"
     ],
+    "dub": [
+      "duration",
+      "language",
+      "prompt",
+      "seed",
+      "start",
+      "video"
+    ],
     "fasth3_omni_r2v": [
       "audio",
       "clipvideo",
