@@ -1,5 +1,6 @@
 // Flow execution rules, ported from PatchWork's WORKFLOW-SPEC.
-// Pure: no React, no fetch. Inject run(model, opts) -> files and writePrompt(input) -> text.
+// Pure: no React, no fetch. Inject run(model, opts) -> files, writePrompt(input) -> text and
+// render(type, opts) -> file for nodes that render outside a provider (Blender).
 import { widgetTypes, widgetReady, widgetOptions } from '../../shared/widgetInputs.js'
 import { stitchInputs } from './stitch.js'
 
@@ -7,7 +8,9 @@ const byId = (flow, id) => flow.nodes.find((n) => n.id === id)
 const sources = (flow, id) => flow.edges.filter((e) => e.target === id).map((e) => e.source)
 const targets = (flow, id) => flow.edges.filter((e) => e.source === id).map((e) => e.target)
 const cmp = (a, b) => (a.row - b.row) || (a.take - b.take)
-const executable = (n) => ['model', 'writer', 'stitch'].includes(n.type)
+export const executableTypes = ['model', 'writer', 'stitch', 'blender']
+const executable = (n) => executableTypes.includes(n.type)
+const renderKind = (n) => (n.data.output === 'video' ? 'video' : 'image')
 
 export function topoOrder(flow) {
   const left = new Map(flow.nodes.map((n) => [n.id, sources(flow, n.id).length]))
@@ -63,7 +66,7 @@ export function promptsOf(node) {
 
 export const emptyGate = () => ({ status: 'empty', picked: [], sent: [] })
 
-export function createEngine({ run, writePrompt, stitch, onChange = () => {}, concurrency = 3 } = {}) {
+export function createEngine({ run, writePrompt, stitch, render, onChange = () => {}, concurrency = 3 } = {}) {
   let S = {}
   const subs = new Set()
   let active = 0
@@ -101,6 +104,7 @@ export function createEngine({ run, writePrompt, stitch, onChange = () => {}, co
     if (n.type === 'image') return n.data.url ? [{ id: n.id, kind: 'image', url: n.data.url, row: 0, take: 0, prompt: '' }] : []
     if (n.type === 'model') return doneItems(id)
     if (n.type === 'stitch') return doneItems(id).filter((item) => !item.stale)
+    if (n.type === 'blender') return doneItems(id)
     if (n.type === 'writer') return S[id]?.sent ? doneItems(id) : null
     if (n.type === 'approve') return gate(id).status === 'sent' ? gate(id).sent : null
     return []
@@ -133,6 +137,11 @@ export function createEngine({ run, writePrompt, stitch, onChange = () => {}, co
         }
       }
       return { blocked, units: blocked ? [] : [{ key: 'writer', row: 0, take: 0, opts: { instructions: n.data.instructions, note: notes.filter(Boolean).join('\n\n'), images, target: n.data.target || '' } }] }
+    }
+    if (n.type === 'blender') {
+      const script = n.data.script || ''
+      const opts = { script, output: renderKind(n) }
+      return script.trim() ? { blocked: false, units: [{ key: 'blender', row: 0, take: 0, opts, signature: JSON.stringify(opts) }] } : { blocked: true, units: [] }
     }
     if (n.type === 'stitch') {
       const input = stitchInputs(flow, id, itemsOf, running)
@@ -232,7 +241,7 @@ export function createEngine({ run, writePrompt, stitch, onChange = () => {}, co
     const n = byId(flow, id)
     const units = todo(flow, id)
     if (!units.length) return 0
-    const model = n.type === 'stitch' ? { kind: 'video' } : n.data.model || { kind: 'text' }
+    const model = n.type === 'stitch' ? { kind: 'video' } : n.type === 'blender' ? { kind: renderKind(n) } : n.data.model || { kind: 'text' }
     const pending = units.map((u) => ({
       id: `${id}:${u.key}`, unit: u.key, row: u.row, take: u.take, prompt: u.opts.prompt,
       kind: model.kind, aspect: u.opts.aspect, signature: u.signature, status: 'pending',
@@ -243,6 +252,10 @@ export function createEngine({ run, writePrompt, stitch, onChange = () => {}, co
       try {
         const files = await limit(async () => {
           if (n.type === 'stitch') return [await stitch(u.opts)]
+          if (n.type === 'blender') {
+            if (!render) throw new Error('Local renders are not connected.')
+            return [await render('blender', u.opts, { stepId: id, unitId: u.key })]
+          }
           if (n.type !== 'writer') return run(model, u.opts, { stepId: id, unitId: u.key })
           if (!writePrompt) throw new Error('Prompt writing is not connected.')
           const text = await writePrompt(u.opts, { stepId: id, unitId: u.key })

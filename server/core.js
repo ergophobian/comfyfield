@@ -12,6 +12,7 @@ import { comfyVars, comfyRouterInput, falInput, estimate, fill, falEndpointFor, 
 import { routerEntry } from '../shared/routerModels.js'
 import { renderStitch } from './stitch.js'
 import { draftInstructions, parseDraft } from '../shared/flowDraft.js'
+import { renderBlender, blenderVersion } from './blender.js'
 import { archOf, minVramOf, notOnCloud, podNeedsOf, volumeFor, RUNTIMES } from '../shared/modelFiles.js'
 import { CLOUD_USD_PER_GPU_SEC, DEFAULT_TIER, TIER_IDS } from '../shared/gpuTiers.js'
 
@@ -34,6 +35,8 @@ export const providers = {
   runpod: { env: ['RUNPOD_API_KEY', 'RUNPOD_DAILY_CAP', 'RUNPOD_AUTO_START', 'RUNPOD_IDLE_MIN', 'RUNPOD_TIER'], fields: ['key', 'cap', 'auto', 'idle', 'tier'] },
   // Shares flows and formats as gists. Not GITHUB_TOKEN: a developer's shell token must not post gists unasked.
   github: { env: ['COMFYFIELD_GITHUB_TOKEN'], fields: ['key'] },
+  // Not a key: where Blender runs. With a host, path is the Blender binary on that host.
+  blender: { env: ['BLENDER_PATH', 'BLENDER_SSH_HOST'], fields: ['path', 'host'] },
 }
 
 export const home = () => dataDirectory()
@@ -480,6 +483,7 @@ export async function testConnection(id) {
   }
   if (id === 'fal') return Boolean(c.key) // fal has no free auth-check endpoint
   if (id === 'runpod') return pod().test()
+  if (id === 'blender') return Boolean(await blenderVersion({ config: c }))
   return false
 }
 
@@ -516,10 +520,30 @@ export async function stitch({ preview = false, ...options } = {}) {
   return item
 }
 
+// A Blender node's render: run the script where Connections says, keep the file in media and the Library.
+export async function blender(options, { render = renderBlender } = {}) {
+  const file = await render(options, {
+    config: config('blender'),
+    keep: (from, output) => {
+      const saved = saveMedia(fs.readFileSync(from), output === 'video' ? 'mp4' : 'png')
+      return { ...saved, kind: output === 'video' ? 'video' : 'image' }
+    },
+  })
+  const [item] = await saveToLibrary([file], { model: 'Blender', caption: 'Blender render' })
+  return item
+}
+
+// Flow nodes that render on this machine (or a host it reaches) instead of a provider.
+export const render = (type, options) => {
+  if (type === 'blender') return blender(options)
+  throw Object.assign(new Error(`No local renderer for ${type} nodes.`), { status: 400 })
+}
+
 export function connections() {
   const out = Object.fromEntries(Object.keys(providers).map((id) => {
     const c = config(id)
     // Comfy Cloud + Pod can run with a Comfy key, or with a RunPod key through a Pod.
+    if (id === 'blender') return [id, { connected: Boolean(c.path || c.host), path: c.path, host: c.host }]
     const on = id !== 'comfy' ? c.key : c.mode === 'cloud' ? c.key || config('runpod').key || sandboxed() : c.url || c.key
     return [id, { connected: Boolean(on), key: mask(c.key), ...(id === 'comfy' ? { mode: c.mode } : {}) }]
   }))
@@ -537,6 +561,7 @@ export function saveConnection(id, values) {
   if (id === 'runpod' && values.auto != null && !['on', 'off'].includes(values.auto)) throw Object.assign(new Error('Start Pods automatically is on or off.'), { status: 400 })
   if (id === 'runpod' && values.cap != null && !(parseFloat(values.cap) > 0)) throw Object.assign(new Error('The daily cap is a dollar amount above 0.'), { status: 400 })
   if (id === 'runpod' && values.idle != null && !IDLE_CHOICES.includes(Number(values.idle))) throw Object.assign(new Error(`Idle shutdown is ${IDLE_CHOICES.join(', ')} minutes.`), { status: 400 })
+  if (id === 'blender' && Object.entries(values).some(([k, v]) => !['path', 'host'].includes(k) || typeof v !== 'string' || /[\r\n]/.test(v))) throw Object.assign(new Error('Blender takes a path and an SSH host, each on one line.'), { status: 400 })
   if (id === 'runpod' && values.cap != null) values = { ...values, cap: String(Math.round(parseFloat(values.cap) * 100) / 100) }
   const keys = readKeys()
   keys[id] = { ...keys[id], ...values }

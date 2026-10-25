@@ -52,19 +52,27 @@ Checks: `node scripts/agent-assign-checks.mjs`.
 | `connect_nodes` | `flow_id`, `source`, `target` | Connects source's output to target's input |
 | `update_node` | `flow_id`, `node_id`, optional `data`, `position` | Merges `data` into the node |
 | `remove_node` | `flow_id`, `node_id` | Removes the node, its connections and its results |
-| `run_flow` | `flow_id` | Run: fills gaps, spends credits, stops at gates |
+| `run_flow` | `flow_id` | Run: fills gaps, spends credits, stops at gates. Blender nodes render locally, at no cost |
 | `my_tasks` | none | Whole flows and single nodes assigned to the calling agent |
 | `assign_agent` | `flow_id`, optional `node_id`, `agent` (a name or `null`) | Assigns a flow, or one node, to an agent by name |
 | `list_agents` | none | Your name, the connected agents with their colors, and names with assigned work |
 
-Node types: `prompt`, `image`, `writer`, `mask`, `face`, `video`, `crop`, `model`, `stitch`, `approve`, `output`, `note`. Each node has at most one input and one output:
+Node types: `prompt`, `image`, `writer`, `mask`, `face`, `video`, `crop`, `model`, `stitch`, `blender`, `approve`, `output`, `note`. Each node has at most one input and one output:
 
 - No output: `output`, `note`.
-- No input: `prompt`, `image`, `note`, `mask`, `face`, `video`, `crop`.
+- No input: `prompt`, `image`, `note`, `mask`, `face`, `video`, `crop`, `blender`.
 - A `prompt` only feeds a `model` or `writer`.
 - No loops, no self connections, no duplicate connections.
 
 Errors say what to fix, for example `Flow "Kites" has no node "q". Its node ids are: p, img.` or `Connecting Model node "vid" to Model node "img" would make a loop, because "img" already feeds "vid".`
+
+## Blender nodes
+
+A `blender` node holds `data.script` (Blender Python) and `data.output` (`image` or `video`). Run calls `blender -b --python-exit-code 1 -P script.py -- --output <file>`. The script must save its render to that file: a PNG for an image, an MP4 for a video (set `scene.render.image_settings.file_format = 'FFMPEG'` and `scene.render.ffmpeg.format = 'MPEG4'`). The file goes to the Library and downstream, so a video feeds Stitch and an image feeds a Model node as its start image.
+
+Connections sets where Blender runs: a Blender path on this machine, or an SSH host (`user@host` or `user@host:port`). With a host, ComfyField copies the script with `scp`, runs Blender there with `ssh` and copies the render back; the path then means Blender on that host, and key login must work without a password (`BatchMode=yes`). Errors say which part failed: Blender not on PATH, the path is wrong, the host cannot be reached, or the script raised an error. Renders stop after 20 minutes.
+
+Blender scripts run with your user's rights on that machine; only run scripts you trust. In the Assistant, `run_flow` lists each Blender render in the plan and runs only the renders the user approved.
 
 ## run_flow and the Flows rules
 

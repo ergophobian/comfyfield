@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { createEngine, topoOrder, csvPrompts } from '../src/lib/flowEngine.js'
+import { connectionProblem, nodeDefaults } from '../shared/flowRules.js'
 
 const img = { kind: 'image', provider: 'x', name: 'Img' }
 const vid = { kind: 'video', provider: 'x', name: 'Vid' }
@@ -419,6 +420,42 @@ check('manual Cinema stitch and replacement invalidation across approval gates',
   assert(!eng.state.s.items[0].stale, 'Explicit re-stitch clears stale even when the signature matches')
   await eng.rerunGate(f, 'a')
   assert.equal(eng.state.s.items[0].stale, true, 'Rerunning through an approval gate invalidates Stitch too')
+})
+
+check('Blender renders once through the injected renderer and feeds Stitch, models and outputs', async () => {
+  const m = mock()
+  const renders = []
+  const stitches = []
+  const eng = createEngine({
+    run: m.run,
+    render: async (type, opts) => { renders.push({ type, ...opts }); return { url: `mock://blender-${opts.output}-${renders.length}`, kind: opts.output } },
+    stitch: async (opts) => { stitches.push(opts); return { url: 'mock://stitched', kind: 'video' } },
+  })
+  const f = {
+    nodes: [n('bv', 'blender', { script: 'video()', output: 'video' }), n('s', 'stitch'), n('bi', 'blender', { script: 'still()' }), n('v', 'model', { model: vid, prompt: 'orbit' }), n('o', 'output')],
+    edges: [e('bv', 's'), e('bi', 'v'), e('s', 'o'), e('v', 'o')],
+  }
+  await eng.runNew(f)
+  assert.deepEqual(renders.map((r) => [r.type, r.script, r.output]), [['blender', 'video()', 'video'], ['blender', 'still()', 'image']])
+  assert.deepEqual(stitches[0].clips.map((c) => c.url), ['mock://blender-video-1'], 'A Blender video is a Stitch clip')
+  assert.equal(m.calls[0].image, 'mock://blender-image-2', 'A Blender image is a model start image')
+  assert.equal(m.calls[0].prompt, 'orbit')
+  assert.equal(eng.itemsOf(f, 'bi')[0].kind, 'image')
+  assert.equal(eng.reviewItems(f, 'o').length, 2)
+  await eng.runNew(f)
+  assert.equal(renders.length, 2, 'Run never re-renders a Blender node with output')
+  await eng.rerun(f, 'bi')
+  assert.equal(renders.length, 3, 'Rerun renders again')
+  assert.equal(m.calls.length, 1, 'Rerun does not cascade into the model')
+
+  const empty = { nodes: [n('b', 'blender', { script: '  ' })], edges: [] }
+  assert.equal(eng.plan(empty, 'b').blocked, true, 'An empty script blocks the node')
+  const bare = createEngine()
+  await bare.runNew({ nodes: [n('b', 'blender', { script: 'x' })], edges: [] })
+  assert.match(bare.state.b.items[0].error, /Local renders are not connected/)
+  assert.match(connectionProblem({ name: 'F', nodes: [n('p', 'prompt'), n('b', 'blender')], edges: [] }, 'p', 'b'), /has no input/)
+  assert.equal(nodeDefaults('blender').output, 'image')
+  assert.match(nodeDefaults('blender').script, /--output/)
 })
 
 check('partial failures block downstream; scoped retries preserve successful units and closed gates', async () => {

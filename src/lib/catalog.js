@@ -148,6 +148,11 @@ export const providerInfo = {
   github: { name: 'GitHub', blurb: 'A GitHub token with the gist scope shares flows and formats as secret gists: anyone with the link can open them. Importing a gist needs no token.', fields: [
     { id: 'key', label: 'Token', placeholder: 'Classic token with the gist scope', secret: true },
   ], link: 'https://github.com/settings/tokens/new?scopes=gist&description=ComfyField' },
+  // Not a key: where Blender nodes in Flows run. Empty fields use blender on this machine's PATH.
+  blender: { name: 'Blender', blurb: 'Blender nodes in Flows run your Python script with blender -b on this machine, or on another one over SSH. Leave both empty to use blender on PATH. With an SSH host, the path is Blender on that host; key login must work without a password.', fields: [
+    { id: 'path', label: 'Blender path', placeholder: 'blender, or the full path to the Blender program' },
+    { id: 'host', label: 'SSH host', placeholder: 'user@host, optional' },
+  ], link: 'https://www.blender.org/download/', linkLabel: 'Get Blender', on: 'Saved', off: 'Uses PATH' },
 }
 
 // Account sign-ins for later. These need each site's own login, not an API key.

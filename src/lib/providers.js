@@ -134,6 +134,7 @@ export async function saveConnection(id, values) {
   await post('/api/connections', { id, values })
 }
 
+// Resolves { ok, error }. error says why the test failed when the server knows, such as Blender not found.
 export async function testConnection(id) {
-  return (await post('/api/connections/test', { id })).ok
+  return post('/api/connections/test', { id })
 }
