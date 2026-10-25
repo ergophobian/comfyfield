@@ -30,6 +30,8 @@ export const providers = {
   google: { env: ['GEMINI_API_KEY'], fields: ['key'] },
   elevenlabs: { env: ['ELEVENLABS_API_KEY'], fields: ['key'] },
   runpod: { env: ['RUNPOD_API_KEY', 'RUNPOD_DAILY_CAP', 'RUNPOD_AUTO_START', 'RUNPOD_IDLE_MIN', 'RUNPOD_TIER'], fields: ['key', 'cap', 'auto', 'idle', 'tier'] },
+  // Shares flows and formats as gists. Not GITHUB_TOKEN: a developer's shell token must not post gists unasked.
+  github: { env: ['COMFYFIELD_GITHUB_TOKEN'], fields: ['key'] },
 }
 
 export const home = () => dataDirectory()
@@ -460,6 +462,10 @@ export async function testConnection(id) {
   if (id === 'elevenlabs') {
     // Restricted keys often lack user_read, so check with the models list instead.
     const r = await fetch('https://api.elevenlabs.io/v1/models', { headers: { 'xi-api-key': c.key } })
+    return r.ok
+  }
+  if (id === 'github') {
+    const r = await fetch('https://api.github.com/user', { headers: { Authorization: `Bearer ${c.key}`, Accept: 'application/vnd.github+json', 'User-Agent': 'ComfyField' } })
     return r.ok
   }
   if (id === 'fal') return Boolean(c.key) // fal has no free auth-check endpoint

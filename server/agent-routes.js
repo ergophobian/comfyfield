@@ -1,5 +1,6 @@
 import { createHarness } from './agent-harness.js'
 import { problem } from './flows.js'
+import { importFlow, shareFlowGist } from './share.js'
 
 export function agentRoutes({ harness = createHarness(), body, send }) {
   const route = async (req, res, url) => {
@@ -38,6 +39,8 @@ export function agentRoutes({ harness = createHarness(), body, send }) {
     }
     if (url.pathname === '/api/flows' && req.method === 'GET') return json(harness.flows.read())
     if (url.pathname === '/api/flows' && req.method === 'PUT') return json(harness.flows.save(await body(req)))
+    if (url.pathname === '/api/flows/import' && req.method === 'POST') return json(await importFlow(harness.flows, await body(req)))
+    if (url.pathname === '/api/flows/share' && req.method === 'POST') return json(await shareFlowGist(harness.flows, (await body(req)).id))
     const run = /^\/api\/flows\/([\w-]+)\/action$/.exec(url.pathname)
     if (run && req.method === 'POST') {
       const { action, node, item } = await body(req)

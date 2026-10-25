@@ -193,6 +193,13 @@ export function createFlows({ directory = core.home, generate = core.generate, w
       save({ ...store, flows: [flow, ...store.flows], current: store.current ?? flow.id })
       return flow
     },
+    // A shared flow arrives as a new flow with its own id; blank flows make room for it, as on the canvas.
+    insert: ({ name, nodes, edges, origin }) => {
+      const flow = validate({ id: shortId(), name, nodes, edges, ...(origin && { origin }), updated: Date.now() })
+      const store = read()
+      save({ ...store, flows: [flow, ...store.flows.filter((f) => f.nodes.length)], current: flow.id })
+      return clone(flow)
+    },
     add: (id, spec) => edit(id, (f) => { const node = makeNode(f, spec); f.nodes.push(node); return node }),
     connect: (id, edge) => edit(id, (f) => link(f, edge)),
     update: (id, node, { data, position }) => edit(id, (f) => {
