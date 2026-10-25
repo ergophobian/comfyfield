@@ -374,7 +374,20 @@ const sourceOf = async (f, extra) => {
 assert.equal(await sourceOf(allFormats.find((f) => f.id === 'image-upscale')), photo.url)
 assert.equal(await sourceOf(allFormats.find((f) => f.id === 'erase'), { target: 'The sign' }), photo.url)
 assert.equal(await sourceOf(imageRecipe), undefined, 'Only edits and upscales carry a source')
-assert.equal(formats.length, 451)
+// Dub runs on one bundled graph. The language choice gives Chatterbox its own label and names the
+// language in Gemma 4's instructions; the clip's trim sets the part that is dubbed.
+const dub = formats.find((f) => f.id === 'dub')
+assert(dub, 'dub runs on bundled graphs')
+const dubCalls = []
+const clipValue = { url: '/media/talk.mp4', name: 'talk.mp4', ratio: '9:16', duration: 40, trim: { start: 2, end: 32 } }
+await runFormat(dub, { ...valuesFor(dub), video: clipValue, language: 'zh' }, { run: async (model, opts) => { dubCalls.push({ model, opts }); return [{ url: 'dub.mp4', kind: 'video' }] } })
+assert.equal(dubCalls[0].model.workflow, 'dub')
+assert.equal(dubCalls[0].opts.params.language, 'Chinese (zh)')
+assert.match(dubCalls[0].opts.prompt, /conversational Mandarin/)
+const dubVars = comfyVars('video', dubCalls[0].opts)
+assert.deepEqual([dubVars.start, dubVars.duration, dubVars.video], [2, 30, '/media/talk.mp4'])
+assert.equal(dub.inputs.find((i) => i.id === 'language').options[0].id, 'es', 'Spanish stays the first dub language')
+assert.equal(formats.length, 452)
 assert.equal(allFormats.length, 480, 'Do not delete planned formats')
 assert.equal(allFormats.filter((f) => f.category === 'camera').length > 0, true, 'Keep Create prompt presets')
 assert(allFormats.filter((f) => !formats.includes(f)).every((f) => formatProblems.get(f.id).length))

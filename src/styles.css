@@ -285,6 +285,9 @@ input, textarea { font: inherit; color: inherit; }
 .seg { position: relative; display: inline-flex; padding: 4px; border-radius: var(--r-pill); background: var(--ink-fill); margin-bottom: 8px; }
 .seg button { position: relative; z-index: 1; padding: 4px 14px; border-radius: var(--r-pill); font-size: var(--text-sm); font-weight: 600; color: var(--muted); transition: color var(--dur-fast); }
 .seg button.on { color: var(--ink); }
+/* A page's tab row scrolls at 390px instead of widening the page. */
+.page-head .seg { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.page-head .seg button { white-space: nowrap; }
 .seg-pill { position: absolute; top: 4px; bottom: 4px; left: 0; border-radius: var(--r-pill); background: var(--paper); box-shadow: var(--shadow-sm);
   transition: transform var(--dur-move) var(--spring), width var(--dur-move) var(--spring); }
 
@@ -645,6 +648,7 @@ code { font-size: .92em; }
 .asset > .muted, .asset .dots { padding: 0 8px; font-size: var(--text-sm); }
 .asset-cover { position: relative; aspect-ratio: 1; border-radius: var(--r-md); overflow: hidden; display: grid; place-items: center; background: var(--blue-mist); font-size: var(--text-3xl); font-weight: 600; color: var(--blue); }
 .asset-cover img { width: 100%; height: 100%; object-fit: cover; }
+.asset-cover > svg { width: 36px; height: 36px; }
 .asset-cover.logo { background: var(--paper); }
 .asset-cover.logo img { object-fit: contain; padding: 22px; }
 .asset-cover i { position: absolute; right: 8px; bottom: 8px; font-style: normal; font-size: var(--text-xs); font-weight: 600; padding: 2px 8px; border-radius: var(--r-pill); background: var(--glass-strong); color: var(--ink); }
@@ -1065,7 +1069,7 @@ code { font-size: .92em; }
 .app-panel h2 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: var(--text-lg); font-weight: 600; letter-spacing: -.01em; }
 .app-panel h2 svg { flex-shrink: 0; color: var(--blue); }
 .app-panel .field, .mixed-panel .field { animation: rise var(--dur-rise) var(--spring) backwards; }
-.app-panel .field > label, .mixed-panel .field > label { display: flex; align-items: baseline; gap: 6px; color: var(--ink-2); font-weight: 500; }
+.app-panel .field > label, .mixed-panel .field > label, .gen-form .field > label { display: flex; align-items: baseline; gap: 6px; color: var(--ink-2); font-weight: 500; }
 .app-panel .pills { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
 .app-panel .pills button { justify-content: center; height: auto; min-height: 36px; padding: 6px 10px; border-radius: var(--r-md); text-align: center; line-height: 1.25; }
 .app-panel .opt-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }

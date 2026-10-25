@@ -1,7 +1,7 @@
 import { useEffect, useSyncExternalStore } from 'react'
 
-const types = ['characters', 'products', 'brands']
-let state = { characters: [], products: [], brands: [], ready: false }
+const types = ['characters', 'products', 'brands', 'voices']
+let state = { characters: [], products: [], brands: [], voices: [], ready: false }
 let started = false
 const subs = new Set()
 
@@ -53,8 +53,10 @@ export function useLibrary() {
   return { ...snap, refresh, create, update, remove, upload, importUrl }
 }
 
-// What a generate call receives in opts.refs.
+// What a generate call receives in opts.refs. A voice brings its first sample, which a graph's
+// `{{voice}}` loads.
 export const toRef = (type, item) => ({
   type, id: item.id, name: item.name, images: item.images || [],
   ...(type === 'product' ? { description: item.description, price: item.price } : { notes: item.notes }),
+  ...(type === 'voice' && { sample: item.samples?.[0] }),
 })

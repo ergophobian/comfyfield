@@ -60,7 +60,7 @@ export const tools = [
 
 // Open-weight models offered in each menu's model column, picked on quality per the feature audit.
 // `workflow` is the planned ComfyUI workflow id. `catalog` names the catalog model once it is wired;
-// until then the model shows as not wired yet.
+// `format` names the format a studio runs it through instead. Until then the model shows as not wired yet.
 export const openModels = [
   { id: 'flux-3-klein', name: 'FLUX 3 Image Klein', kind: 'image', vendor: 'Black Forest Labs', blurb: 'Next-generation images and edits, up to 10 references', workflow: 'flux3_klein_t2i', catalog: 'comfy-flux3-klein', badge: 'New' },
   { id: 'qwen-image-2-1', name: 'Qwen-Image 2.1', kind: 'image', vendor: 'Alibaba Qwen', blurb: 'Top open model for images and edits', workflow: 'qwen_image21_t2i', catalog: 'comfy-qwen-image21', badge: 'Top' },
@@ -73,7 +73,7 @@ export const openModels = [
   { id: 'wan-animate-2', name: 'Wan Animate 2', kind: 'video', vendor: 'Alibaba Wan', blurb: 'Transfer motion from a video to a character', workflow: 'wan_animate2' },
   { id: 'bernini-r', name: 'Bernini-R', kind: 'video', vendor: 'ByteDance', blurb: 'Restyle, relight and swap objects in real video', workflow: 'bernini_swap' },
   { id: 'infinitetalk', name: 'InfiniteTalk', kind: 'video', vendor: 'MeiGen', blurb: 'Talking heads and lipsync of any length', workflow: 'infinitetalk' },
-  { id: 'chatterbox-multilingual', name: 'Chatterbox Multilingual', kind: 'audio', vendor: 'Resemble AI', blurb: 'Speech in 23 languages with emotion control', workflow: 'chatterbox_tts' },
+  { id: 'chatterbox-multilingual', name: 'Chatterbox Multilingual', kind: 'audio', vendor: 'Resemble AI', blurb: 'Speech in 23 languages with emotion control', workflow: 'chatterbox_tts', format: 'tts' },
   { id: 'fish-drama-3', name: 'Fish Audio Drama 3', kind: 'audio', vendor: 'Fish Audio', blurb: 'Top open voice model, 83 languages', workflow: 'drama3_tts', badge: 'Top' },
   { id: 'qwen3-tts', name: 'Qwen3-TTS', kind: 'audio', vendor: 'Alibaba Qwen', blurb: 'Voice design and cloning from 3 seconds', workflow: 'qwen3_tts' },
   { id: 'minimax-music-3', name: 'MiniMax Music 3', kind: 'audio', vendor: 'MiniMax', blurb: 'Songs with vocals and lyrics', workflow: 'minimax_music3' },

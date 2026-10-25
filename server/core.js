@@ -9,7 +9,7 @@ import { setTimeout as delay } from 'node:timers/promises'
 import { Comfy, JobFailed } from '@comfyorg/sdk'
 import { models as pinned, falCategories, podWorkflows, routerWriterModel } from '../src/lib/catalog.js'
 import { comfyVars, comfyRouterInput, falInput, estimate, fill, falEndpointFor, dropOptional, PICTURE_SLOTS } from '../shared/mapping.js'
-import { renderStitch } from './stitch.js'
+import { renderStitch, ffmpeg, findFfmpeg } from './stitch.js'
 import { archOf, minVramOf, notOnCloud, podNeedsOf, volumeFor, RUNTIMES } from '../shared/modelFiles.js'
 import { DEFAULT_TIER, TIER_IDS } from '../shared/gpuTiers.js'
 
@@ -993,7 +993,63 @@ async function submitAndWait(client, wf, { apiKey, timeoutMs, signal, split }, o
 }
 
 // Runs a bundled workflow on Comfy Cloud or the Pod, or in development on a local ComfyUI, and returns file URLs.
+// Speech models stay steady for about 20 to 30 seconds of speech; Chatterbox drifts and hisses past that.
+// A longer script, such as an audiobook chapter, reads in parts of at most this many characters.
+export const SPEECH_PARTS = { chatterbox_tts: 300, qwen3_tts: 500, drama3_tts: 500 }
+export const MAX_SPEECH_PARTS = 120
+
+// Splits a script at sentence ends, then at commas, then at spaces, so no part is longer than `max`.
+// Paragraph breaks always end a part.
+export function speechParts(text, max) {
+  // After a mark and a space, or right after a CJK mark, which takes no space.
+  const ends = [/(?<=[.!?…]+["'”’)\]]*\s+)|(?<=[。！？]+)/, /(?<=[,;:]\s+)|(?<=[，；、])/]
+  const cut = (s) => {
+    if (s.length <= max) return [s]
+    for (const at of ends) {
+      const split = s.split(at).filter((p) => p.trim())
+      if (split.length > 1) return split.flatMap(cut)
+    }
+    const words = s.split(/(?<=\s)/)
+    if (words.length > 1) return words.flatMap(cut)
+    return s.match(new RegExp(`.{1,${max}}`, 'gs'))
+  }
+  const parts = []
+  for (const paragraph of String(text).split(/\n\s*\n/)) {
+    let part = ''
+    for (const piece of cut(paragraph.replace(/\s+/g, ' ').trim())) {
+      if (part && (part + piece).trim().length > max) {
+        parts.push(part.trim())
+        part = ''
+      }
+      part += piece
+    }
+    if (part.trim()) parts.push(part.trim())
+  }
+  return parts
+}
+
+// Each part is its own job with the same seed and voice, and the parts join into one FLAC file.
+async function runSpeechParts(workflow, vars, opts, max) {
+  const parts = speechParts(vars.prompt, max)
+  if (parts.length > MAX_SPEECH_PARTS) {
+    throw Object.assign(new Error(`This script needs ${parts.length} parts; one run reads up to ${MAX_SPEECH_PARTS}. Split it into chapters.`), { status: 400 })
+  }
+  const files = []
+  for (const [i, prompt] of parts.entries()) {
+    const file = (await runComfy(workflow, { ...vars, prompt }, { ...opts, part: true })).find((f) => f.kind === 'audio')
+    if (!file) throw new Error(`Part ${i + 1} of ${parts.length} returned no audio.`)
+    files.push(file.path || saveMedia(Buffer.from(await (await fetch(file.url)).arrayBuffer()), outputExt('', file.name)).path)
+  }
+  const out = saveMedia(Buffer.alloc(0), 'flac')
+  const join = `${files.map((_, i) => `[${i}:a]`).join('')}concat=n=${files.length}:v=0:a=1[a]`
+  await ffmpeg(['-y', ...files.flatMap((f) => ['-i', f]), '-filter_complex', join, '-map', '[a]', '-c:a', 'flac', out.path], { binary: await findFfmpeg() })
+  for (const f of files) fs.rmSync(f, { force: true })
+  return [{ ...out, kind: 'audio', name: path.basename(out.path), parts: parts.length }]
+}
+
 export async function runComfy(workflow, vars = {}, opts = {}) {
+  const max = SPEECH_PARTS[workflow]
+  if (max && !opts.part && typeof vars.prompt === 'string' && vars.prompt.length > max) return runSpeechParts(workflow, vars, opts, max)
   const { createClient = (key, baseUrl) => comfyClient(baseUrl, key), lease = (o) => pod().lease(o), podPhase = () => pod().phaseNow(), podVram = () => pod().vramGb(), podRoom = () => pod().room(), podArch = () => pod().arch(), run = runType(), signal, retried = 0, pause = (ms, s) => delay(ms, undefined, s ? { signal: s } : undefined), patchGraph = (g) => g, onSubmitted, onComplete = () => {}, timeoutMs } = opts
   signal?.throwIfAborted()
   const original = workflowGraph(workflow, vars)

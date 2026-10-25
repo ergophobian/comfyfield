@@ -13,7 +13,7 @@ const media = {
   audio: { accept: 'audio/*', hint: 'Drop an audio file or click to choose', noun: 'an audio file' },
 }
 
-// Library list and tab behind each pick. There is no voices list yet, so voice picks stay empty.
+// Library list and tab behind each pick.
 const picks = {
   character: { list: 'characters', noun: 'characters' },
   product: { list: 'products', noun: 'products' },

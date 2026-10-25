@@ -49,6 +49,7 @@ const shape = {
   characters: { name: 's', notes: 's', images: ['a', 6] },
   products: { name: 's', description: 's', price: 's', url: 's', images: ['a', 8] },
   brands: { name: 's', logo: 's', voice: 's', url: 's', colors: ['a', 8] },
+  voices: { name: 's', notes: 's', samples: ['a', 3] },
 }
 
 function readLib() {
@@ -80,7 +81,7 @@ function saveDataUrl(dataUrl) {
 }
 
 async function libraryRoute(req, res, url) {
-  const m = /^\/api\/library\/(characters|products|brands)(?:\/([\w-]+))?$/.exec(url.pathname)
+  const m = /^\/api\/library\/(characters|products|brands|voices)(?:\/([\w-]+))?$/.exec(url.pathname)
   if (!m) return false
   const [, type, id] = m
   const lib = readLib()

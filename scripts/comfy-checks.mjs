@@ -14,6 +14,7 @@ import { runFormat } from '../src/lib/formats/runner.js'
 import { expectedInputs, prompt } from './fixtures/router-payloads.mjs'
 import { offlineRequirements } from './fixtures/format-planning.mjs'
 import { comfyRouterInput } from '../shared/mapping.js'
+import { ffmpeg, findFfmpeg } from '../server/stitch.js'
 
 // No inherited provider configuration can reach these mocked checks.
 if (!process.argv.includes('--isolated')) {
@@ -434,4 +435,38 @@ await test('Real Cloud SDK against mocked HTTP: asset upload, submit, poll, down
   assert(calls.includes('GET /api/v2/assets/output-asset/content'))
   credits = false
   await assert.rejects(core.runComfy('h3_open_i2v', vars, { createClient }), /insufficient credits/)
+})
+
+await test('A long script reads in parts on one seed and voice, joined into one file', async () => {
+  setup('cloud')
+  const binary = await findFfmpeg()
+  const tone = path.join(process.env.COMFYFIELD_HOME, 'tone.flac')
+  await ffmpeg(['-y', '-f', 'lavfi', '-i', 'sine=frequency=440:duration=0.4:sample_rate=24000', '-c:a', 'flac', tone], { binary })
+  const sentence = 'The keeper climbed the stairs again tonight, and the light came on over the water. '
+  const script = sentence.repeat(12).trim()
+  const runs = []
+  const createClient = () => {
+    const client = new Comfy({ apiKey: 'pod-token' })
+    client.run = async (wf) => {
+      runs.push({ text: wf.json['2'].inputs.text, seed: wf.json['2'].inputs.seed })
+      return { outputs: [{ type: 'audio', contentType: 'audio/flac', name: 'tts.flac', toBytes: async () => fs.readFileSync(tone) }] }
+    }
+    return client
+  }
+  const pod = { podPhase: async () => 'ready', podVram: () => 96, podRoom: () => ({}), podArch: () => null, lease: async () => ({ token: 'pod-token', baseUrl: 'https://pod.test', release() {}, reason: () => null }) }
+  globalThis.fetch = async () => { throw new Error('Unexpected network call') }
+  const files = await core.runComfy('chatterbox_tts', { prompt: script, language: 'English (en)', exaggeration: 0.5, cfg_weight: 0.5, seed: 7 }, { createClient, ...pod })
+  assert(runs.length > 1 && runs.every((r) => r.text.length <= core.SPEECH_PARTS.chatterbox_tts && r.seed === 7), 'every part fits Chatterbox and keeps the seed')
+  assert.equal(runs.map((r) => r.text).join(' '), script, 'the parts read the whole script, in order, at sentence ends')
+  assert.equal(files.length, 1)
+  assert.equal(files[0].kind, 'audio')
+  assert.equal(files[0].parts, runs.length)
+  assert(Math.abs(core.flacSeconds(fs.readFileSync(files[0].path)) - 0.4 * runs.length) < 0.05, 'the parts join end to end')
+  assert.equal(fs.readdirSync(path.dirname(files[0].path)).filter((f) => f.endsWith('.flac')).length, 1, 'only the joined file stays in the media folder')
+  runs.length = 0
+  await core.runComfy('chatterbox_tts', { prompt: sentence.trim(), language: 'English (en)', exaggeration: 0.5, cfg_weight: 0.5, seed: 7 }, { createClient, ...pod })
+  assert.equal(runs.length, 1, 'a short script runs once')
+  assert.deepEqual(core.speechParts('你好。我很好。今天天气很好，我们去公园吧！', 8), ['你好。我很好。', '今天天气很好，', '我们去公园吧！'])
+  assert.deepEqual(core.speechParts('One. Two.\n\nThree.', 300), ['One. Two.', 'Three.'], 'a paragraph break ends a part')
+  await assert.rejects(core.runComfy('chatterbox_tts', { prompt: sentence.repeat(500), seed: 7 }, { createClient, ...pod }), /Split it into chapters/)
 })

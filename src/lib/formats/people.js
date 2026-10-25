@@ -200,20 +200,16 @@ const voice = [
     id: 'dub', name: 'Dub into another language', kind: 'video', category: 'voice',
     blurb: 'Translate the speech, keep the voice and match the lips.',
     runsOn: 'Qwen3-ASR, Gemma 4, Chatterbox and InfiniteTalk', workflow: 'dub',
+    // One graph: Qwen3-ASR writes down the speech, Gemma 4 translates it with this prompt as its
+    // instructions, Chatterbox speaks it in a voice cloned from the clip, InfiniteTalk matches the lips.
+    // A run covers the first 30 seconds of the clip.
     inputs: [
       clip,
       { id: 'language', type: 'choice', label: 'Language', default: 'es', options: [
-        { id: 'es', label: 'Spanish', params: { language: 'es' } },
-        { id: 'fr', label: 'French', params: { language: 'fr' } },
-        { id: 'de', label: 'German', params: { language: 'de' } },
-        { id: 'ja', label: 'Japanese', params: { language: 'ja' } },
-        { id: 'pt', label: 'Portuguese', params: { language: 'pt' } },
-        { id: 'hi', label: 'Hindi', params: { language: 'hi' } },
-        { id: 'ko', label: 'Korean', params: { language: 'ko' } },
-        { id: 'zh', label: 'Mandarin', params: { language: 'zh' } },
+        ...speechLanguages.filter((l) => l.id !== 'en'), speechLanguages.find((l) => l.id === 'en'),
       ] },
     ],
-    prompt: 'Translate the speech into natural, conversational {language} that fits the original timing, speak it in the original speaker\'s voice and match the lips to the new audio.',
+    prompt: 'You translate the transcript of a spoken video clip into natural, conversational {language}, the way a native speaker would say it, at about the same length so it fits the original timing. Keep names, numbers and the speaker\'s tone. Output only the translated words, with no notes, labels, quotes or Markdown.',
     settings: { aspect: 'auto' },
     cover: covers.sun,
   }),
