@@ -41,7 +41,7 @@ export const influencerPresets = [
 
 export const motionModes = [
   { id: 'transfer', label: 'Motion transfer', note: 'Copy the moves from a video' },
-  { id: 'swap', label: 'Swap objects', note: 'Put your influencer into a video' },
+  { id: 'swap', label: 'Swap into a video', note: 'Replace the person in a video with your influencer' },
 ]
 export const motionResolutions = ['480p', '720p', '1080p']
 

@@ -81,7 +81,8 @@ without removing their copy, controls, prompt templates or provider settings.
 - `inputs`: typed slots with unique `id`, `type`, `label`, optional `optional`, `default`
   and `when: [choiceId, optionId]`. Types: `text`, `longtext`, `choice`, `count`,
   `image`, `video`, `audio`, `draw`, `mask`, `face`, `crop`, `character`, `product`, `brand`, `voice`.
-  Media values are `{ url, name, ratio }`. Choices have `options: [{ id, label,
+  Media values are `{ url, name, ratio }`. A `character` input with `pictures: n` fills n picture
+  slots from the character's images (a reference set), not only the first. Choices have `options: [{ id, label,
   text?, params? }]`; counts have numeric `options`. `field` binds a media slot to
   a named fal input. A UI widget alone does not make an unsupported slot runnable.
 - `writer` (optional): prompt-writer instructions. The runner requires an injected

@@ -149,12 +149,13 @@ function History({ onSave, saved }) {
     <div className="inf-history">
       {runs.map((run) => {
         // The portrait comes first, as the character's main picture.
-        const done = run.items.filter((i) => i.url && !i.pending && !i.failed).sort((a, b) => (a.stepId === 'portrait' ? -1 : 0) - (b.stepId === 'portrait' ? -1 : 0))
+        const shown = [...run.items].sort((a, b) => (b.stepId === 'portrait') - (a.stepId === 'portrait'))
+        const done = shown.filter((i) => i.url && !i.pending && !i.failed)
         const failed = run.items.find((i) => i.failed)
         const busy = run.items.some((i) => i.pending)
         return (
           <section key={run.id} className="inf-run">
-            <Results items={run.items.filter((i) => !i.failed)} />
+            <Results items={shown.filter((i) => !i.failed)} />
             <div className="inf-run-foot">
               {failed && <p className="plist-note">{failed.failed}</p>}
               {saved[run.id] ? <span className="status ok" role="status">Saved as {saved[run.id]}</span> : (
