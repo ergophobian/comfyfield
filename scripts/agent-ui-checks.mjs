@@ -55,8 +55,23 @@ try {
   await screenshot('assistant-plan-mobile.png')
   assert.ok(await evaluate('document.documentElement.scrollWidth <= 390'), 'Assistant must fit 390px')
   await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1080, deviceScaleFactor: 1, mobile: false })
+  // A second agent, as a terminal MCP server would register, works on the model node.
+  const roster = fixtures[0].harness.presence
+  const terminal = roster.join()
+  assert.deepEqual([terminal.name, terminal.color], ['Agent 2', 'agent-2'])
   await send('Page.navigate', { url: `${origin}/flows` })
   await until(`document.querySelector('.agent-node-badge')?.textContent.includes('Agent 1 is working on this')`)
+  roster.touch(terminal.id, { flowId: 'fixture', nodeId: 'output' })
+  await until(`!!document.querySelector('[aria-label="Agent 2 cursor"]')`)
+  roster.touch(terminal.id, { flowId: 'fixture', nodeId: 'model' })
+  // The cursor glides from the output node to the model node.
+  await until(`(() => { const el = document.querySelector('[aria-label="Agent 2 cursor"]').parentElement; return el.style.transform === 'translate(350px, 0px)' && getComputedStyle(el).transitionProperty.includes('transform') })()`)
+  await until(`[...document.querySelectorAll('.agent-node-badge')].some((b) => b.textContent === 'Agent 2 is working on this')`)
+  assert.equal(await evaluate(`(() => { const probe = document.createElement('i'); probe.style.color = 'var(--agent-2)'; document.body.append(probe); const want = getComputedStyle(probe).color; probe.remove(); return getComputedStyle(document.querySelector('[aria-label="Agent 2 cursor"]')).backgroundColor === want })()`), true, 'each agent has its own color')
+  await screenshot('canvas-two-agents-desktop.png')
+  roster.rest(terminal.id)
+  await until(`document.querySelector('[aria-label="Agent 2 cursor"]')?.parentElement.classList.contains('idle')`)
+  await until(`!document.querySelector('[aria-label="Agent 2 cursor"]')`)
   await click('Assistant')
   await until(`document.querySelector('.agent-canvas-panel')?.textContent.includes('Approve plan')`)
   await screenshot('canvas-presence-desktop.png')

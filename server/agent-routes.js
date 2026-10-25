@@ -2,7 +2,7 @@ import { createHarness } from './agent-harness.js'
 import { problem } from './flows.js'
 
 export function agentRoutes({ harness = createHarness(), body, send }) {
-  const unwatch = harness.flows.watch()
+  const unwatch = [harness.flows.watch(), harness.presence.watch()]
   const route = async (req, res, url) => {
     if (!/^\/api\/(agents|flows)(\/|$)/.test(url.pathname)) return false
     const host = req.headers.host
@@ -20,6 +20,7 @@ export function agentRoutes({ harness = createHarness(), body, send }) {
       return true
     }
     if (url.pathname === '/api/agents/setup' && req.method === 'GET') return json(harness.setup())
+    if (url.pathname === '/api/agents/presence' && req.method === 'GET') return json(harness.presence.list())
     if (url.pathname === '/api/agents' && req.method === 'GET') return json(harness.list())
     if (url.pathname === '/api/agents' && req.method === 'POST') return json(await harness.start((await body(req)).adapter, origin))
     const match = /^\/api\/agents\/([\w-]+)(?:\/(message|approve|stop|tool))?$/.exec(url.pathname)
@@ -46,6 +47,6 @@ export function agentRoutes({ harness = createHarness(), body, send }) {
     }
     throw problem('Not found', 404)
   }
-  route.close = () => { unwatch(); return harness.close() }
+  route.close = () => { unwatch.forEach((stop) => stop()); return harness.close() }
   return route
 }

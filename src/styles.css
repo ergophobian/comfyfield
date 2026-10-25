@@ -154,6 +154,14 @@
   --agent-badge-offset: -40px;
   --agent-icon: 14px;
   --agent-border: 1px;
+  --agent-stack: 112px;
+  /* Agent colors: one per roster slot, Agent 1 to Agent 6. White text reads on each. */
+  --agent-1: #2f3fe8;
+  --agent-2: #0f766e;
+  --agent-3: #b45309;
+  --agent-4: #be123c;
+  --agent-5: #7c3aed;
+  --agent-6: #15803d;
 }
 
 .agent-page { width: min(var(--w-composer), 100% - var(--gutter)); margin: var(--agent-page-top) auto; }
@@ -181,11 +189,14 @@
 .agent-canvas-panel { position: absolute; z-index: 12; top: var(--agent-toolbar); bottom: var(--agent-inset); right: var(--agent-inset); width: min(var(--agent-panel), 100% - var(--agent-pad)); overflow: auto; padding: var(--agent-gap); border-radius: var(--r-lg); }
 .agent-canvas-panel > button { margin-bottom: var(--agent-gap); }
 .agent-flow-status { position: absolute; z-index: 14; top: var(--agent-toolbar); left: var(--agent-inset); max-width: calc(100% - var(--agent-pad)); padding: var(--agent-gap); border-radius: var(--r-md); display: grid; gap: var(--agent-small-gap); }
-.agent-presence { position: absolute; pointer-events: none; color: var(--on-fill); font-size: var(--text-xs); }
-.agent-cursor, .agent-node-badge { background: var(--blue); border-radius: var(--r-xs); padding: var(--agent-small-gap); width: max-content; box-shadow: var(--shadow-sm); }
-.agent-cursor { position: absolute; top: var(--agent-cursor-offset); display: flex; align-items: center; gap: var(--agent-small-gap); }
+.agent-presence, .agent-node-badges { position: absolute; top: 0; left: 0; pointer-events: none; color: var(--on-fill); font-size: var(--text-xs); transition: opacity var(--dur-hero) var(--spring); }
+/* The cursor glides to the node the agent works on. Reduced motion jumps (global rule). */
+.agent-presence { z-index: 6; transition: transform var(--dur-hero) var(--spring), opacity var(--dur-hero) var(--spring); }
+.agent-presence.idle, .agent-node-badges.idle { opacity: 0; }
+.agent-cursor, .agent-node-badge { background: var(--agent, var(--blue)); border-radius: var(--r-xs); padding: var(--agent-small-gap); width: max-content; box-shadow: var(--shadow-sm); animation: pop var(--dur-pop) var(--spring) backwards; }
+.agent-cursor { position: absolute; top: var(--agent-cursor-offset); left: calc(var(--stack, 0) * var(--agent-stack)); display: flex; align-items: center; gap: var(--agent-small-gap); }
 .agent-cursor svg { width: var(--agent-icon); height: var(--agent-icon); }
-.agent-node-badge { position: absolute; top: var(--agent-badge-offset); }
+.agent-node-badges { z-index: 5; display: flex; gap: var(--agent-small-gap); margin-top: var(--agent-badge-offset); }
 
 @media (max-width: 720px) {
   .agent-page { margin-top: var(--agent-gap); }

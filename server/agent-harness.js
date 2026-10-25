@@ -4,6 +4,7 @@ import * as core from './core.js'
 import { createFlows, clone, problem, flowSignature } from './flows.js'
 import { createEngine } from '../src/lib/flowEngine.js'
 import { createServer } from './mcp.js'
+import { createPresence } from './presence.js'
 import { adapterSetup, claudeAdapter, codexAdapter } from './agent-adapters.js'
 
 const bridge = fileURLToPath(new URL('./agent-mcp.js', import.meta.url))
@@ -23,8 +24,9 @@ export function createHarness({ adapters = { claude: claudeAdapter, codex: codex
     return value
   }
   const flows = createFlows({ directory, generate, writePrompt, stitch, changed: publish })
+  const presence = createPresence({ directory, changed: publish })
   const handlers = new Map()
-  createServer({ handlers, flowService: flows })
+  createServer({ handlers, flowService: flows, presence })
   for (const [name, fn] of Object.entries(overrides)) handlers.set(name, fn)
   const get = (id) => {
     const session = sessions.get(id)
@@ -43,7 +45,7 @@ export function createHarness({ adapters = { claude: claudeAdapter, codex: codex
     for (const plan of session.plans.values()) plan.reject(problem(message, 409))
     session.plans.clear()
   }
-  const view = (s) => ({ id: s.id, name: s.name, adapter: s.adapter, status: s.status, events: s.events, plans: [...s.plans.values()].map(({ resolve, reject, ...p }) => p) })
+  const view = (s) => ({ id: s.id, name: s.name, color: s.color, adapter: s.adapter, status: s.status, events: s.events, plans: [...s.plans.values()].map(({ resolve, reject, ...p }) => p) })
   const approval = async (session, plan) => {
     if (session.stopped) throw problem('Session stopped', 409)
     const id = crypto.randomUUID()
@@ -96,10 +98,9 @@ export function createHarness({ adapters = { claude: claudeAdapter, codex: codex
         await approval(session, { title: name === 'generate' ? 'Generate media' : 'Write prompts', tool: name, args, steps: [{ ...args, model: args.model || 'Google Gemini', prompt: args.prompt || args.idea, usd: cost?.usd ?? null }], usd: cost?.usd ?? null })
       }
       if (session.stopped || !session.busy) throw problem('Session stopped or turn ended', 409)
-      if (args.flow_id) {
-        const flow = flows.get(args.flow_id)
-        const node = flow.nodes.find((n) => n.id === args.node_id) || flow.nodes.find((n) => n.id === args.source) || flow.nodes[0]
-        emit(session, { type: 'presence', flowId: flow.id, nodeId: node?.id, position: args.position || node?.position || { x: 0, y: 0 } })
+      if (name === 'run_flow') {
+        const node = snapshot.nodes.find((n) => n.type === 'model')
+        presence.touch(session.agent, { flowId: snapshot.id, nodeId: node?.id, position: node?.position })
       }
       let result
       if (name === 'run_flow') {
@@ -120,8 +121,7 @@ export function createHarness({ adapters = { claude: claudeAdapter, codex: codex
           return stitch({ ...input, preview: true })
         } })
         result = flows.report(args.flow_id, result)
-      } else result = unwrap(await handlers.get(name)(args))
-      if (name === 'add_node') emit(session, { type: 'presence', flowId: args.flow_id, nodeId: result.id, position: result.position })
+      } else result = unwrap(await handlers.get(name)(args, { agent: { id: session.agent, name: session.name } }))
       emit(session, { type: 'tool', name, state: 'done' })
       return result
     } catch (e) {
@@ -130,21 +130,22 @@ export function createHarness({ adapters = { claude: claudeAdapter, codex: codex
     }
   }
   return {
-    flows, call, setup,
+    flows, presence, call, setup,
     list: () => [...sessions.values()].map(view),
     get: (id) => view(get(id)),
     subscribe: (fn) => { listeners.add(fn); return () => listeners.delete(fn) },
     async start(adapter, origin) {
       if (!adapters[adapter] || !setup().some((s) => s.id === adapter && s.available)) throw problem('Install and sign in to this agent first.', 409)
       if ([...sessions.values()].some((s) => !s.stopped)) throw problem('Stop the current session before starting another.', 409)
-      const session = { id: crypto.randomUUID(), name: 'Agent 1', adapter, token: crypto.randomUUID(), status: 'starting', events: [], plans: new Map(), stopped: false, busy: false }
+      const agent = presence.join({ kind: 'assistant' })
+      const session = { id: crypto.randomUUID(), name: agent.name, color: agent.color, agent: agent.id, adapter, token: crypto.randomUUID(), status: 'starting', events: [], plans: new Map(), stopped: false, busy: false }
       sessions.set(session.id, session)
       try {
         session.driver = await adapters[adapter]({ emit: (event) => emit(session, event), mcp: { command: process.execPath, args: [bridge, `${origin}/api/agents/${session.id}/tool`, session.token] } })
         if (session.stopped) { await session.driver.stop(); throw problem('Session stopped', 409) }
         status(session, 'idle')
         return view(session)
-      } catch (e) { session.stopped = true; status(session, 'error'); throw e }
+      } catch (e) { session.stopped = true; presence.leave(session.agent); status(session, 'error'); throw e }
     },
     async send(id, text) {
       const session = get(id)
@@ -155,10 +156,12 @@ export function createHarness({ adapters = { claude: claudeAdapter, codex: codex
       status(session, 'working')
       Promise.resolve().then(() => session.driver.send(text.trim())).then(() => {
         session.busy = false
+        presence.rest(session.agent)
         cancelPlans(session, 'The agent turn ended. Request a fresh plan.')
         if (!session.stopped) status(session, 'idle')
       }, (error) => {
         session.busy = false
+        presence.rest(session.agent)
         cancelPlans(session, 'The agent turn ended. Request a fresh plan.')
         emit(session, { type: 'error', text: error.message })
         if (!session.stopped) status(session, 'error')
@@ -180,6 +183,7 @@ export function createHarness({ adapters = { claude: claudeAdapter, codex: codex
       if (session.stopped) return { ok: true }
       session.stopped = true
       cancelPlans(session, 'Session stopped')
+      presence.leave(session.agent)
       status(session, 'stopped')
       await session.driver?.stop()
       return { ok: true }
