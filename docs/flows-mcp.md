@@ -5,7 +5,7 @@ Agents build and run flows with the same rules as the Flows page. The app, the d
 ## Storage
 
 - Flows live in `.comfyfield/flows.json` under `COMFYFIELD_HOME` (default: the working directory). The file holds `revision`, `flows`, `current` and `runs` (run state per flow: outputs and gate status).
-- Every write bumps `revision`. A save with an old revision is refused with "Flows changed elsewhere. Reload flows before editing again." so two writers cannot silently overwrite each other.
+- Every write bumps `revision`. The server refuses a save with an old revision ("Flows changed elsewhere. Reload flows before editing again."). The app does not show that to the user: it merges and saves again (see below).
 - Node media is a URL (for example `/media/...` from the Library or an upload), not inline file data. Flows made before uploads went through `/api/upload` can still hold data URLs until the image is uploaded again.
 - `server/flows.js` owns storage, validation and runs. `shared/flowRules.js` holds the node types, defaults and connection rule, so the canvas and MCP refuse the same things for the same reason.
 
@@ -15,11 +15,13 @@ Flows used to live in this browser's `localStorage` (`comfyfield.flows`, `comfyf
 
 ## How the app sees agent changes
 
-- Changes made by the Assistant (inside the dev server) reach the page at once through the `/api/agents/events` stream.
-- A standalone MCP server is a separate process, so the page reloads flows when its tab gets focus again. Switch back to ComfyField to see what the agent built.
-- If you edit while an agent writes, your save gets the revision conflict above. Use Reload flows.
+- Every write to `flows.json` becomes a `flows` event on the `/api/agents/events` stream (server-sent events). Writes by the Assistant are sent at once. A standalone MCP server is another process, so the dev server polls the file and sends an event for its writes too, within about half a second.
+- On an event the page fetches the flows and shows them at once, also while it has unsaved edits of its own.
+- Conflicts are last write wins per node (`shared/flowMerge.js`). What the page changed since the flows it last got goes on top of the new flows: a node, an edge, the flow name, an added or removed flow. Every node the page did not touch comes from the server as it is. When both sides changed the same node, the later save keeps that whole node.
+- When a save meets an old revision, the page merges the same way and saves again, so two writers do not overwrite each other's nodes.
+- Selection and measured node sizes stay in the page. They are never saved, so a remote change does not clear what the user selected.
 
-Live sync of other people's edits is issue #22.
+Checks: `node scripts/flow-sync-checks.mjs`.
 
 ## Tools
 

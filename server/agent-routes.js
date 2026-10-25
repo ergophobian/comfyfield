@@ -2,6 +2,7 @@ import { createHarness } from './agent-harness.js'
 import { problem } from './flows.js'
 
 export function agentRoutes({ harness = createHarness(), body, send }) {
+  const unwatch = harness.flows.watch()
   const route = async (req, res, url) => {
     if (!/^\/api\/(agents|flows)(\/|$)/.test(url.pathname)) return false
     const host = req.headers.host
@@ -45,6 +46,6 @@ export function agentRoutes({ harness = createHarness(), body, send }) {
     }
     throw problem('Not found', 404)
   }
-  route.close = () => harness.close()
+  route.close = () => { unwatch(); return harness.close() }
   return route
 }
