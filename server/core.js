@@ -10,6 +10,7 @@ import { Comfy, JobFailed } from '@comfyorg/sdk'
 import { models as pinned, falCategories, podWorkflows, routerWriterModel } from '../src/lib/catalog.js'
 import { comfyVars, comfyRouterInput, falInput, estimate, fill, falEndpointFor, dropOptional } from '../shared/mapping.js'
 import { renderStitch } from './stitch.js'
+import { draftInstructions, parseDraft } from '../shared/flowDraft.js'
 import { archOf, minVramOf, notOnCloud, podNeedsOf, volumeFor, RUNTIMES } from '../shared/modelFiles.js'
 import { DEFAULT_TIER, TIER_IDS } from '../shared/gpuTiers.js'
 
@@ -333,6 +334,15 @@ export async function writePrompt({ instructions, note = '', images = [], target
   const text = (candidate?.content?.parts || []).filter((p) => !p.thought).map((p) => p.text || '').join('').trim()
   if (!text) throw new Error('Google returned no prompt. The request may have been filtered.')
   return text
+}
+
+// Describe a flow, get a draft: the prompt writer (Google key first, then Comfy Router) returns flow JSON,
+// and parseDraft keeps only nodes and connections the flow rules allow.
+export async function draftFlow({ description } = {}, { write = writePrompt } = {}) {
+  if (typeof description !== 'string' || !description.trim()) throw Object.assign(new Error('Describe the flow you want first.'), { status: 400 })
+  if (write === writePrompt && !config('google').key && !config('comfy').key) throw Object.assign(new Error('Add a Google or Comfy key in Connections to draft a flow.'), { status: 400 })
+  const text = await write({ instructions: draftInstructions(), note: description.trim().slice(0, 2000), target: 'ComfyField flow JSON', promptOnly: false })
+  return parseDraft(text, { makeId: (type) => `${type}-${randomUUID().slice(0, 8)}` })
 }
 
 // Google AI (Gemini API key): image and speech via generateContent, Veo via a long-running operation.
