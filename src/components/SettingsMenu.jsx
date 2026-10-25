@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { IconSettings } from './Icons.jsx'
+import { backdrops, setBackdrop, useBackdrop } from '../lib/backdrop.js'
 
 const pages = [
   ['/models', 'Models', 'Browse and add more models'],
@@ -16,11 +17,12 @@ export default function SettingsMenu() {
   const fromKeys = useRef(false)
   const { pathname } = useLocation()
   const here = pages.some(([to]) => to === pathname)
+  const backdrop = useBackdrop()
 
   useEffect(() => setOpen(false), [pathname])
   useEffect(() => {
     if (!open) return
-    if (fromKeys.current) { fromKeys.current = false; ref.current?.querySelector('[role=menuitem]')?.focus() }
+    if (fromKeys.current) { fromKeys.current = false; ref.current?.querySelector('[role^=menuitem]')?.focus() }
     const away = (e) => !ref.current?.contains(e.target) && setOpen(false)
     const key = (e) => {
       if (e.key !== 'Escape') return
@@ -38,7 +40,7 @@ export default function SettingsMenu() {
   }, [open])
 
   const onKeyDown = (e) => {
-    const items = [...ref.current.querySelectorAll('[role=menuitem]')]
+    const items = [...ref.current.querySelectorAll('[role^=menuitem]')]
     const at = items.indexOf(document.activeElement)
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault()
@@ -62,6 +64,15 @@ export default function SettingsMenu() {
               <strong>{name}</strong><small>{line}</small>
             </Link>
           ))}
+          <h6 id="settings-backdrop">Background</h6>
+          <div className="menu-pick" role="group" aria-labelledby="settings-backdrop">
+            {backdrops.map((b) => (
+              <button key={b.id} type="button" role="menuitemradio" tabIndex={-1} aria-checked={backdrop === b.id}
+                className={backdrop === b.id ? 'on' : ''} onClick={() => setBackdrop(b.id)}>
+                {b.label}
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </div>
