@@ -1757,7 +1757,11 @@ await test('fixes: a pack patch replaces the pinned file after checkout, before 
   const pack = script.slice(script.indexOf("<<'PACK'"), script.indexOf('\nPACK\n'))
   const call = pack.indexOf('declare -F cf_patch')
   assert(call > pack.indexOf('checkout --quiet --force "$commit"') && call < pack.indexOf('ln -sfn'), 'patched after checkout, before the link')
-  assert.equal(script.split('\n').filter((l) => /^ {2}[a-z0-9]+\)/.test(l) && l.includes('cf_patch')).length, 1, 'only packs with a patch get one')
+  assert.deepEqual(script.split('\n').filter((l) => /^ {2}[a-z0-9]+\)/.test(l) && l.includes('cf_patch')).map((l) => l.trim().split(')')[0]), ['wanvideo', 'chatterbox'], 'only packs with a patch get one')
+  const voice = script.split('\n').find((l) => l.startsWith('  chatterbox)'))
+  const init = Buffer.from(/echo (\S+) \| base64 -d > "\$d\/__init__\.py"/.exec(voice)[1], 'base64').toString()
+  assert.equal(init, fs.readFileSync('server/pack-patches/chatterbox/__init__.py', 'utf8'))
+  assert.match(init, /raise RuntimeError\("Chatterbox returned no sound/, 'a Chatterbox error fails the run instead of passing one sample of silence on')
 })
 
 await test('node packs: the boot script installs packs before ComfyUI starts, keeps them on the volume and whitelists them', async () => {
@@ -2360,7 +2364,7 @@ await test('pack files: a pack\'s own files download with it, pinned, and the Po
   assert(!script.includes('  chatterbox/chatterbox_vc:'), 'ComfyUI\'s own folder list never names a pack folder')
   assert(script.includes('foley\tComfyUI-HunyuanVideo_Foley\tHunyuanFoleyModelLoader,LoadDACHunyuanVAE,HunyuanFoleySampler,DACHunyuanVAEDecode\thunyuan_foley/hunyuanvideo_foley.pth,vae/vae_128d_48k.pth\n'),
     'the status server learns which files Foley waits for')
-  assert(script.includes('folder=ComfyUI_Fill-ChatterBox; pip="pykakasi==2.3.0 spacy-pkuseg==1.0.1"; ;;'), 'Chatterbox gets its Japanese and Mandarin text packages, pinned')
+  assert(script.includes('folder=ComfyUI_Fill-ChatterBox; pip="pykakasi==2.3.0 spacy-pkuseg==1.0.1"; cf_patch() {'), 'Chatterbox gets its Japanese and Mandarin text packages, pinned')
   assert(script.includes('folder=ComfyUI-Qwen-TTS; skip="onnxruntime-openvino"; ;;'))
   for (const d of ['wav2vec2', 'asr', 'hunyuan_foley']) assert(script.includes(`  ${d}: ${d}\n`), `ComfyUI finds ${d} on the volume`)
   const ok = { repo: 'x/y', commit: 'a'.repeat(40), folder: 'F', classes: ['C'] }
