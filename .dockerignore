@@ -1,0 +1,19 @@
+# Keep keys, data and media out of the image and the build context.
+.git
+.github
+.claude
+node_modules
+dist
+outputs
+.comfyfield
+.env
+.env.*
+!.env.example
+research_notes
+!research_notes/effect-specs.json
+reports
+docs/screenshots
+**/__pycache__
+**/.DS_Store
+Dockerfile
+docker-compose.yml
