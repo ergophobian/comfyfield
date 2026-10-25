@@ -12,9 +12,13 @@ import { validateWorkflowVoices } from '../server/voiceConsent.js'
 import { voiceRoutes } from '../server/voices.js'
 import { voiceLimits, voiceValue } from '../shared/voices.js'
 import { formatById } from '../src/lib/formats/index.js'
-import { compileFormat, runFormat } from '../src/lib/formats/runner.js'
+import { compileFormat, runFormat as runWithPlanning } from '../src/lib/formats/runner.js'
+import { offlineRequirements } from './fixtures/format-planning.mjs'
 import { comfyVars, fill, dropOptional } from '../shared/mapping.js'
 import { startBrowser, uiTimeout } from './browser.mjs'
+
+// The runner preflights each run; inject offline requirements instead of a network call.
+const runFormat = (format, values, options) => runWithPlanning(format, values, { requirements: offlineRequirements, ...options })
 
 const home = fs.mkdtempSync(path.join(os.tmpdir(), 'comfyfield-voice-check-'))
 fs.mkdirSync(path.join(home, 'media'))
@@ -30,6 +34,7 @@ const adapters = {
 let route = voiceRoutes(adapters)
 const mediaRequests = []
 const generationRequests = []
+const jobs = new Map()
 const server = await preview({ configFile: false, envFile: false, plugins: [{
   name: 'voice-library-fixture', configurePreviewServer(server) {
     server.middlewares.use(async (req, res, next) => {
@@ -41,17 +46,42 @@ const server = await preview({ configFile: false, envFile: false, plugins: [{
         res.end(JSON.stringify(data))
         return
       }
-      if (url.pathname === '/api/comfy/run') {
+      if (url.pathname.startsWith('/api/jobs/')) {
+        res.setHeader('Content-Type', 'application/json')
+        res.end(JSON.stringify(jobs.get(url.pathname.slice('/api/jobs/'.length))))
+        return
+      }
+      if (url.pathname === '/api/comfy/requirements') {
         let raw = ''
         for await (const chunk of req) raw += chunk
-        const data = JSON.parse(raw)
+        res.setHeader('Content-Type', 'application/json')
+        res.end(JSON.stringify({
+          connections: { comfy: { connected: true } }, cloudConnected: true, pod: { phase: 'none' },
+          requirements: JSON.parse(raw).workflows.map(({ workflow }) => ({ workflow, notOnCloud: [], minVramGb: 0, target: 'cloud', selectedWorkflow: workflow })),
+        }))
+        return
+      }
+      // Generations run as server jobs; the job carries the Comfy route's answer or its consent error.
+      if (url.pathname === '/api/comfy/run' || url.pathname === '/api/jobs') {
+        let raw = ''
+        for await (const chunk of req) raw += chunk
+        let data = JSON.parse(raw)
+        const job = url.pathname === '/api/jobs'
+        if (job) data = data.body
         generationRequests.push(data)
         res.setHeader('Content-Type', 'application/json')
+        let result
         try {
           const graph = JSON.parse(fs.readFileSync(`public/workflows/${data.workflow}.json`))
           await validateWorkflowVoices(data.workflow, graph, data.vars, adapters.home)
-          res.end(JSON.stringify({ files: [{ url: data.vars.voice, kind: 'audio' }] }))
-        } catch (e) { res.statusCode = e.status || 500; res.end(JSON.stringify({ error: e.message })) }
+          result = { status: 'done', files: [{ url: data.vars.voice, kind: 'audio' }] }
+        } catch (e) { result = { status: 'failed', error: { message: e.message, status: e.status || 500 } } }
+        if (job) {
+          const id = `job-${jobs.size + 1}`
+          jobs.set(id, { id, ...result })
+          res.end(JSON.stringify({ id }))
+        } else if (result.files) res.end(JSON.stringify({ files: result.files }))
+        else { res.statusCode = result.error.status; res.end(JSON.stringify({ error: result.error.message })) }
         return
       }
       if (url.pathname.startsWith('/media/')) {

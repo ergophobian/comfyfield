@@ -229,6 +229,8 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
     }
     if (paused) { m.status = null; return record() }
     const s = await call(`${statusUrl(cur.id)}/status`, { token: cur.token, timeoutMs: 8000 })
+    // The Pod may have ended, or another started, while the status was on its way.
+    if (record()?.id !== cur.id) return record()
     if (s.ok && s.data && typeof s.data === 'object') {
       m.status = s.data
       m.seenAt = now()
@@ -236,7 +238,9 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
     return record()
   }
 
-  const heartbeat = (rec = record()) => rec && !rec.pausedAt && call(`${statusUrl(rec.id)}/heartbeat`, { method: 'POST', token: rec.token, timeoutMs: 8000 })
+  // `leases` tells the Pod's watchdog a run is on its way, so it does not end the Pod at its lifetime
+  // limit in the gap before the run's downloads or queue start.
+  const heartbeat = (rec = record()) => rec && !rec.pausedAt && call(`${statusUrl(rec.id)}/heartbeat`, { method: 'POST', token: rec.token, timeoutMs: 8000, body: { leases: m.leases.size } })
 
   function phase() {
     const rec = record()
@@ -277,6 +281,7 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
       },
       spend: { today: spentToday(), cap: cap() },
       runs: m.leases.size, queue: m.status?.queue ?? null, downloads: downloads(), runtimes: runtimes(),
+      safety: { selfTerminateReady: m.status?.selfTerminateReady === true, proofDeadline: m.status?.proofDeadline ?? null },
       // What is on the Pod's disk, for the Pods page. Known only while the Pod runs.
       models: m.status?.models || [], disk: m.status ? { freeGb: m.status.diskFreeGb ?? null, totalGb: m.status.diskTotalGb ?? null } : null,
       evicted: m.status?.evicted || [], preparing: Boolean(rec?.prepare),
@@ -344,8 +349,9 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
   // by hand ({ gpuTypeId, cloudType } from the ladder) is the only one tried. A Session tier's `order`
   // lists the GPUs to try in its order instead of the ladder's. `prepare` ({ files, runtimes }) gets the
   // Pod ready for services before their first run, as soon as it answers.
-  async function start({ minVramGb = 0, volumeGb = 60, runtimes: want = [], gpu = null, order = null, tier = null, prepare: ready = null } = {}) {
+  async function start({ minVramGb = 0, volumeGb = 60, runtimes: want = [], gpu = null, order = null, tier = null, prepare: ready = null, proof = null } = {}) {
     if (!key()) throw fail('Add your RunPod key in Connections first.', 400)
+    if (proof && (!/^[a-f0-9-]{36}$/.test(proof.id) || !Number.isSafeInteger(proof.terminateAt) || proof.terminateAt <= now() || proof.terminateAt > now() + LIFETIME)) throw fail('Invalid proof safety settings.', 400)
     await adopt({ force: true }).catch(() => null)
     if (record() || m.placing) throw fail('A Pod already exists. ComfyField runs one Pod at a time.', 409)
     const spent = spentToday()
@@ -369,11 +375,11 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
       rungs = rungs.filter((r) => r.vramGb >= runtime.vramGb)
       if (!rungs.length) throw fail(`${runtime.name} needs a ${runtime.vramGb} GB GPU.`, 400)
     }
-    const idleMin = idleMinutes(keys().idle)
+    const idleMin = proof ? 10 : idleMinutes(keys().idle)
     m.placing = true
     m.event = null
     const token = randomBytes(24).toString('hex')
-    const name = `${PREFIX}${now().toString(36)}`
+    const name = proof ? `${PREFIX}live-${proof.id}` : `${PREFIX}${now().toString(36)}`
     // The newest video models are 40-44 GB each, so the volume holds at least two of them, and it
     // always has room for the runtimes the Pod installs.
     const volume = Math.max(MIN_VOLUME_GB, Math.ceil(Math.max(volumeGb, want.length ? volumeFor(want.map((id) => RUNTIMES[id])) : 0) / 10) * 10)
@@ -383,7 +389,7 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
         const r = await rest('/pods', { method: 'POST', timeoutMs: 60_000, body: {
           name, imageName: POD_IMAGE, gpuTypeIds: [rung.gpuTypeId], gpuCount: 1, cloudType: rung.cloudType,
           containerDiskInGb: 50, volumeInGb: volume, volumeMountPath: '/workspace',
-          ports: [`${PROXY_PORT}/http`, `${STATUS_PORT}/http`], env: podEnv({ token, idleMin, runtimes: want }), dockerStartCmd: podStartCmd(),
+          ports: [`${PROXY_PORT}/http`, `${STATUS_PORT}/http`], env: podEnv({ token, idleMin, runtimes: want, terminateAt: proof?.terminateAt }), dockerStartCmd: podStartCmd(),
         } })
         if (r.ok && r.data?.id) {
           const t = now()
@@ -391,6 +397,11 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
           save({ id: r.data.id, name, token, gpuTypeId: rung.gpuTypeId, gpu: rung.name, vramGb: rung.vramGb, cloudType: rung.cloudType, arch: rung.arch || null, costPerHr: r.data.costPerHr || 0, volumeGb: volume, idleMin, createdAt: t, startedAt: t, pausedAt: null,
             tier: tier || null, fellBack: Boolean(order && refused > 0),
             ...(ready && (ready.files?.length || ready.runtimes?.length) ? { prepare: { files: ready.files || [], runtimes: ready.runtimes || [] } } : {}) })
+          // The last Pod's status (ready, models, disk) says nothing about this one, and a lease that
+          // trusted it would send a run to a Pod still booting.
+          m.status = null
+          m.remote = null
+          m.seenAt = null
           charge(t)
           m.placing = false
           kick()
@@ -484,18 +495,30 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
   const wire = (files) => files.map(({ repo, path: p, dir, name, sha256, gb, bytes }) => ({ repo, path: p, dir, name, ...(sha256 ? { sha256 } : {}),
     ...(Number.isInteger(bytes) ? { bytes } : gb ? { bytes: Math.round(gb * 1e9) } : {}) }))
 
+  // RunPod's proxy can answer 404 or 502 for a few seconds after the Pod's status server opens its port.
+  const unreachable = (r) => [0, 404, 502, 503].includes(r.status)
+  async function askPod(url, init) {
+    let r
+    for (let i = 0; i < 10; i++) {
+      r = await call(url, init)
+      if (r.ok || !unreachable(r)) return r
+      await wait(3000)
+    }
+    return r
+  }
+
   // Asks the Pod for files and runtimes it lacks. A failed install starts again on this request.
   async function ask(rec, files, need, except) {
     const have = new Set((m.status?.models || []).map((f) => `${f.dir}/${f.name}`))
     const missing = files.filter((f) => !have.has(`${f.dir}/${f.name}`))
     const pending = need.filter((e) => m.status?.runtimes?.[e]?.state !== 'ready')
     if (missing.length) {
-      const r = await call(`${statusUrl(rec.id)}/download`, { method: 'POST', token: rec.token, body: { files: wire(missing), keep: kept(except) } })
+      const r = await askPod(`${statusUrl(rec.id)}/download`, { method: 'POST', token: rec.token, body: { files: wire(missing), keep: kept(except) } })
       if (!r.ok) throw fail(`The Pod refused the model download: ${errorText(r.data) || `HTTP ${r.status}`}`, 502)
       if (r.data?.downloads && m.status) m.status = { ...m.status, downloads: { ...m.status.downloads, ...r.data.downloads } }
     }
     for (const e of pending) {
-      const r = await call(`${statusUrl(rec.id)}/runtime/${e}`, { method: 'POST', token: rec.token })
+      const r = await askPod(`${statusUrl(rec.id)}/runtime/${e}`, { method: 'POST', token: rec.token })
       if (!r.ok) throw fail(`The Pod could not start installing ${runtimeName(e)}: ${errorText(r.data) || `HTTP ${r.status}`}`, 502)
       if (r.data?.runtime && m.status) m.status = { ...m.status, runtimes: { ...m.status.runtimes, [e]: r.data.runtime } }
     }
@@ -560,6 +583,7 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
       if (m.ending) throw fail('The Pod is ending after its queue. Keep it from the Pod chip in the top bar.', 409, { code: 'ending' })
     }
     m.leases.add(l)
+    heartbeat()
     const beat = setInterval(() => heartbeat(), 20_000)
     beat.unref?.()
     const release = () => { clearInterval(beat); m.leases.delete(l); signal?.removeEventListener('abort', stop) }
@@ -648,5 +672,27 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
     return gql('query { myself { id } }').then((d) => Boolean(d?.myself?.id)).catch(() => false)
   }
 
-  return { status, quote, start, pause, resume, terminate, keep, lease, prepare, remove, tick, refresh, phaseNow, vramGb, arch, room, models, startMonitor, stopMonitor, test, guard, spentToday }
+  // Account-wide recovery must also find stopped Pods and Pods missing from pod.json.
+  async function sweep({ dryRun = false, prefix = PREFIX } = {}) {
+    if (!key()) throw fail('Add your RunPod key in Connections first.', 400)
+    if (!prefix.startsWith(PREFIX)) throw fail('Sweep only targets ComfyField Pods.', 400)
+    const r = await rest('/pods')
+    if (!r.ok) throw restError(r, 'list Pods')
+    const rows = Array.isArray(r.data) ? r.data : r.data?.data
+    if (!Array.isArray(rows)) throw fail('RunPod returned an unreadable Pod list.', 502)
+    const found = rows.filter((p) => p.name?.startsWith(prefix) && p.desiredStatus !== 'TERMINATED')
+    const results = []
+    for (const p of found) {
+      let terminated = false
+      if (!dryRun) {
+        const end = await rest(`/pods/${encodeURIComponent(p.id)}`, { method: 'DELETE' })
+        terminated = end.ok || end.status === 404
+        if (terminated && record()?.id === p.id) clear('Terminated by the live-run sweep.')
+      }
+      results.push({ id: p.id, name: p.name, status: p.desiredStatus, terminated })
+    }
+    return results
+  }
+
+  return { status, quote, start, pause, resume, terminate, keep, lease, prepare, remove, tick, refresh, phaseNow, vramGb, arch, room, models, startMonitor, stopMonitor, test, guard, spentToday, sweep }
 }

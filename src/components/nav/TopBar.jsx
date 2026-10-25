@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import SettingsMenu from '../SettingsMenu.jsx'
 import PodChip from '../pod/PodChip.jsx'
+import RunChip from './RunChip.jsx'
 import MegaMenu, { Badge } from './MegaMenu.jsx'
 import MobileNav from './MobileNav.jsx'
 import { Glyph } from './ToolIcon.jsx'
@@ -19,6 +20,7 @@ export default function TopBar() {
   const [open, setOpen] = useState(null)
   const [sheet, setSheet] = useState(false)
   const [more, setMore] = useState(false)
+  const [less, setLess] = useState(false)
   const how = useRef(null)
   const timer = useRef(null)
   const quiet = useRef(false)
@@ -85,17 +87,37 @@ export default function TopBar() {
     return () => mq.removeEventListener('change', wide)
   }, [sheet])
 
-  // Fade the bar's right edge while more items sit off screen, as Higgsfield does.
+  // Fade an edge of the bar while items sit off screen past it, as Higgsfield does on the right.
   useLayoutEffect(() => {
     const el = list.current
     if (!el) return
-    const measure = () => setMore(el.scrollWidth - el.scrollLeft - el.clientWidth > 1)
+    const measure = () => { setMore(el.scrollWidth - el.scrollLeft - el.clientWidth > 1); setLess(el.scrollLeft > 1) }
     measure()
     const ro = new ResizeObserver(measure)
     ro.observe(el)
     el.addEventListener('scroll', measure, { passive: true })
     return () => { ro.disconnect(); el.removeEventListener('scroll', measure) }
   }, [])
+
+  // The current item must show in full, not sit off screen or under the fade.
+  useLayoutEffect(() => {
+    const el = list.current
+    if (!el) return
+    const reveal = () => {
+      const on = el.querySelector('.bar-item.on')
+      if (!on) return
+      const fade = parseFloat(getComputedStyle(el.parentElement, '::after').width) || 0
+      const box = el.getBoundingClientRect()
+      const r = on.getBoundingClientRect()
+      const over = r.right - (box.right - fade)
+      if (over > 0) el.scrollLeft += over
+      else if (r.left < box.left + fade) el.scrollLeft -= box.left + fade - r.left
+    }
+    reveal()
+    const ro = new ResizeObserver(reveal)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [section])
 
   const keyOpen = (id, where) => {
     if (open === id && panel.current) { how.current = 'key'; focusIn(where); return }
@@ -140,7 +162,7 @@ export default function TopBar() {
   return (
     <header className="nav">
       <Link to="/" className="brand"><img src="/logo.svg" alt="" />ComfyField</Link>
-      <nav className={`bar${more ? ' more' : ''}`} aria-label="Main">
+      <nav className={`bar${more ? ' more' : ''}${less ? ' less' : ''}`} aria-label="Main">
         <ul className="bar-list" ref={list} onKeyDown={barKeys}>
           {barItems.map((b) => (
             b.divider ? <li key={b.id} className="bar-div" aria-hidden="true" /> : (
@@ -159,6 +181,7 @@ export default function TopBar() {
         </ul>
       </nav>
       <div className="nav-right">
+        <RunChip />
         <PodChip />
         <SettingsMenu />
         <a className="btn-soft" href="https://github.com/ergophobian/comfyfield" target="_blank" rel="noreferrer">GitHub ›</a>

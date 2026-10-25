@@ -3,14 +3,14 @@ import { ReactFlow, ReactFlowProvider, Background, Controls, MiniMap, applyNodeC
 import '@xyflow/react/dist/style.css'
 import { nodeTypes, FlowCtx } from '../components/flow/nodes.jsx'
 import Panel from '../components/flow/Panel.jsx'
-import { widgetTypes } from '../../shared/widgetInputs.js'
 import { IconClose } from '../components/Icons.jsx'
-import { downstreamOf } from '../lib/flowEngine.js'
+import { connectionProblem } from '../../shared/flowRules.js'
 import { useFlowStorage, engineFor, starters, makeNode, blankFlow, exportJson, parseFlow, nodeLabels } from '../lib/flowStore.js'
 import { reloadFlows } from '../lib/remoteFlows.js'
 import AssistantPanel from '../components/AssistantPanel.jsx'
 import { AgentPresence, useAgentPresence } from '../components/flow/AgentPresence.jsx'
 import { getConnections } from '../lib/providers.js'
+import { uploadFlowImage, legacyImages, migrateDataUrl, patchNode } from '../lib/flowImage.js'
 
 const addable = [
   ['prompt', 'Text or a list of prompts'],
@@ -66,11 +66,30 @@ function Canvas({ picker }) {
     ...s, flows: s.flows.map((f) => (f.id === s.current ? { ...fn(f), updated: Date.now() } : f)),
   })), [])
   const patch = useCallback((id, data) => update((f) => ({ ...f, nodes: f.nodes.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...data } } : n)) })), [update])
-  const upload = useCallback((id, file) => {
-    const r = new FileReader()
-    r.onload = () => patch(id, { url: r.result, name: file.name })
-    r.readAsDataURL(file)
-  }, [patch])
+  const [uploads, setUploads] = useState({})
+  const upload = useCallback(async (id, file) => {
+    const flowId = flow.id
+    setUploads((u) => ({ ...u, [id]: { busy: true } }))
+    try {
+      const data = await uploadFlowImage(file)
+      setStore((s) => patchNode(s, flowId, id, data))
+      setUploads((u) => { const { [id]: _, ...rest } = u; return rest })
+    } catch (e) {
+      setUploads((u) => ({ ...u, [id]: { error: e.message } }))
+    }
+  }, [flow.id])
+
+  // Older flows kept image nodes as data URLs. Move them to /media once; on failure the data URL stays and still works.
+  const migrated = useRef(new Set())
+  useEffect(() => {
+    if (!ready) return
+    for (const n of legacyImages(flow)) {
+      if (migrated.current.has(n.id)) continue
+      migrated.current.add(n.id)
+      const from = n.data.url
+      migrateDataUrl(from).then((url) => setStore((s) => patchNode(s, flow.id, n.id, { url }, from)), () => {})
+    }
+  }, [ready, flow])
 
   const say = (r) => setNote(r?.reason || null)
   const act = {
@@ -105,14 +124,7 @@ function Canvas({ picker }) {
   const onNodesChange = useCallback((c) => update((f) => ({ ...f, nodes: applyNodeChanges(c, f.nodes) })), [update])
   const onEdgesChange = useCallback((c) => update((f) => ({ ...f, edges: applyEdgeChanges(c, f.edges) })), [update])
   const onConnect = useCallback((c) => update((f) => ({ ...f, edges: addEdge({ ...c, id: `${c.source}-${c.target}` }, f.edges) })), [update])
-  const valid = useCallback((c) => {
-    const s = flow.nodes.find((n) => n.id === c.source)
-    const t = flow.nodes.find((n) => n.id === c.target)
-    if (!s || !t || s.id === t.id) return false
-    if (['output', 'note'].includes(s.type) || ['prompt', 'image', 'note', ...widgetTypes].includes(t.type)) return false
-    if (s.type === 'prompt' && !['model', 'writer'].includes(t.type)) return false
-    return !downstreamOf(flow, t.id).has(s.id) && !flow.edges.some((e) => e.source === s.id && e.target === t.id)
-  }, [flow])
+  const valid = useCallback((c) => !connectionProblem(flow, c.source, c.target), [flow])
 
   const add = (type) => {
     const c = rf.screenToFlowPosition({ x: window.innerWidth / 2 - 120, y: window.innerHeight / 2 - 80 })
@@ -143,7 +155,7 @@ function Canvas({ picker }) {
     } catch (e) { setNote(e.message) }
   }
 
-  const ctx = { flow, engine, state, act, patch, upload }
+  const ctx = { flow, engine, state, act, patch, upload, uploads }
 
   return (
     <FlowCtx.Provider value={ctx}>
@@ -200,7 +212,7 @@ function Canvas({ picker }) {
         )}
 
         {assistant && <aside className="agent-canvas-panel glass"><button type="button" className="btn-soft" onClick={() => setAssistant(false)}>Close assistant</button><AssistantPanel /></aside>}
-        {node && !assistant && ready && <Panel node={node} patch={patch} picker={picker} connections={connections} upload={upload} remove={remove} />}
+        {node && !assistant && ready && <Panel node={node} patch={patch} picker={picker} connections={connections} upload={upload} uploading={uploads[node.id]} remove={remove} />}
       </div>
     </FlowCtx.Provider>
   )

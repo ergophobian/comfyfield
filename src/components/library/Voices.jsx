@@ -1,3 +1,4 @@
+import { PageArt } from '../Art.jsx'
 import { useEffect, useRef, useState } from 'react'
 import { useLibrary } from '../../lib/useLibrary.js'
 import { voiceAccept, voiceLimits } from '../../../shared/voices.js'
@@ -184,7 +185,7 @@ export default function Voices() {
   }
   return <section className="voice-library" aria-label="Saved voices">
     {(!ready || loadError) && <p role="status">{loadError || 'Loading voices'} {loadError && <button className="link-btn" onClick={refresh}>Retry</button>}</p>}
-    {ready && !voices.length && <div className="empty glass"><p>Save a voice from a short sample, then use it in any script.</p><button className="btn-blue" onClick={() => setEditing({})}>Add a voice</button></div>}
+    {ready && !voices.length && <div className="empty glass"><PageArt id="audio" className="empty-art" /><p>Save a voice from a short sample, then use it in any script.</p><button className="btn-blue" onClick={() => setEditing({})}>Add a voice</button></div>}
     {!!voices.length && <>
       <div className="voice-library-toolbar"><p>{voices.length} saved {voices.length === 1 ? 'voice' : 'voices'}</p><button className="btn-blue" onClick={() => setEditing({})}>Add a voice</button></div>
       <div className="voice-library-grid">{voices.map((item) => <article className="glass voice-library-card" key={item.id}>

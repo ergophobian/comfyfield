@@ -1,0 +1,79 @@
+# Round 2 prompt review
+
+Rewrote the 60 todo prompts only. All 63 ids, slots, labels, aspects, durations, statuses, file names and entry order are unchanged. The three done entries are unchanged in full; influencer still targets ai-influencer.mp4.
+
+- Rewritten set: 37 clips with a person, 23 with no people (38.3%).
+- Music is hands only: 24 of the 60 clips have no visible face (40%).
+- Whole manifest including approved clips: 40 with people, 23 with no people.
+- All 60 rewritten prompts contain 70–77 whitespace-delimited words, within the requested 50–90 range.
+- Manifest parsed successfully: 60 todo, 3 done, 63 unique ids and file names.
+- No rewritten prompt contains settles back, returns to, starting-pose instructions, the repeated guard tail or the duration/resolution prefix.
+- The encoder handles loop seams; the new prompts do not require a reset. Runtime and resolution stay in the manifest and render configuration.
+- Camera approaches include handheld action, gimbal tracking, locked overhead, extreme macro, wildlife slow motion, phone footage, anamorphic dolly, aerial dive and product match cuts.
+- No generation, provider calls, keys or commits. This review describes prompt intent, not generated-footage verification.
+
+## One-line hooks
+
+- `professional` (person): A flare-lit runner bursts through a rain curtain.
+- `enhance` (person): A flying silk wrap sweeps a work outfit into evening styling.
+- `face` (person): A boxer's punch skims the lens without losing his identity.
+- `video-edit` (person): An opening crimson parasol reveals a courtyard changing around its owner.
+- `ads` (no people): An amber bottle lands in water and throws a crown of gold.
+- `games` (no people): A clockwork beetle rockets across a collapsing miniature bridge.
+- `extras` (no people): A felt creature sneezes a storm of colorful wool.
+- `trending` (person): A surfer carves through fog suspended above a cliff.
+- `create-image` (person): A scarlet umbrella blooms against windblown white salt.
+- `cinematic-cameras` (person): A low dolly slips beneath swinging ferry seats to find a tense passenger.
+- `moodboard` (no people): A falling orange breaks a tightly coordinated cobalt-and-clay still life.
+- `character` (person): A scarred courier vaults a rail and lands in close-up.
+- `photodump` (person): A lake jump splashes the selfie lens mid-laugh.
+- `relight` (person): A passing headlight rakes a face from cool shadow into amber.
+- `inpaint` (no people): An empty wall niche fills with a vase and whipping yellow flowers.
+- `image-upscale` (no people): A macro push reveals salt crystals and citrus pores in startling detail.
+- `face-swap` (person): A velvet-jacketed performer pulls away a fan to reveal a convincing new face.
+- `character-swap` (person): A linen-suited man steps through a spinning chair into an integrated scene.
+- `fashion-factory` (person): A saffron coat flares across the frame in a rooftop runway stride.
+- `create-video` (person): A red-coated cyclist bursts through mist and a sheet of water.
+- `faceless` (no people): A camp kettle erupts in steam as sunrise breaks over a valley.
+- `3d-studio` (no people): A sculpted ceramic dragon rotates through dramatic raking light.
+- `shorts` (person): A skater jumps a puddle straight into a delighted phone close-up.
+- `explainer` (no people): An exposed gear machine opens a copper flower through one visible chain of motion.
+- `mixed-media` (person): A dancer tears through paper that becomes an animated collage silhouette.
+- `edit-video` (no people): A cargo bicycle's empty basket bursts into sunflowers during a passing wipe.
+- `video-upscale` (no people): A diving kingfisher throws jewel-sharp water droplets past camera.
+- `reframe` (person): A tracking frame catches a dancer's explosive sideways leap.
+- `click-to-ad` (no people): A frosted flask opens itself in a burst of alpine steam.
+- `color-palette` (no people): A gray seaside scene gains rich teal water and amber light in a sweeping grade.
+- `motion-control` (person): A dancer hits a precise elbow wave and heel slide.
+- `lipsync` (person): A host leans into an emphatic phrase, lips and gesture sharply visible.
+- `text-to-speech` (person): A narrator delivers an urgent line while pulling close to the microphone.
+- `voice-change` (person): A voice performer's expression jumps from booming theatricality to mischievous whisper.
+- `translate` (person): A cook lifts a steaming dish and delivers a direct, expressive explanation.
+- `effects` (no people): A stone bust's crown bursts into a flock of paper birds.
+- `motion` (no people): An aerial dive threads a sea arch and breaks into sunlit surf.
+- `marketing` (no people): A travel bag flips open on a windblown desert campsite.
+- `cam-dolly-in` (person): A fast dolly finds a baker inside a burst of flour.
+- `roller-coaster` (person): A front-seat drop turns two riders' anticipation into airborne laughter.
+- `cinema-shot` (person): A woman breaks the surface of a flooded swimming pool into a searchlight.
+- `transition` (person): A spinning curtain wipes a blue doorway into a roaring beach.
+- `look-phone-flash` (person): A night-court basketball splash explodes under harsh phone light.
+- `expand` (no people): A pullback turns a single desert doorway into an immense cliffside monastery.
+- `try-on` (person): A swishing garment bag reveals a new emerald outfit on a moving model.
+- `sketch-to-image` (no people): A charcoal lamp drawing rises into a glowing ceramic object.
+- `product-shot` (no people): A tangerine speaker rotates through a burst of citrus spray.
+- `swap-element` (no people): A spinning blue stool becomes a plush orange chair behind a passing column.
+- `face-swap-video` (person): A laughing chess player looks up through a fast moving face close-up.
+- `video-bg-remove` (person): A dancer's flying curls remain clean against a seamless studio background.
+- `skin-retouch` (person): An exuberant close laugh reveals refined skin with pores and smile lines intact.
+- `character-scene` (person): A recognizable potter opens a glowing kiln into her own face.
+- `headshot` (person): A jacket snap lands on a confident, spontaneous professional portrait.
+- `talking-head` (person): A sewing-room presenter holds up a vivid coat and lands a playful point.
+- `tts` (person): A storyteller leans out of shadow into a thunderous narration beat.
+- `voice-clone` (person): Two matching versions of one performer exchange an expressive spoken cue.
+- `music` (person; hands only): A piano chord sends dust dancing through a hard light beam.
+- `sound-effect` (no people): A falling bronze bowl strikes stone and vibrates beside a microphone.
+- `product-ad` (no people): A grapefruit splash becomes the hero moment around a coral carafe.
+- `ad-variants` (no people): One shoe stays aligned through three sharply different campaign sets.
+- `turn-to-sand` (done; person): A dancer’s trailing shoulder and arm crumble into windblown sand.
+- `cinema-studio` (done; person): A trench-coated man turns sharply as the camera advances through a rain-dark alley.
+- `influencer` (done; person): A laughing creator lifts iced coffee toward an arm’s-length phone camera.

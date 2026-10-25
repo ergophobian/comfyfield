@@ -8,7 +8,7 @@ import { spawn, spawnSync } from 'node:child_process'
 import { createHash, randomBytes } from 'node:crypto'
 import { gunzipSync } from 'node:zlib'
 import { test } from 'node:test'
-import { podBootScript, podStartCmd, podEnv, START_CMD_MAX } from '../server/podBoot.js'
+import { podBootScript, podStartCmd, podEnv, START_CMD_MAX, POD_IMAGE } from '../server/podBoot.js'
 import { podManager, GPU_LADDER, NO_POD } from '../server/pod.js'
 import { sandboxFetch } from '../server/podSandbox.js'
 import { modelFilesOf, minVramOf, volumeFor, runtimesOf, podNeedsOf, MODEL_FILES } from '../shared/modelFiles.js'
@@ -29,6 +29,25 @@ function findPython() {
 const python = findPython()
 // Later checks stub globalThis.fetch; checks that talk to a real local server keep this one.
 const netFetch = globalThis.fetch
+
+// The app runs generations as server jobs: POST /api/jobs {route, body}, then GET /api/jobs/:id.
+// This turns a stub of the direct routes into those job routes, keeping its codes for needs_pod and pod_too_small.
+const withJobs = (direct) => {
+  const jobs = new Map()
+  const reply = (data) => new Response(JSON.stringify(data), { status: 200, headers: { 'Content-Type': 'application/json' } })
+  return async (url, init = {}) => {
+    if (url === '/api/jobs' && init.method === 'POST') {
+      const { route, body } = JSON.parse(init.body)
+      const res = await direct(route, { method: 'POST', headers: init.headers, body: JSON.stringify(body) })
+      const data = await res.json()
+      const id = `job-${jobs.size + 1}`
+      jobs.set(id, res.ok ? { id, status: 'done', files: data.files } : { id, status: 'failed', error: { message: data.error, code: data.code, reason: data.reason, fit: data.fit } })
+      return reply({ id })
+    }
+    if (typeof url === 'string' && url.startsWith('/api/jobs/')) return reply(jobs.get(url.slice('/api/jobs/'.length)))
+    return direct(url, init)
+  }
+}
 
 const listen = (handler) => new Promise((resolve) => {
   const server = http.createServer(handler).listen(0, '127.0.0.1', () => resolve(server))
@@ -69,6 +88,12 @@ const until = async (fn, ms = 8000) => {
     await new Promise((r) => setTimeout(r, 100))
   }
 }
+
+await test('image: pinned to a commit tag or a digest, never :latest', () => {
+  assert(!/:latest$/.test(POD_IMAGE), `POD_IMAGE must not float on :latest: ${POD_IMAGE}`)
+  assert(/^ghcr\.io\/bchenner\/patchwork-comfy(:[0-9a-f]{40})?(@sha256:[0-9a-f]{64})?$/.test(POD_IMAGE)
+    && /[:@]/.test(POD_IMAGE.split('/').pop()), `POD_IMAGE needs a commit tag or an @sha256 digest: ${POD_IMAGE}`)
+})
 
 await test('boot script: start command fits, decodes and holds no secrets', () => {
   const script = podBootScript()
@@ -124,6 +149,8 @@ base = dict(now=10000, booted=10000 - 1000, ready_at=9500, hb=9990, idle=0, busy
 def d(**k): return m.decide(dict(base, **k), cfg)
 print(json.dumps({
   'healthy': d(),
+  'proofDeadline': m.decide(dict(base, busy=True), dict(cfg, terminate_at=9999)),
+  'proofBeforeDeadline': m.decide(dict(base, busy=True), dict(cfg, terminate_at=10001)),
   'fatalEarly': d(fatal='model download', fatal_at=9900),
   'fatalLate': d(fatal='model download', fatal_at=9800),
   'bootDeadline': d(ready_at=None, booted=10000 - 900),
@@ -134,12 +161,15 @@ print(json.dumps({
   'noHeartbeatBusy': d(hb=10000 - 600, busy=True),
   'neverBeaten': d(hb=None, ready_at=10000 - 600),
   'idle': d(idle=780),
+  'busy': [m.is_busy(0, False, 9990, 10000), m.is_busy(0, False, 9900, 10000), m.is_busy(0, False, None, 10000), m.is_busy(None, False, None, 10000), m.is_busy(2, False, None, 10000), m.is_busy(0, True, None, 10000)],
   'nextIdle': [m.next_idle(30, 0, 0, False, 15), m.next_idle(30, 5, 0, False, 15), m.next_idle(30, None, 0, False, 15), m.next_idle(30, 0, None, False, 15), m.next_idle(30, 0, 0, True, 15)],
 }))`
   const r = spawnSync(python[0], [...python.slice(1), '-c', code, statusd], { encoding: 'utf8' })
   assert.equal(r.status, 0, r.stderr)
   const out = JSON.parse(r.stdout)
   assert.equal(out.healthy, null)
+  assert.equal(out.proofDeadline, 'proof deadline reached', 'hard proof deadline bypasses busy drain grace')
+  assert.equal(out.proofBeforeDeadline, null)
   assert.equal(out.fatalEarly, null, 'a fatal stays readable during its grace')
   assert.equal(out.fatalLate, 'fatal: model download')
   assert.match(out.bootDeadline, /not ready after 15 minutes/)
@@ -150,7 +180,37 @@ print(json.dumps({
   assert.equal(out.noHeartbeatBusy, null)
   assert.match(out.neverBeaten, /no heartbeat since it became ready/)
   assert.match(out.idle, /idle for 13 minutes/)
+  assert.deepEqual(out.busy, [true, false, false, true, true, true], 'a run leased in the last minute keeps the Pod busy until its downloads or queue start')
   assert.deepEqual(out.nextIdle, [45, 0, 0, 0, 0], 'only a known-idle GPU and queue count; unknown is busy')
+})
+
+await test('fixes: a ready pack that no longer loads after a ComfyUI start is marked failed, once per start', { skip: !python && 'no Python 3.9+ found' }, () => {
+  const code = `
+import importlib.util, json, sys
+spec = importlib.util.spec_from_file_location('statusd', sys.argv[1])
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+m.PACKS = {'chatterbox': {'folder': 'ComfyUI_Fill-ChatterBox', 'classes': ['FL_ChatterboxVC'], 'before': []}, 'vhs': {'folder': 'VHS', 'classes': ['VHS_LoadVideo'], 'before': []}}
+m.RUNTIMES = {'chatterbox': {'state': 'ready', 'error': None, 'startedAt': 0, 'endedAt': 1}, 'vhs': {'state': 'ready', 'error': None, 'startedAt': 0, 'endedAt': 1}}
+m.comfy_started = lambda: 1000
+m.comfy_error = lambda folder: 'Cannot import %s: No module named perth' % folder
+asked = []
+def lists(classes):
+  asked.append(classes[0])
+  return classes[0] != 'FL_ChatterboxVC'
+m.lists_classes = lists
+m.recheck_packs(True, 1005)
+early = list(asked)
+m.recheck_packs(True, 1100)
+m.recheck_packs(True, 1200)
+print(json.dumps({'early': early, 'asked': asked, 'chatterbox': m.RUNTIMES['chatterbox'], 'vhs': m.RUNTIMES['vhs']['state']}))`
+  const r = spawnSync(python[0], [...python.slice(1), '-c', code, statusd], { encoding: 'utf8' })
+  assert.equal(r.status, 0, r.stderr)
+  const out = JSON.parse(r.stdout)
+  assert.deepEqual(out.early, [], 'no check in the first seconds after a start, while the old ComfyUI may still answer')
+  assert.deepEqual(out.asked.sort(), ['FL_ChatterboxVC', 'VHS_LoadVideo'], 'each pack is checked once per ComfyUI start')
+  assert.equal(out.chatterbox.state, 'failed')
+  assert.match(out.chatterbox.error, /No module named perth/)
+  assert.equal(out.vhs, 'ready')
 })
 
 await test('status server: auth, status, heartbeat, downloads and a boot-deadline terminate', { skip: !python && 'no Python 3.9+ found' }, async (t) => {
@@ -249,6 +309,8 @@ function fakeRunpod(clock) {
     if (u.pathname === '/heartbeat') return reply(null, 204)
     if (u.pathname === '/download') return reply({ downloads: {} }, 202)
     if (u.pathname.startsWith('/runtime/')) return reply({ runtime: { state: 'installing', error: null, sec: 0 } }, 202)
+    // A held status answer, like a slow Pod while the app ends it.
+    if (f.gate && u.pathname === '/status') await f.gate
     return f.statusd ? reply(f.statusd) : reply({ error: 'not reachable' }, 502)
   }
   f.count = (pred) => f.calls.filter(pred).length
@@ -496,7 +558,7 @@ await test('runs: model files come from the loader nodes and the file list', () 
   assert.deepEqual(ltx.map((f) => `${f.dir}/${f.name}`), ['checkpoints/ltx-video-2b-v0.9.5.safetensors', 'text_encoders/t5xxl_fp16.safetensors'])
   assert.equal(minVramOf(ltx), 16)
   assert.equal(volumeFor(ltx), 47)
-  assert.deepEqual(modelFilesOf(read('h3_i2v')), [], 'a partner node needs no files')
+  assert.deepEqual(modelFilesOf({ 1: { class_type: 'MinimaxHailuo03FirstLastFrameNode', inputs: {} } }), [], 'a partner node needs no files')
   assert.throws(() => modelFilesOf({ 1: { class_type: 'UNETLoader', inputs: { unet_name: 'mystery.safetensors' } } }), /mystery\.safetensors is not in ComfyField's model list, so a Pod cannot download it/)
   assert.throws(() => modelFilesOf({ 1: { class_type: 'VAELoader', inputs: { vae_name: 'sd_xl_base_1.0.safetensors' } } }), /loads sd_xl_base_1\.0\.safetensors from vae/)
   assert.deepEqual(modelFilesOf({ 1: { class_type: 'CheckpointLoaderSimple', inputs: { ckpt_name: '{{ckpt}}' } } }), [], 'placeholders wait for the filled graph')
@@ -571,6 +633,121 @@ await test('runs: no Pod, an ended Pod and the sandbox each fail the run with a 
   const sandbox = async () => ({ sandbox: true, release: () => released++ })
   await assert.rejects(core.runComfy('image_sdxl', sdxl, { lease: sandbox, podPhase: ready, createClient }), /sandbox Pod, so nothing renders/)
   assert.equal(released, 2)
+})
+
+await test('fixes: a Pod run follows job links on the Pod\'s private address through the public proxy, with the Pod token', async () => {
+  podMode()
+  const lease = async () => ({ baseUrl: 'https://pod1-8189.proxy.runpod.net', token: 'pod-token', sandbox: false, signal: new AbortController().signal, reason: () => null, release() {} })
+  // comfy-api-proxy builds these from the Pod's own address, which only RunPod's network reaches.
+  const own = 'http://100.65.31.61:60239/api/v2/jobs/pod-job'
+  const job = { id: 'pod-job', status: 'queued', created_at: '2026-10-17T00:00:00Z', started_at: null, completed_at: null, expires_at: null, queue_position: 0, progress: null, outputs: [], error: null, urls: { self: own, events: `${own}/events`, cancel: `${own}/cancel` } }
+  const seen = []
+  globalThis.fetch = async (url, init = {}) => {
+    const u = new URL(url)
+    seen.push(`${init.method || 'GET'} ${u.host}${u.pathname}`)
+    assert.equal(u.host, 'pod1-8189.proxy.runpod.net', `a request went to ${u.host}`)
+    assert.equal(new Headers(init.headers).get('Authorization'), 'Bearer pod-token')
+    if (u.pathname === '/api/v2/jobs') return jsonReply(job, 201)
+    if (u.pathname === '/api/v2/jobs/pod-job') return jsonReply({ ...job, status: 'succeeded', outputs: [{ node_id: '7', name: 'fox.png', type: 'image', content_type: 'image/png', size_bytes: 3, id: 'out-1', hash: null, url: null, url_expires_at: null }] })
+    if (u.pathname === '/api/v2/assets/out-1/content') return new Response('png', { headers: { 'Content-Type': 'image/png' } })
+    throw new Error(`Unexpected SDK request ${u.pathname}`)
+  }
+  const files = await core.runComfy('image_sdxl', sdxl, { lease, podPhase: ready })
+  assert.equal(fs.readFileSync(files[0].path, 'utf8'), 'png')
+  assert(seen.includes('GET pod1-8189.proxy.runpod.net/api/v2/jobs/pod-job'), seen.join(', '))
+
+  // The token never follows a link to a public host, and every request keeps the SDK's long-call limits.
+  const sent = []
+  const f = core.podFetch('https://pod1-8189.proxy.runpod.net', 'pod-token', async (url, init) => { sent.push({ url, auth: new Headers(init.headers).get('Authorization'), limits: Boolean(init.dispatcher) }); return new Response('{}') })
+  await f('http://10.0.0.5:8189/api/v2/jobs/j1', {})
+  await f('https://cdn.example.com/out.png', {})
+  assert.deepEqual(sent.map((s) => [s.url, s.auth]), [['https://pod1-8189.proxy.runpod.net/api/v2/jobs/j1', 'Bearer pod-token'], ['https://cdn.example.com/out.png', null]])
+  assert(sent.every((s) => s.limits))
+})
+
+await test('fixes: a 405 while the Pod restarts ComfyUI retries twice on a fresh lease after a pause, and a third one fails', async () => {
+  podMode()
+  let leases = 0
+  let runs = 0
+  const lease = async () => { leases++; return { baseUrl: 'https://pod1-8189.proxy.runpod.net', token: 't', sandbox: false, signal: new AbortController().signal, reason: () => null, release() {} } }
+  const deadlines = new Set()
+  const client = (fails) => ({
+    workflows: { fromFile: async () => ({ json: null, setInput() {} }) },
+    run: async (wf, o) => {
+      deadlines.add(o.timeoutMs)
+      if (++runs <= fails) throw Object.assign(new Error('HTTP 405'), { httpStatus: 405 })
+      return { outputs: [{ contentType: 'image/png', name: 'a.png', type: 'image', toBytes: async () => Buffer.from('png') }] }
+    },
+  })
+  const pauses = []
+  const pause = async (ms) => { pauses.push(ms) }
+  const twice = client(2)
+  const files = await core.runComfy('image_sdxl', sdxl, { lease, podPhase: ready, pause, createClient: () => twice })
+  assert.equal(files[0].kind, 'image')
+  assert.deepEqual([leases, runs], [3, 3])
+  assert.deepEqual(pauses, [20_000, 20_000], 'each retry waits for ComfyUI to come back')
+  leases = 0
+  runs = 0
+  const thrice = client(3)
+  await assert.rejects(core.runComfy('image_sdxl', sdxl, { lease, podPhase: ready, pause, createClient: () => thrice }), /HTTP 405/)
+  assert.deepEqual([leases, runs], [3, 3])
+  assert.deepEqual([...deadlines], [90 * 60 * 1000], 'a Pod run may take 90 minutes, for long talking heads')
+  // A 502 after the Pod accepted the job is a failed poll, not a restart: sending it again would queue a paid copy.
+  leases = 0
+  pauses.length = 0
+  let submits = 0
+  const accepted = {
+    workflows: { fromFile: async () => ({ json: null, setInput() {} }) },
+    submit: async () => { submits++; return { id: 'j1', wait: async () => { throw Object.assign(new Error('HTTP 502'), { httpStatus: 502 }) } } },
+  }
+  await assert.rejects(core.runComfy('image_sdxl', sdxl, { lease, podPhase: ready, pause, createClient: () => accepted }), /HTTP 502/)
+  assert.deepEqual([leases, submits, pauses.length], [1, 1, 0], 'an accepted job is never submitted twice')
+  submits = 0
+  let refused = 1
+  const restarting = {
+    workflows: { fromFile: async () => ({ json: null, setInput() {} }) },
+    submit: async () => {
+      submits++
+      if (refused-- > 0) throw Object.assign(new Error('HTTP 405'), { httpStatus: 405 })
+      return { id: 'j2', status: 'succeeded', wait: async () => {}, outputs: [{ contentType: 'image/png', name: 'a.png', type: 'image', toBytes: async () => Buffer.from('png') }] }
+    },
+  }
+  const sent = await core.runComfy('image_sdxl', sdxl, { lease, podPhase: ready, pause, createClient: () => restarting })
+  assert.equal(sent[0].kind, 'image')
+  assert.equal(submits, 2, 'a refused submit is sent again')
+})
+
+await test('fixes: a status that arrives after its Pod ended is dropped, and a new Pod starts as starting', async () => {
+  const { pod, rp } = setup()
+  await pod.start()
+  rp.statusd = readyStatus({ diskFreeGb: 12, diskTotalGb: 322 })
+  assert.equal((await pod.tick()).phase, 'ready')
+  let open
+  rp.gate = new Promise((r) => { open = r })
+  const late = pod.refresh()
+  await new Promise((r) => setTimeout(r, 10))
+  await pod.terminate({ now: true })
+  rp.gate = null
+  open()
+  await late
+  assert.equal(pod.status().disk, null, 'the ended Pod\'s answer is not kept')
+  rp.statusd = null
+  const s = await pod.start()
+  assert.equal(s.phase, 'starting')
+  assert.equal(s.disk, null)
+})
+
+await test('fixes: a lease tells the Pod a run is on its way, so its watchdog keeps it past the lifetime limit', async () => {
+  const { pod, rp } = setup()
+  await pod.start()
+  rp.statusd = readyStatus()
+  await pod.tick()
+  const held = await pod.lease({ files: [] })
+  const beats = () => rp.calls.filter((c) => c.path === '/heartbeat').map((c) => c.body?.leases)
+  assert.equal(beats().at(-1), 1)
+  held.release()
+  await pod.tick()
+  assert.equal(beats().at(-1), 0)
 })
 
 await test('runs: Comfy Cloud + Pod is a saved choice, and the needs of a workflow size the Pod', () => {
@@ -797,7 +974,8 @@ await test('routing: a ready Pod too small for the run sends it to Cloud, or say
   assert.equal(leased, false, 'a 24 GB Pod does not take a 32 GB run; Cloud does')
   podMode({})
   await assert.rejects(core.runComfy('h3_open_t2v', h3, { createClient: () => client, lease, podPhase: async () => 'ready', podVram: () => 24 }),
-    (e) => e.code === 'pod_too_small' && /needs a 32 GB GPU; your Pod has 24 GB/.test(e.message))
+    (e) => e.code === 'pod_too_small' && /needs a 32 GB GPU; your Pod has 24 GB/.test(e.message)
+      && e.fit.needVramGb === 32 && e.fit.podVramGb === 24, 'the error carries the sizes for the replace sheet')
   podMode()
   leased = false
   await core.runComfy('h3_open_t2v', h3, { createClient: () => client, lease: async () => { leased = true; return { baseUrl: 'https://p-8189.proxy.runpod.net', token: 't', sandbox: false, signal: new AbortController().signal, reason: () => null, release() {} } }, podPhase: async () => 'ready', podVram: () => 32 })
@@ -871,6 +1049,44 @@ await test('suggestion: Cloud runs are logged with their GPU time, and a busy ho
 
 // ---- auto-start --------------------------------------------------------------------------------------
 
+await test('cancel: Pod refresh, auto-start and either start sheet never retry a cancelled workflow', async () => {
+  const { run } = await import('../src/lib/providers.js')
+  const usePod = await import('../src/lib/usePod.js')
+  const model = { provider: 'comfy', kind: 'image', workflow: 'flux3_klein_t2i' }
+  for (const stage of ['before-run', 'refresh', 'auto-refresh', 'auto-start', 'needs_pod', 'pod_too_small']) {
+    let cancelled = stage === 'before-run'
+    let runs = 0
+    let starts = 0
+    let refreshes = 0
+    let asked
+    const sheetReady = new Promise((resolve) => { asked = resolve })
+    globalThis.fetch = withJobs(async (url) => {
+      if (url === '/api/pod') {
+        refreshes++
+        if (stage === 'refresh' || (stage === 'auto-refresh' && refreshes === 2)) cancelled = true
+        if (['needs_pod', 'pod_too_small'].includes(stage) && refreshes === 2) asked()
+        return jsonReply({ phase: 'none', run: 'session', auto: !['needs_pod', 'pod_too_small'].includes(stage), connected: true })
+      }
+      if (url === '/api/pod/start') { starts++; cancelled = true; return jsonReply({ phase: 'starting' }) }
+      if (url === '/api/comfy/run') {
+        runs++
+        return jsonReply({ error: 'Needs a Pod', code: stage === 'pod_too_small' ? stage : 'needs_pod' }, 409)
+      }
+      throw new Error(`Unexpected ${url}`)
+    })
+    const running = run(model, { prompt: 'Cancel fixture', aspect: '1:1' }, { isCancelled: () => cancelled })
+    const rejected = assert.rejects(running, (e) => e.cancelled === true)
+    if (['needs_pod', 'pod_too_small'].includes(stage)) {
+      await sheetReady
+      cancelled = true
+      usePod.answerPod(true)
+    }
+    await rejected
+    assert.equal(runs, stage === 'before-run' ? 0 : 1, `${stage}: no workflow retry`)
+    assert.equal(starts, stage === 'auto-start' ? 1 : 0, `${stage}: no new Pod after cancellation`)
+  }
+})
+
 await test('auto-start: Generate starts, resumes or keeps the Pod by itself, once for several runs', async () => {
   const { run } = await import('../src/lib/providers.js')
   const usePod = await import('../src/lib/usePod.js')
@@ -878,10 +1094,10 @@ await test('auto-start: Generate starts, resumes or keeps the Pod by itself, onc
   const opts = { prompt: 'A fox', aspect: '1:1' }
   // A stub of the app's API: runs need a Pod until one exists.
   const api = (start = {}) => {
-    const s = { phase: 'none', auto: true, connected: true, posts: [], ...start }
-    globalThis.fetch = async (url, init = {}) => {
+    const s = { phase: 'none', auto: true, connected: true, run: 'session', posts: [], ...start }
+    globalThis.fetch = withJobs(async (url, init = {}) => {
       const reply = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } })
-      if (url === '/api/pod') return reply({ phase: s.phase, auto: s.auto, connected: s.connected, spend: { today: 0, cap: 20 } })
+      if (url === '/api/pod') return reply({ phase: s.phase, auto: s.auto, connected: s.connected, run: s.run ?? null, spend: { today: 0, cap: 20 } })
       if (url.startsWith('/api/pod/')) {
         s.posts.push({ action: url.slice(9), body: JSON.parse(init.body || '{}') })
         if (s.refuse) return reply({ error: s.refuse }, 402)
@@ -893,7 +1109,7 @@ await test('auto-start: Generate starts, resumes or keeps the Pod by itself, onc
         return reply({ files: [{ url: '/media/x.png', kind: 'image' }] })
       }
       throw new Error(`unexpected ${url}`)
-    }
+    })
     return s
   }
 
@@ -915,6 +1131,15 @@ await test('auto-start: Generate starts, resumes or keeps the Pod by itself, onc
   await run(model, opts)
   assert.deepEqual(s.posts.map((p) => p.action), ['keep'])
 
+  // Instant never starts a Pod, with auto-start on or off: the run fails with needs_pod and nothing is asked.
+  for (const auto of [true, false]) {
+    s = api({ run: 'instant', auto })
+    waited = 0
+    await assert.rejects(run(model, opts, { onPod: () => waited++ }), (e) => e.code === 'needs_pod', `Instant with auto-start ${auto ? 'on' : 'off'} fails, and does not wait on the start sheet`)
+    assert.deepEqual(s.posts, [], 'Instant starts, resumes or keeps no Pod')
+    assert.equal(waited, 0, 'the take is not marked as waiting for a Pod')
+  }
+
   s = api({ refuse: 'Daily cap reached: $20.00 of $20.00 today. Raise it in Connections.' })
   await assert.rejects(run(model, opts), /Daily cap reached/)
 
@@ -925,6 +1150,80 @@ await test('auto-start: Generate starts, resumes or keeps the Pod by itself, onc
   s.phase = 'starting' // the sheet's button starts it
   usePod.answerPod(true)
   assert.equal((await asked)[0].url, '/media/x.png')
+})
+
+// A Pod too small for the run: the sheet offers to replace it, with auto-start on or off (docs/adr/0002).
+await test('pod too small: Generate asks to replace the Pod, then terminates, starts one sized for the workflow and reruns', async () => {
+  const { run } = await import('../src/lib/providers.js')
+  const usePod = await import('../src/lib/usePod.js')
+  const model = { id: 'm', provider: 'comfy', kind: 'video', name: 'LTX 2.5', workflow: 'ltx25_t2v' }
+  const opts = { prompt: 'A fox', aspect: '16:9' }
+  const fit = { needVramGb: 32, podVramGb: 24, needArch: null, podArch: null }
+  const api = (start = {}) => {
+    const s = { phase: 'ready', vram: 24, auto: true, connected: true, run: 'session', posts: [], runs: 0, ...start }
+    globalThis.fetch = withJobs(async (url, init = {}) => {
+      const reply = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } })
+      if (url === '/api/pod') return reply({ phase: s.phase, auto: s.auto, connected: s.connected, run: s.run ?? null, spend: { today: 0, cap: 20 } })
+      if (url.startsWith('/api/pod/')) {
+        const action = url.slice(9)
+        s.posts.push({ action, body: JSON.parse(init.body || '{}') })
+        if (action === 'terminate') { s.phase = 'none'; s.vram = null }
+        if (action === 'start') { s.phase = 'starting'; s.vram = 48 }
+        return reply({ phase: s.phase })
+      }
+      if (url === '/api/comfy/run') {
+        s.runs++
+        if (s.vram != null && s.vram < 32) return reply({ error: 'This run needs a 32 GB GPU; your Pod has 24 GB. Terminate it and start a new Pod.', code: 'pod_too_small', fit }, 409)
+        return reply({ files: [{ url: '/media/x.mp4', kind: 'video' }] })
+      }
+      throw new Error(`unexpected ${url}`)
+    })
+    return s
+  }
+  // Lets the run reach the sheet.
+  const sheet = () => new Promise((r) => setTimeout(r, 20))
+
+  for (const auto of [true, false]) {
+    const s = api({ auto })
+    let waited = 0
+    const pending = run(model, opts, { onPod: () => waited++ })
+    await sheet()
+    assert.deepEqual(s.posts, [], `with auto-start ${auto ? 'on' : 'off'} nothing ends or starts before the person confirms`)
+    assert.equal(waited, 0, 'the take is not waiting for a Pod yet')
+    // The sheet's confirm button does what PodSheet's replace does, then answers.
+    await usePod.podAction('terminate', { now: true })
+    await usePod.podAction('start', { workflow: 'ltx25_t2v', tier: 'balanced' })
+    usePod.answerPod(true)
+    assert.equal((await pending)[0].url, '/media/x.mp4', 'the take runs again on the new Pod')
+    assert.deepEqual(s.posts.map((p) => p.action), ['terminate', 'start'])
+    assert.deepEqual(s.posts[0].body, { now: true }, 'the old Pod ends now')
+    assert.equal(s.posts[1].body.workflow, 'ltx25_t2v', 'the new Pod is sized for the workflow')
+    assert.equal(s.runs, 2)
+    assert.equal(waited, 1, 'after the confirm the take waits for the Pod')
+  }
+
+  // Several runs too big for the Pod share one question.
+  let s = api()
+  const both = [run(model, opts), run(model, opts)]
+  await sheet()
+  s.vram = 48
+  usePod.answerPod(true)
+  await Promise.all(both)
+
+  // Cancel leaves the Pod alone, and the take fails.
+  s = api()
+  const cancelled = run(model, opts)
+  await sheet()
+  usePod.answerPod(false)
+  await assert.rejects(cancelled, /Cancelled\. Your Pod is still running\./)
+  assert.deepEqual(s.posts, [], 'no terminate, no start')
+  assert.equal(s.phase, 'ready')
+
+  // Instant never touches a Pod (docs/adr/0001): the error stands and nothing is asked.
+  s = api({ run: 'instant' })
+  await assert.rejects(run(model, opts), (e) => e.code === 'pod_too_small')
+  assert.deepEqual(s.posts, [])
+  assert.equal(s.runs, 1)
 })
 
 await test('auto-start: the RunPod switch is saved as on or off, and on by default', () => {
@@ -1354,8 +1653,7 @@ await test('pods page: the page lists sizes with the models that need them, and 
   assert(o.tiers[0].models.includes('FLUX 3 Klein'))
   assert(o.tiers[1].models.includes('LTX-2.5') && o.tiers[1].models.includes('MiniMax H3 (open weights)'), 'stock H3 runs on 32 GB')
   assert.deepEqual(o.tiers[2].models, ['MiniMax H3 on FreeVideo'])
-  assert(!o.tiers.flatMap((t) => t.models).includes('MiniMax H3 image to video'), 'a partner node needs no Pod GPU')
-  assert.equal(o.rungs.length, GPU_LADDER.length)
+    assert.equal(o.rungs.length, GPU_LADDER.length)
   assert.deepEqual([o.volumes, o.idleChoices, o.runtimes[0].diskGb], [[120, 200, 300], [5, 10, 15, 30, 60], 130])
 
   const { podAction } = await import('../server/plugin.js')
@@ -1476,7 +1774,8 @@ await test('tiers: Session tiers may start the faster cards, and an NVFP4 run st
   const client = { workflows: { fromFile: async () => ({ json: null, setInput() {} }) }, run: async () => ({ outputs: [] }) }
   podMode({})
   await assert.rejects(core.runComfy('h3_open_t2v', h3, { createClient: () => client, lease: async () => { throw new Error('no lease') }, podPhase: async () => 'ready', podVram: () => 141, podArch: () => 'hopper', run: 'session' }),
-    (e) => e.code === 'pod_too_small' && /needs a Blackwell GPU; your Pod has a Hopper one/.test(e.message))
+    (e) => e.code === 'pod_too_small' && /needs a Blackwell GPU; your Pod has a Hopper one/.test(e.message)
+      && e.fit.needArch === 'Blackwell' && e.fit.podArch === 'Hopper', 'the error names the GPU families for the replace sheet')
 })
 
 await test('generation type: approving a Session switches the user to it, on the tier they picked', async () => {
@@ -1506,6 +1805,20 @@ await test('node packs: a graph\'s node classes decide its packs, and a pack Com
   const body = rp.calls.find((c) => c.path === '/v1/pods' && c.method === 'POST').body
   assert.equal(body.env.CF_RUNTIMES, 'vhs kjnodes')
   assert.equal(body.gpuTypeIds[0], GPU_LADDER[0].gpuTypeId, 'a pack needs no bigger GPU')
+})
+
+await test('fixes: a pack patch replaces the pinned file after checkout, before ComfyUI links the pack', () => {
+  const script = podBootScript()
+  const branch = script.split('\n').find((l) => l.startsWith('  wanvideo)'))
+  assert.match(branch, /cf_patch\(\) \{ mkdir -p "\$d\/multitalk" && echo (\S+) \| base64 -d > "\$d\/multitalk\/wav2vec2\.py"; \};/)
+  const b64 = /echo (\S+) \| base64 -d > "\$d\/multitalk\/wav2vec2\.py"/.exec(branch)[1]
+  const file = fs.readFileSync('server/pack-patches/wanvideo/multitalk/wav2vec2.py', 'utf8')
+  assert.equal(Buffer.from(b64, 'base64').toString(), file)
+  assert.match(file, /register_forward_hook/, 'the patch collects the hidden states newer transformers no longer return')
+  const pack = script.slice(script.indexOf("<<'PACK'"), script.indexOf('\nPACK\n'))
+  const call = pack.indexOf('declare -F cf_patch')
+  assert(call > pack.indexOf('checkout --quiet --force "$commit"') && call < pack.indexOf('ln -sfn'), 'patched after checkout, before the link')
+  assert.equal(script.split('\n').filter((l) => /^ {2}[a-z0-9]+\)/.test(l) && l.includes('cf_patch')).length, 1, 'only packs with a patch get one')
 })
 
 await test('node packs: the boot script installs packs before ComfyUI starts, keeps them on the volume and whitelists them', async () => {
@@ -1705,7 +2018,6 @@ await test('services: the Pods page offers each service once, with its files, si
   assert(by['flux-3-klein'].files.some((f) => f.name === 'flux3-image-klein-bf16.safetensors'))
   assert.deepEqual([by['flux-3-klein'].vramGb, by['flux-3-klein'].gb], [24, 27])
   assert(list.every((s) => s.files.length || s.runtimes.length), 'a partner node needs no files, so it is no service')
-  assert(!list.some((s) => s.name === 'MiniMax H3 image to video'))
   const fv = by['minimax-h3-on-freevideo']
   assert.deepEqual([fv.vramGb, fv.runtimes.map((r) => r.name)], [96, ['FreeVideo']])
   assert(fv.gb >= 96, 'a runtime counts in the size')
@@ -1896,7 +2208,7 @@ await test('image services: a shape choice sets the canvas, and a character make
   assert.equal(run('ad-variants', { variants: 8 }).vars.count, 8)
 })
 
-await test('image services: Cloud takes Edit 2511, Krea 2, Z-Image and HiDream at once; Qwen-Image 2.1 and Klein need a Pod that downloads their files and LoRAs', async () => {
+await test('image services: Cloud takes compatible image variants; Session keeps original image models and downloads their files and LoRAs', async () => {
   podMode()
   const client = {
     assets: { fromBytes: (buf, o) => ({ asset: o.filename }) },
@@ -1906,13 +2218,14 @@ await test('image services: Cloud takes Edit 2511, Krea 2, Z-Image and HiDream a
   const leases = []
   const lease = async (o) => { leases.push(o); return { baseUrl: 'https://p-8189.proxy.runpod.net', token: 't', sandbox: false, signal: new AbortController().signal, reason: () => null, release() {} } }
   const vars = { prompt: 'A fox', width: 1024, height: 1024, count: 1, seed: 1, image: 'data:image/png;base64,iVBORw0KGgo=', image2: 'data:image/png;base64,iVBORw0KGgo=', azimuth: 45, elevation: 0, zoom: 'medium', batch: 1, layers: 4 }
-  const run = (w, phase = 'none') => core.runComfy(w, vars, { createClient: () => client, lease, podPhase: async () => phase, podVram: () => 24, podRoom: () => ({}) })
+  const run = (w, phase = 'none', type = null) => core.runComfy(w, vars, { createClient: () => client, lease, podPhase: async () => phase, podVram: () => 24, podRoom: () => ({}), run: type })
   for (const w of ['qwen2511_edit', 'qwen2511_relight', 'qwen_multiangle', 'qwen_image_layered', 'krea2_t2i', 'z_image', 'hidream']) {
     assert.equal((await run(w))[0].kind, 'image', w)
   }
   assert.equal(leases.length, 0, 'Comfy Cloud has every file these load')
   for (const w of ['qwen_edit', 'qwen_image_ref', 'qwen_image_logo', 'flux_look', 'flux_look_ref', 'klein_edit', 'klein_character_swap', 'storyboard']) {
-    await assert.rejects(run(w), (e) => e.code === 'needs_pod', `${w} needs a Pod`)
+    assert.equal((await run(w))[0].kind, 'image', `${w} has a Cloud alternate`)
+    await assert.rejects(run(w, 'none', 'session'), (e) => e.code === 'needs_pod', `${w} in Session needs a Pod`)
   }
   await run('qwen_multiangle', 'ready')
   assert.deepEqual(leases.at(-1).files.filter((f) => f.dir === 'loras').map((f) => f.name).sort(),
@@ -1952,7 +2265,7 @@ await test('video services: presets and the H3, LTX-2.5 and Wan 2.2 graphs go to
   assert(readGraph('h3_open_i2v')['17'].inputs.crop === 'center', 'the start frame is cropped to the canvas, not stretched')
 })
 
-await test('video services: an effect LoRA and a chain need a Pod, which downloads that LoRA; first and last frame runs on FreeVideo on 96 GB', async () => {
+await test('video services: an effect LoRA needs a Pod, chains have Cloud alternates; first and last frame runs on FreeVideo on 96 GB', async () => {
   podMode()
   const { formats } = await import('../src/lib/formats/index.js')
   const { stepOptions } = await import('../src/lib/formats/options.js')
@@ -1970,7 +2283,7 @@ await test('video services: an effect LoRA and a chain need a Pod, which downloa
   const o = stepOptions(boom, boom.steps[0], { image: { url: png }, note: '' })
   assert.match(o.prompt, /EXPLOSION\.$/, 'the trigger ends the prompt')
   const vars = { ...comfyVars('video', { ...o, aspect: '16:9' }), seed: 1 }
-  const run = (w, v, phase, vram = 24, room = {}) => core.runComfy(w, v, { createClient: () => client, lease, podPhase: async () => phase, podVram: () => vram, podRoom: () => room })
+  const run = (w, v, phase, vram = 24, room = {}, type = null) => core.runComfy(w, v, { createClient: () => client, lease, podPhase: async () => phase, podVram: () => vram, podRoom: () => room, run: type })
   await assert.rejects(run('wan22_lora_i2v', vars, 'none'), (e) => e.code === 'needs_pod', 'Comfy Cloud has no effect LoRA')
   await run('wan22_lora_i2v', vars, 'ready')
   assert.deepEqual(leases.at(-1).files.filter((f) => f.dir === 'loras' && /redmond/.test(f.name)).map((f) => f.name).sort(),
@@ -1978,7 +2291,11 @@ await test('video services: an effect LoRA and a chain need a Pod, which downloa
   const frozen = formats.find((f) => f.id === 'frozen-in-motion')
   const fo = stepOptions(frozen, frozen.steps[0], { image: { url: png } })
   assert.equal(fo.fields.image2, png, 'the orbit ends on the start photo')
-  for (const w of ['klein_ltx', 'qwen_h3', 'qwen_mockup_ltx']) await assert.rejects(run(w, { ...vars, motion: 'It moves.', width: 768, height: 1344 }, 'none'), (e) => e.code === 'needs_pod', `${w} needs a Pod`)
+  for (const w of ['klein_ltx', 'qwen_h3', 'qwen_mockup_ltx']) {
+    const chainVars = { ...vars, motion: 'It moves.', width: 768, height: 1344 }
+    assert.equal((await run(w, chainVars, 'none'))[0].kind, 'video', `${w} has a Cloud alternate`)
+    await assert.rejects(run(w, chainVars, 'none', 24, {}, 'session'), (e) => e.code === 'needs_pod', `${w} in Session needs a Pod`)
+  }
   const flf = { prompt: 'A turn', duration: 5, seed: 1, image: png, image2: png, width: 1344, height: 768, frames: 121 }
   await run('h3_flf2v', flf, 'ready', 96, {})
   assert.equal(sent.at(-1), 'h3_freevideo_flf2v.json', 'a 96 GB Pod runs first and last frame on FreeVideo')
@@ -2020,7 +2337,7 @@ await test('video services: each video format draws on its model\'s canvas, a dr
 
 // ---- Video edits and enhance tools ------------------------------------------------------------------
 
-await test('edits and enhance: Bernini-R, VOID, SCAIL-2, SeedVR2, RIFE and BiRefNet go to Comfy Cloud; reshoot installs WanVideoWrapper on a Pod; Qwen backgrounds need a Pod', async () => {
+await test('edits and enhance: Bernini-R, VOID, SCAIL-2, SeedVR2, RIFE and BiRefNet go to Comfy Cloud; reshoot installs WanVideoWrapper on a Pod; Qwen backgrounds use Cloud alternates or original models in Session', async () => {
   podMode()
   const client = {
     assets: { fromBytes: (buf, o) => ({ asset: o.filename }) },
@@ -2032,13 +2349,16 @@ await test('edits and enhance: Bernini-R, VOID, SCAIL-2, SeedVR2, RIFE and BiRef
   const png = 'data:image/png;base64,iVBORw0KGgo='
   const vars = { prompt: 'A look', seed: 1, start: 0, duration: 3, video: 'data:video/mp4;base64,AAAAIGZ0eXBpc29t', image: png, image2: png, image3: png,
     fps: 12, strength: 0.65, target: 'person', trajectory: 'arc_left', orbit: false, upscale_factor: 2, multiplier: 2, output: 'alpha', background: 'A beach', preset: 'natural', temperature: 0, grain: 0 }
-  const run = (w, phase = 'none', vram = 24) => core.runComfy(w, vars, { createClient: () => client, lease, podPhase: async () => phase, podVram: () => vram, podRoom: () => ({}) })
+  const run = (w, phase = 'none', vram = 24, type = null) => core.runComfy(w, vars, { createClient: () => client, lease, podPhase: async () => phase, podVram: () => vram, podRoom: () => ({}), run: type })
   for (const w of ['bernini_mixed', 'bernini_grade', 'bernini_clone_edit', 'bernini_recreate_ad', 'void_inpaint', 'video_bg_change', 'scail2_character_swap', 'recammaster',
     'seedvr2_image', 'seedvr2_video', 'image_upscale', 'image_upscale_esrgan', 'rife_interpolate', 'birefnet_image', 'birefnet_video_matte', 'birefnet_video_matte_alpha', 'image_grade']) {
     await run(w)
   }
   assert.equal(leases.length, 0, 'Comfy Cloud has every file and pack these use')
-  for (const w of ['birefnet_qwen_background', 'birefnet_video_matte_scene']) await assert.rejects(run(w), (e) => e.code === 'needs_pod', `${w} needs a Pod`)
+  for (const w of ['birefnet_qwen_background', 'birefnet_video_matte_scene']) {
+    assert.equal((await run(w))[0].kind, 'video', `${w} has a Cloud alternate`)
+    await assert.rejects(run(w, 'none', 24, 'session'), (e) => e.code === 'needs_pod', `${w} in Session needs a Pod`)
+  }
   await run('recammaster', 'ready')
   assert.deepEqual(leases.at(-1).runtimes, ['wanvideo'], 'a Pod installs WanVideoWrapper for a reshoot')
   await run('birefnet_video_matte_alpha', 'ready')

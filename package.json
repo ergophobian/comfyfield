@@ -1,31 +1,46 @@
 {
   "name": "comfyfield",
-  "private": true,
+  "private": false,
   "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "node bin/comfyfield.js",
+    "prepack": "npm run build"
   },
   "dependencies": {
     "@comfyorg/sdk": "^0.5.0",
     "@modelcontextprotocol/sdk": "^1.32.1",
     "@xyflow/react": "^12.12.0",
-    "ffmpeg-static": "^5.3.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.28.0",
-    "zod": "^4.6.7"
+    "zod": "^4.6.7",
+    "vite": "^5.4.11"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.3.4",
-    "vite": "^5.4.11"
+    "@vitejs/plugin-react": "^4.3.4"
   },
   "bin": {
     "comfyfield": "bin/comfyfield.js"
   },
   "engines": {
     "node": ">=22"
+  },
+  "description": "A local-first creative studio with your own model keys",
+  "files": [
+    "bin/",
+    "server/",
+    "shared/",
+    "src/lib/",
+    "dist/",
+    "public/workflows/",
+    "docs/setup.md",
+    "NOTICE.md"
+  ],
+  "optionalDependencies": {
+    "ffmpeg-static": "^5.3.0"
   }
 }

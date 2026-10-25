@@ -1,0 +1,1778 @@
+{
+  "pages": [
+    {
+      "file": "after-explore-1440.png",
+      "route": "/",
+      "width": 1440,
+      "scrollWidth": 1425,
+      "images": [
+        {
+          "src": "/art/heroes/cinema.webp",
+          "loaded": true,
+          "alt": "",
+          "width": 625,
+          "height": 360
+        },
+        {
+          "src": "/art/covers/expand.webp",
+          "loaded": true,
+          "alt": "Create image example",
+          "width": 257,
+          "height": 145
+        },
+        {
+          "src": "/art/covers/cam-tracking.webp",
+          "loaded": true,
+          "alt": "Create video example",
+          "width": 257,
+          "height": 145
+        },
+        {
+          "src": "/art/covers/cinema-shot.webp",
+          "loaded": true,
+          "alt": "Cinema studio example",
+          "width": 257,
+          "height": 145
+        },
+        {
+          "src": "/art/covers/character-scene.webp",
+          "loaded": true,
+          "alt": "AI influencer example",
+          "width": 257,
+          "height": 145
+        },
+        {
+          "src": "/art/covers/storyboard.webp",
+          "loaded": true,
+          "alt": "Canvas example",
+          "width": 257,
+          "height": 145
+        },
+        {
+          "src": "/art/covers/product-ad.webp",
+          "loaded": true,
+          "alt": "Ads studio example",
+          "width": 257,
+          "height": 145
+        },
+        {
+          "src": "/art/covers/talking-head.webp",
+          "loaded": true,
+          "alt": "Lipsync studio example",
+          "width": 257,
+          "height": 145
+        },
+        {
+          "src": "/art/covers/tts.webp",
+          "loaded": true,
+          "alt": "Text to speech example",
+          "width": 257,
+          "height": 145
+        },
+        {
+          "src": "/art/covers/turn-to-sand.webp",
+          "loaded": true,
+          "alt": "Turn to sand example",
+          "width": 202,
+          "height": 126
+        },
+        {
+          "src": "/art/covers/origami-fold.webp",
+          "loaded": true,
+          "alt": "Origami fold example",
+          "width": 202,
+          "height": 126
+        },
+        {
+          "src": "/art/covers/snow-globe.webp",
+          "loaded": true,
+          "alt": "Snow globe example",
+          "width": 202,
+          "height": 126
+        },
+        {
+          "src": "/art/covers/time-lapse.webp",
+          "loaded": true,
+          "alt": "Time lapse example",
+          "width": 202,
+          "height": 126
+        },
+        {
+          "src": "/art/covers/burst-into-petals.webp",
+          "loaded": true,
+          "alt": "Burst into petals example",
+          "width": 202,
+          "height": 126
+        },
+        {
+          "src": "/art/covers/paint-splash.webp",
+          "loaded": true,
+          "alt": "Paint splash example",
+          "width": 202,
+          "height": 126
+        },
+        {
+          "src": "/art/covers/floating-fall.webp",
+          "loaded": true,
+          "alt": "Floating fall example",
+          "width": 202,
+          "height": 126
+        },
+        {
+          "src": "/art/covers/high-flip.webp",
+          "loaded": true,
+          "alt": "High flip example",
+          "width": 202,
+          "height": 126
+        },
+        {
+          "src": "/art/covers/studio-slide.webp",
+          "loaded": true,
+          "alt": "Studio slide example",
+          "width": 202,
+          "height": 126
+        },
+        {
+          "src": "/art/covers/eyes-in.webp",
+          "loaded": true,
+          "alt": "Eyes in example",
+          "width": 202,
+          "height": 126
+        },
+        {
+          "src": "/art/covers/street-giant.webp",
+          "loaded": true,
+          "alt": "Street giant example",
+          "width": 202,
+          "height": 126
+        },
+        {
+          "src": "/art/covers/world-morph.webp",
+          "loaded": true,
+          "alt": "World morph example",
+          "width": 202,
+          "height": 126
+        },
+        {
+          "src": "/art/covers/expand.webp",
+          "loaded": true,
+          "alt": "Expand example",
+          "width": 202,
+          "height": 126
+        },
+        {
+          "src": "/art/covers/product-shot.webp",
+          "loaded": true,
+          "alt": "Product shot example",
+          "width": 202,
+          "height": 126
+        },
+        {
+          "src": "/art/covers/game-style.webp",
+          "loaded": true,
+          "alt": "Video game style example",
+          "width": 202,
+          "height": 126
+        },
+        {
+          "src": "/art/covers/roller-coaster.webp",
+          "loaded": true,
+          "alt": "Roller coaster example",
+          "width": 202,
+          "height": 126
+        },
+        {
+          "src": "/art/covers/transition.webp",
+          "loaded": true,
+          "alt": "Transition example",
+          "width": 202,
+          "height": 126
+        },
+        {
+          "src": "/art/covers/try-on.webp",
+          "loaded": true,
+          "alt": "Try on outfits example",
+          "width": 202,
+          "height": 126
+        },
+        {
+          "src": "/art/covers/sketch-to-image.webp",
+          "loaded": true,
+          "alt": "Sketch to image example",
+          "width": 202,
+          "height": 126
+        },
+        {
+          "src": "/art/covers/face-swap-video.webp",
+          "loaded": true,
+          "alt": "Video face swap example",
+          "width": 202,
+          "height": 126
+        },
+        {
+          "src": "/art/covers/video-bg-remove.webp",
+          "loaded": true,
+          "alt": "Video background remove example",
+          "width": 202,
+          "height": 126
+        },
+        {
+          "src": "/art/covers/skin-retouch.webp",
+          "loaded": true,
+          "alt": "Skin retouch example",
+          "width": 202,
+          "height": 126
+        },
+        {
+          "src": "/art/covers/character-swap.webp",
+          "loaded": true,
+          "alt": "Character swap example",
+          "width": 202,
+          "height": 126
+        },
+        {
+          "src": "/art/covers/headshot.webp",
+          "loaded": true,
+          "alt": "Professional headshot example",
+          "width": 202,
+          "height": 126
+        },
+        {
+          "src": "/art/covers/cam-dolly-in.webp",
+          "loaded": true,
+          "alt": "Dolly in example",
+          "width": 202,
+          "height": 126
+        },
+        {
+          "src": "/art/covers/cam-dolly-out.webp",
+          "loaded": true,
+          "alt": "Dolly out example",
+          "width": 202,
+          "height": 126
+        },
+        {
+          "src": "/art/covers/cam-pan-left.webp",
+          "loaded": true,
+          "alt": "Pan left example",
+          "width": 202,
+          "height": 126
+        },
+        {
+          "src": "/art/covers/cam-pan-right.webp",
+          "loaded": true,
+          "alt": "Pan right example",
+          "width": 202,
+          "height": 126
+        },
+        {
+          "src": "/art/covers/cam-tilt-up.webp",
+          "loaded": true,
+          "alt": "Tilt up example",
+          "width": 202,
+          "height": 126
+        },
+        {
+          "src": "/art/covers/cam-tilt-down.webp",
+          "loaded": true,
+          "alt": "Tilt down example",
+          "width": 202,
+          "height": 126
+        },
+        {
+          "src": "/art/covers/cam-tilt-reveal.webp",
+          "loaded": true,
+          "alt": "Tilt reveal example",
+          "width": 202,
+          "height": 126
+        },
+        {
+          "src": "/art/covers/cam-zoom-in.webp",
+          "loaded": true,
+          "alt": "Zoom in example",
+          "width": 202,
+          "height": 126
+        },
+        {
+          "src": "/art/covers/cam-zoom-out.webp",
+          "loaded": true,
+          "alt": "Zoom out example",
+          "width": 202,
+          "height": 126
+        },
+        {
+          "src": "/art/covers/cam-tracking.webp",
+          "loaded": true,
+          "alt": "Tracking shot example",
+          "width": 202,
+          "height": 126
+        },
+        {
+          "src": "/art/covers/cam-handheld.webp",
+          "loaded": true,
+          "alt": "Handheld example",
+          "width": 202,
+          "height": 126
+        },
+        {
+          "src": "/art/covers/cam-static.webp",
+          "loaded": true,
+          "alt": "Still camera example",
+          "width": 202,
+          "height": 126
+        },
+        {
+          "src": "/art/covers/expand.webp",
+          "loaded": true,
+          "alt": "FLUX 3 Image Klein example",
+          "width": 226,
+          "height": 127
+        },
+        {
+          "src": "/art/covers/product-shot.webp",
+          "loaded": true,
+          "alt": "Qwen-Image 2.1 example",
+          "width": 226,
+          "height": 127
+        },
+        {
+          "src": "/art/covers/try-on.webp",
+          "loaded": true,
+          "alt": "Qwen-Image Edit 2511 example",
+          "width": 226,
+          "height": 127
+        },
+        {
+          "src": "/art/covers/headshot.webp",
+          "loaded": true,
+          "alt": "Z-Image Turbo example",
+          "width": 226,
+          "height": 127
+        },
+        {
+          "src": "/art/covers/storyboard.webp",
+          "loaded": true,
+          "alt": "HiDream-O1 example",
+          "width": 226,
+          "height": 127
+        },
+        {
+          "src": "/art/covers/cinema-shot.webp",
+          "loaded": true,
+          "alt": "MiniMax H3 example",
+          "width": 226,
+          "height": 127
+        },
+        {
+          "src": "/art/covers/cam-tracking.webp",
+          "loaded": true,
+          "alt": "LTX-2.5 example",
+          "width": 226,
+          "height": 127
+        },
+        {
+          "src": "/art/covers/cloud-surfing.webp",
+          "loaded": true,
+          "alt": "Wan 2.2 example",
+          "width": 226,
+          "height": 127
+        },
+        {
+          "src": "/art/covers/video-character-swap.webp",
+          "loaded": true,
+          "alt": "Wan Animate 2 example",
+          "width": 226,
+          "height": 127
+        },
+        {
+          "src": "/art/covers/edit-video.webp",
+          "loaded": true,
+          "alt": "Bernini-R example",
+          "width": 226,
+          "height": 127
+        },
+        {
+          "src": "/art/covers/talking-head.webp",
+          "loaded": true,
+          "alt": "InfiniteTalk example",
+          "width": 226,
+          "height": 127
+        },
+        {
+          "src": "/art/covers/tts.webp",
+          "loaded": true,
+          "alt": "Chatterbox Multilingual example",
+          "width": 226,
+          "height": 127
+        },
+        {
+          "src": "/art/covers/voice-clone.webp",
+          "loaded": true,
+          "alt": "Fish Audio Drama 3 example",
+          "width": 226,
+          "height": 127
+        },
+        {
+          "src": "/art/covers/human-video.webp",
+          "loaded": true,
+          "alt": "Qwen3-TTS example",
+          "width": 226,
+          "height": 127
+        },
+        {
+          "src": "/art/covers/music.webp",
+          "loaded": true,
+          "alt": "MiniMax Music 3 example",
+          "width": 226,
+          "height": 127
+        },
+        {
+          "src": "/art/covers/sound-effect.webp",
+          "loaded": true,
+          "alt": "Stable Audio 3 example",
+          "width": 226,
+          "height": 127
+        }
+      ]
+    },
+    {
+      "file": "after-app-hub-1440.png",
+      "route": "/apps?hub=professional",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "images": [
+        {
+          "src": "/art/covers/shots.webp",
+          "loaded": true,
+          "alt": "Professional examples",
+          "width": 112,
+          "height": 63
+        },
+        {
+          "src": "/art/covers/transition.webp",
+          "loaded": true,
+          "alt": "Transition example",
+          "width": 211,
+          "height": 132
+        },
+        {
+          "src": "/art/covers/expand.webp",
+          "loaded": true,
+          "alt": "Expand example",
+          "width": 211,
+          "height": 132
+        },
+        {
+          "src": "/art/covers/behind-the-scenes.webp",
+          "loaded": true,
+          "alt": "Behind the scenes example",
+          "width": 211,
+          "height": 132
+        },
+        {
+          "src": "/art/covers/angles.webp",
+          "loaded": true,
+          "alt": "Any angle example",
+          "width": 211,
+          "height": 132
+        },
+        {
+          "src": "/art/covers/shots.webp",
+          "loaded": true,
+          "alt": "Shot grid example",
+          "width": 211,
+          "height": 132
+        },
+        {
+          "src": "/art/covers/shots.webp",
+          "loaded": true,
+          "alt": "Zoom grid example",
+          "width": 211,
+          "height": 132
+        },
+        {
+          "src": "/art/covers/look-golden-hour.webp",
+          "loaded": true,
+          "alt": "Photo grade example",
+          "width": 211,
+          "height": 132
+        }
+      ]
+    },
+    {
+      "file": "after-studio-1440.png",
+      "route": "/character",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "images": [
+        {
+          "src": "/art/heroes/character.webp",
+          "loaded": true,
+          "alt": "",
+          "width": 576,
+          "height": 216
+        },
+        {
+          "src": "/art/heroes/character.webp",
+          "loaded": true,
+          "alt": "",
+          "width": 576,
+          "height": 216
+        },
+        {
+          "src": "/art/heroes/character.webp",
+          "loaded": true,
+          "alt": "",
+          "width": 576,
+          "height": 216
+        },
+        {
+          "src": "/art/heroes/character.webp",
+          "loaded": true,
+          "alt": "",
+          "width": 576,
+          "height": 216
+        }
+      ]
+    },
+    {
+      "file": "after-library-1440.png",
+      "route": "/assets",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "images": [
+        {
+          "src": "/art/heroes/library.webp",
+          "loaded": true,
+          "alt": "",
+          "width": 360,
+          "height": 135
+        }
+      ]
+    },
+    {
+      "file": "after-explore-390.png",
+      "route": "/",
+      "width": 390,
+      "scrollWidth": 390,
+      "images": [
+        {
+          "src": "/art/heroes/cinema.webp",
+          "loaded": true,
+          "alt": "",
+          "width": 336,
+          "height": 200
+        },
+        {
+          "src": "/art/covers/expand.webp",
+          "loaded": true,
+          "alt": "Create image example",
+          "width": 148,
+          "height": 83
+        },
+        {
+          "src": "/art/covers/cam-tracking.webp",
+          "loaded": true,
+          "alt": "Create video example",
+          "width": 148,
+          "height": 83
+        },
+        {
+          "src": "/art/covers/cinema-shot.webp",
+          "loaded": true,
+          "alt": "Cinema studio example",
+          "width": 148,
+          "height": 83
+        },
+        {
+          "src": "/art/covers/character-scene.webp",
+          "loaded": true,
+          "alt": "AI influencer example",
+          "width": 148,
+          "height": 83
+        },
+        {
+          "src": "/art/covers/storyboard.webp",
+          "loaded": true,
+          "alt": "Canvas example",
+          "width": 148,
+          "height": 83
+        },
+        {
+          "src": "/art/covers/product-ad.webp",
+          "loaded": true,
+          "alt": "Ads studio example",
+          "width": 148,
+          "height": 83
+        },
+        {
+          "src": "/art/covers/talking-head.webp",
+          "loaded": true,
+          "alt": "Lipsync studio example",
+          "width": 148,
+          "height": 83
+        },
+        {
+          "src": "/art/covers/tts.webp",
+          "loaded": true,
+          "alt": "Text to speech example",
+          "width": 148,
+          "height": 83
+        },
+        {
+          "src": "/art/covers/turn-to-sand.webp",
+          "loaded": true,
+          "alt": "Turn to sand example",
+          "width": 150,
+          "height": 94
+        },
+        {
+          "src": "/art/covers/origami-fold.webp",
+          "loaded": true,
+          "alt": "Origami fold example",
+          "width": 150,
+          "height": 94
+        },
+        {
+          "src": "/art/covers/snow-globe.webp",
+          "loaded": true,
+          "alt": "Snow globe example",
+          "width": 150,
+          "height": 94
+        },
+        {
+          "src": "/art/covers/time-lapse.webp",
+          "loaded": true,
+          "alt": "Time lapse example",
+          "width": 150,
+          "height": 94
+        },
+        {
+          "src": "/art/covers/burst-into-petals.webp",
+          "loaded": true,
+          "alt": "Burst into petals example",
+          "width": 150,
+          "height": 94
+        },
+        {
+          "src": "/art/covers/paint-splash.webp",
+          "loaded": true,
+          "alt": "Paint splash example",
+          "width": 150,
+          "height": 94
+        },
+        {
+          "src": "/art/covers/floating-fall.webp",
+          "loaded": true,
+          "alt": "Floating fall example",
+          "width": 150,
+          "height": 94
+        },
+        {
+          "src": "/art/covers/high-flip.webp",
+          "loaded": true,
+          "alt": "High flip example",
+          "width": 150,
+          "height": 94
+        },
+        {
+          "src": "/art/covers/studio-slide.webp",
+          "loaded": true,
+          "alt": "Studio slide example",
+          "width": 150,
+          "height": 94
+        },
+        {
+          "src": "/art/covers/eyes-in.webp",
+          "loaded": true,
+          "alt": "Eyes in example",
+          "width": 150,
+          "height": 94
+        },
+        {
+          "src": "/art/covers/street-giant.webp",
+          "loaded": true,
+          "alt": "Street giant example",
+          "width": 150,
+          "height": 94
+        },
+        {
+          "src": "/art/covers/world-morph.webp",
+          "loaded": true,
+          "alt": "World morph example",
+          "width": 150,
+          "height": 94
+        },
+        {
+          "src": "/art/covers/expand.webp",
+          "loaded": true,
+          "alt": "Expand example",
+          "width": 150,
+          "height": 94
+        },
+        {
+          "src": "/art/covers/product-shot.webp",
+          "loaded": true,
+          "alt": "Product shot example",
+          "width": 150,
+          "height": 94
+        },
+        {
+          "src": "/art/covers/game-style.webp",
+          "loaded": true,
+          "alt": "Video game style example",
+          "width": 150,
+          "height": 94
+        },
+        {
+          "src": "/art/covers/roller-coaster.webp",
+          "loaded": true,
+          "alt": "Roller coaster example",
+          "width": 150,
+          "height": 94
+        },
+        {
+          "src": "/art/covers/transition.webp",
+          "loaded": true,
+          "alt": "Transition example",
+          "width": 150,
+          "height": 94
+        },
+        {
+          "src": "/art/covers/try-on.webp",
+          "loaded": true,
+          "alt": "Try on outfits example",
+          "width": 150,
+          "height": 94
+        },
+        {
+          "src": "/art/covers/sketch-to-image.webp",
+          "loaded": true,
+          "alt": "Sketch to image example",
+          "width": 150,
+          "height": 94
+        },
+        {
+          "src": "/art/covers/face-swap-video.webp",
+          "loaded": true,
+          "alt": "Video face swap example",
+          "width": 150,
+          "height": 94
+        },
+        {
+          "src": "/art/covers/video-bg-remove.webp",
+          "loaded": true,
+          "alt": "Video background remove example",
+          "width": 150,
+          "height": 94
+        },
+        {
+          "src": "/art/covers/skin-retouch.webp",
+          "loaded": true,
+          "alt": "Skin retouch example",
+          "width": 150,
+          "height": 94
+        },
+        {
+          "src": "/art/covers/character-swap.webp",
+          "loaded": true,
+          "alt": "Character swap example",
+          "width": 150,
+          "height": 94
+        },
+        {
+          "src": "/art/covers/headshot.webp",
+          "loaded": true,
+          "alt": "Professional headshot example",
+          "width": 150,
+          "height": 94
+        },
+        {
+          "src": "/art/covers/cam-dolly-in.webp",
+          "loaded": true,
+          "alt": "Dolly in example",
+          "width": 150,
+          "height": 94
+        },
+        {
+          "src": "/art/covers/cam-dolly-out.webp",
+          "loaded": true,
+          "alt": "Dolly out example",
+          "width": 150,
+          "height": 94
+        },
+        {
+          "src": "/art/covers/cam-pan-left.webp",
+          "loaded": true,
+          "alt": "Pan left example",
+          "width": 150,
+          "height": 94
+        },
+        {
+          "src": "/art/covers/cam-pan-right.webp",
+          "loaded": true,
+          "alt": "Pan right example",
+          "width": 150,
+          "height": 94
+        },
+        {
+          "src": "/art/covers/cam-tilt-up.webp",
+          "loaded": true,
+          "alt": "Tilt up example",
+          "width": 150,
+          "height": 94
+        },
+        {
+          "src": "/art/covers/cam-tilt-down.webp",
+          "loaded": true,
+          "alt": "Tilt down example",
+          "width": 150,
+          "height": 94
+        },
+        {
+          "src": "/art/covers/cam-tilt-reveal.webp",
+          "loaded": true,
+          "alt": "Tilt reveal example",
+          "width": 150,
+          "height": 94
+        },
+        {
+          "src": "/art/covers/cam-zoom-in.webp",
+          "loaded": true,
+          "alt": "Zoom in example",
+          "width": 150,
+          "height": 94
+        },
+        {
+          "src": "/art/covers/cam-zoom-out.webp",
+          "loaded": true,
+          "alt": "Zoom out example",
+          "width": 150,
+          "height": 94
+        },
+        {
+          "src": "/art/covers/cam-tracking.webp",
+          "loaded": true,
+          "alt": "Tracking shot example",
+          "width": 150,
+          "height": 94
+        },
+        {
+          "src": "/art/covers/cam-handheld.webp",
+          "loaded": true,
+          "alt": "Handheld example",
+          "width": 150,
+          "height": 94
+        },
+        {
+          "src": "/art/covers/cam-static.webp",
+          "loaded": true,
+          "alt": "Still camera example",
+          "width": 150,
+          "height": 94
+        },
+        {
+          "src": "/art/covers/expand.webp",
+          "loaded": true,
+          "alt": "FLUX 3 Image Klein example",
+          "width": 194,
+          "height": 109
+        },
+        {
+          "src": "/art/covers/product-shot.webp",
+          "loaded": true,
+          "alt": "Qwen-Image 2.1 example",
+          "width": 194,
+          "height": 109
+        },
+        {
+          "src": "/art/covers/try-on.webp",
+          "loaded": true,
+          "alt": "Qwen-Image Edit 2511 example",
+          "width": 194,
+          "height": 109
+        },
+        {
+          "src": "/art/covers/headshot.webp",
+          "loaded": true,
+          "alt": "Z-Image Turbo example",
+          "width": 194,
+          "height": 109
+        },
+        {
+          "src": "/art/covers/storyboard.webp",
+          "loaded": true,
+          "alt": "HiDream-O1 example",
+          "width": 194,
+          "height": 109
+        },
+        {
+          "src": "/art/covers/cinema-shot.webp",
+          "loaded": true,
+          "alt": "MiniMax H3 example",
+          "width": 194,
+          "height": 109
+        },
+        {
+          "src": "/art/covers/cam-tracking.webp",
+          "loaded": true,
+          "alt": "LTX-2.5 example",
+          "width": 194,
+          "height": 109
+        },
+        {
+          "src": "/art/covers/cloud-surfing.webp",
+          "loaded": true,
+          "alt": "Wan 2.2 example",
+          "width": 194,
+          "height": 109
+        },
+        {
+          "src": "/art/covers/video-character-swap.webp",
+          "loaded": true,
+          "alt": "Wan Animate 2 example",
+          "width": 194,
+          "height": 109
+        },
+        {
+          "src": "/art/covers/edit-video.webp",
+          "loaded": true,
+          "alt": "Bernini-R example",
+          "width": 194,
+          "height": 109
+        },
+        {
+          "src": "/art/covers/talking-head.webp",
+          "loaded": true,
+          "alt": "InfiniteTalk example",
+          "width": 194,
+          "height": 109
+        },
+        {
+          "src": "/art/covers/tts.webp",
+          "loaded": true,
+          "alt": "Chatterbox Multilingual example",
+          "width": 194,
+          "height": 109
+        },
+        {
+          "src": "/art/covers/voice-clone.webp",
+          "loaded": true,
+          "alt": "Fish Audio Drama 3 example",
+          "width": 194,
+          "height": 109
+        },
+        {
+          "src": "/art/covers/human-video.webp",
+          "loaded": true,
+          "alt": "Qwen3-TTS example",
+          "width": 194,
+          "height": 109
+        },
+        {
+          "src": "/art/covers/music.webp",
+          "loaded": true,
+          "alt": "MiniMax Music 3 example",
+          "width": 194,
+          "height": 109
+        },
+        {
+          "src": "/art/covers/sound-effect.webp",
+          "loaded": true,
+          "alt": "Stable Audio 3 example",
+          "width": 194,
+          "height": 109
+        }
+      ]
+    },
+    {
+      "file": "after-app-hub-390.png",
+      "route": "/apps?hub=professional",
+      "width": 390,
+      "scrollWidth": 390,
+      "images": [
+        {
+          "src": "/art/covers/shots.webp",
+          "loaded": true,
+          "alt": "Professional examples",
+          "width": 112,
+          "height": 63
+        },
+        {
+          "src": "/art/covers/transition.webp",
+          "loaded": true,
+          "alt": "Transition example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/expand.webp",
+          "loaded": true,
+          "alt": "Expand example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/behind-the-scenes.webp",
+          "loaded": true,
+          "alt": "Behind the scenes example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/angles.webp",
+          "loaded": true,
+          "alt": "Any angle example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/shots.webp",
+          "loaded": true,
+          "alt": "Shot grid example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/shots.webp",
+          "loaded": true,
+          "alt": "Zoom grid example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/look-golden-hour.webp",
+          "loaded": true,
+          "alt": "Photo grade example",
+          "width": 156,
+          "height": 98
+        }
+      ]
+    },
+    {
+      "file": "after-studio-390.png",
+      "route": "/character",
+      "width": 390,
+      "scrollWidth": 390,
+      "images": [
+        {
+          "src": "/art/heroes/character.webp",
+          "loaded": true,
+          "alt": "",
+          "width": 368,
+          "height": 138
+        },
+        {
+          "src": "/art/heroes/character.webp",
+          "loaded": true,
+          "alt": "",
+          "width": 368,
+          "height": 138
+        },
+        {
+          "src": "/art/heroes/character.webp",
+          "loaded": true,
+          "alt": "",
+          "width": 368,
+          "height": 138
+        },
+        {
+          "src": "/art/heroes/character.webp",
+          "loaded": true,
+          "alt": "",
+          "width": 368,
+          "height": 138
+        }
+      ]
+    },
+    {
+      "file": "after-library-390.png",
+      "route": "/assets",
+      "width": 390,
+      "scrollWidth": 390,
+      "images": [
+        {
+          "src": "/art/heroes/library.webp",
+          "loaded": true,
+          "alt": "",
+          "width": 316,
+          "height": 119
+        }
+      ]
+    },
+    {
+      "file": null,
+      "route": "/apps",
+      "width": 390,
+      "scrollWidth": 390,
+      "images": [
+        {
+          "src": "/art/covers/shots.webp",
+          "loaded": true,
+          "alt": "Professional examples",
+          "width": 112,
+          "height": 63
+        },
+        {
+          "src": "/art/covers/transition.webp",
+          "loaded": true,
+          "alt": "Transition example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/expand.webp",
+          "loaded": true,
+          "alt": "Expand example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/behind-the-scenes.webp",
+          "loaded": true,
+          "alt": "Behind the scenes example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/angles.webp",
+          "loaded": true,
+          "alt": "Any angle example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/shots.webp",
+          "loaded": true,
+          "alt": "Shot grid example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/relight-photo.webp",
+          "loaded": true,
+          "alt": "Enhance and style examples",
+          "width": 112,
+          "height": 63
+        },
+        {
+          "src": "/art/covers/try-on.webp",
+          "loaded": true,
+          "alt": "Try on outfits example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/skin-retouch.webp",
+          "loaded": true,
+          "alt": "Skin retouch example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/sticker.webp",
+          "loaded": true,
+          "alt": "Die-cut sticker example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/ai-stylist.webp",
+          "loaded": true,
+          "alt": "Virtual stylist example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/relight-photo.webp",
+          "loaded": true,
+          "alt": "Move the light example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/character-sheet.webp",
+          "loaded": true,
+          "alt": "Face and identity examples",
+          "width": 112,
+          "height": 63
+        },
+        {
+          "src": "/art/covers/face-swap-video.webp",
+          "loaded": true,
+          "alt": "Video face swap example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/face-swap.webp",
+          "loaded": true,
+          "alt": "Face swap example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/character-swap.webp",
+          "loaded": true,
+          "alt": "Character swap example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/headshot.webp",
+          "loaded": true,
+          "alt": "Professional headshot example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/video-character-swap.webp",
+          "loaded": true,
+          "alt": "Video character swap example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/edit-video.webp",
+          "loaded": true,
+          "alt": "Video editing examples",
+          "width": 112,
+          "height": 63
+        },
+        {
+          "src": "/art/covers/video-bg-remove.webp",
+          "loaded": true,
+          "alt": "Video background remove example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/game-show.webp",
+          "loaded": true,
+          "alt": "Game show contestant example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/edit-video.webp",
+          "loaded": true,
+          "alt": "Edit a video by text example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/video-erase.webp",
+          "loaded": true,
+          "alt": "Remove an object from a video example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/video-remove-text.webp",
+          "loaded": true,
+          "alt": "Remove text from a video example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/product-shot.webp",
+          "loaded": true,
+          "alt": "Ads and products examples",
+          "width": 112,
+          "height": 63
+        },
+        {
+          "src": "/art/covers/product-shot.webp",
+          "loaded": true,
+          "alt": "Product shot example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/packshot.webp",
+          "loaded": true,
+          "alt": "Bullet time packshot example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/billboard.webp",
+          "loaded": true,
+          "alt": "Billboard mockup example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/truck-ad.webp",
+          "loaded": true,
+          "alt": "Truck ad example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/asmr-classic.webp",
+          "loaded": true,
+          "alt": "ASMR moment example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/game-style.webp",
+          "loaded": true,
+          "alt": "Games and characters examples",
+          "width": 112,
+          "height": 63
+        },
+        {
+          "src": "/art/covers/sketch-to-image.webp",
+          "loaded": true,
+          "alt": "Sketch to image example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/plush-toy.webp",
+          "loaded": true,
+          "alt": "Plush toy example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/figure-box.webp",
+          "loaded": true,
+          "alt": "Boxed figure example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/game-style.webp",
+          "loaded": true,
+          "alt": "Video game style example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/life-sim.webp",
+          "loaded": true,
+          "alt": "Life sim game example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/plush-toy.webp",
+          "loaded": true,
+          "alt": "Extras examples",
+          "width": 112,
+          "height": 63
+        },
+        {
+          "src": "/art/covers/meme.webp",
+          "loaded": true,
+          "alt": "Meme maker example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/paint-app.webp",
+          "loaded": true,
+          "alt": "Retro paint program example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/mural.webp",
+          "loaded": true,
+          "alt": "Wall mural example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/micro-beasts.webp",
+          "loaded": true,
+          "alt": "Tiny animal crowd example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/image-bg-remove.webp",
+          "loaded": true,
+          "alt": "Cut out the background example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/cloud-surfing.webp",
+          "loaded": true,
+          "alt": "Trending templates examples",
+          "width": 112,
+          "height": 63
+        },
+        {
+          "src": "/art/covers/roller-coaster.webp",
+          "loaded": true,
+          "alt": "Roller coaster example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/cloud-surfing.webp",
+          "loaded": true,
+          "alt": "Cloud surfing example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/all-fine.webp",
+          "loaded": true,
+          "alt": "Everything is fine example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/surprise-kiss.webp",
+          "loaded": true,
+          "alt": "Surprise kiss example",
+          "width": 156,
+          "height": 98
+        },
+        {
+          "src": "/art/covers/glossy-vinyl.webp",
+          "loaded": true,
+          "alt": "Glossy vinyl example",
+          "width": 156,
+          "height": 98
+        }
+      ]
+    },
+    {
+      "file": null,
+      "route": "/image",
+      "width": 390,
+      "scrollWidth": 390,
+      "images": [
+        {
+          "src": "/art/covers/expand.webp",
+          "loaded": true,
+          "alt": "",
+          "width": 70,
+          "height": 89
+        },
+        {
+          "src": "/art/covers/character-scene.webp",
+          "loaded": true,
+          "alt": "",
+          "width": 70,
+          "height": 89
+        },
+        {
+          "src": "/art/covers/product-shot.webp",
+          "loaded": true,
+          "alt": "",
+          "width": 70,
+          "height": 89
+        },
+        {
+          "src": "/art/covers/look-phone-flash.webp",
+          "loaded": true,
+          "alt": "",
+          "width": 70,
+          "height": 89
+        }
+      ]
+    },
+    {
+      "file": null,
+      "route": "/video",
+      "width": 390,
+      "scrollWidth": 390,
+      "images": [
+        {
+          "src": "/art/heroes/video.webp",
+          "loaded": true,
+          "alt": "",
+          "width": 324,
+          "height": 122
+        },
+        {
+          "src": "/art/covers/cam-dolly-in.webp",
+          "loaded": true,
+          "alt": "Dolly in example",
+          "width": 154,
+          "height": 96
+        },
+        {
+          "src": "/art/covers/cam-dolly-out.webp",
+          "loaded": true,
+          "alt": "Dolly out example",
+          "width": 154,
+          "height": 96
+        },
+        {
+          "src": "/art/covers/cam-pan-left.webp",
+          "loaded": true,
+          "alt": "Pan left example",
+          "width": 154,
+          "height": 96
+        },
+        {
+          "src": "/art/covers/cam-pan-right.webp",
+          "loaded": true,
+          "alt": "Pan right example",
+          "width": 154,
+          "height": 96
+        },
+        {
+          "src": "/art/covers/cam-tilt-up.webp",
+          "loaded": true,
+          "alt": "Tilt up example",
+          "width": 154,
+          "height": 96
+        },
+        {
+          "src": "/art/covers/cam-tilt-down.webp",
+          "loaded": true,
+          "alt": "Tilt down example",
+          "width": 154,
+          "height": 96
+        },
+        {
+          "src": "/art/covers/cam-tilt-reveal.webp",
+          "loaded": true,
+          "alt": "Tilt reveal example",
+          "width": 154,
+          "height": 96
+        },
+        {
+          "src": "/art/covers/cam-zoom-in.webp",
+          "loaded": true,
+          "alt": "Zoom in example",
+          "width": 154,
+          "height": 96
+        },
+        {
+          "src": "/art/covers/cam-zoom-out.webp",
+          "loaded": true,
+          "alt": "Zoom out example",
+          "width": 154,
+          "height": 96
+        },
+        {
+          "src": "/art/covers/cam-tracking.webp",
+          "loaded": true,
+          "alt": "Tracking shot example",
+          "width": 154,
+          "height": 96
+        },
+        {
+          "src": "/art/covers/cam-handheld.webp",
+          "loaded": true,
+          "alt": "Handheld example",
+          "width": 154,
+          "height": 96
+        },
+        {
+          "src": "/art/covers/cam-static.webp",
+          "loaded": true,
+          "alt": "Still camera example",
+          "width": 154,
+          "height": 96
+        }
+      ]
+    },
+    {
+      "file": null,
+      "route": "/audio",
+      "width": 390,
+      "scrollWidth": 390,
+      "images": [
+        {
+          "src": "/art/heroes/audio.webp",
+          "loaded": true,
+          "alt": "",
+          "width": 324,
+          "height": 122
+        }
+      ]
+    },
+    {
+      "file": null,
+      "route": "/shorts",
+      "width": 390,
+      "scrollWidth": 390,
+      "images": [
+        {
+          "src": "/art/heroes/shorts.webp",
+          "loaded": true,
+          "alt": "",
+          "width": 328,
+          "height": 123
+        }
+      ]
+    },
+    {
+      "file": null,
+      "route": "/mixed-media",
+      "width": 390,
+      "scrollWidth": 390,
+      "images": [
+        {
+          "src": "/art/heroes/mixed-media.webp",
+          "loaded": true,
+          "alt": "",
+          "width": 358,
+          "height": 134
+        },
+        {
+          "src": "/art/covers/mm-acid.webp",
+          "loaded": true,
+          "alt": "Acid example",
+          "width": 174,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "file": null,
+      "route": "/photodump",
+      "width": 390,
+      "scrollWidth": 390,
+      "images": [
+        {
+          "src": "/art/heroes/photodump.webp",
+          "loaded": true,
+          "alt": "",
+          "width": 44,
+          "height": 32
+        },
+        {
+          "src": "/art/heroes/photodump.webp",
+          "loaded": true,
+          "alt": "",
+          "width": 44,
+          "height": 32
+        },
+        {
+          "src": "/art/heroes/photodump.webp",
+          "loaded": true,
+          "alt": "",
+          "width": 44,
+          "height": 32
+        },
+        {
+          "src": "/art/heroes/photodump.webp",
+          "loaded": true,
+          "alt": "",
+          "width": 44,
+          "height": 32
+        },
+        {
+          "src": "/art/covers/cloud-surfing.webp",
+          "loaded": true,
+          "alt": "",
+          "width": 79,
+          "height": 79
+        },
+        {
+          "src": "/art/covers/cloud-surfing.webp",
+          "loaded": true,
+          "alt": "",
+          "width": 79,
+          "height": 79
+        },
+        {
+          "src": "/art/covers/cloud-surfing.webp",
+          "loaded": true,
+          "alt": "",
+          "width": 79,
+          "height": 79
+        },
+        {
+          "src": "/art/covers/cloud-surfing.webp",
+          "loaded": true,
+          "alt": "",
+          "width": 79,
+          "height": 79
+        },
+        {
+          "src": "/art/covers/edit-video.webp",
+          "loaded": true,
+          "alt": "",
+          "width": 79,
+          "height": 79
+        },
+        {
+          "src": "/art/covers/edit-video.webp",
+          "loaded": true,
+          "alt": "",
+          "width": 79,
+          "height": 79
+        },
+        {
+          "src": "/art/covers/edit-video.webp",
+          "loaded": true,
+          "alt": "",
+          "width": 79,
+          "height": 79
+        },
+        {
+          "src": "/art/covers/edit-video.webp",
+          "loaded": true,
+          "alt": "",
+          "width": 79,
+          "height": 79
+        },
+        {
+          "src": "/art/covers/look-phone-flash.webp",
+          "loaded": true,
+          "alt": "",
+          "width": 79,
+          "height": 79
+        },
+        {
+          "src": "/art/covers/look-phone-flash.webp",
+          "loaded": true,
+          "alt": "",
+          "width": 79,
+          "height": 79
+        },
+        {
+          "src": "/art/covers/look-phone-flash.webp",
+          "loaded": true,
+          "alt": "",
+          "width": 79,
+          "height": 79
+        },
+        {
+          "src": "/art/covers/look-phone-flash.webp",
+          "loaded": true,
+          "alt": "",
+          "width": 79,
+          "height": 79
+        }
+      ]
+    },
+    {
+      "file": null,
+      "route": "/fashion",
+      "width": 390,
+      "scrollWidth": 390,
+      "images": [
+        {
+          "src": "/art/covers/fashion.webp",
+          "loaded": true,
+          "alt": "",
+          "width": 52,
+          "height": 52
+        },
+        {
+          "src": "/art/heroes/fashion.webp",
+          "loaded": true,
+          "alt": "",
+          "width": 252,
+          "height": 100
+        }
+      ]
+    }
+  ],
+  "errors": []
+}
