@@ -387,8 +387,8 @@ assert.match(dubCalls[0].opts.prompt, /conversational Mandarin/)
 const dubVars = comfyVars('video', dubCalls[0].opts)
 assert.deepEqual([dubVars.start, dubVars.duration, dubVars.video], [2, 30, '/media/talk.mp4'])
 assert.equal(dub.inputs.find((i) => i.id === 'language').options[0].id, 'es', 'Spanish stays the first dub language')
-assert.equal(formats.length, 452)
-assert.equal(allFormats.length, 480, 'Do not delete planned formats')
+assert.equal(formats.length, 455)
+assert.equal(allFormats.length, 482, 'Do not delete planned formats')
 assert.equal(allFormats.filter((f) => f.category === 'camera').length > 0, true, 'Keep Create prompt presets')
 assert(allFormats.filter((f) => !formats.includes(f)).every((f) => formatProblems.get(f.id).length))
 
@@ -404,6 +404,32 @@ const motion = formats.find((f) => f.inputs.some((i) => i.type === 'draw' && i.m
 const frame = { url: '/media/frame.png', name: 'frame.png', ratio: '16:9' }
 assert.throws(() => compileFormat(motion, { ...valuesFor(motion), image: frame }), /Still needed/)
 assert.doesNotThrow(() => compileFormat(motion, { ...valuesFor(motion), image: { ...frame, strokes: 'data:image/png;base64,AA==' } }))
+// A character with pictures: n fills n slots from its reference set, and leaves the rest empty.
+const scene = formats.find((f) => f.id === 'character-scene')
+const mara = { type: 'character', name: 'Mara', images: ['/media/front.png', '/media/side.png'] }
+const sceneVars = comfyVars('image', recipeOptions({ ...scene, params: {} }, { ...valuesFor(scene), character: mara, scene: 'A rainy platform' }))
+assert.deepEqual([sceneVars.image, sceneVars.image2, sceneVars.image3], ['/media/front.png', '/media/side.png', undefined])
+
+// The influencer video speaks the script with Chatterbox and cuts it to the picked length, all in one graph.
+const talk = formats.find((f) => f.id === 'ai-influencer-video')
+const talkStep = compileFormat(talk, { ...valuesFor(talk), character: mara, script: 'Three things I wish I knew', voice: { name: 'Mine', sample: '/media/voice.flac' } }).nodes.find((n) => n.type === 'model').data.model
+assert.equal(talkStep.workflow, 'influencer_video')
+const talkVars = comfyVars('video', talkStep.formatStep.options, talkStep.sizes)
+assert.equal(talkVars.script, 'Three things I wish I knew')
+assert.equal(talkVars.seconds, 10)
+assert.equal(talkVars.voice, '/media/voice.flac')
+assert.deepEqual([talkVars.width, talkVars.height], [768, 1344])
+
+// The persona's full-body shot starts from its portrait, so both show the same face.
+const persona = formats.find((f) => f.id === 'influencer-persona')
+const personaRuns = []
+const personaSession = await runFormat(persona, { persona: 'a young adult woman with a high black ponytail' }, {
+  run: async (model, opts, meta) => { personaRuns.push([meta.stepId, model.workflow, opts.images[0]]); return [{ url: `/media/${meta.stepId}.png` }] },
+})
+assert.deepEqual(personaRuns, [['portrait', 'flux3_klein_t2i', undefined], ['body', 'klein_character', '/media/portrait.png']])
+assert.deepEqual(personaSession.results().map((r) => r.url), ['/media/portrait.png', '/media/body.png'])
+const fromPhoto = compileFormat(persona, { persona: 'a runner', start: 'photo', photo }).nodes.find((n) => n.id === 'portrait').data.model
+assert.equal(fromPhoto.workflow, 'klein_character')
 console.log(`Format runner checks ok: ${checked} recipe cases, approval and batching, concurrency, schema rejection, Comfy placeholders, writer handoff and provider failures. No network calls.`)
 
 // A writer edit changes the request even when the downstream text unit keeps its unit id.

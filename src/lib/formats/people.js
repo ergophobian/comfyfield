@@ -1,5 +1,6 @@
 // Characters, voice and avatars.
 import { open, photo, clip, sound, covers } from './parts.js'
+import { h3Sizes } from '../catalog.js'
 
 // Chatterbox Multilingual takes its own language labels (mtl_tts.py SUPPORTED_LANGUAGES). It has no
 // accent control: the accent comes from the voice sample.
@@ -31,7 +32,8 @@ const characters = [
     blurb: 'Put your character anywhere and keep their face.',
     runsOn: 'FLUX 3 Image Klein', workflow: 'klein_character',
     inputs: [
-      { id: 'character', type: 'character', label: 'Character' },
+      // Up to three of the character's pictures, so a reference set keeps the face without a LoRA.
+      { id: 'character', type: 'character', label: 'Character', pictures: 3 },
       { id: 'scene', type: 'longtext', label: 'Scene', placeholder: 'Reading a paper map on a rainy train platform at night' },
       { id: 'shot', type: 'choice', label: 'Shot', default: 'portrait', options: [
         { id: 'portrait', label: 'Portrait', text: 'A portrait' },
@@ -39,7 +41,7 @@ const characters = [
         { id: 'wide', label: 'Wide', text: 'A wide shot' },
       ] },
     ],
-    prompt: '{shot} of the person in the first image. Scene: {scene}. Keep their face, hair, build and signature outfit exactly as in the reference, with lighting that fits the scene and photographic detail.',
+    prompt: '{shot} of the person in the reference images, who are all the same person. Scene: {scene}. Keep their face, hair, build and signature outfit exactly as in the references, with lighting that fits the scene and photographic detail.',
     settings: { aspect: '1:1' },
     cover: covers.peach,
   }),
@@ -103,7 +105,7 @@ const characters = [
     blurb: 'A ready-to-post set of photos of your character.',
     runsOn: 'FLUX 3 Image Klein', workflow: 'flux_character_set',
     inputs: [
-      { id: 'character', type: 'character', label: 'Character' },
+      { id: 'character', type: 'character', label: 'Character', pictures: 3 },
       { id: 'niche', type: 'text', label: 'Niche', placeholder: 'Plant-based home cooking' },
       { id: 'posts', type: 'count', label: 'Posts', options: [3, 5, 7], default: 5, unit: 'posts' },
       { id: 'format', type: 'choice', label: 'Format', default: 'feed', options: [
@@ -113,16 +115,18 @@ const characters = [
       ] },
     ],
     bindings: { count: 'posts' },
-    prompt: 'A set of {posts} social media photos of the person in the first image for a {niche} account, as {format}. Each post shows a different moment, setting and outfit that fits the niche, with the same face and identity in every image, natural candid light and an authentic phone photo feel.',
+    prompt: 'A set of {posts} social media photos of the person in the reference images, who are all the same person, for a {niche} account, as {format}. Each post shows a different moment, setting and outfit that fits the niche, with the same face and identity in every image, natural candid light and an authentic phone photo feel.',
     settings: { aspect: '1:1' },
     cover: covers.rose,
   }),
   open({
     id: 'ai-influencer-video', name: 'AI influencer video', kind: 'video', category: 'characters', layout: 'wide',
     blurb: 'Your character talks to camera in a ready-to-post video.',
-    runsOn: 'Chatterbox and MiniMax H3', workflow: 'influencer_video',
+    // Chatterbox speaks the script in the saved voice, then FastH3 Omni films the character saying it,
+    // with the speech as <Audio 1>, in one graph. It does not go through InfiniteTalk.
+    runsOn: 'Chatterbox and FastH3 Omni', workflow: 'influencer_video', sizes: h3Sizes,
     inputs: [
-      { id: 'character', type: 'character', label: 'Character', half: true },
+      { id: 'character', type: 'character', label: 'Character', pictures: 3, half: true },
       { id: 'voice', type: 'voice', label: 'Voice', optional: true, half: true },
       { id: 'setting', type: 'choice', label: 'Setting', default: 'home', options: [
         { id: 'home', label: 'Cozy home', text: 'on the sofa in a cozy, softly lit living room' },
@@ -134,10 +138,63 @@ const characters = [
         { id: 'travel', label: 'Travel', text: 'at a scenic overlook with mountains in the distance' },
       ] },
       { id: 'script', type: 'longtext', label: 'Script', placeholder: 'Three things I wish I knew before my first solo trip. Number one will save you money.' },
+      { id: 'emotion', type: 'choice', label: 'Emotion', half: true, default: 'warm', options: [
+        { id: 'warm', label: 'Warm', text: 'warm and friendly, with a soft smile', params: { exaggeration: 0.6, cfg_weight: 0.5 } },
+        { id: 'excited', label: 'Excited', text: 'excited and energetic, with lively eyebrows and big smiles', params: { exaggeration: 0.9, cfg_weight: 0.3 } },
+        { id: 'calm', label: 'Calm', text: 'calm and even', params: { exaggeration: 0.4, cfg_weight: 0.5 } },
+      ] },
+      { id: 'language', type: 'choice', label: 'Language', half: true, default: 'en', options: speechLanguages },
+      // The speech is cut to this length, so a longer script stops part way.
+      { id: 'length', type: 'choice', label: 'Length', half: true, default: '10', options: [
+        { id: '5', label: '5 seconds', note: 'About 12 words', params: { duration: 5, seconds: 5 } },
+        { id: '10', label: '10 seconds', note: 'About 25 words', params: { duration: 10, seconds: 10 } },
+        { id: '15', label: '15 seconds', note: 'About 40 words', params: { duration: 15, seconds: 15 } },
+      ] },
     ],
-    prompt: 'A vertical, ready-to-post video of {character} talking to the phone camera {setting}, with an authentic creator feel, natural gestures, accurate lip sync and the same face and outfit throughout. They say: {script}',
-    settings: { aspect: '9:16' },
+    bindings: { script: 'script' },
+    prompt: 'A vertical, ready-to-post video of the person in <Picture 1> (every picture shows the same person) talking to the phone camera {setting}, with an authentic creator feel, natural gestures and accurate lip sync, keeping the same face and outfit throughout. They come across {emotion}, and say the line from <Audio 1> in that voice: {script}',
+    settings: { aspect: '9:16', duration: 10 },
     cover: covers.sun,
+  }),
+  open({
+    id: 'influencer-persona', name: 'Influencer from a description', kind: 'image', category: 'characters',
+    blurb: 'A close-up portrait and a full-body shot of a new character.',
+    runsOn: 'FLUX 3 Image Klein',
+    inputs: [
+      { id: 'persona', type: 'longtext', label: 'Who they are', placeholder: 'A young adult woman with an athletic build, a high black ponytail and athleisure clothes' },
+      { id: 'start', type: 'choice', label: 'Start from', default: 'text', options: [
+        { id: 'text', label: 'The description' },
+        { id: 'photo', label: 'Your photo', note: 'Keeps your face' },
+      ] },
+      { id: 'photo', type: 'image', label: 'Your photo', when: ['start', 'photo'] },
+    ],
+    // The full-body shot starts from the portrait, so both show the same face.
+    steps: [
+      { id: 'portrait', provider: 'comfy', kind: 'image', targetInput: 'start', settings: { aspect: '4:5' }, targets: {
+        text: { workflow: 'flux3_klein_t2i', prompt: 'A close-up portrait photo of {persona}. They look at the camera with a relaxed, natural expression. Soft daylight, a plain light background, sharp focus on the eyes, natural skin and an authentic phone photo feel.' },
+        photo: { workflow: 'klein_character', prompt: 'A close-up portrait photo of the person in the first image, with their face, features, skin tone and age exactly the same, styled as: {persona}. They look at the camera with a relaxed, natural expression. Soft daylight, a plain light background, sharp focus on the eyes.' },
+      } },
+      { id: 'body', provider: 'comfy', kind: 'image', workflow: 'klein_character', from: ['portrait'], settings: { aspect: '9:16' },
+        prompt: 'A full body photo of the person in the first image, standing relaxed, head to toe in frame. Keep their face, hair, skin tone and build exactly the same: {persona}. Plain light background, soft daylight, natural skin.' },
+    ],
+    outputs: [{ step: 'portrait', kind: 'image' }, { step: 'body', kind: 'image' }],
+    cover: covers.peach,
+  }),
+  open({
+    id: 'character-reference-set', name: 'Character reference set', kind: 'image', category: 'characters',
+    blurb: 'Turn a few photos into four clean views of one face, with no training.',
+    output: 'A front, three-quarter, profile and full-body view that every character format can use',
+    runsOn: 'FLUX 3 Image Klein', workflow: 'klein_reference_set',
+    inputs: [
+      { id: 'image', type: 'image', label: 'Photo 1' },
+      { id: 'image2', type: 'image', label: 'Photo 2', optional: true, half: true },
+      { id: 'image3', type: 'image', label: 'Photo 3', optional: true, half: true },
+      { id: 'image4', type: 'image', label: 'Photo 4', optional: true, half: true },
+      { id: 'keep', type: 'text', label: 'Always keep', optional: true, half: true, placeholder: 'A small scar over the left brow' },
+    ],
+    prompt: '{keep}',
+    settings: { aspect: '4:5' },
+    cover: covers.slate,
   }),
 ]
 

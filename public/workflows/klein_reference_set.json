@@ -1,0 +1,554 @@
+{
+  "1": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "flux3-image-klein-bf16.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "2": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "qwen3vl_4b_bf16.safetensors",
+      "type": "flux3",
+      "device": "default"
+    }
+  },
+  "3": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "flux2-vae.safetensors"
+    }
+  },
+  "10": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "{{image}}"
+    },
+    "_meta": {
+      "title": "Photo 1"
+    }
+  },
+  "11": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "{{image2}}"
+    },
+    "_meta": {
+      "title": "Photo 2",
+      "optional": "image2"
+    }
+  },
+  "12": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "{{image3}}"
+    },
+    "_meta": {
+      "title": "Photo 3",
+      "optional": "image3"
+    }
+  },
+  "13": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "{{image4}}"
+    },
+    "_meta": {
+      "title": "Photo 4",
+      "optional": "image4"
+    }
+  },
+  "14": {
+    "class_type": "EmptyFlux2LatentImage",
+    "inputs": {
+      "width": "{{width}}",
+      "height": "{{height}}",
+      "batch_size": 1
+    }
+  },
+  "15": {
+    "class_type": "PrimitiveStringMultiline",
+    "inputs": {
+      "value": "{{prompt}}"
+    },
+    "_meta": {
+      "title": "Who this is"
+    }
+  },
+  "20": {
+    "class_type": "StringConcatenate",
+    "inputs": {
+      "string_a": "Use the person in the reference images, who are all the same person. Keep their face, features, skin tone, hair, age and build exactly the same. A head and shoulders portrait, facing the camera straight on, neutral relaxed expression, eyes to the lens. Plain light grey background, soft even daylight, sharp focus, natural skin, a real photograph.",
+      "string_b": [
+        "15",
+        0
+      ],
+      "delimiter": " "
+    },
+    "_meta": {
+      "title": "View: front"
+    }
+  },
+  "21": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": [
+        "20",
+        0
+      ],
+      "clip": [
+        "2",
+        0
+      ]
+    }
+  },
+  "22": {
+    "class_type": "ConditioningZeroOut",
+    "inputs": {
+      "conditioning": [
+        "21",
+        0
+      ]
+    }
+  },
+  "23": {
+    "class_type": "ReferenceMultiLatent",
+    "inputs": {
+      "positive": [
+        "21",
+        0
+      ],
+      "negative": [
+        "22",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ],
+      "resolution": "resize",
+      "resolution.megapixels": 1,
+      "images.image0": [
+        "10",
+        0
+      ],
+      "images.image1": [
+        "11",
+        0
+      ],
+      "images.image2": [
+        "12",
+        0
+      ],
+      "images.image3": [
+        "13",
+        0
+      ]
+    }
+  },
+  "24": {
+    "class_type": "KSampler",
+    "inputs": {
+      "seed": "{{seed}}",
+      "steps": 16,
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": 1,
+      "model": [
+        "1",
+        0
+      ],
+      "positive": [
+        "23",
+        0
+      ],
+      "negative": [
+        "23",
+        1
+      ],
+      "latent_image": [
+        "14",
+        0
+      ]
+    }
+  },
+  "25": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "24",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ]
+    }
+  },
+  "30": {
+    "class_type": "StringConcatenate",
+    "inputs": {
+      "string_a": "Use the person in the reference images, who are all the same person. Keep their face, features, skin tone, hair, age and build exactly the same. A head and shoulders portrait, head turned three quarters to the left, soft smile. Plain light grey background, soft even daylight, sharp focus, natural skin, a real photograph.",
+      "string_b": [
+        "15",
+        0
+      ],
+      "delimiter": " "
+    },
+    "_meta": {
+      "title": "View: three-quarter"
+    }
+  },
+  "31": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": [
+        "30",
+        0
+      ],
+      "clip": [
+        "2",
+        0
+      ]
+    }
+  },
+  "32": {
+    "class_type": "ConditioningZeroOut",
+    "inputs": {
+      "conditioning": [
+        "31",
+        0
+      ]
+    }
+  },
+  "33": {
+    "class_type": "ReferenceMultiLatent",
+    "inputs": {
+      "positive": [
+        "31",
+        0
+      ],
+      "negative": [
+        "32",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ],
+      "resolution": "resize",
+      "resolution.megapixels": 1,
+      "images.image0": [
+        "10",
+        0
+      ],
+      "images.image1": [
+        "11",
+        0
+      ],
+      "images.image2": [
+        "12",
+        0
+      ],
+      "images.image3": [
+        "13",
+        0
+      ]
+    }
+  },
+  "34": {
+    "class_type": "KSampler",
+    "inputs": {
+      "seed": "{{seed}}",
+      "steps": 16,
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": 1,
+      "model": [
+        "1",
+        0
+      ],
+      "positive": [
+        "33",
+        0
+      ],
+      "negative": [
+        "33",
+        1
+      ],
+      "latent_image": [
+        "14",
+        0
+      ]
+    }
+  },
+  "35": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "34",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ]
+    }
+  },
+  "40": {
+    "class_type": "StringConcatenate",
+    "inputs": {
+      "string_a": "Use the person in the reference images, who are all the same person. Keep their face, features, skin tone, hair, age and build exactly the same. A head and shoulders portrait in clean side profile, facing right. Plain light grey background, soft even daylight, sharp focus, natural skin, a real photograph.",
+      "string_b": [
+        "15",
+        0
+      ],
+      "delimiter": " "
+    },
+    "_meta": {
+      "title": "View: profile"
+    }
+  },
+  "41": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": [
+        "40",
+        0
+      ],
+      "clip": [
+        "2",
+        0
+      ]
+    }
+  },
+  "42": {
+    "class_type": "ConditioningZeroOut",
+    "inputs": {
+      "conditioning": [
+        "41",
+        0
+      ]
+    }
+  },
+  "43": {
+    "class_type": "ReferenceMultiLatent",
+    "inputs": {
+      "positive": [
+        "41",
+        0
+      ],
+      "negative": [
+        "42",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ],
+      "resolution": "resize",
+      "resolution.megapixels": 1,
+      "images.image0": [
+        "10",
+        0
+      ],
+      "images.image1": [
+        "11",
+        0
+      ],
+      "images.image2": [
+        "12",
+        0
+      ],
+      "images.image3": [
+        "13",
+        0
+      ]
+    }
+  },
+  "44": {
+    "class_type": "KSampler",
+    "inputs": {
+      "seed": "{{seed}}",
+      "steps": 16,
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": 1,
+      "model": [
+        "1",
+        0
+      ],
+      "positive": [
+        "43",
+        0
+      ],
+      "negative": [
+        "43",
+        1
+      ],
+      "latent_image": [
+        "14",
+        0
+      ]
+    }
+  },
+  "45": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "44",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ]
+    }
+  },
+  "50": {
+    "class_type": "StringConcatenate",
+    "inputs": {
+      "string_a": "Use the person in the reference images, who are all the same person. Keep their face, features, skin tone, hair, age and build exactly the same. A full body photo, standing relaxed, head to toe in frame, arms at the sides. Plain light grey background, soft even daylight, sharp focus, natural skin, a real photograph.",
+      "string_b": [
+        "15",
+        0
+      ],
+      "delimiter": " "
+    },
+    "_meta": {
+      "title": "View: full"
+    }
+  },
+  "51": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": [
+        "50",
+        0
+      ],
+      "clip": [
+        "2",
+        0
+      ]
+    }
+  },
+  "52": {
+    "class_type": "ConditioningZeroOut",
+    "inputs": {
+      "conditioning": [
+        "51",
+        0
+      ]
+    }
+  },
+  "53": {
+    "class_type": "ReferenceMultiLatent",
+    "inputs": {
+      "positive": [
+        "51",
+        0
+      ],
+      "negative": [
+        "52",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ],
+      "resolution": "resize",
+      "resolution.megapixels": 1,
+      "images.image0": [
+        "10",
+        0
+      ],
+      "images.image1": [
+        "11",
+        0
+      ],
+      "images.image2": [
+        "12",
+        0
+      ],
+      "images.image3": [
+        "13",
+        0
+      ]
+    }
+  },
+  "54": {
+    "class_type": "KSampler",
+    "inputs": {
+      "seed": "{{seed}}",
+      "steps": 16,
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": 1,
+      "model": [
+        "1",
+        0
+      ],
+      "positive": [
+        "53",
+        0
+      ],
+      "negative": [
+        "53",
+        1
+      ],
+      "latent_image": [
+        "14",
+        0
+      ]
+    }
+  },
+  "55": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "54",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ]
+    }
+  },
+  "60": {
+    "class_type": "BatchImagesNode",
+    "inputs": {
+      "images.image0": [
+        "25",
+        0
+      ],
+      "images.image1": [
+        "35",
+        0
+      ],
+      "images.image2": [
+        "45",
+        0
+      ],
+      "images.image3": [
+        "55",
+        0
+      ]
+    }
+  },
+  "61": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "filename_prefix": "comfyfield/klein_reference_set",
+      "images": [
+        "60",
+        0
+      ]
+    }
+  }
+}

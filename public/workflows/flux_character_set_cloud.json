@@ -228,7 +228,7 @@
         0
       ],
       "upscale_method": "lanczos",
-      "megapixels": 1.0,
+      "megapixels": 1,
       "resolution_steps": 16
     }
   },
@@ -288,11 +288,11 @@
         0
       ],
       "positive": [
-        "55",
+        "71",
         0
       ],
       "negative": [
-        "56",
+        "72",
         0
       ],
       "cfg": 1
@@ -310,6 +310,140 @@
       "steps": 4,
       "width": "{{width}}",
       "height": "{{height}}"
+    }
+  },
+  "63": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "{{image2}}"
+    },
+    "_meta": {
+      "title": "Character, picture 2",
+      "optional": "image2"
+    }
+  },
+  "64": {
+    "class_type": "ImageScaleToTotalPixels",
+    "inputs": {
+      "image": [
+        "63",
+        0
+      ],
+      "upscale_method": "lanczos",
+      "megapixels": 1,
+      "resolution_steps": 16
+    },
+    "_meta": {
+      "optional": "image2"
+    }
+  },
+  "65": {
+    "class_type": "VAEEncode",
+    "inputs": {
+      "pixels": [
+        "64",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ]
+    },
+    "_meta": {
+      "optional": "image2"
+    }
+  },
+  "66": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "55",
+        0
+      ],
+      "latent": [
+        "65",
+        0
+      ]
+    }
+  },
+  "67": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "56",
+        0
+      ],
+      "latent": [
+        "65",
+        0
+      ]
+    }
+  },
+  "68": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "{{image3}}"
+    },
+    "_meta": {
+      "title": "Character, picture 3",
+      "optional": "image3"
+    }
+  },
+  "69": {
+    "class_type": "ImageScaleToTotalPixels",
+    "inputs": {
+      "image": [
+        "68",
+        0
+      ],
+      "upscale_method": "lanczos",
+      "megapixels": 1,
+      "resolution_steps": 16
+    },
+    "_meta": {
+      "optional": "image3"
+    }
+  },
+  "70": {
+    "class_type": "VAEEncode",
+    "inputs": {
+      "pixels": [
+        "69",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ]
+    },
+    "_meta": {
+      "optional": "image3"
+    }
+  },
+  "71": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "66",
+        0
+      ],
+      "latent": [
+        "70",
+        0
+      ]
+    }
+  },
+  "72": {
+    "class_type": "ReferenceLatent",
+    "inputs": {
+      "conditioning": [
+        "67",
+        0
+      ],
+      "latent": [
+        "70",
+        0
+      ]
     }
   }
 }

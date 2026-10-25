@@ -2208,6 +2208,13 @@ await test('image services: every Comfy format that shows fills its graph with i
         // A writer step writes the prompt when the format runs.
         if (f.writer || f.steps.some((s) => s.type === 'writer')) o.prompt = 'Written prompt'
         if (o.aspect === 'auto') o.aspect = nearestAspect(o.shape)
+        // As in runFormat, an image from an upstream model step takes the first picture slot.
+        const at = f.steps.indexOf(raw)
+        const from = (raw.from ?? (at ? [f.steps[at - 1].id] : [])).map((id) => f.steps.find((s) => s.id === id))
+        if (from.some((s) => !s.type && (s.kind || f.kind) === 'image')) {
+          o.images = ['/media/upstream.png']
+          if (o.slots) o.slots = { ...o.slots, pictures: ['/media/upstream.png', ...o.slots.pictures.slice(1)] }
+        }
         const vars = comfyVars(model.kind, o, model.sizes)
         const w = vars.image && model.imageWorkflow ? model.imageWorkflow : model.workflow
         const graph = dropOptional(readGraph(w), vars)

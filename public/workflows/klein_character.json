@@ -34,7 +34,7 @@
       "image": "{{image}}"
     },
     "_meta": {
-      "title": "Character"
+      "title": "Character, picture 1"
     }
   },
   "11": {
@@ -45,8 +45,28 @@
         0
       ],
       "upscale_method": "lanczos",
-      "megapixels": 1.0,
+      "megapixels": 1,
       "resolution_steps": 32
+    }
+  },
+  "12": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "{{image2}}"
+    },
+    "_meta": {
+      "title": "Character, picture 2",
+      "optional": "image2"
+    }
+  },
+  "13": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "{{image3}}"
+    },
+    "_meta": {
+      "title": "Character, picture 3",
+      "optional": "image3"
     }
   },
   "20": {
@@ -114,9 +134,17 @@
         0
       ],
       "resolution": "resize",
-      "resolution.megapixels": 1.0,
+      "resolution.megapixels": 1,
       "images.image0": [
         "10",
+        0
+      ],
+      "images.image1": [
+        "12",
+        0
+      ],
+      "images.image2": [
+        "13",
         0
       ]
     }
