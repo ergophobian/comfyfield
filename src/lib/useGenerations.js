@@ -169,6 +169,7 @@ export function useGenerations() {
             onFiles: (files, index) => partial(id, base, files, index),
             onPod: () => patch(id, (x) => ({ ...x, pod: true })),
             onProgress: (progress) => patch(id, (x) => ({ ...x, progress })),
+            onStage: (stage) => patch(id, (x) => ({ ...x, podStage: stage })),
             onJob: (job) => {
               patch(id, (x) => ({ ...x, jobs: [...(x.jobs || []), job] }))
               if (cancelled.current.has(id)) cancelJob(job)

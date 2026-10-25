@@ -5,7 +5,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { randomBytes } from 'node:crypto'
 import { POD_IMAGE, PROXY_PORT, STATUS_PORT, podEnv, podStartCmd, proxyUrl, statusUrl } from './podBoot.js'
-import { RUNTIMES, volumeFor } from '../shared/modelFiles.js'
+import { RUNTIMES, downloadsLeft, volumeFor } from '../shared/modelFiles.js'
 
 const REST = 'https://rest.runpod.io/v1'
 const GQL = 'https://api.runpod.io/graphql'
@@ -598,7 +598,7 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
         const rec = m.placing ? null : await refresh().catch(() => record())
         alive(rec)
         if (rec && m.status) break
-        onStage('waiting')
+        onStage('waiting', {})
         await wait(pollMs)
       }
       const { missing, pending } = await ask(record(), files, need, l)
@@ -612,7 +612,11 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
         if (broke) throw fail(`${runtimeName(broke)} could not install on the Pod: ${en[broke].error || 'unknown error'}`, 502)
         const placed = missing.every((f) => d[`${f.dir}/${f.name}`]?.state === 'done') && pending.every((e) => en[e]?.state === 'ready')
         if (m.status?.ready && placed) break
-        onStage(!m.status?.ready && placed ? 'waiting' : pending.some((e) => en[e]?.state !== 'ready') ? 'installing' : missing.length ? 'downloading' : 'waiting')
+        // The files this run still waits on, and about how long they take, so the run can say so.
+        const waitOn = missing.filter((f) => d[`${f.dir}/${f.name}`]?.state !== 'done')
+        const left = downloadsLeft(waitOn.map((f) => ({ want: f.bytes ?? (f.gb ? Math.round(f.gb * 1e9) : 0), state: 'queued', ...d[`${f.dir}/${f.name}`] })))
+        const stage = !m.status?.ready && placed ? 'waiting' : pending.some((e) => en[e]?.state !== 'ready') ? 'installing' : waitOn.length ? 'downloading' : 'waiting'
+        onStage(stage, stage === 'downloading' ? { files: waitOn.map((f) => f.name), leftSec: left } : {})
         await wait(pollMs)
         await refresh().catch(() => null)
         check()
@@ -620,7 +624,7 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
       }
       check()
       const rec = record()
-      onStage('running')
+      onStage('running', {})
       return { baseUrl: proxyUrl(rec.id), token: rec.token, sandbox, signal: l.signal, reason: () => l.reason, release }
     } catch (e) {
       release()

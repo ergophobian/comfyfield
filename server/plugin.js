@@ -6,7 +6,7 @@ import crypto from 'node:crypto'
 import * as core from './core.js'
 import { POD_VOLUMES } from './pod.js'
 import { TIER_IDS, jobSecondsOf, tierPicks } from '../shared/gpuTiers.js'
-import { archOf } from '../shared/modelFiles.js'
+import { archOf, downloadSeconds } from '../shared/modelFiles.js'
 import { upload } from './upload.js'
 import { serveMedia } from './serveMedia.js'
 import { agentRoutes } from './agent-routes.js'
@@ -209,9 +209,16 @@ async function sessionQuote(workflow) {
 
 async function podQuote(workflow) {
   const { q, needs, refSeconds, tiers } = await sessionQuote(workflow)
+  // downloadSec: about how long the files take on a Pod, before it measures its own rate.
   return { ...q, tiers, tier: core.podTier(), refSeconds, files: needs.files.map((f) => ({ name: f.name, gb: f.gb })),
+    downloadSec: downloadSeconds(needs.files.reduce((n, f) => n + (f.bytes ?? f.gb * 1e9), 0)),
     runtimes: needs.runtimes.map((e) => ({ name: e.name, gb: e.gb, minutes: e.minutes })), volumeGb: needs.volumeGb }
 }
+
+// The start for a job on a Session tier: sized for it, on the tier's GPUs. The job's files start downloading
+// as soon as the Pod's status server answers, while ComfyUI boots; its runtimes install from the Pod's env.
+export const sessionStart = (needs, tiers, id) => ({ minVramGb: needs.minVramGb, volumeGb: needs.volumeGb, runtimes: needs.runtimes.map((e) => e.runtime),
+  order: tiers.find((t) => t.id === id)?.order, tier: id, prepare: { files: needs.files, runtimes: [] } })
 
 // A start names a workflow (sized for it, on a Session tier's GPUs), or comes from the Pods page: a size,
 // or a GPU picked by hand, a disk size, runtimes to install and services to get ready for. The Pod manager
@@ -225,8 +232,7 @@ export async function podAction(action, { workflow, now, minVramGb, gpu, volumeG
     if (tier != null && !TIER_IDS.includes(tier)) throw Object.assign(new Error(`The Session tier is ${TIER_IDS.join(', ')}.`), { status: 400 })
     const id = tier || core.podTier()
     const { needs, tiers } = await sessionQuote(workflow)
-    const out = await p.start({ minVramGb: needs.minVramGb, volumeGb: needs.volumeGb, runtimes: needs.runtimes.map((e) => e.runtime),
-      order: tiers.find((t) => t.id === id)?.order, tier: id })
+    const out = await p.start(sessionStart(needs, tiers, id))
     core.saveConnection('runpod', { tier: id })
     return session(out)
   }

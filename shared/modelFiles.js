@@ -462,3 +462,16 @@ export const minVramOf = (files) => Math.max(0, ...files.map((f) => f.vramGb || 
 // The GPU architecture a run needs, or null when any will do.
 export const archOf = (files) => files.find((f) => f.arch)?.arch || null
 export const volumeFor = (files) => Math.ceil(files.reduce((n, f) => n + f.gb, 0) + HEADROOM_GB)
+
+// How fast a Pod downloads model files before it reports its own rate: PatchWork measured 831 MB/s with
+// a parallel downloader (issue #106). A first estimate only; the Pod's measured rate replaces it.
+export const POD_DOWNLOAD_BPS = 800e6
+export const downloadSeconds = (bytes, bps = POD_DOWNLOAD_BPS) => (bytes > 0 ? Math.max(1, Math.ceil(bytes / bps)) : 0)
+// Seconds left for the downloads in a Pod's status that are still queued or downloading, at the rate
+// the Pod reports for them, or at the first estimate before it has one.
+export function downloadsLeft(list) {
+  const live = list.filter((d) => d.state === 'queued' || d.state === 'downloading')
+  const left = live.reduce((n, d) => n + Math.max(0, (d.total || d.want || 0) - (d.bytes || 0)), 0)
+  const rate = live.reduce((n, d) => n + (d.state === 'downloading' && d.bps > 0 ? d.bps : 0), 0)
+  return downloadSeconds(left, rate || POD_DOWNLOAD_BPS)
+}

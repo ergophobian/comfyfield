@@ -13,9 +13,11 @@ export async function startJob(route, body) {
 }
 
 // Resolves with the job's files. A failed job throws with the server's code, reason and fit, as a direct call would.
-// hooks.onProgress hears each new progress snapshot of a running Comfy job.
+// hooks.onProgress hears each new progress snapshot of a running Comfy job, and hooks.onStage
+// hears what a running job waits on, such as a Pod download, each time it changes.
 export async function waitJob(id, hooks = {}) {
   let last = null
+  let stage = null
   for (let wait = 800; ; wait = Math.min(wait * 1.5, 3000)) {
     const res = await fetch(`/api/jobs/${id}`).catch(() => null)
     if (res?.status === 404) throw Object.assign(new Error('This run was lost when the app restarted. The first run may already have been charged. Retrying starts a new request and may charge again; check the provider history first.'), { code: 'interrupted' })
@@ -23,6 +25,10 @@ export async function waitJob(id, hooks = {}) {
     if (job?.status === 'done') return job.files
     if (job?.status === 'cancelled') throw new Cancelled()
     if (job?.status === 'failed') throw Object.assign(new Error(job.error?.message || 'The run failed.'), job.error)
+    if (hooks?.onStage && job?.stage && JSON.stringify(job.stage) !== stage) {
+      stage = JSON.stringify(job.stage)
+      hooks.onStage(job.stage)
+    }
     const progress = job?.progress ? JSON.stringify(job.progress) : null
     if (progress && progress !== last) {
       last = progress

@@ -26,6 +26,7 @@ export function createJobs(file) {
   }
 
   // task(ctx) returns the files. ctx.onCancel(fn) lets a provider stop its own queue when the person cancels.
+  // ctx.onStage(stage, detail) says what a running job waits on, such as a Pod download.
   function start(task) {
     const id = crypto.randomUUID()
     const controller = new AbortController()
@@ -36,6 +37,7 @@ export function createJobs(file) {
         const job = jobs.get(id)
         if (job?.status === 'running') jobs.set(id, { ...job, progress })
       },
+      onStage: (stage, detail = {}) => { const j = jobs.get(id); if (j?.status === 'running') jobs.set(id, { ...j, stage: { stage, ...detail } }) },
     }
     jobs.set(id, { id, status: 'running', created: Date.now() })
     live.set(id, ctx)
