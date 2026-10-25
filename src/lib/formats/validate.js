@@ -57,7 +57,7 @@ export function validateFormat(format, schemas = savedSchemas) {
     ids.add(step.id)
     if (step.from != null && (!Array.isArray(step.from) || step.from.some((id) => typeof id !== 'string'))) bad(`Invalid dependencies for ${step.id}`)
     if (step.takes != null && (!Number.isInteger(step.takes) || step.takes < 1)) bad(`Invalid takes for ${step.id}`)
-    if (step.type === 'approve') continue
+    if (step.type === 'approve' || step.type === 'stitch') continue
     if (step.type === 'writer') {
       if (!(step.instructions || step.writer_instructions || format.writer)?.trim()) bad(`${step.id}: Missing writer instructions`)
       continue
@@ -75,9 +75,14 @@ export function validateFormat(format, schemas = savedSchemas) {
   }
   for (const out of format.outputs) {
     const step = format.steps.find((s) => s.id === out.step)
-    if (!step || ['approve', 'writer'].includes(step.type) || !out.kind || out.kind !== (step.kind || format.kind)) bad(`Invalid output ${out.step}`)
+    if (!step || ['approve', 'writer'].includes(step.type) || !out.kind || out.kind !== (step.type === 'stitch' ? 'video' : step.kind || format.kind)) bad(`Invalid output ${out.step}`)
   }
   for (const step of format.steps.filter((s) => s.type === 'approve')) if (!edges.some((e) => e.target === step.id)) bad(`${step.id}: Approval needs an upstream step`)
+  // A join takes the clips of the video steps it lists.
+  for (const step of format.steps.filter((s) => s.type === 'stitch')) {
+    const clips = edges.filter((e) => e.target === step.id).map((e) => format.steps.find((s) => s.id === e.source))
+    if (!clips.length || clips.some((s) => s.type || (s.kind || format.kind) !== 'video')) bad(`${step.id}: A join needs upstream video steps`)
+  }
   if (reasons.length) return reasons
 
   const used = new Set()
@@ -107,8 +112,12 @@ export function validateFormat(format, schemas = savedSchemas) {
         return source.type === 'approve' ? edges.filter((e) => e.target === id).flatMap((e) => sources(e.source)) : [source]
       }
       const upstream = edges.filter((e) => e.target === step.id).flatMap((e) => sources(e.source)).filter((s) => s.type !== 'writer')
+      // An upstream song or voice feeds a graph that takes an audio file.
+      const sound = upstream.some((s) => (s.kind || format.kind) === 'audio')
       for (const source of upstream) {
-        if (source && (source.kind || format.kind) !== 'image') bad(`${label} Only image outputs can feed another model yet`)
+        const kind = source.kind || format.kind
+        if (kind === 'audio' && model.provider === 'comfy' && schema.includes('audio')) continue
+        if (kind !== 'image') bad(`${label} Only image outputs, and audio into a graph that takes it, can feed another model yet`)
       }
       const values = { ...sampleValues(format), ...selected }
       const variants = [values, ...format.inputs.flatMap((input) => input.type === 'choice' && input.id !== raw.targetInput ? input.options.map((o) => ({ ...values, [input.id]: o.id })) : [])]
@@ -148,7 +157,7 @@ export function validateFormat(format, schemas = savedSchemas) {
         const pictures = format.inputs.filter((i) => pictureTypes.includes(i.type)).length
         const files = [...PICTURE_SLOTS.slice(1, pictures), ...(format.inputs.some((i) => i.type === 'mask' || i.type === 'draw') ? ['mask'] : []),
           ...(format.inputs.some((i) => i.type === 'audio') ? ['audio'] : []), ...(format.inputs.some((i) => i.type === 'voice') ? ['voice'] : [])]
-        const supplied = new Set(['prompt', 'width', 'height', 'count', 'frames', 'duration', 'start', 'seed', ...(hasVideo ? ['video'] : []), ...(stepOptions(format, step, values).images.length || upstream.length || pictures ? ['image'] : []), ...files, ...Object.keys(step.params || {}), ...Object.keys(step.bindings || {})])
+        const supplied = new Set(['prompt', 'width', 'height', 'count', 'frames', 'duration', 'start', 'seed', ...(hasVideo ? ['video'] : []), ...(stepOptions(format, step, values).images.length || upstream.some((s) => (s.kind || format.kind) === 'image') || pictures ? ['image'] : []), ...files, ...(sound ? ['audio'] : []), ...Object.keys(step.params || {}), ...Object.keys(step.bindings || {})])
         // A choice that always shows (or shows whenever this target runs), and whose every option sets a
         // param, supplies it.
         for (const input of format.inputs) {

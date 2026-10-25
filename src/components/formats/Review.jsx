@@ -19,7 +19,7 @@ export default function FormatReview({ session }) {
       const item = state[node.id]?.items?.find((i) => i.status === 'done')
       if (!item) return null
       return <div className="fp-field" key={node.id}>
-        <label htmlFor={`review-${node.id}`}>Review your prompt</label>
+        <label htmlFor={`review-${node.id}`}>{node.data.review || 'Review your prompt'}</label>
         <textarea id={`review-${node.id}`} aria-label="Written prompt" className="fp-text" rows={7} disabled={busy} value={item.text} onChange={(e) => session.engine.editWriter(session.flow, node.id, e.target.value)} />
         <p className="sheet-note">Edit the prompt, then send it to the next step.</p>
         <button type="button" className="btn-blue sm" disabled={busy || state[node.id]?.sent || !item.text.trim()} onClick={() => act(() => session.sendWriter(node.id))}>{state[node.id]?.sent ? 'Prompt sent' : busy ? 'Rendering' : 'Send to render'}</button>

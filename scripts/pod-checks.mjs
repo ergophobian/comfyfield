@@ -2119,6 +2119,9 @@ await test('image services: every Comfy format that shows fills its graph with i
         const o = stepOptions(f, step, values)
         // A writer step writes the prompt when the format runs.
         if (f.writer || f.steps.some((s) => s.type === 'writer')) o.prompt = 'Written prompt'
+        // An upstream song reaches the step as its audio when the format runs.
+        const from = raw.from ?? [f.steps[f.steps.indexOf(raw) - 1]?.id]
+        if (from.some((id) => f.steps.find((s) => s.id === id)?.kind === 'audio')) o.audio = '/media/song.mp3'
         if (o.aspect === 'auto') o.aspect = nearestAspect(o.shape)
         const vars = comfyVars(model.kind, o, model.sizes)
         const w = vars.image && model.imageWorkflow ? model.imageWorkflow : model.workflow

@@ -142,6 +142,7 @@ export function createEngine({ run, writePrompt, stitch, onChange = () => {}, co
     const images = []
     const inputs = {}
     let widgetOpts = {}
+    let audio
     let blocked = false
     let promptEdge = false
     for (const s of sources(flow, id)) {
@@ -153,6 +154,8 @@ export function createEngine({ run, writePrompt, stitch, onChange = () => {}, co
           const written = out.filter((i) => i.kind === 'text').map((i) => i.text)
           if (written.length) { promptEdge = true; texts.push(...written) }
           images.push(...out.filter((i) => i.kind === 'image' && !i.inputType))
+          // An upstream song or voice goes to every run of this node, as the graph's audio file.
+          audio ??= out.find((i) => i.kind === 'audio')?.url
           for (const item of out.filter((i) => i.inputType)) {
             inputs[item.id] = item.value
             widgetOpts = { ...widgetOpts, ...widgetOptions(item.inputType, item.value) }
@@ -166,7 +169,7 @@ export function createEngine({ run, writePrompt, stitch, onChange = () => {}, co
     if (blocked) return { blocked: true, units: [] }
 
     const takes = Math.max(1, n.data.takes || 1)
-    const base = { aspect: n.data.aspect, duration: n.data.duration, count: n.data.count || 1, ...widgetOpts, ...(Object.keys(inputs).length && { inputs }) }
+    const base = { aspect: n.data.aspect, duration: n.data.duration, count: n.data.count || 1, ...widgetOpts, ...(Object.keys(inputs).length && { inputs }), ...(audio && { audio }) }
     const units = []
     if (images.length) {
       images.forEach((img, k) => {

@@ -55,6 +55,8 @@ async function post(url, payload) {
 
 // hooks.onPod: the run is waiting for a Pod, after the start sheet.
 export async function run(model, opts, hooks = {}) {
+  // A format's join step: the local stitch, kept out of the exports list like a Flows preview.
+  if (model.provider === 'stitch') return [await post('/api/stitch', { clips: opts.clips, aspect: opts.aspect, music: opts.music, preview: true })]
   if (model.provider === 'comfyRouter') {
     const files = []
     for (let i = 0; i < (model.kind === 'image' ? opts.count || 1 : 1); i++) {
