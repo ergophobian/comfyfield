@@ -330,6 +330,9 @@ input, textarea { font: inherit; color: inherit; }
 .result:hover .result-cap { opacity: 1; }
 .result.restored .result-cap { opacity: 1; white-space: normal; }
 .result-wait { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 12px; text-align: center; }
+.job-progress { display: block; width: min(160px, 80%); height: 4px; border-radius: var(--r-pill); background: var(--ink-fill); overflow: hidden; }
+.job-progress i { display: block; width: var(--p); height: 100%; border-radius: inherit; background: var(--blue-bar); transition: width var(--dur-move) var(--spring); }
+.take-msg .job-progress { margin-top: 6px; }
 .result.failed { display: grid; place-items: center; background: var(--danger-wash); }
 .result-fail { display: flex; flex-direction: column; align-items: center; gap: 4px; max-width: 100%; padding: 14px; text-align: center; }
 .result-fail strong { font-size: var(--text-md); font-weight: 600; color: var(--danger); }

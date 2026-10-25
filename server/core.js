@@ -987,16 +987,41 @@ async function resolveComfyRoute(original, vars, { run, podPhase, podVram, podAr
 }
 
 // Submits and then waits when the caller must know whether the job was accepted: a Pod retry, or the spend ledger.
-async function submitAndWait(client, wf, { apiKey, timeoutMs, signal, split }, onSubmitted) {
+// The SDK's live event stream, reduced to what a generation tile shows. The poll in job.wait stays the
+// source of truth for completion, so a stream that drops or is not offered only loses the progress.
+export function progressOf(event, where) {
+  if (event.kind === 'statusChange') return { where, status: event.status, queuePosition: event.queuePosition ?? null }
+  if (event.kind !== 'progress') return null
+  const value = Number.isFinite(event.value) ? Math.min(1, Math.max(0, event.value)) : null
+  return { where, status: 'running', value, step: event.step ?? null, steps: event.steps ?? null, nodesDone: event.nodesDone ?? null, nodesTotal: event.nodesTotal ?? null, node: event.currentNodeClass ?? null }
+}
+
+async function watchProgress(job, where, onProgress, signal) {
+  try {
+    for await (const event of job.events(signal)) {
+      const progress = progressOf(event, where)
+      if (progress) onProgress(progress)
+    }
+  } catch {}
+}
+
+async function submitAndWait(client, wf, { apiKey, timeoutMs, signal, split, where, onProgress }, onSubmitted) {
   if (!split || !client.submit) return client.run(wf, { apiKey, timeoutMs, ...(signal ? { signal } : {}) })
   const job = await client.submit(wf, { apiKey, ...(signal ? { signal } : {}) })
+  const stopWatching = new AbortController()
   try {
     await onSubmitted({ id: job.id })
+    if (onProgress && job.events) {
+      onProgress({ where, status: job.status || 'queued', queuePosition: job.queuePosition ?? null })
+      watchProgress(job, where, onProgress, signal ? AbortSignal.any([signal, stopWatching.signal]) : stopWatching.signal)
+    }
     await job.wait(timeoutMs, signal)
   } catch (e) {
     // A job nobody is waiting on would keep spending, so a cancel that fails is reported, not swallowed.
     const stopped = job.cancel ? await job.cancel().then(() => true, () => false) : true
     throw stopped ? e : Object.assign(e, { uncancelled: job.id })
+  } finally {
+    stopWatching.abort()
   }
   if (job.status !== 'succeeded') throw new JobFailed(`job ${job.id} ended ${job.status}`, { error: job.error })
   return job
@@ -1004,7 +1029,7 @@ async function submitAndWait(client, wf, { apiKey, timeoutMs, signal, split }, o
 
 // Runs a bundled workflow on Comfy Cloud or the Pod, or in development on a local ComfyUI, and returns file URLs.
 export async function runComfy(workflow, vars = {}, opts = {}) {
-  const { createClient = (key, baseUrl) => comfyClient(baseUrl, key), lease = (o) => pod().lease(o), podPhase = () => pod().phaseNow(), podVram = () => pod().vramGb(), podRoom = () => pod().room(), podArch = () => pod().arch(), run = runType(), signal, retried = 0, pause = (ms, s) => delay(ms, undefined, s ? { signal: s } : undefined), patchGraph = (g) => g, onSubmitted, onComplete = () => {}, timeoutMs } = opts
+  const { createClient = (key, baseUrl) => comfyClient(baseUrl, key), lease = (o) => pod().lease(o), podPhase = () => pod().phaseNow(), podVram = () => pod().vramGb(), podRoom = () => pod().room(), podArch = () => pod().arch(), run = runType(), signal, retried = 0, pause = (ms, s) => delay(ms, undefined, s ? { signal: s } : undefined), patchGraph = (g) => g, onSubmitted, onProgress, onComplete = () => {}, timeoutMs } = opts
   signal?.throwIfAborted()
   const original = workflowGraph(workflow, vars)
   let { file, template, graph } = original
@@ -1062,7 +1087,7 @@ export async function runComfy(workflow, vars = {}, opts = {}) {
       const runSignal = signal && held?.signal ? AbortSignal.any([signal, held.signal]) : signal || held?.signal
       // A Pod is paid by the hour and runs one job at a time, so its runs may take longer: a talking head of
       // 10 to 20 seconds on InfiniteTalk renders for more than 30 minutes.
-      const job = await submitAndWait(client, wf, { apiKey: partner, timeoutMs: timeoutMs ?? (target === 'pod' ? 90 : 30) * 60 * 1000, signal: runSignal, split: Boolean(held || onSubmitted) }, async (j) => { submitted = true; await onSubmitted?.(j) })
+      const job = await submitAndWait(client, wf, { apiKey: partner, timeoutMs: timeoutMs ?? (target === 'pod' ? 90 : 30) * 60 * 1000, signal: runSignal, split: Boolean(held || onSubmitted || onProgress), where, onProgress }, async (j) => { submitted = true; await onSubmitted?.(j) })
       await onComplete({ id: job.id, actualCost: null, seconds: gpuSeconds(job, t0) })
       if (target === 'cloud') {
         try { logCloudRun({ seconds: gpuSeconds(job, t0), minVramGb: minVramOf(needs) }) } catch {}

@@ -380,6 +380,50 @@ await test('Cloud uses the SDK workflow and asset interfaces and saves downloade
   await assert.rejects(core.runComfy('h3_open_i2v', { prompt: 'Missing image', width: 1344, height: 768, frames: 121, seed: 1 }), /requires image/)
 })
 
+await test('Cloud progress: SDK events reach onProgress while the poll decides completion', async () => {
+  setup('cloud')
+  const seen = []
+  let streamSignal
+  const createClient = () => {
+    const client = new Comfy({ apiKey: key })
+    client.assets.fromBytes = () => ({ mockAsset: true })
+    client.run = async () => { throw new Error('A run with progress must submit, not run') }
+    client.submit = async () => {
+      let finish
+      const done = new Promise((resolve) => { finish = resolve })
+      const job = {
+        id: 'cloud-progress', status: 'queued', queuePosition: 2,
+        outputs: [{ type: 'video', contentType: 'video/mp4', name: 'ltx.mp4', toBytes: async () => Buffer.from('mock clip') }],
+        async *events(signal) {
+          streamSignal = signal
+          yield { kind: 'statusChange', status: 'running', queuePosition: null }
+          yield { kind: 'log', level: 'info', message: 'ignored' }
+          yield { kind: 'progress', value: 0.25, step: 5, steps: 20, nodesDone: 3, nodesTotal: 9, currentNodeClass: 'KSampler' }
+          yield { kind: 'progress', value: 1.4, step: null, steps: null, nodesDone: 9, nodesTotal: 9, currentNodeClass: null }
+          job.status = 'succeeded'
+          finish()
+          await new Promise((resolve) => signal.addEventListener('abort', resolve, { once: true }))
+          throw new Error('Stream closed')
+        },
+        wait: async () => { await done; return job },
+        cancel: async () => job,
+      }
+      return job
+    }
+    return client
+  }
+  globalThis.fetch = async () => { throw new Error('Unexpected network call') }
+  const files = await core.runComfy('h3_open_i2v', { image: 'data:image/png;base64,aGVsbG8=', prompt: 'Orbit', width: 1344, height: 768, frames: 121, seed: 1 }, { createClient, onProgress: (p) => seen.push(p) })
+  assert.equal(files[0].kind, 'video')
+  assert.deepEqual(seen, [
+    { where: 'Comfy Cloud', status: 'queued', queuePosition: 2 },
+    { where: 'Comfy Cloud', status: 'running', queuePosition: null },
+    { where: 'Comfy Cloud', status: 'running', value: 0.25, step: 5, steps: 20, nodesDone: 3, nodesTotal: 9, node: 'KSampler' },
+    { where: 'Comfy Cloud', status: 'running', value: 1, step: null, steps: null, nodesDone: 9, nodesTotal: 9, node: null },
+  ])
+  assert.equal(streamSignal.aborted, true, 'The event stream stops once the job is done')
+})
+
 await test('Connection checks are read-only for Local and Cloud', async () => {
   setup('cloud')
   globalThis.fetch = async (url, options) => {
