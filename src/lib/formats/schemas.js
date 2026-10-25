@@ -1054,12 +1054,33 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "ltx25_a2v": [
+      "audio",
+      "duration",
+      "height",
+      "prompt",
+      "seed",
+      "shot",
+      "start",
+      "width"
+    ],
     "ltx25_i2v": [
       "frames",
       "height",
       "image",
       "prompt",
       "seed",
+      "width"
+    ],
+    "ltx25_ia2v": [
+      "audio",
+      "duration",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "shot",
+      "start",
       "width"
     ],
     "ltx25_multishot": [
@@ -1090,6 +1111,12 @@ export const schemas = {
       "lyrics",
       "prompt",
       "seed"
+    ],
+    "minimax_music3_lyrics": [
+      "duration",
+      "prompt",
+      "seed",
+      "style"
     ],
     "qwen2511_edit": [
       "image",
