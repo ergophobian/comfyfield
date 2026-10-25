@@ -1,0 +1,43 @@
+{
+ "verdict": "PASS",
+ "mode": "swap",
+ "source": {
+  "duration": 3.375,
+  "width": 512,
+  "height": 640,
+  "fps": 24.0,
+  "frames": 81,
+  "has_audio": true,
+  "hdr": null,
+  "rotation": 0,
+  "vfr": false,
+  "codec": "h264",
+  "pix_fmt": "yuv420p",
+  "size_mb": 0.503791
+ },
+ "output": {
+  "duration": 3.375,
+  "width": 512,
+  "height": 640,
+  "fps": 24.0,
+  "frames": 81,
+  "has_audio": true,
+  "hdr": null,
+  "rotation": 0,
+  "vfr": false,
+  "codec": "h264",
+  "pix_fmt": "yuv420p",
+  "size_mb": 0.463722
+ },
+ "frames_compared": 81,
+ "changed_area": 0.0289,
+ "structure_median": 0.777,
+ "structure_min": 0.713,
+ "motion_correlation": 0.996,
+ "issues": [],
+ "minor_structure_dips": [],
+ "look_at": [
+  "crops.jpg: brand marks, hands, text, invented props",
+  "sheet.jpg: continuity"
+ ]
+}
