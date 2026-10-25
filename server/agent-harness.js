@@ -66,7 +66,7 @@ export function createHarness({ adapters = { claude: claudeAdapter, codex: codex
     let snapshot
     let state
     const allowance = new Map()
-    // Blender renders are free but run code on the user's machine, so only planned ones may run.
+    // Blender and Three.js renders are free but run code on the user's machine, so only planned ones may run.
     const renders = []
     const jobKey = ({ model, prompt, aspect, duration, count }) => JSON.stringify({ model, prompt, aspect, duration, count })
     try {
@@ -83,7 +83,7 @@ export function createHarness({ adapters = { claude: claudeAdapter, codex: codex
           },
           writePrompt: async (input) => { writes.push(input); return 'Prompt awaiting review' },
           stitch: async (input) => { stitches.push(input); return { kind: 'video', url: '/media/estimate-stitch.mp4' } },
-          render: async (type, input) => { renders.push({ type, input }); return { kind: input.output === 'video' ? 'video' : 'image', url: `/media/estimate-${type}` } },
+          render: async (type, input) => { renders.push({ type, input }); return { kind: type === 'threejs' || input.output === 'video' ? 'video' : 'image', url: `/media/estimate-${type}` } },
         })
         dry.load(state)
         await dry.runNew(snapshot)
@@ -92,7 +92,7 @@ export function createHarness({ adapters = { claude: claudeAdapter, codex: codex
         const steps = await Promise.all(jobs.map(async (job) => ({ model: job.model, prompt: job.prompt, aspect: job.aspect, duration: job.duration, count: job.count, usd: (await estimate(job).catch(() => null))?.usd ?? null })))
         steps.push(...writes.map((input) => ({ model: 'Google Gemini writer', prompt: input.instructions, usd: null })))
         steps.push(...stitches.map(() => ({ model: 'Local Stitch', prompt: 'Join clips locally', usd: 0 })))
-        steps.push(...renders.map(({ input }) => ({ model: 'Blender, runs this script on your machine', prompt: input.script.slice(0, 4000), usd: 0 })))
+        steps.push(...renders.map(({ type, input }) => ({ model: type === 'threejs' ? `Three.js, renders ${input.duration} s at ${input.width}x${input.height} in headless Chrome` : 'Blender, runs this script on your machine', prompt: input.script.slice(0, 4000), usd: 0 })))
         await approval(session, { title: `Run ${snapshot.name}`, tool: name, args, flow: snapshot, steps, usd: steps.every((s) => s.usd != null) ? steps.reduce((n, s) => n + s.usd, 0) : null })
         if (flowSignature(snapshot) !== flowSignature(flows.get(args.flow_id)) || JSON.stringify(state) !== JSON.stringify(flows.engine(args.flow_id).state)) throw problem('The flow changed. Request a fresh plan before running.', 409)
       } else if (['generate', 'write_prompts'].includes(name)) {

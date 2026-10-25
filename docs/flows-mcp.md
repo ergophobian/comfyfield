@@ -32,12 +32,12 @@ Live sync of other people's edits is issue #22.
 | `connect_nodes` | `flow_id`, `source`, `target` | Connects source's output to target's input |
 | `update_node` | `flow_id`, `node_id`, optional `data`, `position` | Merges `data` into the node |
 | `remove_node` | `flow_id`, `node_id` | Removes the node, its connections and its results |
-| `run_flow` | `flow_id` | Run: fills gaps, spends credits, stops at gates. Blender nodes render locally, at no cost |
+| `run_flow` | `flow_id` | Run: fills gaps, spends credits, stops at gates. Blender and Three.js nodes render locally, at no cost |
 
-Node types: `prompt`, `image`, `writer`, `mask`, `face`, `video`, `crop`, `model`, `stitch`, `blender`, `approve`, `output`, `note`. Each node has at most one input and one output:
+Node types: `prompt`, `image`, `writer`, `mask`, `face`, `video`, `crop`, `model`, `stitch`, `blender`, `threejs`, `approve`, `output`, `note`. Each node has at most one input and one output:
 
 - No output: `output`, `note`.
-- No input: `prompt`, `image`, `note`, `mask`, `face`, `video`, `crop`, `blender`.
+- No input: `prompt`, `image`, `note`, `mask`, `face`, `video`, `crop`, `blender`, `threejs`.
 - A `prompt` only feeds a `model` or `writer`.
 - No loops, no self connections, no duplicate connections.
 
@@ -50,6 +50,29 @@ A `blender` node holds `data.script` (Blender Python) and `data.output` (`image`
 Connections sets where Blender runs: a Blender path on this machine, or an SSH host (`user@host` or `user@host:port`). With a host, ComfyField copies the script with `scp`, runs Blender there with `ssh` and copies the render back; the path then means Blender on that host, and key login must work without a password (`BatchMode=yes`). Errors say which part failed: Blender not on PATH, the path is wrong, the host cannot be reached, or the script raised an error. Renders stop after 20 minutes.
 
 Blender scripts run with your user's rights on that machine; only run scripts you trust. In the Assistant, `run_flow` lists each Blender render in the plan and runs only the renders the user approved.
+
+## Three.js nodes
+
+A `threejs` node renders a Three.js scene to an H.264 MP4 (yuv420p) on this machine, at no cost. It holds `data.script`, `data.duration` (seconds, up to 30), `data.width` and `data.height` (even pixels, 64 to 1920) and `data.fps` (1 to 60). A video has at most 900 frames.
+
+The script is an ES module. `three` and `three/addons/...` resolve to the installed three package (0.186). Its default export is called once and returns the scene:
+
+```js
+import * as THREE from 'three'
+
+export default function ({ THREE, renderer, canvas, width, height, fps, duration, frames }) {
+  const scene = new THREE.Scene()
+  const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100)
+  camera.position.z = 4
+  const cube = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshNormalMaterial())
+  scene.add(cube)
+  return { scene, camera, update(time, frame) { cube.rotation.y = time * 2 } }
+}
+```
+
+For each frame, ComfyField sets the clock to `frame / fps` seconds, runs pending `requestAnimationFrame` callbacks, calls `update(time, frame)` (it may be async), draws `scene` with `camera` and captures the canvas. Draw with the `renderer` you are given; to draw yourself, return only `update` and call `renderer.render` in it. `performance.now()`, `Date.now()` and `requestAnimationFrame` follow the frame clock, not the wall clock, and `Math.random` is seeded, so the same code gives the same video. `setTimeout` still uses real time; do not use it for animation.
+
+The scene runs only in a headless Chrome page (found like the UI checks find it; `CHROME_PATH` overrides), never in Node. The page can load only itself and the three files: every other request fails, there is no DNS, and WebSocket, WebRTC and workers are off. WebGL runs on the CPU (SwiftShader), so no GPU is needed. A render stops after 10 minutes. ffmpeg (the bundled `ffmpeg-static`) encodes the frames. The MP4 goes to the Library and downstream: it is a Stitch clip, and the video input of a Model node (like a Video input node, the first clip only).
 
 ## run_flow and the Flows rules
 

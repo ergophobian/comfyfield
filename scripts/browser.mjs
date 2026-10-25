@@ -1,21 +1,12 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync } from 'node:fs'
+import { chromeExecutable } from '../server/chrome.js'
+import { mkdirSync, mkdtempSync, readFileSync } from 'node:fs'
 import { resolve, join } from 'node:path'
 import { spawn } from 'node:child_process'
 import { setTimeout as delay } from 'node:timers/promises'
 
 export const browserTimeout = process.env.CI ? 60000 : 20000
 export const uiTimeout = process.env.CI ? 30000 : 10000
-
-export function chromeExecutable() {
-  const executable = process.env.CHROME_PATH || [
-    'C:/Program Files/Google/Chrome/Application/chrome.exe',
-    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-    '/usr/bin/google-chrome',
-    '/usr/bin/chromium',
-  ].find(existsSync)
-  if (!executable) throw new Error('Set CHROME_PATH to a local Chrome executable')
-  return executable
-}
+export { chromeExecutable }
 
 // Kill only the process tree owned by this check, including Chrome's renderer children.
 export async function killProcessTree(child) {

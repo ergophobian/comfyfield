@@ -892,11 +892,12 @@ code { font-size: .92em; }
 .fp-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: var(--text-sm); }
 .fp-img { width: 100%; border-radius: var(--r-md); border: 1px solid var(--line); }
 .fp-blurb { margin: 0; font-size: var(--text-sm); line-height: 1.45; }
+.fp-blurb.bad { color: var(--danger); }
 .fp-del { align-self: flex-start; color: var(--danger); }
 .fpanel .picker-pop { width: 560px; max-width: 70vw; right: 0; left: auto; transform-origin: top right; }
 .fpanel .menu { z-index: 50; }
 
-.f-stitch .fdot, .f-blender .fdot { background: var(--blue-hi); }
+.f-stitch .fdot, .f-blender .fdot, .f-threejs .fdot { background: var(--blue-hi); }
 .fp-code { font-family: monospace; font-size: var(--text-sm); white-space: pre; overflow-wrap: normal; overflow-x: auto; }
 .stitch-fields { border: 0; padding: 0; margin: 0; min-width: 0; display: flex; flex-direction: column; gap: var(--stitch-gap); }
 .stitch-fields label { display: block; font-size: var(--text-xs); color: var(--muted); }

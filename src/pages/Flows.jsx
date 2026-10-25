@@ -24,11 +24,12 @@ const addable = [
   ['model', 'Any image, video or audio model'],
   ['stitch', 'Join clips, captions and music locally'],
   ['blender', 'Render a Blender script, here or over SSH'],
+  ['threejs', 'Render a Three.js scene to video'],
   ['approve', 'A gate you open with Send'],
   ['output', 'A gallery of results'],
   ['note', 'A note for yourself'],
 ]
-const miniColor = { prompt: 'var(--muted)', image: 'var(--muted)', writer: 'var(--blue)', stitch: 'var(--blue-hi)', blender: 'var(--blue-hi)', model: 'var(--blue-hi)', approve: 'var(--warn)', output: 'var(--success)', note: 'var(--faint)' }
+const miniColor = { prompt: 'var(--muted)', image: 'var(--muted)', writer: 'var(--blue)', stitch: 'var(--blue-hi)', blender: 'var(--blue-hi)', threejs: 'var(--blue-hi)', model: 'var(--blue-hi)', approve: 'var(--warn)', output: 'var(--success)', note: 'var(--faint)' }
 
 function Pop({ label, children, align = 'left' }) {
   const [open, setOpen] = useState(false)
