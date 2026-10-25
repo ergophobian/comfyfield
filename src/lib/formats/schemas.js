@@ -779,8 +779,10 @@ export const schemas = {
       "width"
     ],
     "flux_trellis2": [
+      "fill",
       "prompt",
-      "seed"
+      "seed",
+      "solid"
     ],
     "h3_draw": [
       "duration",
@@ -1325,14 +1327,18 @@ export const schemas = {
       "width"
     ],
     "trellis2_character": [
+      "fill",
       "image",
       "prompt",
-      "seed"
+      "seed",
+      "solid"
     ],
     "trellis2_image": [
+      "fill",
       "image",
       "resolution",
-      "seed"
+      "seed",
+      "solid"
     ],
     "trellis2_turntable": [
       "background",
