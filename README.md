@@ -18,6 +18,10 @@ npm start
 
 The first start installs dependencies, builds the app and opens your browser. Open **Connections** to add keys when ready. See the [macOS, Windows and Linux setup guide](docs/setup.md) for Node.js installation, the post-publication `npx comfyfield` path, data locations and troubleshooting. Data defaults to `~/.comfyfield` on macOS/Linux or `%APPDATA%\comfyfield` on Windows; `COMFYFIELD_HOME` keeps the existing `<folder>/.comfyfield` override. Only the local server reads saved keys.
 
+### Docker
+
+On a home server or a VPS, run `docker compose up -d` and open http://localhost:5173. Data stays in a named volume. See [docs/docker.md](docs/docker.md) for data, keys and remote access.
+
 ### ComfyUI models for the bundled workflows
 
 Comfy Cloud already has the files most workflows load. A Pod downloads what a run needs on its first run, from `shared/modelFiles.js`, and checks each file against its sha256.

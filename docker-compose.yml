@@ -1,0 +1,17 @@
+# docker compose up -d, then open http://localhost:5173
+services:
+  comfyfield:
+    build: .
+    image: comfyfield
+    restart: unless-stopped
+    ports:
+      # Loopback only: anyone who can reach the port can use your saved keys.
+      # Reach it from another machine through an SSH tunnel, not by opening the port.
+      - "127.0.0.1:5173:5173"
+    volumes:
+      - comfyfield-data:/data/.comfyfield
+    # Optional: provider keys from a .env file next to this one (Connections also saves keys in the volume).
+    # env_file: .env
+
+volumes:
+  comfyfield-data:
