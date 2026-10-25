@@ -36,6 +36,7 @@ import Connections from './pages/Connections.jsx'
 import Pods from './pages/Pods.jsx'
 import Flows from './pages/Flows.jsx'
 import Models from './pages/Models.jsx'
+import Workspaces from './pages/Workspaces.jsx'
 import { AppCtx } from './lib/appContext.js'
 import { formatById, isWired } from './lib/formats/index.js'
 import { getConnections } from './lib/providers.js'
@@ -111,6 +112,7 @@ export default function App() {
           <Route path="/models" element={<Models picker={picker} />} />
           <Route path="/connections" element={<Connections />} />
           <Route path="/pods" element={<Pods />} />
+          <Route path="/workspaces" element={<Workspaces />} />
         </Routes>
       </div>
       <PodSheet />

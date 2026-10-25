@@ -5,6 +5,8 @@ import { runFormat } from './formats/runner.js'
 import { preflightFlow } from './formats/preflight.js'
 import { waitJob, cancelJob, Cancelled } from './jobs.js'
 import { createRouterBatch } from './routerBatch.js'
+import { activeWorkspace } from './workspaces.js'
+import { withCriteria } from '../../shared/workspaces.js'
 
 const KEY = 'comfyfield.library'
 const MAX_PARALLEL = 3
@@ -131,6 +133,13 @@ export function useGenerations() {
   // format steps; the saved run retains outstanding Router calls and their request keys on reload.
   function execute(model, opts, meta = {}, after, id = crypto.randomUUID(), retryStep) {
     cancelled.current.delete(id)
+    // Create, formats and their retries all pass here, so the workspace's criteria join the prompt once, here.
+    // In place: a Router batch and a format session keep this same options object for resume.
+    if (typeof opts.prompt === 'string' && !opts.criteriaFrom) {
+      const ws = activeWorkspace()
+      const prompt = withCriteria(opts.prompt, ws, model.kind)
+      if (prompt !== opts.prompt) Object.assign(opts, { prompt, criteriaFrom: ws.id })
+    }
     // A Router input the model cannot take fails this item, not the caller's loop.
     let setupError
     if (model.provider === 'comfyRouter') {

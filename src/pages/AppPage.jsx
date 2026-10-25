@@ -13,11 +13,24 @@ import { appsIn, categoryOf, formatById, formats, hubs, isWired } from '../lib/f
 import { initialValues, missingInputs, visibleInputs } from '../lib/recipes.js'
 import { providerInfo } from '../lib/catalog.js'
 import { estimate, money, useModelMeta } from '../lib/cost.js'
+import { togglePinned, useWorkspaces } from '../lib/workspaces.js'
 
 const calm = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 const icons = { image: IconImage, video: IconVideo, audio: IconAudio, '3d': IconCube }
 const nouns = { image: 'image', video: 'video', audio: 'audio', '3d': '3D' }
 const homes = { effects: '/effects', mixed: '/mixed-media', camera: '/motion' }
+
+// Pins this format in the active workspace, so it shows first in the galleries.
+function PinButton({ id }) {
+  const { current } = useWorkspaces()
+  const on = Boolean(current.pinned?.includes(id))
+  return (
+    <button type="button" className={`ws-pin${on ? ' on' : ''}`} aria-pressed={on} onClick={() => togglePinned(id).catch(() => {})}
+      title={on ? `Unpin from ${current.name}` : `Pin to ${current.name}`}>
+      {on ? 'Pinned' : 'Pin'}
+    </button>
+  )
+}
 
 // Any format as its own page: the format in a card in the middle, its settings in a panel on the right.
 export default function AppPage() {
@@ -36,6 +49,7 @@ export default function AppPage() {
         <Link to={home.to}>{home.name}</Link>
         <span aria-hidden="true">/</span>
         <span aria-current="page">{format ? format.name : 'Not found'}</span>
+        {format && <PinButton id={format.id} />}
       </nav>
       {format ? <AppView key={format.id} format={format} motion={motion} /> : (
         <div className="empty glass rise">

@@ -15,6 +15,7 @@ import { DEFAULT_TIER, TIER_IDS } from '../shared/gpuTiers.js'
 
 import { podManager, GPU_LADDER, IDLE_CHOICES, POD_VOLUMES, STOPPED_DISK_USD_GB_MONTH, idleMinutes } from './pod.js'
 import { sandboxFetch } from './podSandbox.js'
+import { workspaces } from './workspaces.js'
 
 // Instant workflow variants (kept separate from provider imports).
 import { cloudWorkflows } from '../src/lib/catalog.js'
@@ -1203,6 +1204,7 @@ export async function listModels({ kind, query, includeFal = true, limit = 25 } 
 export async function generate({ model, prompt, aspect = '16:9', count = 1, duration, image, images, ...options }) {
   if (!prompt) throw new Error('A prompt is required.')
   const m = resolveModel(model)
+  prompt = workspaces.withActiveCriteria(prompt, m.kind)
   const o = { ...options, images, prompt, aspect, count, duration, image: image && !/^(https?:|data:|\/media\/)/.test(image) ? fileDataUri(image) : image }
   if (m.provider === 'comfyRouter') {
     const files = []

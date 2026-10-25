@@ -12,6 +12,7 @@ import { serveMedia } from './serveMedia.js'
 import { agentRoutes } from './agent-routes.js'
 import { createJobs } from './jobs.js'
 import { allowedApiRequest } from './local-access.js'
+import { workspaceRoute } from './workspaces.js'
 
 export { providers } from './core.js'
 
@@ -346,6 +347,7 @@ function mount(server, harness) {
         return send(res, 200, { ok: true })
       }
       if (url.pathname.startsWith('/api/library/') && await libraryRoute(req, res, url)) return
+      if (url.pathname.startsWith('/api/workspaces') && await workspaceRoute(req, res, url, { body, send })) return
       if (url.pathname.startsWith('/media/')) {
         const file = core.mediaPath(url.pathname)
         if (!fs.existsSync(file)) return send(res, 404, { error: 'Not found' })

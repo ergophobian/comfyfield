@@ -4,11 +4,13 @@ import { Link } from 'react-router-dom'
 import { IconCheck } from '../Icons.jsx'
 import { isWired } from '../../lib/formats/index.js'
 import { badgeText } from './data.js'
+import { pinnedFirst } from '../../../shared/workspaces.js'
+import { usePinned } from '../../lib/workspaces.js'
 
 const calm = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
 // A format card that opens the format's own page. With onPick it becomes a toggle instead, for picking presets to mix.
-export function AppCard({ format, to, i = 0, picked = false, disabled = false, onPick, rise = true }) {
+export function AppCard({ format, to, i = 0, picked = false, disabled = false, onPick, rise = true, pinned = false }) {
   const ref = useRef(null)
   const [live, setLive] = useState(false)
   const preview = (on) => {
@@ -31,6 +33,7 @@ export function AppCard({ format, to, i = 0, picked = false, disabled = false, o
         <ArtImage id={format.id} alt={`${format.name} example`} />
         {format.preview && <video ref={ref} className={live ? 'on' : ''} src={format.preview} muted loop playsInline preload="none" />}
         {badge && <i className="app-badge">{badge}</i>}
+        {pinned && <i className="app-pin">Pinned</i>}
         {onPick && <i className="app-check" aria-hidden="true"><IconCheck /></i>}
       </span>
       <strong>{format.name}</strong>
@@ -52,19 +55,22 @@ export function AppCard({ format, to, i = 0, picked = false, disabled = false, o
   return <Link {...props} to={to}>{body}</Link>
 }
 
+// Grids and strips put the active workspace's pinned formats first.
 export function AppGrid({ list, to = (f) => `/apps/${f.id}` }) {
+  const pins = usePinned()
   return (
     <div className="recipe-grid app-grid">
-      {list.map((f, i) => <AppCard key={f.id} format={f} i={i} to={to(f)} />)}
+      {pinnedFirst(list, pins).map((f, i) => <AppCard key={f.id} format={f} i={i} to={to(f)} pinned={pins.includes(f.id)} />)}
     </div>
   )
 }
 
 // One scrolling row of cards, for the New and Trending strips.
 export function AppStrip({ list, to = (f) => `/apps/${f.id}` }) {
+  const pins = usePinned()
   return (
     <div className="app-strip">
-      {list.map((f, i) => <AppCard key={f.id} format={f} i={i} to={to(f)} />)}
+      {pinnedFirst(list, pins).map((f, i) => <AppCard key={f.id} format={f} i={i} to={to(f)} pinned={pins.includes(f.id)} />)}
     </div>
   )
 }

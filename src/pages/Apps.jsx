@@ -6,6 +6,9 @@ import Segmented from '../components/Segmented.jsx'
 import { AppGrid } from '../components/apps/AppCard.jsx'
 import { appGroups, matches } from '../components/apps/data.js'
 import { IconChevron, IconClose, IconSearch } from '../components/Icons.jsx'
+import { pinnedFirst } from '../../shared/workspaces.js'
+import { usePinned, useWorkspaces } from '../lib/workspaces.js'
+import { formatById, isWired } from '../lib/formats/index.js'
 
 // One row of cards per hub under All, the whole hub under its own tab.
 const PREVIEW = 5
@@ -17,6 +20,9 @@ export default function Apps() {
   const bar = useRef(null)
   const hub = groups.some((g) => g.id === params.get('hub')) ? params.get('hub') : 'all'
   const q = query.trim().toLowerCase()
+  const pins = usePinned()
+  const { current } = useWorkspaces()
+  const pinnedList = pins.map(formatById).filter((f) => f && isWired(f) && matches(f, q))
   const total = new Set(groups.flatMap((g) => g.list.map((f) => f.id))).size
 
   // A See all link sits low on the page, so bring the tabs back into view and show the picked one.
@@ -30,7 +36,7 @@ export default function Apps() {
     ...groups.map((g) => ({ value: g.id, label: <>{g.name}<em>{g.list.length}</em></> })),
   ]
   const shown = (hub === 'all' ? groups : groups.filter((g) => g.id === hub))
-    .map((g) => ({ ...g, found: g.list.filter((f) => matches(f, q)) }))
+    .map((g) => ({ ...g, found: pinnedFirst(g.list.filter((f) => matches(f, q)), pins) }))
     .filter((g) => g.found.length)
 
   return (
@@ -47,6 +53,18 @@ export default function Apps() {
         </label>
         <div className="apps-tabs"><Segmented options={tabs} value={hub} onChange={pick} /></div>
       </div>
+
+      {hub === 'all' && pinnedList.length > 0 && (
+        <section className="apps-sec rise">
+          <div className="apps-sec-head">
+            <div>
+              <h2>Pinned in {current.name}</h2>
+              <p>Your workspace's go-to apps.</p>
+            </div>
+          </div>
+          <AppGrid list={pinnedList} />
+        </section>
+      )}
 
       {shown.map((g, gi) => {
         const cut = hub === 'all' && !q && g.found.length > PREVIEW

@@ -3,9 +3,12 @@ import { Link } from 'react-router-dom'
 import { AppGrid, AppStrip } from '../components/apps/AppCard.jsx'
 import { isNew, isTrending } from '../components/apps/data.js'
 import { filterFormats } from '../lib/formats/index.js'
+import { pinnedFirst } from '../../shared/workspaces.js'
+import { usePinned } from '../lib/workspaces.js'
 
 export default function Effects() {
-  const list = useMemo(() => filterFormats({ category: 'effects', openOnly: false }), [])
+  const pins = usePinned()
+  const list = useMemo(() => pinnedFirst(filterFormats({ category: 'effects', openOnly: false }), pins), [pins])
   const fresh = list.filter(isNew)
   const hot = list.filter(isTrending)
 
