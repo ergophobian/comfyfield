@@ -111,7 +111,7 @@ export function pod() {
   if (!podOne) {
     const sandbox = sandboxed()
     podOne = podManager({
-      dir: home, sandbox,
+      dir: home, sandbox, adoptPrefix: process.env.COMFYFIELD_POD_ADOPT_PREFIX || undefined,
       keys: () => (sandbox ? { ...config('runpod'), key: 'sandbox' } : config('runpod')),
       ...(sandbox ? { fetch: sandboxFetch({ file: () => path.join(home(), 'pod-sandbox.json') }) } : {}),
     })

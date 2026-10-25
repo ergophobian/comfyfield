@@ -37,6 +37,12 @@ export const plans = {
       { action: 'terminate-and-verify-account' },
     ],
   },
+  // A Pod whose app has gone away must end itself with RunPod's pod-scoped key. The harness only reads
+  // the Pod: no heartbeat and no app-side guard. The outside guard waits five minutes past the deadline.
+  podself: {
+    estimate: 0.25, maximum: 0.4, keys: ['runpod'], minutes: 15, grace: 5,
+    calls: [{ action: 'start-and-observe-self-terminate', estimate: 0.25, maximum: 0.4 }],
+  },
 }
 
 export function readLedger(file) {
@@ -83,7 +89,7 @@ export function acquireLock(file) {
 }
 export function dryRun(backend, { keys = {}, file = ledgerFile, cap = 15, maximum = plans[backend]?.maximum } = {}) {
   const plan = plans[backend]
-  if (!plan) throw new Error('Choose cloud, router, pod or sweep.')
+  if (!plan) throw new Error('Choose cloud, router, pod, podself or sweep.')
   maximum = money(maximum, 'per-run maximum')
   if (maximum < plan.estimate) throw new Error('Per-run maximum is below the planned estimate.')
   checkCap(readLedger(file), maximum, cap)
@@ -95,6 +101,7 @@ export function dryRun(backend, { keys = {}, file = ledgerFile, cap = 15, maximu
     ...(backend === 'cloud' ? { target: 'Comfy Cloud via core.runComfy and the SDK; never a Pod' } : {}),
     ...(backend === 'router' ? { discovery: 'GET https://api.comfy.org/v2/models, all pages; require luma/photon-flash-1', target: 'POST https://api.comfy.org/v2/models/luma/photon-flash-1/requests via core.runComfyRouter', pricing: 'Cheapest fixed-price text-to-image model in the published pricing snapshot; catalog has no prices' } : {}),
     library: '.comfyfield/media + generation-imports.json → /api/library/generations',
+    ...(backend === 'podself' ? { safety: `proof deadline ${plan.minutes} minutes after create; outside guard at ${plan.minutes + plan.grace}; final sweep of this proof's Pod only`, gpu: 'first in-stock ladder rung' } : {}),
     ...(backend === 'pod' ? { safety: '10 minute idle, 45 minute absolute deadline, detached parent-death guard, final account sweep', gpu: 'first in-stock ladder rung fitting image_sdxl; reject quote above reserved maximum', volumeGb: 120 } : {}),
   }
 }
@@ -132,12 +139,15 @@ export async function paidCall({ file, backend, call, runId = randomUUID(), invo
 export function savedKeysOnly() {
   for (const name of ['COMFY_API_KEY', 'COMFY_URL', 'COMFY_MODE', 'COMFY_RUN', 'COMFY_BASE_URL', 'COMFYFIELD_POD_SANDBOX', 'FAL_KEY', 'GEMINI_API_KEY', 'ELEVENLABS_API_KEY', 'RUNPOD_API_KEY', 'RUNPOD_DAILY_CAP', 'RUNPOD_AUTO_START', 'RUNPOD_IDLE_MIN', 'RUNPOD_TIER']) delete process.env[name]
   process.env.COMFYFIELD_HOME = root
+  // The account may hold the owner's own ComfyField Pod. The proof must never adopt or end it.
+  process.env.COMFYFIELD_POD_ADOPT_PREFIX = LIVE_PREFIX
 }
 async function loadCore() {
   savedKeysOnly()
   return import('../server/core.js')
 }
-const prefixOf = (id) => `comfyfield-live-${id}`
+export const LIVE_PREFIX = 'comfyfield-live-'
+const prefixOf = (id) => `${LIVE_PREFIX}${id}`
 
 export async function guardPod({ manager, alive, deadline, prefix, wait = sleep, now = Date.now, ready = () => {} }) {
   ready()
@@ -153,7 +163,7 @@ export async function guardPod({ manager, alive, deadline, prefix, wait = sleep,
 async function launchGuard(id, deadline) {
   const child = fork(fileURLToPath(import.meta.url), ['guard', id, String(process.pid), String(deadline)], {
     detached: true, stdio: ['ignore', 'ignore', 'ignore', 'ipc'], execArgv: [],
-    env: { PATH: process.env.PATH, ...(process.platform === 'win32' ? { SystemRoot: process.env.SystemRoot, TEMP: process.env.TEMP } : {}), COMFYFIELD_HOME: root },
+    env: { PATH: process.env.PATH, ...(process.platform === 'win32' ? { SystemRoot: process.env.SystemRoot, TEMP: process.env.TEMP } : {}), COMFYFIELD_HOME: root, COMFYFIELD_POD_ADOPT_PREFIX: LIVE_PREFIX },
   })
   await new Promise((resolve, reject) => {
     const timer = setTimeout(() => { child.kill(); reject(new Error('Pod cleanup guard did not start.')) }, 10000)
@@ -174,8 +184,9 @@ async function until(manager, predicate, deadline) {
   }
   throw new Error('Pod proof deadline reached.')
 }
-async function assertAccountEmpty(manager) {
-  if ((await manager.sweep({ dryRun: true })).length) throw new Error('ComfyField Pods already exist. Run sweep separately before a proof.')
+// Only live-proof Pods count. Other ComfyField Pods on the account belong to someone's app.
+export async function assertAccountEmpty(manager) {
+  if ((await manager.sweep({ dryRun: true, prefix: LIVE_PREFIX })).length) throw new Error('Live-proof Pods already exist. Run sweep separately before a proof.')
 }
 export async function podProof(core, { file, id, maximum, launchCleanup = launchGuard }) {
   const manager = core.pod()
@@ -235,6 +246,54 @@ export async function podProof(core, { file, id, maximum, launchCleanup = launch
   }
 }
 
+export async function podSelfProof(core, { file, id, maximum, launchCleanup = launchGuard, wait = sleep, now = Date.now }) {
+  const { minutes, grace } = plans.podself
+  const manager = core.pod()
+  await assertAccountEmpty(manager)
+  const quote = await manager.quote({ minVramGb: 0 })
+  const gpu = quote.rungs.find((r) => r.inStock && r.usdPerHr > 0)
+  const costOf = (rate) => (rate + 170 * 0.2 / 730) * (minutes + grace + 2) / 60
+  if (!gpu || costOf(gpu.usdPerHr) > maximum) throw new Error('No fitting Pod quote within the per-run maximum.')
+  const t0 = now()
+  const terminateAt = t0 + minutes * 60_000
+  const stopGuard = await launchCleanup(id, terminateAt + grace * 60_000)
+  const evidence = { gpu: gpu.name, quotePerHour: gpu.usdPerHr, deadline: new Date(terminateAt).toISOString() }
+  try {
+    await paidCall({ file, backend: 'pod', call: { ...plans.podself.calls[0], maximum }, invoke: async ({ onSubmitted }) => {
+      await manager.start({ gpu, proof: { id, terminateAt } })
+      onSubmitted({ id: manager.status().pod.id })
+      const rate = manager.status().pod.costPerHr
+      if (!rate || costOf(rate) > maximum) throw new Error('Created Pod rate exceeds the reserved maximum.')
+      while (now() < terminateAt + grace * 60_000) {
+        await manager.refresh()
+        const s = manager.status()
+        if (s.phase === 'ready' && evidence.startToReadySeconds == null) {
+          if (!s.safety.selfTerminateReady || s.safety.proofDeadline !== Math.floor(terminateAt / 1000)) throw new Error('Pod did not confirm its independent termination guard.')
+          evidence.startToReadySeconds = (now() - t0) / 1000
+        }
+        if (s.phase === 'none') {
+          evidence.goneAfterSeconds = (now() - t0) / 1000
+          evidence.goneAfterDeadlineSeconds = (now() - terminateAt) / 1000
+          evidence.event = s.event?.text || null
+          return
+        }
+        await wait(5000)
+      }
+      throw new Error('The Pod did not terminate itself before the outside guard.')
+    } })
+    if (evidence.startToReadySeconds == null) throw new Error('The Pod ended before it was ready; self-termination is not proven.')
+    return evidence
+  } finally {
+    manager.stopMonitor()
+    const results = await manager.sweep({ prefix: prefixOf(id) })
+    evidence.sweptByHarness = results.filter((row) => row.terminated).length
+    if (results.every((row) => row.terminated)) {
+      await assertAccountEmpty(manager)
+      stopGuard()
+    } else throw new Error('Pod cleanup failed. The detached guard is retrying; run sweep.')
+  }
+}
+
 export async function execute(backend, { file = ledgerFile, cap = 15, maximum = plans[backend]?.maximum, core, allowPaid = false, print = console.log, dry = false, keys = core?.readKeys() || {}, signal } = {}) {
   const release = acquireLock(`${file}.lock`)
   try {
@@ -245,6 +304,7 @@ export async function execute(backend, { file = ledgerFile, cap = 15, maximum = 
     if (Object.values(preview.keys).some((present) => !present)) throw new Error('Missing Connections key; no call made.')
     const id = randomUUID()
     if (backend === 'pod') return await podProof(core, { file, id, maximum })
+    if (backend === 'podself') return await podSelfProof(core, { file, id, maximum })
     const results = []
     for (const call of plans[backend].calls) {
       const limit = maximum * call.maximum / plans[backend].maximum
@@ -300,14 +360,16 @@ export async function main(args = process.argv.slice(2)) {
     process.on('message', (m) => { if (m.done) process.exit(0) })
     return guardPod({ manager: core.pod(), prefix: prefixOf(id), deadline: Number(deadline), alive: () => { if (disconnected) return false; try { process.kill(Number(owner), 0); return true } catch { return false } }, ready: () => process.send?.({ ready: true }) })
   }
-  if (!['cloud', 'router', 'pod', 'sweep'].includes(backend)) throw new Error('Usage: node scripts/live-run.mjs cloud|router|pod|sweep [--dry-run] [--cap 15] [--max dollars] [--allow-paid]')
+  if (!['cloud', 'router', 'pod', 'podself', 'sweep'].includes(backend)) throw new Error('Usage: node scripts/live-run.mjs cloud|router|pod|podself|sweep [--dry-run] [--cap 15] [--max dollars] [--allow-paid] [--all, sweep only]')
   let cap = 15
   let maximum = plans[backend]?.maximum
   let dry = false
   let allowPaid = false
+  let all = false
   for (let i = 0; i < options.length; i++) {
     if (options[i] === '--dry-run') dry = true
     else if (options[i] === '--allow-paid') allowPaid = true
+    else if (options[i] === '--all' && backend === 'sweep') all = true
     else if (options[i] === '--cap') cap = money(options[++i], 'cap')
     else if (options[i] === '--max') maximum = money(options[++i], 'per-run maximum')
     else throw new Error('Unknown live-run option.')
@@ -318,12 +380,13 @@ export async function main(args = process.argv.slice(2)) {
   }
   if (dry && backend === 'sweep') {
     const keys = readSavedKeys()
-    return console.log(JSON.stringify({ dryRun: true, keys: { 'runpod.key': Boolean(keys.runpod?.key) }, calls: ['List account Pods via server/pod.js', 'Terminate every comfyfield-* Pod, including paused Pods', 'List again and fail if any remain'] }, null, 2))
+    return console.log(JSON.stringify({ dryRun: true, keys: { 'runpod.key': Boolean(keys.runpod?.key) }, calls: ['List account Pods via server/pod.js', `Terminate every ${all ? 'comfyfield-' : LIVE_PREFIX}* Pod, including paused Pods`, 'List again and fail if any live-proof Pod remains'] }, null, 2))
   }
   const core = await loadCore()
   if (backend === 'sweep') {
     // Recovery remains available when a crashed owner left its spend lock behind.
-    const rows = await core.pod().sweep()
+    // `--all` also ends Pods the app started, which may be in use from another checkout.
+    const rows = await core.pod().sweep(all ? {} : { prefix: LIVE_PREFIX })
     console.log(JSON.stringify(rows, null, 2))
     if (rows.some((row) => !row.terminated)) throw new Error('Some ComfyField Pods could not be terminated. Retry sweep.')
     await assertAccountEmpty(core.pod())

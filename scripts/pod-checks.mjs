@@ -503,6 +503,19 @@ await test('lifecycle: a restarted server adopts its Pod, and a lost pod.json is
   assert.equal(b.rp.calls.findLast((c) => c.path === '/heartbeat').auth, 'Bearer tok')
 })
 
+await test('lifecycle: a live proof adopts only its own Pods, never the app Pod on the same account', async () => {
+  const c = setup()
+  c.opts.adoptPrefix = 'comfyfield-live-'
+  const pod = c.make()
+  c.rp.listExtra.push({ id: 'owners', name: 'comfyfield-mvo3nol4', desiredStatus: 'RUNNING', costPerHr: 0.7, env: { POD_TOKEN: 'tok' }, createdAt: new Date(c.clock.t).toISOString() })
+  c.rp.statusd = readyStatus()
+  assert.equal((await pod.tick()).phase, 'none', 'the app Pod is not adopted')
+  assert(!c.rp.calls.some((x) => x.method === 'DELETE'), 'and never ended')
+  const s = await pod.start()
+  assert.notEqual(s.pod.id, 'owners')
+  assert.throws(() => podManager({ ...c.opts, adoptPrefix: 'other-' }), /ComfyField Pods/)
+})
+
 await test('lifecycle: a lease waits for a starting Pod, downloads missing files and reports failures', async () => {
   await assert.rejects(setup().pod.lease(), (e) => e.code === 'no_pod' && e.message === NO_POD)
 
