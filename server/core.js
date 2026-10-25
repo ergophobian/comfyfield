@@ -10,7 +10,7 @@ import { Comfy, JobFailed } from '@comfyorg/sdk'
 import { models as pinned, falCategories, podWorkflows, routerWriterModel } from '../src/lib/catalog.js'
 import { comfyVars, comfyRouterInput, falInput, estimate, fill, falEndpointFor, dropOptional } from '../shared/mapping.js'
 import { routerEntry } from '../shared/routerModels.js'
-import { renderStitch } from './stitch.js'
+import { renderStitch, findFfmpeg } from './stitch.js'
 import { draftInstructions, parseDraft } from '../shared/flowDraft.js'
 import { renderBlender, blenderVersion } from './blender.js'
 import { renderThree } from './threejs.js'
@@ -1354,3 +1354,9 @@ export async function saveFiles(files, dir) {
 
 // Business-page import stays isolated from provider execution.
 export const importBusinessPage = (options, deps = {}) => readBusinessPage(options, { save: saveMedia, ...deps })
+export async function stitchStatus() {
+  try {
+    await findFfmpeg()
+    return { available: true }
+  } catch (e) { return { available: false, error: e.message } }
+}

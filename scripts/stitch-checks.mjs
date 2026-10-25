@@ -27,9 +27,10 @@ process.env.COMFYFIELD_HOME = dir
 const binary = await findFfmpeg()
 console.log(`check synthetic fixtures with ${binary} on ${process.platform}/${process.arch}`)
 const run = (args) => ffmpeg(args, { binary, cwd: dir })
-const red = path.join(dir, 'red.mp4')
-const blue = path.join(dir, 'blue.mp4')
-const music = path.join(dir, 'music.wav')
+fs.mkdirSync(path.dirname(core.mediaPath('fixture')), { recursive: true })
+const red = core.mediaPath('red.mp4')
+const blue = core.mediaPath('blue.mp4')
+const music = core.mediaPath('music.wav')
 await run(['-f', 'lavfi', '-i', 'color=c=red:s=320x180:r=24:d=1.2', '-f', 'lavfi', '-i', 'sine=frequency=440:duration=1.2', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-shortest', red])
 await run(['-f', 'lavfi', '-i', 'color=c=blue:s=180x320:r=25:d=1.3', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', blue])
 await run(['-f', 'lavfi', '-i', 'sine=frequency=220:duration=0.3', music])
@@ -42,19 +43,22 @@ const rms = (file, at) => {
   for (let i = 0; i < buf.length; i += 4) total += buf.readFloatLE(i) ** 2
   return Math.sqrt(total / (buf.length / 4))
 }
+const redUrl = '/media/red.mp4'
+const blueUrl = '/media/blue.mp4'
+const musicUrl = '/media/music.wav'
 const originalFetch = global.fetch
 global.fetch = async (url, ...args) => {
   if (!/^http:\/\/(localhost|127\.0\.0\.1):/.test(String(url))) throw new Error(`Unexpected network call: ${url}`)
   return originalFetch(url, ...args)
 }
 assert.throws(() => stitchOptions({ clips: [] }), /1 and 50/)
-assert.throws(() => stitchOptions({ clips: [{ url: red, start: 1, end: 0.5 }] }), /after/)
-assert.throws(() => stitchOptions({ clips: [red], aspect: '3:2' }), /aspect/)
-assert.throws(() => stitchOptions({ clips: [red], music: { url: music, volume: -1 } }), /volume/)
-await assert.rejects(core.stitch({ clips: [{ url: red, start: 9 }] }), /outside/)
-await assert.rejects(core.stitch({ clips: [music] }), /no video/)
+assert.throws(() => stitchOptions({ clips: [{ url: redUrl, start: 1, end: 0.5 }] }), /after/)
+assert.throws(() => stitchOptions({ clips: [redUrl], aspect: '3:2' }), /aspect/)
+assert.throws(() => stitchOptions({ clips: [redUrl], music: { url: musicUrl, volume: -1 } }), /volume/)
+await assert.rejects(core.stitch({ clips: [{ url: redUrl, start: 9 }] }), /outside/)
+await assert.rejects(core.stitch({ clips: [musicUrl] }), /no video/)
 
-const spec = { clips: [{ url: red, start: 0.2, end: 0.7, caption: "First: 100% 'quoted' \\ {literal}\nSecond line" }, { url: blue, start: 0.1, end: 0.8 }], aspect: '1:1', preview: true }
+const spec = { clips: [{ url: redUrl, start: 0.2, end: 0.7, caption: "First: 100% 'quoted' \\ {literal}\nSecond line" }, { url: blueUrl, start: 0.1, end: 0.8 }], aspect: '1:1', preview: true }
 const preview = await core.stitch(spec)
 console.log('check decoded frame pixels and audio samples')
 assert.equal(preview.duration, 1.2)
@@ -83,7 +87,7 @@ console.log('ok    trims, mixed formats, ordering, captions, clip audio, preview
 if (bundledFfmpeg) {
   // Exercise the bundled binary even when system ffmpeg exists, as on this Windows machine.
   console.log(`check bundled preview with ${bundledFfmpeg}`)
-  const mixed = await renderStitch({ clips: [{ url: blue, start: 0, end: 1.2, caption: 'Bundled captions' }], aspect: '9:16', music: { url: music, volume: 0.4, fade: 0.3 } }, { home: core.home, mediaPath: core.mediaPath, binary: bundledFfmpeg, timeout: 30000, onProgress: console.log })
+  const mixed = await renderStitch({ clips: [{ url: blueUrl, start: 0, end: 1.2, caption: 'Bundled captions' }], aspect: '9:16', music: { url: musicUrl, volume: 0.4, fade: 0.3 } }, { home: core.home, mediaPath: core.mediaPath, binary: bundledFfmpeg, timeout: 30000, onProgress: console.log })
   assert.equal(frame(mixed.path, 0.5).length, 720 * 1280 * 3)
   const middle = rms(mixed.path, 0.55)
   assert.ok(middle > 0.015 && middle < 0.05, `Music volume applied (${middle})`)
@@ -106,7 +110,7 @@ console.log('ok    narration plays once, pads silence, preserves video duration 
 
 const specFile = path.join(dir, 'stitch.json')
 console.log('check CLI subprocess')
-fs.writeFileSync(specFile, JSON.stringify({ clips: [{ url: blue, end: 0.2 }], aspect: '4:5' }))
+fs.writeFileSync(specFile, JSON.stringify({ clips: [{ url: blueUrl, end: 0.2 }], aspect: '4:5' }))
 const cli = JSON.parse(execFileSync(process.execPath, ['bin/comfyfield.js', 'stitch', '--spec', specFile, '--json'], { encoding: 'utf8', timeout: 30000, windowsHide: true }))
 assert.equal(cli.exported, true)
 assert.equal(cli.width / cli.height, 4 / 5)
@@ -119,7 +123,7 @@ const server = createServer()
 const client = new Client({ name: 'stitch-check', version: '1' })
 await Promise.all([server.connect(serverTransport), client.connect(clientTransport)])
 try {
-  const result = await client.callTool({ name: 'stitch', arguments: { clips: [{ url: red, end: 0.2 }], preview: true } })
+  const result = await client.callTool({ name: 'stitch', arguments: { clips: [{ url: redUrl, end: 0.2 }], preview: true } })
   assert.ok(!result.isError, JSON.stringify(result))
   const file = JSON.parse(result.content[0].text)
   const exported = await client.callTool({ name: 'export_stitch', arguments: { url: file.url } })
@@ -132,6 +136,7 @@ console.log('check HTTP routes')
 await vite.listen()
 const base = `http://127.0.0.1:${vite.httpServer.address().port}`
 try {
+  assert.equal((await (await fetch(`${base}/api/stitch/status`)).json()).available, true)
   const uploaded = await (await fetch(`${base}/api/stitch/upload`, { method: 'POST', headers: { 'Content-Type': 'video/mp4' }, body: fs.readFileSync(blue) })).json()
   assert.ok(uploaded.url)
   const res = await fetch(`${base}/api/stitch`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clips: [{ url: uploaded.url, end: 0.2 }], preview: true }) })
@@ -149,3 +154,28 @@ try {
 } finally { await vite.close(); global.fetch = originalFetch }
 console.log('ok    HTTP upload, preview, media playback and Library export')
 console.log(`All Stitch checks passed. Synthetic fixtures retained at ${dir}`)
+
+console.log('check story stills and per-shot narration')
+const still = core.mediaPath('story.png')
+const stillUrl = '/media/story.png'
+await run(['-f', 'lavfi', '-i', 'color=c=green:s=160x90', '-frames:v', '1', still])
+const narrated = await renderStitch({ clips: [
+  { url: stillUrl, kind: 'image', duration: 1, caption: 'A narrated still', narration: { url: musicUrl } },
+  { url: blueUrl, start: 0.1, end: 0.3, narration: { url: musicUrl } },
+], aspect: '1:1', captionStyle: 'boxed', music: { url: musicUrl, volume: 0.1 } }, { home: core.home, mediaPath: core.mediaPath, binary, timeout: 30000 })
+assert.equal(narrated.duration, 0.6, 'Per-shot audio determines final duration')
+assert.ok(rms(narrated.path, 0.1) > 0.02, 'Still shot includes narration')
+assert.ok(rms(narrated.path, 0.4) > 0.02, 'Video shot includes narration')
+assert.equal(frame(narrated.path, 0.4).length, 720 * 720 * 3)
+assert.throws(() => stitchOptions({ clips: [{ url: stillUrl, kind: 'image' }] }), /duration/)
+assert.throws(() => stitchOptions({ clips: [blueUrl], captionStyle: 'word-by-word' }), /caption style/)
+console.log('ok    story stills, narration, frozen video tails and boxed captions')
+
+const capped = await renderStitch({ clips: [{ url: stillUrl, kind: 'image', duration: 1, maxDuration: 0.2, narration: { url: musicUrl } }] }, { home: core.home, mediaPath: core.mediaPath, binary })
+assert.equal(capped.duration, 0.2, 'Narration is sped up, preserving all words within the animation cap')
+assert.ok(rms(capped.path, 0.05) > 0.01)
+await assert.rejects(core.stitch({ clips: [{ url: red }] }), /uploaded or generated/, 'Arbitrary local paths are refused')
+await assert.rejects(core.stitch({ clips: [{ url: '/media/not-present.mp4' }] }))
+await assert.rejects(renderStitch({ clips: [{ url: blueUrl }] }, { home: core.home, mediaPath: core.mediaPath, binary, timeout: 1 }), /too long/)
+assert.deepEqual(fs.readdirSync(path.join(core.home(), 'stitch')).filter((name) => name.startsWith('render-')), [], 'Temporary render folders are removed after success and failure')
+console.log('ok    app media only, narration duration cap and render cleanup')

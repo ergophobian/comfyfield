@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
 import { runFormat as runWithPlanning } from '../src/lib/formats/runner.js'
-import { allFormats, formats } from '../src/lib/formats/index.js'
+import { allFormats, formats, formatProblems } from '../src/lib/formats/index.js'
 import { effects } from '../src/lib/formats/effects.js'
 import { initialValues } from '../src/lib/recipes.js'
 import { schemas } from '../src/lib/formats/schemas.js'
@@ -22,7 +22,7 @@ globalThis.fetch = () => { throw new Error('Network is forbidden in integration 
 const photo = { url: '/media/photo.png', ratio: '9:16' }
 const valuesFor = (format) => ({ ...initialValues(format), ...Object.fromEntries(format.inputs.filter((i) => i.type === 'image').map((i) => [i.id, photo])) })
 assert.equal(effects.length, research.specs.length)
-assert.deepEqual(formats, allFormats.filter((format) => !validateFormat(format).length), 'Gallery contains exactly the valid catalog formats')
+assert.deepEqual(formats, allFormats.filter((format) => !formatProblems.get(format.id).length), 'Gallery contains exactly the valid catalog formats')
 assert.equal(new Set(allFormats.map((format) => format.id)).size, allFormats.length, 'Every catalog id is unique')
 for (const [i, format] of effects.entries()) {
   assert.equal(format.steps[0].instructions, research.specs[i].writer_instructions)

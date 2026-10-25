@@ -10,6 +10,7 @@ import { archOf, downloadSeconds } from '../shared/modelFiles.js'
 import { upload } from './upload.js'
 import { serveMedia } from './serveMedia.js'
 import { agentRoutes } from './agent-routes.js'
+import { planStory } from './story.js'
 import { createJobs } from './jobs.js'
 import { allowedApiRequest } from './local-access.js'
 import { userFormats } from './userFormats.js'
@@ -292,6 +293,7 @@ function mount(server, harness) {
       if (url.pathname === '/api/pod/quote') return send(res, 200, await podQuote(url.searchParams.get('workflow')))
       if (url.pathname === '/api/pod/options' && req.method === 'GET') return send(res, 200, await core.podOptions())
       if (url.pathname.startsWith('/api/pod/') && req.method === 'POST') return send(res, 200, await podAction(url.pathname.slice('/api/pod/'.length), await body(req)))
+      if (url.pathname === '/api/story/plan' && req.method === 'POST') return send(res, 200, await planStory(await body(req)))
       if (await agents(req, res, url)) return
       if (url.pathname === '/api/formats' && req.method === 'GET') return send(res, 200, { formats: userFormats.list() })
       if (url.pathname === '/api/formats/import' && req.method === 'POST') return send(res, 200, await userFormats.import(await body(req)))
@@ -343,6 +345,7 @@ function mount(server, harness) {
         return send(res, 200, { files: await core.runGoogle(await body(req)) })
       }
       if (url.pathname === '/api/upload' && req.method === 'POST') return send(res, 200, await upload(req, core.saveMedia))
+      if (url.pathname === '/api/stitch/status' && req.method === 'GET') return send(res, 200, await core.stitchStatus())
       if (url.pathname === '/api/stitch' && req.method === 'POST') return send(res, 200, await core.stitch(await body(req)))
       if (url.pathname === '/api/stitch/exports' && req.method === 'GET') return send(res, 200, core.stitchedExports())
       if (url.pathname === '/api/stitch/export' && req.method === 'POST') return send(res, 200, core.exportStitch((await body(req)).url))

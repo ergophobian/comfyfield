@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import { appMediaFile, stitchMediaFile as localFile } from './stitchMedia.js'
 import { findFfmpeg } from './ffmpeg.js'
 export { findFfmpeg } from './ffmpeg.js'
 
@@ -13,13 +14,15 @@ export function ffmpeg(args, { binary = 'ffmpeg', cwd, allowFailure = false, tim
   return new Promise((resolve, reject) => {
     const child = spawn(binary, ['-hide_banner', '-nostdin', ...args], { cwd, windowsHide: true })
     let stderr = ''
-    const timer = setTimeout(() => { child.kill(); reject(new Error(`Stitch took too long. Try shorter clips.\n${stderr.slice(-2400)}`)) }, timeout)
+    let timedOut = false
+    const timer = setTimeout(() => { timedOut = true; child.kill() }, timeout)
     child.stderr.on('data', (chunk) => { stderr = (stderr + chunk).slice(-64000) })
     child.stdout.resume()
     child.on('error', (e) => { clearTimeout(timer); reject(e) })
     child.on('close', (code) => {
       clearTimeout(timer)
-      if (code === 0 || allowFailure) resolve(stderr)
+      if (timedOut) reject(new Error(`Stitch took too long. Try shorter clips.\n${stderr.slice(-2400)}`))
+      else if (code === 0 || allowFailure) resolve(stderr)
       else reject(new Error(`Stitch failed: ${stderr.slice(-2400)}`))
     })
   })
@@ -32,7 +35,8 @@ const seconds = (value, fallback, name) => {
   return n
 }
 
-export function stitchOptions({ clips, aspect = '16:9', music, narration } = {}) {
+export function stitchOptions({ clips, aspect = '16:9', music, narration, captionStyle = 'clean' } = {}) {
+  if (!['bold', 'clean', 'boxed'].includes(captionStyle)) throw invalid('Choose a supported caption style.')
   if (!Array.isArray(clips) || !clips.length || clips.length > 50) throw invalid('Choose between 1 and 50 clips.')
   if (!dimensions[aspect]) throw invalid('Choose a supported output aspect (16:9, 9:16, 1:1, 4:5, 3:4 or 2:3).')
   const ordered = clips.map((clip) => {
@@ -41,7 +45,12 @@ export function stitchOptions({ clips, aspect = '16:9', music, narration } = {})
     const start = seconds(c.start, 0, 'Trim start')
     const end = seconds(c.end, undefined, 'Trim end')
     if (end != null && end <= start) throw invalid('Trim end must come after trim start.')
-    return { url: c.url, start, end, caption: String(c.caption || '').slice(0, 2000) }
+    const duration = seconds(c.duration, undefined, 'Shot duration')
+    if (c.kind === 'image' && !(duration > 0 && duration <= 120)) throw invalid('Still shots need a duration up to 120 seconds.')
+    if (c.narration && (typeof c.narration.url !== 'string' || !c.narration.url.trim())) throw invalid('Narration needs a URL or file path.')
+    const maxDuration = seconds(c.maxDuration, undefined, 'Maximum duration')
+    if (maxDuration != null && !(maxDuration > 0 && maxDuration <= 120)) throw invalid('Maximum duration must be between 0 and 120 seconds.')
+    return { maxDuration, url: c.url, start, end, kind: c.kind, duration, narration: c.narration && { url: c.narration.url }, caption: String(c.caption || '').slice(0, 2000) }
   })
   let track
   if (music?.url) {
@@ -57,30 +66,31 @@ export function stitchOptions({ clips, aspect = '16:9', music, narration } = {})
     if (volume > 2) throw invalid('Narration volume must be between 0 and 2.')
     speech = { url: narration.url, volume }
   }
-  return { clips: ordered, aspect, music: track, narration: speech }
-}
-
-async function localFile(url, dir, name, mediaPath) {
-  if (url.startsWith('/media/')) return mediaPath(url)
-  if (/^https?:\/\//i.test(url)) {
-    const res = await fetch(url, { signal: AbortSignal.timeout(120000) })
-    if (!res.ok) throw invalid(`Could not download a clip or music track (${res.status}).`)
-    const file = path.join(dir, name)
-    fs.writeFileSync(file, Buffer.from(await res.arrayBuffer()))
-    return file
-  }
-  if (/^\w+:/.test(url) && !/^[a-z]:[\\/]/i.test(url)) throw invalid('Use a local file, /media URL, or http(s) URL.')
-  return path.resolve(url)
+  return { clips: ordered, aspect, music: track, narration: speech, captionStyle }
 }
 
 async function inspect(file, binary, timeout) {
   const log = await ffmpeg(['-protocol_whitelist', 'file,pipe', '-i', file], { binary, timeout, allowFailure: true })
   const m = /Duration: (\d+):(\d+):(\d+(?:\.\d+)?)/.exec(log)
   if (!m) throw invalid('Could not read the clip or track duration. Use a supported media file.')
-  return { duration: Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]), audio: /Stream #.*Audio:/.test(log), video: /Stream #.*Video:/.test(log) }
+  return { fps: Number(/(\d+(?:\.\d+)?) fps/.exec(log)?.[1]), duration: Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]), audio: /Stream #.*Audio:/.test(log), video: /Stream #.*Video:/.test(log) }
 }
 
-function captionFile(text, width, height) {
+export async function inspectStoryFootage(url, { mediaPath, binary, timeout = 30000, range } = {}) {
+  const file = appMediaFile(url, mediaPath)
+  binary ||= await findFfmpeg()
+  const info = await inspect(file, binary, timeout)
+  if (!info.video || !(info.fps > 0)) throw invalid('Could not read the source frame rate. Turn off Restyle footage or upload another video.')
+  if (range) {
+    // Count decoded source frames too: average fps alone can miss a variable-rate burst.
+    const log = await ffmpeg(['-protocol_whitelist', 'file,pipe', '-ss', String(range.start), '-i', file, '-t', String(range.end - range.start), '-map', '0:v:0', '-an', '-frames:v', '82', '-fps_mode', 'passthrough', '-f', 'null', '-'], { binary, timeout })
+    const counts = [...log.matchAll(/frame=\s*(\d+)/g)]
+    info.frames = Number(counts.at(-1)?.[1])
+  }
+  return info
+}
+
+function captionFile(text, width, height, style) {
   const literal = text.replace(/\\/g, '＼').replace(/\{/g, '｛').replace(/\}/g, '｝').replace(/\r?\n/g, '\\N')
   return `[Script Info]
 ScriptType: v4.00+
@@ -89,7 +99,7 @@ PlayResY: ${height}
 WrapStyle: 0
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,Noto Sans,${Math.round(width / 24)},&H00FFFFFF,&H00FFFFFF,&H00101010,&H80000000,0,0,0,0,100,100,0,0,1,2,1,2,40,40,${Math.round(height / 16)},1
+Style: Default,Noto Sans,${Math.round(width / (style === 'bold' ? 20 : 24))},&H00FFFFFF,&H00FFFFFF,&H00101010,&H80000000,${style === 'bold' ? -1 : 0},0,0,0,100,100,0,0,${style === 'boxed' ? 3 : 1},2,1,2,40,40,${Math.round(height / 16)},1
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 Dialogue: 0,0:00:00.00,9:59:59.00,Default,,0,0,0,,${literal}
@@ -103,27 +113,42 @@ export async function renderStitch(options, { home, mediaPath, binary, timeout, 
   const base = path.join(home(), 'stitch')
   fs.mkdirSync(base, { recursive: true })
   const dir = fs.mkdtempSync(path.join(base, 'render-'))
+  try {
+    return await renderSegments(opts, { dir, mediaPath, binary, timeout, onProgress })
+  } finally {
+    await fs.promises.rm(dir, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 })
+  }
+}
+
+async function renderSegments(opts, { dir, mediaPath, binary, timeout, onProgress }) {
   const [width, height] = dimensions[opts.aspect]
   fs.copyFileSync(path.join(fonts, 'NotoSans-Regular.ttf'), path.join(dir, 'NotoSans-Regular.ttf'))
   let duration = 0
   for (const [i, clip] of opts.clips.entries()) {
     const file = await localFile(clip.url, dir, `input-${i}`, mediaPath)
-    const info = await inspect(file, binary, timeout)
+    const info = clip.kind === 'image' ? { video: true, audio: false, duration: clip.duration } : await inspect(file, binary, timeout)
     if (!info.video) throw invalid(`Clip ${i + 1} has no video.`)
     if (clip.start >= info.duration || (clip.end != null && clip.end > info.duration + 0.05)) throw invalid(`Clip ${i + 1} trim is outside its duration (${info.duration}s).`)
-    const length = (clip.end ?? info.duration) - clip.start
+    const narration = clip.narration ? await localFile(clip.narration.url, dir, `narration-${i}`, mediaPath) : null
+    const speech = narration ? await inspect(narration, binary, timeout) : null
+    if (speech && !speech.audio) throw invalid(`Shot ${i + 1} narration has no playable audio.`)
+    if (speech && speech.duration > 120) throw invalid(`Shot ${i + 1} narration exceeds 120 seconds. Split it into shorter shots.`)
+    const length = Math.min(speech?.duration || (clip.end ?? info.duration) - clip.start, clip.maxDuration ?? Infinity)
     // Round every segment to whole frames; the soundtrack must match the joined video.
     const frames = Math.max(1, Math.round(length * 30))
     duration += frames / 30
-    const args = ['-y', '-protocol_whitelist', 'file,pipe', '-ss', String(clip.start), '-i', file]
-    if (!info.audio) args.push('-f', 'lavfi', '-i', 'anullsrc=r=48000:cl=stereo')
-    let video = `scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,tpad=stop_mode=clone:stop_duration=1`
+    const args = ['-y', '-protocol_whitelist', 'file,pipe']
+    if (clip.kind === 'image') args.push('-loop', '1', '-framerate', '30')
+    args.push('-ss', String(clip.start), '-i', file)
+    if (narration) args.push('-i', narration)
+    else if (!info.audio) args.push('-f', 'lavfi', '-i', 'anullsrc=r=48000:cl=stereo')
+    let video = `scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,trim=duration=${(clip.end ?? info.duration) - clip.start},tpad=stop_mode=clone:stop_duration=${Math.ceil(length)}`
     if (clip.caption) {
-      fs.writeFileSync(path.join(dir, `caption-${i}.ass`), captionFile(clip.caption, width, height))
+      fs.writeFileSync(path.join(dir, `caption-${i}.ass`), captionFile(clip.caption, width, height, opts.captionStyle))
       video += `,ass=filename=caption-${i}.ass:fontsdir=.`
     }
-    args.push('-map', '0:v:0', '-map', info.audio ? '0:a:0' : '1:a:0', '-vf', video,
-      '-af', 'aresample=48000,apad', '-t', String(frames / 30), '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20',
+    args.push('-map', '0:v:0', '-map', narration || !info.audio ? '1:a:0' : '0:a:0', '-vf', video,
+      '-af', `${speech?.duration > length ? `atempo=${speech.duration / length},` : ''}aresample=48000,apad`, '-t', String(frames / 30), '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20',
       '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-ar', '48000', '-ac', '2', `clip-${i}.mp4`)
     onProgress(`Encode clip ${i + 1}`)
     await ffmpeg(args, { binary, timeout, cwd: dir })
