@@ -8,7 +8,7 @@ import { randomUUID } from 'node:crypto'
 import { setTimeout as delay } from 'node:timers/promises'
 import { Comfy, JobFailed } from '@comfyorg/sdk'
 import { models as pinned, falCategories, podWorkflows, routerWriterModel } from '../src/lib/catalog.js'
-import { comfyVars, comfyRouterInput, falInput, estimate, fill, falEndpointFor, dropOptional } from '../shared/mapping.js'
+import { comfyVars, comfyRouterInput, falInput, estimate, fill, falEndpointFor, dropOptional, PICTURE_SLOTS } from '../shared/mapping.js'
 import { renderStitch } from './stitch.js'
 import { archOf, minVramOf, notOnCloud, podNeedsOf, volumeFor, RUNTIMES } from '../shared/modelFiles.js'
 import { DEFAULT_TIER, TIER_IDS } from '../shared/gpuTiers.js'
@@ -905,8 +905,8 @@ const unsetInput = (template, vars) => [...JSON.stringify(template).matchAll(/\{
 // The loader inputs a run uploads its own files to, by placeholder: attached images and a mask, a video
 // edit's clip, and audio (a recording, or a saved voice's sample).
 export const UPLOAD_KEYS = {
-  LoadImage: ['image', ['image', 'image2', 'image3', 'image4', 'image5', 'mask']],
-  LoadVideo: ['file', ['video']],
+  LoadImage: ['image', [...PICTURE_SLOTS, 'mask']],
+  LoadVideo: ['file', ['video', 'clipvideo']],
   LoadAudio: ['audio', ['audio', 'voice']],
 }
 export const uploadsOf = (template) => Object.entries(template).flatMap(([id, node]) => {

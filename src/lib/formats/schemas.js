@@ -739,6 +739,27 @@ export const schemas = {
       "seed",
       "voice"
     ],
+    "fasth3_omni_r2v": [
+      "audio",
+      "clipvideo",
+      "duration",
+      "height",
+      "image",
+      "image2",
+      "image3",
+      "image4",
+      "image5",
+      "image6",
+      "image7",
+      "image8",
+      "image9",
+      "prompt",
+      "seconds",
+      "seed",
+      "start",
+      "video",
+      "width"
+    ],
     "flux3_klein_t2i": [
       "count",
       "height",
@@ -879,6 +900,27 @@ export const schemas = {
       "lora_strength",
       "prompt",
       "seed"
+    ],
+    "h3_omni_r2v": [
+      "audio",
+      "clipvideo",
+      "duration",
+      "height",
+      "image",
+      "image2",
+      "image3",
+      "image4",
+      "image5",
+      "image6",
+      "image7",
+      "image8",
+      "image9",
+      "prompt",
+      "seconds",
+      "seed",
+      "start",
+      "video",
+      "width"
     ],
     "h3_open_i2v": [
       "frames",
@@ -1656,8 +1698,36 @@ export const schemas = {
     "drama3_tts": [
       "voice"
     ],
+    "fasth3_omni_r2v": [
+      "audio",
+      "clipvideo",
+      "image2",
+      "image3",
+      "image4",
+      "image5",
+      "image6",
+      "image7",
+      "image8",
+      "image9",
+      "start",
+      "video"
+    ],
     "h3_lora_i2v": [
       "image2"
+    ],
+    "h3_omni_r2v": [
+      "audio",
+      "clipvideo",
+      "image2",
+      "image3",
+      "image4",
+      "image5",
+      "image6",
+      "image7",
+      "image8",
+      "image9",
+      "start",
+      "video"
     ],
     "infinitetalk_tts": [
       "voice"

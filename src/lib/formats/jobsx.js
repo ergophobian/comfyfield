@@ -560,6 +560,39 @@ const videoJobs = [
     cover: covers.peach,
   }),
   open({
+    id: 'omni-reference', name: 'Mix references', kind: 'video', category: 'characters',
+    blurb: 'Pictures, a clip and a voice in one shot, with sound.',
+    runsOn: 'FastH3 Omni or MiniMax H3', refTags: true,
+    inputs: [
+      { id: 'scene', type: 'longtext', label: 'What happens', placeholder: 'The woman in <Picture 1> walks through the street in <Picture 2> and says the line from <Audio 1> in that voice' },
+      ...Array.from({ length: 9 }, (_, i) => ({ id: `ref${i + 1}`, type: 'image', label: `Picture ${i + 1}`, ...(i && { optional: true, half: true }) })),
+      { id: 'video', type: 'video', label: 'Video 1', optional: true, half: true },
+      { id: 'audio', type: 'audio', label: 'Audio 1', optional: true, half: true },
+      { id: 'clipsound', type: 'choice', label: 'Clip sound', half: true, default: 'use', options: [
+        { id: 'use', label: 'Use it', note: 'Name it <Video 1 sound>', params: { clipsound: true } },
+        { id: 'mute', label: 'Leave it out' },
+      ] },
+      { id: 'model', type: 'choice', label: 'Model', half: true, default: 'fast', options: [
+        { id: 'fast', label: 'FastH3 Omni', note: '8 steps' },
+        { id: 'base', label: 'MiniMax H3', note: '20 steps, slower' },
+      ] },
+      // A video's trim sets `duration`, so the graph reads the output length from `seconds`.
+      { id: 'length', type: 'choice', label: 'Length', half: true, default: '5', options: [
+        { id: '5', label: '5 seconds', params: { duration: 5, seconds: 5 } },
+        { id: '10', label: '10 seconds', params: { duration: 10, seconds: 10 } },
+        { id: '15', label: '15 seconds', params: { duration: 15, seconds: 15 } },
+      ] },
+      shape('wide'),
+    ],
+    prompt: '{scene}',
+    settings: { aspect: '16:9', duration: 5 },
+    steps: [{ id: 'generate', provider: 'comfy', kind: 'video', targetInput: 'model', settings: { aspect: '16:9', duration: 5 }, targets: {
+      fast: { workflow: 'fasth3_omni_r2v', sizes: h3Sizes },
+      base: { workflow: 'h3_omni_r2v', sizes: h3Sizes },
+    } }],
+    cover: covers.lilac,
+  }),
+  open({
     id: 'brand-video', name: 'Brand film', kind: 'video', category: 'ads',
     blurb: 'Brand films, logo reveals and campaign spots.',
     runsOn: 'MiniMax H3', workflow: 'h3_ref2v',

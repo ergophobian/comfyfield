@@ -208,6 +208,8 @@ export function validateFormat(format, schemas = savedSchemas) {
         // A saved character or product gives its first image.
         if (PICTURE_SLOTS.some((k) => all.includes(k))) for (const input of format.inputs) if (pictureTypes.includes(input.type)) used.add(input.id)
         if (all.includes('video')) for (const input of format.inputs) if (input.type === 'video') used.add(input.id)
+        // With refTags, a clip sound choice moves the clip to `clipvideo` (see recipeOptions).
+        if (format.refTags && all.includes('clipvideo')) for (const input of format.inputs) if (input.type === 'choice' && input.options.some((o) => 'clipsound' in (o.params || {}))) used.add(input.id)
         if (all.includes('audio')) for (const input of format.inputs) if (input.type === 'audio') used.add(input.id)
         if (all.includes('voice')) for (const input of format.inputs) if (input.type === 'voice') used.add(input.id)
       } else if (model.provider === 'comfyRouter') {
