@@ -13,6 +13,7 @@ import { agentRoutes } from './agent-routes.js'
 import { createJobs } from './jobs.js'
 import { allowedApiRequest } from './local-access.js'
 import { workspaceRoute, workspaces, migrateToWorkspaces } from './workspaces.js'
+import { fetchChannel } from './youtube.js'
 
 export { providers } from './core.js'
 
@@ -186,6 +187,9 @@ async function importUrl({ url }) {
   return { ...page, images, logo: logo || '', url: target.href, host: target.hostname.replace(/^www\./, '') }
 }
 
+// The channel's avatar, banner and thumbnails are saved to local media; a picture that will not download keeps its web address.
+const youtube = (channel) => fetchChannel(channel, { key: core.config('youtube').key, cacheImage: async (src) => (src ? (await pullImage(src)) || src : '') })
+
 export default function comfyfieldApi({ harness } = {}) {
   return {
     name: 'comfyfield-api',
@@ -349,7 +353,7 @@ function mount(server, harness) {
         return send(res, 200, { ok: true })
       }
       if (url.pathname.startsWith('/api/library/') && await libraryRoute(req, res, url)) return
-      if (url.pathname.startsWith('/api/workspaces') && await workspaceRoute(req, res, url, { body, send })) return
+      if (url.pathname.startsWith('/api/workspaces') && await workspaceRoute(req, res, url, { body, send, youtube })) return
       if (url.pathname.startsWith('/media/')) {
         const file = core.mediaPath(url.pathname)
         if (!fs.existsSync(file)) return send(res, 404, { error: 'Not found' })

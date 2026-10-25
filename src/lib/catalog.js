@@ -139,6 +139,9 @@ export const providerInfo = {
   elevenlabs: { name: 'ElevenLabs', blurb: 'Your ElevenLabs key for voices and sound effects.', fields: [
     { id: 'key', label: 'API key', placeholder: 'xi-api-key', secret: true },
   ], link: 'https://elevenlabs.io/app/settings/api-keys' },
+  youtube: { name: 'YouTube', blurb: 'A YouTube Data API key to show a channel in its workspace. Read only, no sign-in.', fields: [
+    { id: 'key', label: 'API key', placeholder: 'AIza…', secret: true },
+  ], link: 'https://console.cloud.google.com/apis/library/youtube.googleapis.com' },
 }
 
 // Account sign-ins for later. These need each site's own login, not an API key.

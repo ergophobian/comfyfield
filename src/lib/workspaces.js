@@ -37,6 +37,18 @@ export async function updateWorkspace(id, data) {
   return ws
 }
 
+// Fetches the channel on the server, which caches it in workspaces.json. No channel refreshes the saved one.
+export async function connectYoutube(id, channel) {
+  const ws = await call(`/api/workspaces/${id}/youtube`, 'POST', { channel })
+  set({ workspaces: state.workspaces.map((w) => (w.id === id ? ws : w)) })
+  return ws
+}
+
+export async function disconnectYoutube(id) {
+  const ws = await call(`/api/workspaces/${id}/youtube`, 'DELETE')
+  set({ workspaces: state.workspaces.map((w) => (w.id === id ? ws : w)) })
+}
+
 export const removeWorkspace = async (id) => accept(await call(`/api/workspaces/${id}`, 'DELETE'))
 
 export async function switchWorkspace(id) {

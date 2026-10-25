@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { IconClose, IconPlus, IconSearch, IconTrash } from '../components/Icons.jsx'
 import { WorkspaceAvatar } from '../components/nav/WorkspaceSwitcher.jsx'
+import WorkspaceHeader from '../components/WorkspaceHeader.jsx'
 import { DEFAULT_WORKSPACE, MAX_PINNED, MAX_RULES, blankWorkspace } from '../../shared/workspaces.js'
 import { createWorkspace, removeWorkspace, switchWorkspace, updateWorkspace, useWorkspaces } from '../lib/workspaces.js'
 import { upload } from '../lib/useLibrary.js'
@@ -157,6 +158,7 @@ export default function Workspaces() {
         <h1>Workspaces</h1>
         <p>One for each channel, brand or project. Each keeps its own look, content rules and pinned formats.</p>
       </div>
+      <WorkspaceHeader key={current.id} ws={current} />
       <div className="lib-filters rise"><button type="button" className="btn-blue sm" onClick={() => setEditing('new')}><IconPlus />New workspace</button></div>
       {error && <p className="plist-note">{error}</p>}
       <div className="ws-grid">
