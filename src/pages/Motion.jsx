@@ -6,6 +6,8 @@ import { AppCard } from '../components/apps/AppCard.jsx'
 import { presetGroups } from '../components/apps/data.js'
 import { IconArrow, IconClose } from '../components/Icons.jsx'
 import { formatById, formats } from '../lib/formats/index.js'
+import { pinnedFirst } from '../../shared/workspaces.js'
+import { usePinned } from '../lib/workspaces.js'
 
 const MIX = 'cam-mix'
 
@@ -19,7 +21,8 @@ export default function Motion() {
   const [params, setParams] = useSearchParams()
   const navigate = useNavigate()
   const tab = groups.some((g) => g.name === params.get('group')) ? params.get('group') : 'all'
-  const list = tab === 'all' ? presets : groups.find((g) => g.name === tab).list
+  const pins = usePinned()
+  const list = pinnedFirst(tab === 'all' ? presets : groups.find((g) => g.name === tab).list, pins)
 
   const mix = formatById(MIX)
   const [first, then] = (mix?.inputs || []).filter((i) => i.type === 'choice')
@@ -89,7 +92,7 @@ export default function Motion() {
         <div className="recipe-grid app-grid" key={tab}>
           {list.map((f, i) => (picking
             ? <AppCard key={f.id} format={f} i={i} rise={false} picked={picked.includes(f.id)} disabled={!canMix(f)} onPick={toggle} />
-            : <AppCard key={f.id} format={f} i={i} rise={!touched} to={`/motion/${f.id}`} />))}
+            : <AppCard key={f.id} format={f} i={i} rise={!touched} to={`/motion/${f.id}`} pinned={pins.includes(f.id)} />))}
         </div>
       ) : (
         <div className="empty glass rise">No motion presets yet.</div>
