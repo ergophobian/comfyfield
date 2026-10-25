@@ -1723,6 +1723,16 @@ export const schemas = {
       "prompt",
       "seed",
       "width"
+    ],
+    "ugc_ad": [
+      "audio",
+      "height",
+      "image",
+      "image2",
+      "prompt",
+      "seconds",
+      "seed",
+      "width"
     ]
   },
   "comfyOptional": {
@@ -1850,6 +1860,9 @@ export const schemas = {
     ],
     "wan22_i2v": [
       "image2"
+    ],
+    "ugc_ad": [
+      "audio"
     ]
   },
   "router": {

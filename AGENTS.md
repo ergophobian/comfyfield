@@ -85,6 +85,9 @@ without removing their copy, controls, prompt templates or provider settings.
   slots from the character's images (a reference set), not only the first. Choices have `options: [{ id, label,
   text?, params? }]`; counts have numeric `options`. `field` binds a media slot to
   a named fal input. A UI widget alone does not make an unsupported slot runnable.
+  A `text` input with `reads: { text, image }` is a product link: Read page
+  (`POST /api/product/read`, no keys) fills the named inputs with the page's text and first photo.
+  An `audio` or `video` input's `text` goes into the prompt only when a file is attached.
 - `writer` (optional): prompt-writer instructions. The runner requires an injected
   `writePrompt({ instructions, inputs, format }) -> Promise<string>` when present.
   It compiles to a native Writer node. The UI injects the `/api/prompt` client;

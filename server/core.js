@@ -270,6 +270,98 @@ export async function saveToLibrary(files, metadata = {}) {
   return items
 }
 
+// Product pages, read with no keys: the title, description, price, photos, site name, theme color and
+// icon, from Open Graph and Twitter tags, schema.org Product JSON-LD and the page title. The photos and
+// icon are saved under media, so a run uploads them like any other file. Used by Library import and
+// by link-to-ads in the Ads studio.
+export const IMAGE_EXT = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif', 'image/svg+xml': 'svg', 'image/x-icon': 'ico', 'image/vnd.microsoft.icon': 'ico' }
+
+const decode = (s = '') => s.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#0?39;|&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#x27;/g, "'").trim()
+
+function attrs(tag) {
+  const out = {}
+  for (const a of tag.matchAll(/([\w:-]+)\s*=\s*("([^"]*)"|'([^']*)')/g)) out[a[1].toLowerCase()] = decode(a[3] ?? a[4])
+  return out
+}
+
+export function parsePage(html, base) {
+  const meta = {}
+  const metaImages = []
+  for (const t of html.matchAll(/<meta\b[^>]*>/gi)) {
+    const a = attrs(t[0])
+    const k = (a.property || a.name || '').toLowerCase()
+    if (k && a.content && !(k in meta)) meta[k] = a.content
+    // A shop often lists every product photo as its own og:image.
+    if (a.content && ['og:image', 'og:image:secure_url', 'twitter:image', 'product:image'].includes(k)) metaImages.push(a.content)
+  }
+  const links = [...html.matchAll(/<link\b[^>]*>/gi)].map((t) => attrs(t[0])).filter((a) => a.rel && a.href)
+  let product = null
+  for (const t of html.matchAll(/<script[^>]*application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)) {
+    try {
+      const walk = (n) => {
+        if (!n || product) return
+        if (Array.isArray(n)) return n.forEach(walk)
+        if (typeof n !== 'object') return
+        const types = [].concat(n['@type'] || [])
+        if (types.includes('Product')) product = n
+        else walk(n['@graph'])
+      }
+      walk(JSON.parse(t[1]))
+    } catch {}
+  }
+  const abs = (u) => { try { return new URL(decode(u), base).href } catch { return null } }
+  const offer = [].concat(product?.offers || [])[0] || {}
+  const amount = offer.price ?? offer.lowPrice ?? meta['product:price:amount'] ?? meta['og:price:amount']
+  const currency = offer.priceCurrency || meta['product:price:currency'] || meta['og:price:currency'] || ''
+  const price = amount != null && amount !== '' ? `${currency === 'USD' || !currency ? '$' : `${currency} `}${amount}` : ''
+  const pimg = [].concat(product?.image || []).map((i) => (typeof i === 'string' ? i : i?.url)).filter(Boolean)
+  const images = [...metaImages, ...pimg].filter(Boolean).map(abs).filter(Boolean)
+  const icon = links.find((a) => /apple-touch-icon/i.test(a.rel)) || links.find((a) => /(^|\s)icon/i.test(a.rel))
+  const title = decode(product?.name || meta['og:title'] || meta['twitter:title'] || html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] || '')
+  return {
+    title,
+    description: decode(String(product?.description || meta['og:description'] || meta.description || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ')),
+    price,
+    images: [...new Set(images)].slice(0, 8),
+    siteName: decode(meta['og:site_name'] || ''),
+    themeColor: /^#[0-9a-f]{3,8}$/i.test(meta['theme-color'] || '') ? meta['theme-color'] : '',
+    logo: abs(icon?.href) || '',
+  }
+}
+
+// The app runs on the user's machine, so a page must not point it at their own network.
+export const localAddress = (host) => /^(localhost|.*\.local|.*\.internal|0\.0\.0\.0|127\.|10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.|\[?(::1?\]?$|f[cd][0-9a-f]{2}:|fe80:))/i.test(host)
+
+async function pullImage(src) {
+  try {
+    if (localAddress(new URL(src).hostname)) return null
+    const r = await fetch(src, { signal: AbortSignal.timeout(8000), headers: { 'User-Agent': UA } })
+    const type = (r.headers.get('content-type') || '').split(';')[0].trim()
+    if (!r.ok || !IMAGE_EXT[type]) return null
+    const buf = Buffer.from(await r.arrayBuffer())
+    return buf.length < 8_000_000 ? saveMedia(buf, IMAGE_EXT[type]).url : null
+  } catch { return null }
+}
+
+const UA = 'Mozilla/5.0 (compatible; ComfyField/0.1; +https://github.com/ergophobian/comfyfield)'
+
+export async function readProduct({ url } = {}) {
+  let target
+  try { target = new URL(url) } catch { throw Object.assign(new Error('That does not look like a web address.'), { status: 400 }) }
+  if (!/^https?:$/.test(target.protocol)) throw Object.assign(new Error('Use an http or https address.'), { status: 400 })
+  if (localAddress(target.hostname)) throw Object.assign(new Error('Use a public web address.'), { status: 400 })
+  let r
+  try { r = await fetch(target, { signal: AbortSignal.timeout(10000), redirect: 'follow', headers: { 'User-Agent': UA, Accept: 'text/html,application/xhtml+xml' } }) } catch {
+    throw Object.assign(new Error('Could not reach that page.'), { status: 502 })
+  }
+  if (!r.ok) throw Object.assign(new Error(`That page answered ${r.status}.`), { status: 502 })
+  const html = (await r.text()).slice(0, 2_000_000)
+  const page = parsePage(html, r.url || target.href)
+  const images = (await Promise.all(page.images.map(pullImage))).filter(Boolean)
+  const logo = page.logo ? await pullImage(page.logo) : null
+  return { ...page, images, logo: logo || '', url: target.href, host: target.hostname.replace(/^www\./, '') }
+}
+
 // Gemini TTS returns raw 16-bit PCM at 24 kHz; wrap it in a WAV header so browsers can play it.
 function pcmToWav(pcm, rate = 24000) {
   const h = Buffer.alloc(44)

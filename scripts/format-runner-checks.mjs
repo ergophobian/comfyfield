@@ -387,7 +387,7 @@ assert.match(dubCalls[0].opts.prompt, /conversational Mandarin/)
 const dubVars = comfyVars('video', dubCalls[0].opts)
 assert.deepEqual([dubVars.start, dubVars.duration, dubVars.video], [2, 30, '/media/talk.mp4'])
 assert.equal(dub.inputs.find((i) => i.id === 'language').options[0].id, 'es', 'Spanish stays the first dub language')
-assert.equal(formats.length, 455)
+assert.equal(formats.length, 457)
 assert.equal(allFormats.length, 482, 'Do not delete planned formats')
 assert.equal(allFormats.filter((f) => f.category === 'camera').length > 0, true, 'Keep Create prompt presets')
 assert(allFormats.filter((f) => !formats.includes(f)).every((f) => formatProblems.get(f.id).length))
@@ -430,6 +430,16 @@ assert.deepEqual(personaRuns, [['portrait', 'flux3_klein_t2i', undefined], ['bod
 assert.deepEqual(personaSession.results().map((r) => r.url), ['/media/portrait.png', '/media/body.png'])
 const fromPhoto = compileFormat(persona, { persona: 'a runner', start: 'photo', photo }).nodes.find((n) => n.id === 'portrait').data.model
 assert.equal(fromPhoto.workflow, 'klein_character')
+// A UGC ad sends the character and the product as H3's first two pictures, and names a voice sample only when one is attached.
+const ugc = formats.find((f) => f.id === 'ugc-ad')
+const ugcValues = { ...valuesFor(ugc), character: { type: 'character', name: 'Maya', images: ['/media/maya.png'] }, product: { type: 'product', name: 'Linen tote', images: ['/media/tote.png'] }, script: 'I did not expect to love this.' }
+const ugcOpts = (values) => compileFormat(ugc, values).nodes.find((n) => n.type === 'model').data.model.formatStep.options
+assert.deepEqual(ugcOpts(ugcValues).slots.pictures, ['/media/maya.png', '/media/tote.png'])
+assert.equal(ugcOpts(ugcValues).params.seconds, 10)
+assert(!ugcOpts(ugcValues).prompt.includes('<Audio 1>'), 'No voice sample, no <Audio 1>')
+const voiced = ugcOpts({ ...ugcValues, voice: { url: '/media/voice.wav', name: 'voice.wav' } })
+assert.equal(voiced.slots.audio, '/media/voice.wav')
+assert(voiced.prompt.includes('the voice from <Audio 1>'))
 console.log(`Format runner checks ok: ${checked} recipe cases, approval and batching, concurrency, schema rejection, Comfy placeholders, writer handoff and provider failures. No network calls.`)
 
 // A writer edit changes the request even when the downstream text unit keeps its unit id.
