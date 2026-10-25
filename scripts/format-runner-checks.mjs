@@ -129,8 +129,8 @@ const briefSession = await runFormat(writerOnly, { ...valuesFor(writerOnly), bri
   run: async (_, opts) => { assert.equal(opts.prompt, 'Change the mood'); return [{ url: 'written.png' }] },
 })
 await briefSession.sendWriter('writer')
-assert.equal(formats.length, 450)
-assert.equal(allFormats.length, 479, 'Do not delete planned formats')
+assert.equal(formats.length, 451)
+assert.equal(allFormats.length, 480, 'Do not delete planned formats')
 assert.equal(allFormats.filter((f) => f.category === 'camera').length > 0, true, 'Keep Create prompt presets')
 assert(allFormats.filter((f) => !formats.includes(f)).every((f) => formatProblems.get(f.id).length))
 
