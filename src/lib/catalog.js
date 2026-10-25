@@ -122,6 +122,10 @@ export const falCategories = [
   { id: 'text-to-audio', label: 'Sound and music', kind: 'audio' },
 ]
 
+// Where a Comfy workspace adds credits. Router and Cloud runs refuse with insufficient_credits when it is empty.
+export const COMFY_CREDITS_URL = 'https://platform.comfy.org'
+export const needsComfyCredits = (message) => /insufficient credits/i.test(String(message || ''))
+
 export const providerInfo = {
   comfy: { name: 'ComfyUI', blurb: 'Your Comfy API key runs open models on Comfy Cloud in seconds, on a paid Comfy plan. For a long session, add your RunPod key on the RunPod card and start a Pod from the top bar: while it runs, ComfyUI runs use it. The key also unlocks hosted models through Comfy Router.', fields: [
     { id: 'key', label: 'Comfy API key', placeholder: 'From platform.comfy.org', secret: true },

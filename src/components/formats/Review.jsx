@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import CreditsLink from '../CreditsLink.jsx'
 
 export default function FormatReview({ session }) {
   const [state, setState] = useState(session.engine.state)
@@ -41,6 +42,6 @@ export default function FormatReview({ session }) {
       </div>
     })}
     {failure && failure.code !== 'invalid_format' && <button type="button" className="btn-blue sm" disabled={busy || session.busy} onClick={() => act(() => session.retryFailed())}>Retry failed</button>}
-    {(error || failure) && <p className="sheet-error" role="alert">{error || failure.message}</p>}
+    {(error || failure) && <p className="sheet-error" role="alert">{error || failure.message} <CreditsLink message={error || failure.message} /></p>}
   </div>
 }

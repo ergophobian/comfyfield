@@ -4,6 +4,7 @@ import Viewer, { Act, ext } from './Viewer.jsx'
 import { useApp } from '../lib/appContext.js'
 import { takeLabel, usePod } from '../lib/usePod.js'
 import { IconCheck, IconDownload, IconTrash } from './Icons.jsx'
+import CreditsLink from './CreditsLink.jsx'
 
 const ratio = (a) => (/^\d+:\d+$/.test(a) ? a.replace(':', ' / ') : '1 / 1')
 const viewable = (it) => !it.pending && it.url && it.kind !== 'audio'
@@ -51,6 +52,7 @@ export default function Results({ items, onUse, size }) {
               {typeof it.failed === 'string' && <small title={it.failed}>{it.failed}</small>}
               {it.restoreNote && <small>{it.restoreNote}</small>}
               <span className="result-fail-acts">
+                <CreditsLink message={it.failed} className="btn-blue xs" />
                 {it.retry && <button type="button" className="btn-soft xs" onClick={it.retry}>{it.retry.label || 'Retry'}</button>}
                 {app?.gens && <button type="button" className="btn-soft xs" onClick={() => app.gens.dismiss(it.id)}>Dismiss</button>}
               </span>

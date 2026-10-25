@@ -254,7 +254,7 @@ await test('Comfy Router rate limits and a result that is still pending', async 
 
 await test('Comfy Router explains credits and completed failures; never collects failed jobs', async () => {
   globalThis.fetch = async () => json({ error_type: 'insufficient_credits' }, 402)
-  await assert.rejects(core.runComfyRouter({ model: 'bfl/flux-2-pro', input: {} }, noWait), /insufficient credits/)
+  await assert.rejects(core.runComfyRouter({ model: 'bfl/flux-2-pro', input: {} }, noWait), /insufficient credits\. Add credits at platform\.comfy\.org/)
   const replies = [json(job, 201), json({ status: 'COMPLETED', error_type: 'provider_error', message: 'Provider unavailable' })]
   globalThis.fetch = async () => { assert(replies.length); return replies.shift() }
   await assert.rejects(core.runComfyRouter({ model: 'bfl/flux-2-pro', input: {} }, noWait), /provider_error/)
