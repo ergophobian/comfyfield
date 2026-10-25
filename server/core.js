@@ -840,7 +840,13 @@ async function runChain(workflow, vars, opts) {
   let joined
   if (spec.mode === 'clip') {
     const source = await local(vars.video, 'source')
-    const fps = Math.min(30, (await probeVideo(source, { binary })).fps)
+    // A clip ffmpeg cannot read goes to the graph as it is, which says what is wrong with it.
+    const probed = await probeVideo(source, { binary }).catch(() => null)
+    if (!probed) {
+      fs.rmSync(dir, { recursive: true, force: true })
+      return one()
+    }
+    const fps = Math.min(30, probed.fps)
     const clip = await normalizeClip(source, path.join(dir, 'clip.mp4'), { start: Number(vars.start) || 0, duration: Number(vars.duration) || undefined, fps, binary })
     const chunks = clipChunks(clip.frames, spec, fps)
     if (chunks.length < 2) {
