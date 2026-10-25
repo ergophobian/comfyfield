@@ -2,6 +2,51 @@
 import { open, note, covers } from './parts.js'
 import { h3Sizes } from '../catalog.js'
 
+// The angles a set of static ads can take. Ads from a link makes each picked angle as its own step on
+// FLUX 3 Klein, with the product photo from the page as the reference.
+export const adAngles = [
+  { id: 'offer', label: 'Price or offer', note: 'Lead with the deal', text: 'lead with the price or the offer in a big, bold headline, with a small call to action' },
+  { id: 'ingredient', label: 'What is inside', note: 'Materials or ingredients', text: 'show what it is made of, with the product beside its key materials or ingredients and two or three short labels' },
+  { id: 'how', label: 'How to use', note: 'Show it in three steps', text: 'show how to use it in three numbered steps, each with a small picture and a few words' },
+  { id: 'lifestyle', label: 'Lifestyle', note: 'The product in real life', text: 'show the product in use in a real, sunlit everyday scene, like an iPhone photo, with a short headline' },
+  { id: 'proof', label: 'Social proof', note: 'Reviews and ratings', text: 'lead with a five star rating and a short customer quote next to the product' },
+  { id: 'compare', label: 'Side by side', note: 'You against the rest', text: 'compare the product side by side with a generic plain alternative, with check marks for the product' },
+  { id: 'fix', label: 'Problem and fix', note: 'The pain, then the product', text: 'show the everyday problem on one side and the product as the fix on the other, with a short headline' },
+]
+export const defaultAngles = ['offer', 'lifestyle', 'proof', 'fix']
+
+// Ads from a link, for any set of angles. The gallery entry uses defaultAngles; the Ads studio builds
+// one for the angles the user picks. Read page (the url input's `reads`) fills the page text and photo.
+export function linkToAds(angleIds) {
+  const picked = adAngles.filter((a) => angleIds.includes(a.id))
+  return open({
+    id: 'link-to-ads', name: 'Ads from a link', kind: 'image', category: 'ads', hub: 'ads', shape: 'pipeline',
+    blurb: 'Paste a product page and get a set of ready ads.',
+    runsOn: 'FLUX 3 Image Klein',
+    inputs: [
+      { id: 'url', type: 'text', label: 'Product page link', optional: true, placeholder: 'https://yourshop.com/products/linen-tote', reads: { text: 'page', image: 'image' } },
+      { id: 'page', type: 'longtext', label: 'What the page says', rows: 3, placeholder: 'Linen tote, $48. A roomy everyday tote in washed linen with a leather base.' },
+      { id: 'image', type: 'image', label: 'Product photo' },
+      { id: 'count', type: 'count', label: 'Ads per angle', options: [1, 2, 3, 4], default: 1, unit: 'ads', half: true },
+      { id: 'size', type: 'choice', label: 'Size', half: true, default: 'square', options: [
+        { id: 'square', label: 'Square', note: 'Feed, 1:1', text: 'square feed ad', params: { aspect: '1:1' } },
+        { id: 'portrait', label: 'Portrait', note: 'Feed, 4:5', text: 'portrait feed ad', params: { aspect: '4:5' } },
+        { id: 'story', label: 'Story', note: 'Tall, 9:16', text: 'vertical story ad', params: { aspect: '9:16' } },
+        { id: 'banner', label: 'Banner', note: 'Wide, 16:9', text: 'wide banner ad', params: { aspect: '16:9' } },
+      ] },
+      { id: 'brand', type: 'brand', label: 'Brand', optional: true },
+    ],
+    settings: { aspect: '1:1' },
+    steps: picked.map((angle) => ({
+      id: angle.id, provider: 'comfy', workflow: 'klein_edit_canvas', kind: 'image', from: [],
+      prompt: `A {size} for the product in the first image. The product page says: {page}. This ad should ${angle.text}. Keep the product exactly as it is in the photo, with the same shape, label and colors. Clean layout, sharp commercial light, every word spelled right and easy to read. In the colors of the brand {brand}, if one is named.`,
+      bindings: { count: 'count' }, settings: { aspect: '1:1' },
+    })),
+    outputs: picked.map((angle) => ({ step: angle.id, kind: 'image' })),
+    cover: covers.mint,
+  })
+}
+
 export const ads = [
   open({
     id: 'product-ad', name: 'Product to ad', kind: 'video', category: 'ads', featured: true,
@@ -75,24 +120,7 @@ export const ads = [
     settings: { aspect: 'auto' },
     cover: covers.indigo,
   }),
-  open({
-    id: 'link-to-ads', name: 'Ads from a link', kind: 'image', category: 'ads', hub: 'ads',
-    blurb: 'Paste a product page and get a set of ready ads.',
-    runsOn: 'Qwen3.8 and FLUX 3 Image Klein', workflow: 'link_to_ads',
-    inputs: [
-      { id: 'url', type: 'text', label: 'Product page link', placeholder: 'https://example.com/products/linen-tote' },
-      { id: 'count', type: 'count', label: 'Ads', options: [4, 8, 12], default: 4, unit: 'ads' },
-      { id: 'size', type: 'choice', label: 'Size', default: 'square', options: [
-        { id: 'square', label: 'Square', note: 'Feed, 1:1', text: 'square feed ads', params: { aspect: '1:1' } },
-        { id: 'story', label: 'Story', note: 'Tall, 9:16', text: 'vertical story ads', params: { aspect: '9:16' } },
-        { id: 'banner', label: 'Banner', note: 'Wide, 16:9', text: 'wide banner ads', params: { aspect: '16:9' } },
-      ] },
-      { id: 'brand', type: 'brand', label: 'Brand', optional: true },
-    ],
-    prompt: 'Read the product page at {url}, pull out the product, its key benefits and who it is for, and make {count} {size}. Each ad tries a different angle with a short headline and a clean layout, shows the product exactly as it appears on the page and keeps all text legible.',
-    settings: { aspect: '1:1' },
-    cover: covers.mint,
-  }),
+  linkToAds(defaultAngles),
   open({
     id: 'recreate-ad', name: 'Recreate an ad', kind: 'video', category: 'ads', layout: 'wide',
     blurb: 'Remake an ad shot for shot with your own product.',

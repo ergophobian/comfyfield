@@ -193,6 +193,8 @@ export function validateFormat(format, schemas = savedSchemas) {
   }
   // A choice that decides which inputs show is used through them.
   for (const input of format.inputs) if (input.when) used.add(input.when[0])
+  // A link that Read page turns into other inputs is used through the inputs it fills.
+  for (const input of format.inputs) if (input.reads && Object.values(input.reads).every((id) => used.has(id))) used.add(input.id)
   if (!missingTarget) for (const input of format.inputs) if (!used.has(input.id)) bad(`Input ${input.id} does not map to a target model`)
   // Check a missing optional slot cannot leave a required model field unmapped.
   for (const step of format.steps.filter((s) => !s.type)) {
