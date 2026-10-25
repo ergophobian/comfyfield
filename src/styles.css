@@ -2667,7 +2667,7 @@ button.gen-step:active { transform: scale(.97); }
   /* The Pod charges by the minute, so its chip stays in the bar on phones. */
   .nav-right > .nav-menu.pod { display: block; }
   .pod-chip { height: 38px; padding: 0 12px; }
-  .pod-spend { display: none; }
+  .pod-spend, .pod-eta { display: none; }
   .pod-pop { position: fixed; top: 64px; right: 16px; left: 16px; width: auto; max-width: none; }
 }
 

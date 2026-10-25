@@ -994,7 +994,7 @@ async function submitAndWait(client, wf, { apiKey, timeoutMs, signal, split }, o
 
 // Runs a bundled workflow on Comfy Cloud or the Pod, or in development on a local ComfyUI, and returns file URLs.
 export async function runComfy(workflow, vars = {}, opts = {}) {
-  const { createClient = (key, baseUrl) => comfyClient(baseUrl, key), lease = (o) => pod().lease(o), podPhase = () => pod().phaseNow(), podVram = () => pod().vramGb(), podRoom = () => pod().room(), podArch = () => pod().arch(), run = runType(), signal, retried = 0, pause = (ms, s) => delay(ms, undefined, s ? { signal: s } : undefined), patchGraph = (g) => g, onSubmitted, onComplete = () => {}, timeoutMs } = opts
+  const { createClient = (key, baseUrl) => comfyClient(baseUrl, key), lease = (o) => pod().lease(o), podPhase = () => pod().phaseNow(), podVram = () => pod().vramGb(), podRoom = () => pod().room(), podArch = () => pod().arch(), run = runType(), signal, retried = 0, pause = (ms, s) => delay(ms, undefined, s ? { signal: s } : undefined), patchGraph = (g) => g, onSubmitted, onComplete = () => {}, onStage, timeoutMs } = opts
   signal?.throwIfAborted()
   const original = workflowGraph(workflow, vars)
   let { file, template, graph } = original
@@ -1029,7 +1029,8 @@ export async function runComfy(workflow, vars = {}, opts = {}) {
     let client
     let partner
     if (target === 'pod') {
-      held = await lease({ files: needs.filter((n) => !n.runtime), runtimes: needs.filter((n) => n.runtime).map((n) => n.runtime), ...(signal ? { signal } : {}) })
+      // onStage tells the run's job what it waits on: the Pod, a runtime install, or which files to download.
+      held = await lease({ files: needs.filter((n) => !n.runtime), runtimes: needs.filter((n) => n.runtime).map((n) => n.runtime), ...(signal ? { signal } : {}), ...(onStage ? { onStage } : {}) })
       if (held.sandbox) {
         held.release()
         throw new Error('This is the sandbox Pod, so nothing renders. Unset COMFYFIELD_POD_SANDBOX to run on a real Pod.')

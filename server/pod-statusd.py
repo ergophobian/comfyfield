@@ -39,6 +39,12 @@ MARGIN = float(E.get('CF_DISK_MARGIN_GB', '3')) * 1e9
 LOAD_DEADLINE = int(E.get('CF_LOAD_DEADLINE', '900'))
 RESTART_GRACE = float(E.get('CF_RESTART_GRACE', '15'))
 USED_FILE = os.path.join(MODELS, '.cf-used.json')
+# Downloads: how many files at once, plus one more lane for small files; how many connections a file
+# splits into, the bytes each part asks for, and the size up to which a file counts as small (a LoRA).
+FILES = int(E.get('CF_DL_FILES', '3'))
+PARTS = int(E.get('CF_DL_PARTS', '8'))
+CHUNK = int(float(E.get('CF_DL_CHUNK_MB', '64')) * (1 << 20))
+SMALL = float(E.get('CF_DL_SMALL_GB', '2')) * 1e9
 
 
 def read_packs():
@@ -77,7 +83,8 @@ S = {'stage': 'boot', 'ready_at': None, 'hb': None, 'idle': 0, 'queue': None, 'g
 DOWNLOADS = {}
 RUNTIMES = {}
 WORK = []
-WAKE = threading.Event()
+# The downloaders wait on it for new work.
+WAKE = threading.Condition(LOCK)
 
 
 def read_used():
@@ -182,7 +189,7 @@ def models():
     folder = os.path.join(MODELS, d)
     for name in sorted(os.listdir(folder)) if os.path.isdir(folder) else []:
       p = os.path.join(folder, name)
-      if os.path.isfile(p) and not name.endswith('.part'):
+      if os.path.isfile(p) and not name.endswith(('.part', '.part.json', '.part.json.tmp')):
         key = '%s/%s' % (d, name)
         out.append({'dir': d, 'name': name, 'bytes': os.path.getsize(p), 'usedAt': int(USED.get(key) or os.path.getmtime(p))})
   return out
@@ -396,6 +403,18 @@ def comfy_error(folder):
   return hits[-1][:300] if hits else None
 
 
+def downloads_view(now):
+  # Each download in flight says how fast it goes, in bytes a second, so the app can say how long is left.
+  out = {}
+  for k, v in DOWNLOADS.items():
+    d = {x: y for x, y in v.items() if x not in ('startedAt', 'fromBytes')}
+    sec = now - (v.get('startedAt') or now)
+    if v['state'] == 'downloading' and sec >= 0.5:
+      d['bps'] = int(max(0, v['bytes'] - (v.get('fromBytes') or 0)) / sec)
+    out[k] = d
+  return out
+
+
 def snapshot():
   now = time.time()
   with LOCK:
@@ -412,7 +431,7 @@ def snapshot():
       'selfTerminateReady': bool(E.get('RUNPOD_POD_ID') and E.get('RUNPOD_API_KEY')),
       'proofDeadline': CFG.get('terminate_at'),
       'diskFreeGb': None if free is None else round(free, 1), 'diskTotalGb': None if total is None else round(total, 1), 'ending': S['ending'],
-      'models': models(), 'downloads': {k: dict(v) for k, v in DOWNLOADS.items()}, 'runtimes': runtimes(), 'evicted': list(S['evicted']),
+      'models': models(), 'downloads': downloads_view(now), 'runtimes': runtimes(), 'evicted': list(S['evicted']),
     }
 
 
@@ -519,28 +538,58 @@ def make_room(need, protect):
   return max(0, short)
 
 
-def fetch(item, key):
-  dest = os.path.join(MODELS, item['dir'], item['name'])
-  part = dest + '.part'
-  # A pack's subfolders are made only when a file goes in: some packs take a folder that exists as complete.
-  os.makedirs(os.path.dirname(dest), exist_ok=True)
-  # Some repos keep files under names with brackets or spaces; the URL carries them encoded.
-  url = '%s/%s/resolve/main/%s' % (HF, item['repo'], urllib.parse.quote(item['path'], safe='/'))
-  have = os.path.getsize(part) if os.path.exists(part) else 0
-  req = urllib.request.Request(url, headers={'Range': 'bytes=%d-' % have} if have else {})
+def part_len(total, i):
+  return min(CHUNK, total - i * CHUNK)
+
+
+def read_side(side, total):
+  # Which parts of a split download are on the disk, kept next to the .part file so a retry or a
+  # resumed Pod goes on from them. None when there is none, or it was for another size or part length.
+  try:
+    with open(side) as f:
+      d = json.load(f)
+    if d.get('total') == total and d.get('chunk') == CHUNK:
+      return set(int(i) for i in d.get('done') or [])
+  except Exception:
+    pass
+  return None
+
+
+def write_side(side, total, done):
+  with open(side + '.tmp', 'w') as f:
+    json.dump({'total': total, 'chunk': CHUNK, 'done': sorted(done)}, f)
+  os.replace(side + '.tmp', side)
+
+
+def probe(url):
+  """Asks for the first byte. Returns (size, url, None) when the server sends byte ranges, with the URL
+  after redirects, or (None, url, response) with the whole file on its way when it does not."""
+  try:
+    r = urllib.request.urlopen(urllib.request.Request(url, headers={'Range': 'bytes=0-0'}), timeout=60)
+  except urllib.error.HTTPError as e:
+    if e.code != 416:
+      raise
+    return None, url, urllib.request.urlopen(url, timeout=60)
+  m = re.match(r'bytes 0-0/(\d+)$', (r.headers.get('Content-Range') or '').strip()) if r.status == 206 else None
+  if not m:
+    if r.status == 206:
+      r.close()
+      return None, url, urllib.request.urlopen(url, timeout=60)
+    return None, url, r
+  final = r.geturl() or url
+  r.read()
+  r.close()
+  return int(m.group(1)), final, None
+
+
+def fetch_stream(r, part, key):
+  """One connection, from the first byte: for a server that does not send byte ranges."""
   digest = hashlib.sha256()
-  with urllib.request.urlopen(req, timeout=60) as r:
-    if have and r.status != 206:
-      have = 0
-    if have:
-      # A resumed download hashes the bytes it already has first.
-      with open(part, 'rb') as old:
-        for block in iter(lambda: old.read(1 << 20), b''):
-          digest.update(block)
-    total = int(r.headers.get('Content-Length') or 0) + have
+  with r:
+    total = int(r.headers.get('Content-Length') or 0)
     with LOCK:
-      DOWNLOADS[key].update(state='downloading', bytes=have, total=total or None)
-    with open(part, 'ab' if have else 'wb') as f:
+      DOWNLOADS[key].update(state='downloading', bytes=0, total=total or None, startedAt=time.time(), fromBytes=0)
+    with open(part, 'wb') as f:
       while True:
         chunk = r.read(1 << 20)
         if not chunk:
@@ -551,38 +600,179 @@ def fetch(item, key):
           DOWNLOADS[key]['bytes'] += len(chunk)
   if total and os.path.getsize(part) != total:
     raise IOError('the download stopped at %d of %d bytes' % (os.path.getsize(part), total))
+  return digest
+
+
+def fetch_parts(url, part, total, key, hashing):
+  """Several connections, each fetching the next missing part of CHUNK bytes into its place in the .part
+  file. The parts go in order, so the hash follows close behind the lowest part still on its way."""
+  side = part + '.json'
+  n = -(-total // CHUNK)
+  done = read_side(side, total)
+  if done is None:
+    # A .part from a single-connection download keeps its whole parts.
+    have = os.path.getsize(part) if os.path.exists(part) else 0
+    done = set(range(min(have, total) // CHUNK))
+  write_side(side, total, done)
+  with open(part, 'ab'):
+    pass
+  with open(part, 'r+b') as f:
+    f.truncate(total)
+  todo = [i for i in range(n) if i not in done]
+  cv = threading.Condition()
+  st = {'error': None, 'stop': False, 'hashed': 0}
+  have = sum(part_len(total, i) for i in done)
+  with LOCK:
+    DOWNLOADS[key].update(state='downloading', bytes=have, total=total, startedAt=time.time(), fromBytes=have)
+
+  def worker():
+    with open(part, 'r+b') as f:
+      while True:
+        with cv:
+          if st['error'] or not todo:
+            return
+          i = todo.pop(0)
+        size, got = part_len(total, i), 0
+        try:
+          start = i * CHUNK
+          req = urllib.request.Request(url, headers={'Range': 'bytes=%d-%d' % (start, start + size - 1)})
+          with urllib.request.urlopen(req, timeout=60) as r:
+            if r.status != 206 or not (r.headers.get('Content-Range') or '').startswith('bytes %d-' % start):
+              raise IOError('the server did not send the byte range it was asked for')
+            f.seek(start)
+            while True:
+              block = r.read(1 << 20)
+              if not block:
+                break
+              if got + len(block) > size:
+                raise IOError('the server sent more bytes than it was asked for')
+              f.write(block)
+              got += len(block)
+              with LOCK:
+                DOWNLOADS[key]['bytes'] += len(block)
+          if got != size:
+            raise IOError('a part stopped at %d of %d bytes' % (got, size))
+          f.flush()
+        except Exception as e:
+          with LOCK:
+            DOWNLOADS[key]['bytes'] -= got
+          with cv:
+            st['error'] = st['error'] or e
+            cv.notify_all()
+          return
+        with cv:
+          done.add(i)
+          write_side(side, total, done)
+          cv.notify_all()
+
+  digest = hashlib.sha256()
+
+  def hasher():
+    with open(part, 'rb') as f:
+      for i in range(n):
+        with cv:
+          while i not in done and not st['stop']:
+            cv.wait()
+          if i not in done:
+            return
+        f.seek(i * CHUNK)
+        left = part_len(total, i)
+        while left:
+          block = f.read(min(1 << 20, left))
+          if not block:
+            return
+          digest.update(block)
+          left -= len(block)
+        st['hashed'] = i + 1
+
+  workers = [threading.Thread(target=worker, daemon=True) for _ in range(min(PARTS, len(todo)))]
+  hash_thread = threading.Thread(target=hasher, daemon=True) if hashing else None
+  for t in workers + ([hash_thread] if hash_thread else []):
+    t.start()
+  for t in workers:
+    t.join()
+  if st['error'] or len(done) < n:
+    with cv:
+      st['stop'] = True
+      cv.notify_all()
+    if hash_thread:
+      hash_thread.join()
+    raise st['error'] or IOError('the download stopped at %d of %d parts' % (len(done), n))
+  if hash_thread:
+    hash_thread.join()
+    if st['hashed'] != n:
+      raise IOError('could not read the download back to check it')
+  return digest
+
+
+def fetch(item, key):
+  dest = os.path.join(MODELS, item['dir'], item['name'])
+  part = dest + '.part'
+  side = part + '.json'
+  # A pack's subfolders are made only when a file goes in: some packs take a folder that exists as complete.
+  os.makedirs(os.path.dirname(dest), exist_ok=True)
+  # Some repos keep files under names with brackets or spaces; the URL carries them encoded.
+  url = '%s/%s/resolve/main/%s' % (HF, item['repo'], urllib.parse.quote(item['path'], safe='/'))
+  total, final, whole = probe(url)
+  if whole is not None:
+    if os.path.exists(side):
+      os.remove(side)
+    digest = fetch_stream(whole, part, key)
+  else:
+    digest = fetch_parts(final, part, total, key, bool(item.get('sha256')))
   # A pinned hash makes a mirror safe to use: only the expected bytes are kept.
   if item.get('sha256') and digest.hexdigest() != item['sha256']:
-    os.remove(part)
+    for p in (part, side):
+      if os.path.exists(p):
+        os.remove(p)
     raise ValueError('the file does not match its pinned sha256')
   os.replace(part, dest)
+  if os.path.exists(side):
+    os.remove(side)
 
 
-def downloader():
-  while True:
-    WAKE.wait()
-    with LOCK:
-      item = WORK.pop(0) if WORK else None
-      if not WORK:
-        WAKE.clear()
-    if not item:
-      continue
-    key = '%s/%s' % (item['dir'], item['name'])
-    for attempt in range(3):
-      try:
-        fetch(item, key)
+def size_key(item):
+  b = item.get('bytes')
+  return (0, b) if isinstance(b, int) else (1, 0)
+
+
+def pick(work, small_only=False):
+  """The next file to download: the smallest first, so a LoRA lands in seconds while a base model is still
+  on its way. A file of unknown size goes last. With `small_only`, only a file of SMALL bytes or less. Pure."""
+  ok = [f for f in work if not small_only or (isinstance(f.get('bytes'), int) and f['bytes'] <= SMALL)]
+  return min(ok, key=size_key) if ok else None
+
+
+def download(item):
+  key = '%s/%s' % (item['dir'], item['name'])
+  for attempt in range(3):
+    try:
+      fetch(item, key)
+      with LOCK:
+        DOWNLOADS[key].update(state='done', error=None)
+      log('downloaded %s' % key)
+      break
+    except Exception as e:
+      err = 'disk full' if isinstance(e, OSError) and getattr(e, 'errno', 0) == 28 else str(e)
+      if attempt == 2 or err == 'disk full' or isinstance(e, ValueError) or (isinstance(e, urllib.error.HTTPError) and e.code in (401, 403, 404)):
         with LOCK:
-          DOWNLOADS[key].update(state='done', error=None)
-        log('downloaded %s' % key)
+          DOWNLOADS[key].update(state='failed', error=err)
+        log('download failed %s: %s' % (key, err))
         break
-      except Exception as e:
-        err = 'disk full' if isinstance(e, OSError) and getattr(e, 'errno', 0) == 28 else str(e)
-        if attempt == 2 or err == 'disk full' or isinstance(e, ValueError) or (isinstance(e, urllib.error.HTTPError) and e.code in (401, 403, 404)):
-          with LOCK:
-            DOWNLOADS[key].update(state='failed', error=err)
-          log('download failed %s: %s' % (key, err))
-          break
-        time.sleep(3)
+      time.sleep(3)
+
+
+def downloader(small_only=False):
+  # FILES of these take any file; one more takes only small ones, so a run's LoRA never waits for a
+  # base model to finish, even with every other downloader busy.
+  while True:
+    with WAKE:
+      item = pick(WORK, small_only)
+      while item is None:
+        WAKE.wait()
+        item = pick(WORK, small_only)
+      WORK.pop(next(i for i, f in enumerate(WORK) if f is item))
+    download(item)
 
 
 class Server(ThreadingHTTPServer):
@@ -678,8 +868,8 @@ class Handler(BaseHTTPRequestHandler):
             WORK.append(f)
         save_used()
         if WORK:
-          WAKE.set()
-      return self.reply(202, {'downloads': {k: dict(v) for k, v in DOWNLOADS.items()}})
+          WAKE.notify_all()
+      return self.reply(202, {'downloads': downloads_view(now)})
     if self.path.startswith('/runtime/'):
       name = self.path[len('/runtime/'):]
       if name not in RUNTIME_HOMES and name not in PACKS:
@@ -715,8 +905,9 @@ def main():
   for d in DIRS:
     if '/' not in d:
       os.makedirs(os.path.join(MODELS, d), exist_ok=True)
-  for target in (watchdog, downloader):
-    threading.Thread(target=target, daemon=True).start()
+  threading.Thread(target=watchdog, daemon=True).start()
+  for small_only in [False] * FILES + [True]:
+    threading.Thread(target=downloader, args=(small_only,), daemon=True).start()
   log('starting on port %d' % PORT)
   # Bind first, so the log line means the port answers.
   server = Server(('0.0.0.0', PORT), Handler)

@@ -13,7 +13,9 @@ export async function startJob(route, body) {
 }
 
 // Resolves with the job's files. A failed job throws with the server's code, reason and fit, as a direct call would.
-export async function waitJob(id) {
+// onStage hears what a running job waits on, such as a Pod download, each time it changes.
+export async function waitJob(id, { onStage } = {}) {
+  let stage = null
   for (let wait = 800; ; wait = Math.min(wait * 1.5, 3000)) {
     const res = await fetch(`/api/jobs/${id}`).catch(() => null)
     if (res?.status === 404) throw Object.assign(new Error('This run was lost when the app restarted. The first run may already have been charged. Retrying starts a new request and may charge again; check the provider history first.'), { code: 'interrupted' })
@@ -21,6 +23,10 @@ export async function waitJob(id) {
     if (job?.status === 'done') return job.files
     if (job?.status === 'cancelled') throw new Cancelled()
     if (job?.status === 'failed') throw Object.assign(new Error(job.error?.message || 'The run failed.'), job.error)
+    if (onStage && job?.stage && JSON.stringify(job.stage) !== stage) {
+      stage = JSON.stringify(job.stage)
+      onStage(job.stage)
+    }
     await sleep(wait)
   }
 }
@@ -32,5 +38,5 @@ export async function runJob(route, body, hooks = {}) {
   if (hooks.isCancelled?.()) throw new Cancelled()
   const id = await startJob(route, body)
   hooks.onJob?.(id)
-  return waitJob(id)
+  return waitJob(id, hooks)
 }

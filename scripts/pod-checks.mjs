@@ -1990,6 +1990,93 @@ await test('prepare: a Pod gets ready for services before their first run, at st
   await assert.rejects(pod.prepare({ runtimes: ['freevideo'] }), /FreeVideo needs a 96 GB GPU; this Pod has 24 GB/)
 })
 
+await test('session start: a Pod started for a job downloads its files before ComfyUI is ready, and a run queued on a busy Pod asks for its files at once', async () => {
+  const plugin = await import('../server/plugin.js')
+  const needs = core.podNeedsFor('ltx25_t2v')
+  assert(needs.files.length >= 3, 'LTX-2.5 has model files to download')
+  const opts = plugin.sessionStart(needs, [], 'balanced')
+  assert.deepEqual(opts.prepare.files.map((f) => f.name), needs.files.map((f) => f.name), 'the start sheet\'s start carries the job\'s files')
+  const { pod, rp, opts: env } = setup()
+  await pod.start(opts)
+  const booting = { stage: 'boot', ready: false, everReady: false, fatal: null, idleSec: 0, queue: null, models: [], downloads: {} }
+  rp.statusd = booting
+  await pod.tick()
+  const first = rp.calls.find((c) => c.path === '/download')
+  assert(first, 'the downloads start while the Pod boots')
+  assert.equal(pod.status().phase, 'starting', 'ComfyUI is not ready yet')
+  assert.deepEqual(first.body.files.map((f) => f.name), needs.files.map((f) => f.name))
+  assert(first.body.files.every((f) => Number.isInteger(f.bytes) && f.sha256), 'each file goes with its size and pinned hash')
+
+  // The Pod renders one job and downloads a base model. A second run needs a LoRA: it asks at once.
+  const big = { state: 'downloading', bytes: 1e9, total: 21.5e9, bps: 500e6 }
+  rp.statusd = readyStatus({ queue: 1, downloads: { 'diffusion_models/base.safetensors': big } })
+  const lora = { repo: 'org/l', path: 'l.safetensors', dir: 'loras', name: 'l.safetensors', gb: 0.4 }
+  const before = rp.count((c) => c.path === '/download')
+  let askedAtOnce = null
+  env.onWait = () => {
+    askedAtOnce ??= rp.count((c) => c.path === '/download') > before
+    rp.statusd = readyStatus({ queue: 1, downloads: { 'diffusion_models/base.safetensors': big, 'loras/l.safetensors': { state: 'done', bytes: 4e8, total: 4e8 } } })
+  }
+  const stages = []
+  const held = await pod.lease({ files: [lora], onStage: (stage, detail) => stages.push([stage, detail]) })
+  held.release()
+  env.onWait = null
+  assert.equal(askedAtOnce, true, 'the LoRA download starts before the Pod finishes its current job')
+  assert.deepEqual(stages[0], ['downloading', { files: ['l.safetensors'], leftSec: 1 }], 'the run says which file it waits on and about how long')
+  assert.deepEqual(stages.at(-1), ['running', {}])
+})
+
+await test('session start: the start sheet, the Pod chip and a waiting run say how long the downloads take', async () => {
+  const { downloadsLeft, downloadSeconds, POD_DOWNLOAD_BPS } = await import('../shared/modelFiles.js')
+  const usePod = await import('../src/lib/usePod.js')
+  assert.equal(downloadSeconds(40e9), Math.ceil(40e9 / POD_DOWNLOAD_BPS), 'about 50 s for 40 GB before the Pod measures its rate')
+  assert.equal(downloadSeconds(0), 0)
+  const list = [
+    { state: 'downloading', bytes: 2e9, total: 12e9, bps: 400e6 },
+    { state: 'downloading', bytes: 0, total: 8e9, bps: 600e6 },
+    { state: 'queued', bytes: 0, want: 10e9 },
+    { state: 'done', bytes: 5e9, total: 5e9 },
+  ]
+  assert.equal(downloadsLeft(list), 28, '28 GB left at the 1 GB/s the Pod reports')
+  assert.equal(downloadsLeft([{ state: 'queued', bytes: 0, want: 8e9 }]), 10, 'the first estimate before any rate')
+  const s = { mode: 'cloud', phase: 'ready', runs: 1, downloads: list.map((d, i) => ({ ...d, file: `f${i}.safetensors`, dir: 'loras' })), runtimes: [] }
+  assert.equal(usePod.podLabel(s), 'Downloading models · about 28 s')
+  assert.equal(usePod.etaText(150), '3 min')
+  const take = (podStage) => usePod.takeLabel({ provider: 'comfy', podStage }, s)
+  assert.equal(take({ stage: 'downloading', files: ['ltx-2.5-lora.safetensors'], leftSec: 4 }), 'Waiting on ltx-2.5-lora · about 4 s')
+  assert.equal(take({ stage: 'downloading', files: ['a.safetensors', 'b.safetensors', 'c.pth'], leftSec: 200 }), 'Waiting on a and 2 more files · about 3 min')
+  assert.equal(take({ stage: 'running' }), null, 'a run that renders does not say it waits on files')
+  assert.equal(take(undefined), 'Downloading models on the Pod', 'a run with no stage yet still sees the Pod download')
+
+  // A Pod run hands its job's stage reports to the lease.
+  podMode()
+  const client = { workflows: { fromFile: async () => ({ json: null, setInput() {} }) }, run: async () => ({ outputs: [{ type: 'image', contentType: 'image/png', name: 'x.png', toBytes: async () => Buffer.from('i') }] }) }
+  let leased = null
+  const onStage = () => {}
+  await core.runComfy('image_sdxl', sdxl, { createClient: () => client, podPhase: ready, podVram: () => 96, podRoom: () => ({}), run: 'session', onStage,
+    lease: async (o) => { leased = o; return { baseUrl: 'https://p-8189.proxy.runpod.net', token: 't', sandbox: false, signal: new AbortController().signal, reason: () => null, release() {} } } })
+  assert.equal(leased.onStage, onStage)
+
+  // A server job keeps the stage its run reports, and the page hears each change.
+  const { createJobs } = await import('../server/jobs.js')
+  const jobs = createJobs(path.join(fs.mkdtempSync(path.join(tmp, 'jobs-')), 'jobs.json'))
+  let go
+  const id = jobs.start((ctx) => { ctx.onStage('downloading', { files: ['l.safetensors'], leftSec: 3 }); return new Promise((r) => { go = r }) })
+  await new Promise((r) => setTimeout(r, 0))
+  assert.deepEqual(jobs.get(id).stage, { stage: 'downloading', files: ['l.safetensors'], leftSec: 3 })
+  const heard = []
+  const saved = globalThis.fetch
+  globalThis.fetch = async () => new Response(JSON.stringify(jobs.get(id)), { status: 200 })
+  try {
+    const { waitJob } = await import('../src/lib/jobs.js')
+    const done = waitJob(id, { onStage: (st) => { heard.push(st.stage); go([{ url: '/media/x.png' }]) } })
+    assert.deepEqual(await done, [{ url: '/media/x.png' }])
+  } finally {
+    globalThis.fetch = saved
+  }
+  assert.deepEqual(heard, ['downloading'])
+})
+
 await test('remove: the Pods page frees one model file; a file a run uses stays', async () => {
   const { pod, rp, dir } = setup()
   await assert.rejects(pod.remove({ dir: 'loras', name: 'x.safetensors' }), /The Pod is not running/)
@@ -2127,6 +2214,124 @@ print(json.dumps(seen))`
   const r = spawnSync(python[0], [...python.slice(1), '-c', code, statusd], { encoding: 'utf8', env: { ...process.env, CF_MODELS: path.join(tmp, 'quote-models') } })
   assert.equal(r.status, 0, r.stderr)
   assert.deepEqual(JSON.parse(r.stdout), ['https://huggingface.co/org/r/resolve/main/sub/%5BWAN2.2-I2V%5DMy%20LoRA.safetensors'])
+})
+
+await test('downloads: the smallest file goes first, a file of unknown size last, and the small lane takes only small files', { skip: !python && 'no Python 3.9+ found' }, () => {
+  const code = `
+import importlib.util, json, sys
+spec = importlib.util.spec_from_file_location('statusd', sys.argv[1])
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+work = [{'name': 'base', 'bytes': 40 * 10**9}, {'name': 'unknown'}, {'name': 'lora', 'bytes': 300 * 10**6}, {'name': 'vae', 'bytes': 3 * 10**9}]
+order = []
+left = list(work)
+while left:
+  f = m.pick(left)
+  order.append(f['name'])
+  left.remove(f)
+print(json.dumps({'order': order, 'small': m.pick(work, True)['name'], 'noSmall': m.pick([work[0], work[1]], True)}))`
+  const r = spawnSync(python[0], [...python.slice(1), '-c', code, statusd], { encoding: 'utf8', env: { ...process.env, CF_MODELS: path.join(tmp, 'order-models') } })
+  assert.equal(r.status, 0, r.stderr)
+  const out = JSON.parse(r.stdout)
+  assert.deepEqual(out.order, ['lora', 'vae', 'base', 'unknown'], 'LoRAs first, then by size, unknown sizes last')
+  assert.equal(out.small, 'lora')
+  assert.equal(out.noSmall, null, 'the small lane never takes a base model')
+})
+
+await test('downloads: files download at the same time, a large file in parallel byte ranges with its sha256 checked, a LoRA behind base models finishes first, and a broken part resumes', { skip: !python && 'no Python 3.9+ found' }, async (t) => {
+  const CHUNK = 256 * 1024
+  const files = {
+    'big.safetensors': randomBytes(16 * CHUNK),
+    'big2.safetensors': randomBytes(12 * CHUNK),
+    'lora.safetensors': randomBytes(200 * 1024),
+    'bad.safetensors': randomBytes(3 * CHUNK),
+  }
+  const sha = (b) => createHash('sha256').update(b).digest('hex')
+  // A file server that sends byte ranges slowly, counts the requests open at once, and breaks the first
+  // answer for big's fourth part halfway, as a dropped connection would.
+  const log = []
+  const open = { now: 0, max: 0, by: new Map(), most: 0 }
+  let broke = false
+  const hf = await listen(async (req, res) => {
+    const name = req.url.split('/').pop()
+    const body = files[name]
+    if (!body) return res.writeHead(404).end()
+    const m = /^bytes=(\d+)-(\d*)$/.exec(req.headers.range || '')
+    if (!m) { res.writeHead(200, { 'Content-Length': body.length }); return res.end(body) }
+    const start = Number(m[1])
+    const end = m[2] ? Math.min(Number(m[2]), body.length - 1) : body.length - 1
+    log.push({ name, start, end })
+    open.now++
+    open.by.set(name, (open.by.get(name) || 0) + 1)
+    open.max = Math.max(open.max, open.now)
+    open.most = Math.max(open.most, [...open.by.values()].filter((n) => n > 0).length)
+    res.writeHead(206, { 'Content-Length': end - start + 1, 'Content-Range': `bytes ${start}-${end}/${body.length}` })
+    const brk = name === 'big.safetensors' && start === 3 * CHUNK && !broke
+    if (brk) broke = true
+    for (let at = start, sent = 0; at <= end; at += 32 * 1024, sent += 32 * 1024) {
+      if (brk && sent >= CHUNK / 2) { res.destroy(); break }
+      res.write(body.subarray(at, Math.min(at + 32 * 1024, end + 1)))
+      await new Promise((r) => setTimeout(r, end - start > 0 ? 25 : 0))
+    }
+    open.now--
+    open.by.set(name, open.by.get(name) - 1)
+    if (!res.destroyed) res.end()
+  })
+  const port = freePort()
+  const base = path.join(tmp, 'statusd-parallel')
+  const proc = startStatusd({
+    POD_TOKEN: 'secret', CF_BASE: base, CF_MODELS: path.join(base, 'models'), CF_STATUS_PORT: String(port),
+    CF_COMFY_URL: 'http://127.0.0.1:9', CF_PROXY_URL: 'http://127.0.0.1:9', CF_HF_BASE: `http://127.0.0.1:${hf.address().port}`,
+    CF_TICK: '5', CF_DRY_KILL: '1', CF_DL_FILES: '2', CF_DL_PARTS: '4', CF_DL_CHUNK_MB: '0.25', CF_DL_SMALL_GB: '0.001',
+  })
+  t.after(() => { proc.kill(); hf.close() })
+  const url = `http://127.0.0.1:${port}`
+  const auth = { Authorization: 'Bearer secret' }
+  await proc.ready(url, async () => (await netFetch(`${url}/status`)).status === 401)
+  const item = (name, extra = {}) => ({ repo: 'org/model', path: name, dir: name === 'lora.safetensors' ? 'loras' : 'diffusion_models', name, bytes: files[name].length, sha256: sha(files[name]), ...extra })
+  const post = (list) => netFetch(`${url}/download`, { method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' }, body: JSON.stringify({ files: list }) })
+  const status = async () => (await netFetch(`${url}/status`, { headers: auth })).json()
+
+  assert.equal((await post([item('big.safetensors'), item('big2.safetensors')])).status, 202)
+  const both = await until(async () => {
+    const d = (await status()).downloads
+    return d['diffusion_models/big.safetensors']?.state === 'downloading' && d['diffusion_models/big2.safetensors']?.state === 'downloading' && d
+  })
+  assert(both, 'two base models download at the same time')
+  // A run queued behind them asks for its LoRA: it starts at once in the small lane and lands first.
+  assert.equal((await post([item('lora.safetensors')])).status, 202)
+  const first = await until(async () => {
+    const d = (await status()).downloads
+    return d['loras/lora.safetensors']?.state === 'done' && d
+  }, 5000)
+  assert.equal(first['diffusion_models/big.safetensors'].state, 'downloading', 'the LoRA finished while the base model was still downloading')
+  assert.equal(first['diffusion_models/big2.safetensors'].state, 'downloading')
+
+  // A wrong pinned hash on a split download keeps nothing: no file, no part file and no part list.
+  assert.equal((await post([item('bad.safetensors', { sha256: '0'.repeat(64) })])).status, 202)
+  const done = await until(async () => {
+    const s = await status()
+    const d = s.downloads
+    return ['diffusion_models/big.safetensors', 'diffusion_models/big2.safetensors', 'diffusion_models/bad.safetensors'].every((k) => ['done', 'failed'].includes(d[k]?.state)) && s
+  }, 20000)
+  assert.equal(done.downloads['diffusion_models/big.safetensors'].state, 'done', done.downloads['diffusion_models/big.safetensors'].error)
+  assert.equal(done.downloads['diffusion_models/big2.safetensors'].state, 'done')
+  assert.match(done.downloads['diffusion_models/bad.safetensors'].error, /does not match its pinned sha256/)
+  const models = path.join(base, 'models')
+  for (const name of ['big.safetensors', 'big2.safetensors']) assert(fs.readFileSync(path.join(models, 'diffusion_models', name)).equals(files[name]), `${name} has the exact bytes`)
+  assert(fs.readFileSync(path.join(models, 'loras/lora.safetensors')).equals(files['lora.safetensors']))
+  assert.deepEqual(fs.readdirSync(path.join(models, 'diffusion_models')).sort(), ['big.safetensors', 'big2.safetensors'], 'no part files, part lists or tampered file stay')
+  assert.deepEqual(done.models.map((f) => f.name).sort(), ['big.safetensors', 'big2.safetensors', 'lora.safetensors'])
+
+  const parts = (name) => log.filter((x) => x.name === name && x.end > x.start)
+  assert(open.max >= 3, `several connections at once (most: ${open.max})`)
+  assert(open.most >= 2, 'two files on the wire at the same time')
+  assert(parts('big.safetensors').length >= 16, 'big came in byte ranges of one part each')
+  assert(parts('big.safetensors').every((x) => x.end - x.start + 1 === CHUNK))
+  // The broken part is asked for again; the parts already on the disk are not.
+  const starts = parts('big.safetensors').map((x) => x.start)
+  assert.equal(starts.filter((s) => s === 3 * CHUNK).length, 2, 'the broken part is fetched again')
+  assert(starts.filter((s) => s === 0).length === 1 && starts.filter((s) => s === CHUNK).length === 1, 'finished parts are kept across the retry')
+  assert(starts.length <= 16 + 4, `at most the parts in flight are fetched again (${starts.length} part requests)`)
 })
 
 // ---- Image services ---------------------------------------------------------------------------------

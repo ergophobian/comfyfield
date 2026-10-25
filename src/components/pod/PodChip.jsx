@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { RUN_TYPES, downloading, money, podAction, podLabel, runTypeOf, setRunType, showPod, spendText, usePod } from '../../lib/usePod.js'
+import { RUN_TYPES, downloadEta, downloading, money, podAction, podLabel, runTypeOf, setRunType, showPod, spendText, usePod } from '../../lib/usePod.js'
 import Segmented from '../Segmented.jsx'
 import { TIERS } from '../../../shared/gpuTiers.js'
 
@@ -94,7 +94,8 @@ export default function PodChip() {
       <button ref={btn} type="button" className={`btn-soft pod-chip${open ? ' on' : ''}`} aria-expanded={open} aria-haspopup="dialog"
         aria-controls={open ? 'pod-pop' : undefined} onClick={() => setOpen((o) => !o)}>
         <i className={`pod-dot${tone(p)}`} aria-hidden="true" />
-        <span>{run === 'instant' ? 'Instant' : `Session · ${label}`}</span>
+        <span>{run === 'instant' ? 'Instant' : `Session · ${podLabel(s, Date.now(), { eta: false })}`}</span>
+        {run !== 'instant' && label.startsWith('Downloading models') && <span className="pod-eta">· about {downloadEta(s)}</span>}
         {p !== 'none' && <span className="pod-spend">· {money(s.spend?.today)} today</span>}
         {suggest && <em className="nav-badge">Suggested</em>}
       </button>
@@ -141,6 +142,7 @@ export default function PodChip() {
               <i style={{ '--p': `${pct(d)}%` }} />
             </div>
           ))}
+          {files.length > 0 && <p className="pod-note">About {downloadEta(s)} left for {files.length === 1 ? 'this download' : `these ${files.length} downloads`}.{p === 'starting' ? ' They download while the Pod boots.' : ''}</p>}
           {(s.runtimes || []).filter((e) => e.state !== 'ready').map((e) => (
             <p className={e.state === 'failed' ? 'sheet-error' : 'pod-note'} key={e.runtime}>{e.state === 'failed'
               ? `${e.name} could not install: ${e.error || 'unknown error'}`
