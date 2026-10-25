@@ -38,12 +38,15 @@ import Flows from './pages/Flows.jsx'
 import Models from './pages/Models.jsx'
 import { AppCtx } from './lib/appContext.js'
 import { formatById, isWired } from './lib/formats/index.js'
-import { getConnections } from './lib/providers.js'
+import { getConnections, noKeys } from './lib/providers.js'
 import { useGenerations } from './lib/useGenerations.js'
 import { usePodPolling } from './lib/usePod.js'
 import PodSheet from './components/pod/PodSheet.jsx'
 import RunToasts from './components/RunToasts.jsx'
 import { usePicker } from './lib/usePicker.js'
+
+// Create pages show their own Connect Comfy prompt, so the app-wide notice stays off there.
+const createRoutes = ['/image', '/video']
 
 export default function App() {
   // Lifted here so a render keeps going when you switch pages.
@@ -69,8 +72,8 @@ export default function App() {
     <AppCtx.Provider value={ctx}>
       <div className="sky" aria-hidden="true"><i /><i /><i /><i /><i /></div>
       <TopBar />
-      {Object.keys(connections).length > 0 && !Object.values(connections).some((c) => c.connected) && pathname !== '/connections' && (
-        <p className="notice" role="status">No keys yet. <Link to="/connections">Open Connections</Link> to add a provider key when you are ready to generate.</p>
+      {noKeys(connections) && !['/connections', ...createRoutes].includes(pathname) && (
+        <p className="notice" role="status">No keys yet. <Link to="/connections">Connect Comfy</Link> to generate with one key.</p>
       )}
       <div className="route" key={pathname}>
         <Routes>
