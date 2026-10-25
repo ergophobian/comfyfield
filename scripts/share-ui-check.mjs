@@ -70,12 +70,12 @@ try {
     throw new Error(`Timed out: ${expression}`)
   }
   const shot = async (name) => fs.writeFileSync(path.join(dir, name), Buffer.from((await cdp('Page.captureScreenshot', { format: 'png' })).data, 'base64'))
-  const button = (text) => `[...document.querySelectorAll('.flows button, .flows a')].find((b) => b.textContent.trim().startsWith(${JSON.stringify(text)}))`
+  const button = (text) => `([...document.querySelectorAll('.flows button, .flows a')].reduce((hit, b) => (b.textContent.trim() === ${JSON.stringify(text)} ? hit || b : hit), null) || [...document.querySelectorAll('.flows button, .flows a')].find((b) => b.textContent.trim().startsWith(${JSON.stringify(text)})))`
   const click = async (text) => { await wait(button(text)); await js(`${button(text)}.click()`) }
   await cdp('Page.enable')
   await cdp('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] })
   await cdp('Emulation.setDeviceMetricsOverride', { width: 1280, height: 820, deviceScaleFactor: 1, mobile: false })
-  await cdp('Page.navigate', { url: `${base}/flows` })
+  await cdp('Page.navigate', { url: `${base}/flows` }, 120000)
   // The first visit can wait on Vite's dependency scan, so allow longer than a click.
   for (const deadline = Date.now() + 90000; Date.now() < deadline && !(await js(`Boolean(document.querySelector('.react-flow__node[data-id="img"] img'))`));) await delay(250)
   await wait(`document.querySelector('.react-flow__node[data-id="img"] img')`)
