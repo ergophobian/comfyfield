@@ -62,4 +62,9 @@ export function pinnedFirst(items, pinned = [], idOf = (f) => f.id) {
   return [...pins, ...items.filter((f) => !rank.has(idOf(f)))]
 }
 
+// Items made before workspaces carry no id; they belong to Default.
+export const workspaceOf = (item) => (typeof item?.workspace === 'string' && item.workspace) || DEFAULT_WORKSPACE
+// scope: a workspace id, or null for All.
+export const inWorkspace = (item, scope) => !scope || workspaceOf(item) === scope
+
 export const initialsOf = (name = '') => name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() || '').join('') || '?'

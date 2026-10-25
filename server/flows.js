@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
 import * as core from './core.js'
+import { createWorkspaces, keepWorkspace } from './workspaces.js'
 import { createEngine, topoOrder } from '../src/lib/flowEngine.js'
 import { nodeLabels, nodeDefaults, unknownType, missingNode, connectionProblem } from '../shared/flowRules.js'
 
@@ -32,6 +33,7 @@ function withModel(type, data) {
 export function createFlows({ directory = core.home, generate = core.generate, writePrompt = core.writePrompt, stitch = core.stitch, changed = () => {} } = {}) {
   const engines = new Map()
   const locks = new Set()
+  const workspaces = createWorkspaces({ directory })
   let quiet = false
   const file = () => path.join(directory(), 'flows.json')
   const read = () => {
@@ -95,7 +97,8 @@ export function createFlows({ directory = core.home, generate = core.generate, w
     // browser-only flows bring their results along when the app moves them here.
     const known = new Set(store.flows.map((f) => f.id))
     const imported = Object.fromEntries(flows.filter((f) => !known.has(f.id) && runs?.[f.id] && !store.runs[f.id]).map((f) => [f.id, fresh(Object.fromEntries(Object.entries(runs[f.id]).filter(([id]) => f.nodes.some((n) => n.id === id))))]))
-    return write({ ...store, revision: store.revision + 1, flows: clone(flows), current, runs: { ...store.runs, ...imported } })
+    const kept = flows.map((f) => keepWorkspace(f, store.flows.find((s) => s.id === f.id)))
+    return write({ ...store, revision: store.revision + 1, flows: clone(kept), current, runs: { ...store.runs, ...imported } })
   }
   const edit = (id, fn) => {
     const store = read()
@@ -186,7 +189,7 @@ export function createFlows({ directory = core.home, generate = core.generate, w
     read, get, save, engine, perform, validate, report,
     create: ({ name, nodes = [], edges = [] }) => {
       if (typeof name !== 'string' || !name.trim()) throw problem('Give the flow a name.')
-      const flow = { id: shortId(), name: name.trim(), nodes: [], edges: [], updated: Date.now() }
+      const flow = { id: shortId(), name: name.trim(), workspace: workspaces.active().id, nodes: [], edges: [], updated: Date.now() }
       nodes.forEach((n) => flow.nodes.push(makeNode(flow, n)))
       edges.forEach((e) => link(flow, e))
       const store = read()

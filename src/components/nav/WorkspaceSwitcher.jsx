@@ -12,6 +12,16 @@ export function WorkspaceAvatar({ ws, size = 'sm' }) {
   )
 }
 
+// The workspace filter for Library and Flows lists: the active workspace, or All.
+export function WorkspaceScope({ all, setAll, current, className = '' }) {
+  return (
+    <div className={`pills ws-scope ${className}`} role="group" aria-label="Workspace filter">
+      <button type="button" className={all ? '' : 'on'} aria-pressed={!all} onClick={() => setAll(false)}><WorkspaceAvatar ws={current} />{current.name}</button>
+      <button type="button" className={all ? 'on' : ''} aria-pressed={all} onClick={() => setAll(true)}>All</button>
+    </div>
+  )
+}
+
 // A small pill in the top bar. The menu switches workspace and turns its prompt rules on or off.
 export default function WorkspaceSwitcher() {
   const { workspaces, current } = useWorkspaces()

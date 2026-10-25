@@ -1,4 +1,4 @@
-import { useEffect, useSyncExternalStore } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import { DEFAULT_WORKSPACE, defaultWorkspace } from '../../shared/workspaces.js'
 
 // The app's copy of .comfyfield/workspaces.json. Generations read the active workspace when they start.
@@ -61,3 +61,11 @@ export function useWorkspaces() {
 
 // The pinned format ids of the active workspace, for galleries that list formats.
 export const usePinned = () => useWorkspaces().current.pinned || []
+
+// A list filter: the active workspace by default, or All. Switching workspace returns to it.
+export function useScope() {
+  const { current } = useWorkspaces()
+  const [all, setAll] = useState(false)
+  useEffect(() => setAll(false), [current.id])
+  return { scope: all ? null : current.id, all, setAll, current }
+}

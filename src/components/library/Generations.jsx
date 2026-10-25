@@ -5,6 +5,7 @@ import Segmented from '../Segmented.jsx'
 import Pop from '../generate/Pop.jsx'
 import Viewer, { Media, Act, ext } from '../Viewer.jsx'
 import { useFolders } from '../../lib/folders.js'
+import { inWorkspace } from '../../../shared/workspaces.js'
 import { IconCheck, IconDownload, IconCopy, IconTrash, IconSearch, IconClose, IconPlus } from '../Icons.jsx'
 
 const filters = [
@@ -29,7 +30,7 @@ function downloadAll(list) {
   }, i * 250))
 }
 
-export default function Generations({ gens }) {
+export default function Generations({ gens, scope = null, onAll }) {
   const [filter, setFilter] = useState('all')
   const [query, setQuery] = useState('')
   const [folder, setFolder] = useState('all')
@@ -39,7 +40,7 @@ export default function Generations({ gens }) {
   const [open, setOpen] = useState(null)
   const [copied, setCopied] = useState(null)
   const fs = useFolders()
-  const done = useMemo(() => gens.items.filter((i) => !i.pending && !i.failed && i.url), [gens.items])
+  const done = useMemo(() => gens.items.filter((i) => !i.pending && !i.failed && i.url && inWorkspace(i, scope)), [gens.items, scope])
   const q = query.trim().toLowerCase()
   const items = done.filter((i) => (filter === 'all' ? true : filter === 'approved' ? i.approved : i.kind === filter))
     .filter((i) => folder === 'all' || fs.of[i.id] === folder)
@@ -75,6 +76,14 @@ export default function Generations({ gens }) {
     setTimeout(() => setCopied((c) => (c === it.id ? null : c)), 1400)
   }
 
+  if (!done.length && scope && gens.items.some((i) => !i.pending && !i.failed && i.url)) {
+    return (
+      <div className="empty glass">
+        <p>Nothing made in this workspace yet.</p>
+        <button type="button" className="btn-blue" onClick={onAll}>Show all workspaces</button>
+      </div>
+    )
+  }
   if (!done.length) {
     return (
       <div className="empty glass">

@@ -6,7 +6,7 @@ import { preflightFlow } from './formats/preflight.js'
 import { waitJob, cancelJob, Cancelled } from './jobs.js'
 import { createRouterBatch } from './routerBatch.js'
 import { activeWorkspace } from './workspaces.js'
-import { withCriteria } from '../../shared/workspaces.js'
+import { withCriteria, workspaceOf } from '../../shared/workspaces.js'
 
 const KEY = 'comfyfield.library'
 const MAX_PARALLEL = 3
@@ -17,6 +17,8 @@ function load() {
   try {
     return (JSON.parse(localStorage.getItem(KEY)) || []).filter(restorable)
       .map((item) => item.formatRunId && (item.pending || item.failed) ? { ...item, restoreNote: formatReloadNote } : item)
+      // Takes made before workspaces move to Default; a take with an id keeps it.
+      .map((item) => (item.workspace ? item : { ...item, workspace: workspaceOf(item) }))
   } catch { return [] }
 }
 
@@ -38,7 +40,7 @@ export function useGenerations() {
 
   const add = (files) => {
     if (!Array.isArray(files)) return
-    setItems((xs) => [...files.filter((file) => !xs.some((item) => item.id === file.id)), ...xs])
+    setItems((xs) => [...files.filter((file) => !xs.some((item) => item.id === file.id)).map((file) => ({ ...file, workspace: workspaceOf(file) })), ...xs])
   }
   const patch = (id, fn) => setItems((xs) => xs.map((x) => (x.id === id ? fn(x) : x)))
   useEffect(() => {
@@ -147,7 +149,9 @@ export function useGenerations() {
     }
     const previous = live.current.find((item) => item.id === id)
     const from = previous?.from || window.location.pathname + window.location.search
-    const base = { aspect: opts.shape || opts.aspect, caption: opts.caption, model: model.name, kind: model.kind, provider: model.provider, from, restoreNote: previous?.restoreNote, ...meta, run: { model, opts, meta } }
+    // A retry stays in the workspace the take started in.
+    const workspace = previous?.workspace || activeWorkspace().id
+    const base = { aspect: opts.shape || opts.aspect, caption: opts.caption, model: model.name, kind: model.kind, provider: model.provider, from, restoreNote: previous?.restoreNote, workspace, ...meta, run: { model, opts, meta } }
     const owner = meta.formatRunId || id
     clearError(meta.formatRunId ? owner : errorOwner.current)
     setItems((xs) => [{ id, pending: true, ...base, jobs: opts.routerBatch?.calls.map((call) => call.jobId).filter(Boolean) || [] }, ...xs.filter((x) => x.id !== id)])
