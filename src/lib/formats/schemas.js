@@ -1181,6 +1181,22 @@ export const schemas = {
       "prompt",
       "seed"
     ],
+    "qwen2511_photodump": [
+      "height",
+      "image",
+      "image2",
+      "image3",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "qwen2511_reframe": [
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "width"
+    ],
     "qwen2511_relight": [
       "image",
       "prompt",
@@ -1674,6 +1690,10 @@ export const schemas = {
       "image"
     ],
     "qwen2511_edit": [
+      "image2",
+      "image3"
+    ],
+    "qwen2511_photodump": [
       "image2",
       "image3"
     ],

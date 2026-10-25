@@ -147,7 +147,7 @@ export function useGenerations() {
     }
     const previous = live.current.find((item) => item.id === id)
     const from = previous?.from || window.location.pathname + window.location.search
-    const base = { aspect: opts.shape || opts.aspect, caption: opts.caption, model: model.name, kind: model.kind, provider: model.provider, from, restoreNote: previous?.restoreNote, ...meta, run: { model, opts, meta } }
+    const base = { aspect: opts.aspect === 'auto' ? opts.shape : opts.aspect || opts.shape, caption: opts.caption, model: model.name, kind: model.kind, provider: model.provider, from, restoreNote: previous?.restoreNote, ...meta, run: { model, opts, meta } }
     const owner = meta.formatRunId || id
     clearError(meta.formatRunId ? owner : errorOwner.current)
     setItems((xs) => [{ id, pending: true, ...base, jobs: opts.routerBatch?.calls.map((call) => call.jobId).filter(Boolean) || [] }, ...xs.filter((x) => x.id !== id)])

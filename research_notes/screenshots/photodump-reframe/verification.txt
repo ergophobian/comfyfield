@@ -1,0 +1,35 @@
+Photodump and Reframe review verification
+
+Date: 2026-10-19
+Host: pi-windows
+Scratch clone: C:/temp/comfyfield-photodump-review-20261019
+Runtime: Node 24.11.1, Windows, headless Chrome
+Setup: npm ci --no-audit --no-fund
+Rebase: git fetch origin; git rebase origin/main (already up to date)
+Base: 6517801921a8a52553bfd47bcfb119316302a851
+Fetched main: 7ee3b1c9c84ba1c5e59b9b4b3069f8af6ecef0c1
+Build: npx vite build (passed in 2.21 seconds; existing bundle-size warning)
+Checks: node scripts/verify.mjs (Git Bash bin and usr/bin first in Path)
+No paid runs, keys or live model evidence. Network/provider transports are mocked.
+
+Format check ok: 452 runnable, 29 hidden, 10 migrated recipes. No generation calls.
+Format runner checks ok: 31 recipe cases, approval and batching, concurrency, schema rejection, Comfy placeholders, writer handoff and provider failures. No network calls.
+Graph check: 110/110 graphs fit ComfyUI v0.41.1 and the listed packs.
+All cross-lane integration checks passed. No keys or provider calls.
+Photodump and Reframe checks passed: scene fan-out, references, ratios, quality, graph variables, center composition, uncropped identity, no-op and extreme-ratio guards, adaptive feathering, runnable ids, image navigation and Cloud files. No provider calls.
+theme ok
+Photodump and Reframe mock browser checks passed: 10 saved images, three references, permission gates, saved character, dimensions, prompts, 3-success/1-failure per-shot and bulk recovery, matching/extreme ratio guards, unwired video, Library after reload and desktop/390px screenshots. No provider calls.
+18/18 check scripts passed
+
+Recovery assertions passed:
+- Initial run: four requests, three successful shots and one failed shot.
+- Retry failed photos: one request for that shot; deliberately fails again.
+- Per-shot Retry: one request for that shot; succeeds.
+- All three original completed photo ids remain unchanged.
+- Retry keeps the failed shot prompt, references, canvas and quality.
+- Generation and retry require permission; changing references clears permission.
+- Matching ratios and extreme panoramas send no generation requests.
+
+Screenshots: 22 mock captures, desktop 1440px and mobile 390px.
+Full verification output: review-check-output.txt
+Shared retry logic, check discovery, Pod files and routing were not changed by these review fixes.
