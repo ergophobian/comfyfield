@@ -161,7 +161,8 @@ export const pictureTypes = ['image', 'draw', 'mask', 'face', 'crop', 'character
 
 // The files a ComfyUI graph takes by slot: one picture per picture-like input, in the order the format
 // lists them, so an empty optional input keeps its slot (a saved character or product gives its first
-// picture); the first audio input; a saved voice's sample. Null when the format has none of them.
+// picture, or its first `pictures` ones, which is how a reference set reaches the graph); the first audio
+// input; a saved voice's sample. Null when the format has none of them.
 export function fileSlots(recipe, values) {
   const shown = new Set(visibleInputs(recipe, values).map((i) => i.id))
   const value = (i) => (shown.has(i.id) ? values[i.id] : null)
@@ -175,7 +176,11 @@ export function fileSlots(recipe, values) {
     }
     return v.url || null
   }
-  const pictures = recipe.inputs.filter((i) => pictureTypes.includes(i.type)).map(picture)
+  const pictures = recipe.inputs.filter((i) => pictureTypes.includes(i.type)).flatMap((i) => {
+    if (!(i.pictures > 1)) return [picture(i)]
+    const images = value(i)?.images || []
+    return Array.from({ length: i.pictures }, (_, n) => images[n] || null)
+  })
   const audio = recipe.inputs.filter((i) => i.type === 'audio').map((i) => value(i)?.url).find(Boolean) || null
   const voice = recipe.inputs.filter((i) => i.type === 'voice').map((i) => value(i)?.sample).find(Boolean) || null
   if (!pictures.length && !recipe.inputs.some((i) => i.type === 'audio' || i.type === 'voice')) return null

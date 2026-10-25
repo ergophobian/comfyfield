@@ -145,7 +145,7 @@ export function validateFormat(format, schemas = savedSchemas) {
         if (model.imageWorkflow && !imageSchema) bad(`${label} Missing Comfy workflow ${model.imageWorkflow}`)
         const hasVideo = format.inputs.some((i) => i.type === 'video')
         // Each picture-like input fills one slot in order, so a format with three gives image to image3.
-        const pictures = format.inputs.filter((i) => pictureTypes.includes(i.type)).length
+        const pictures = format.inputs.filter((i) => pictureTypes.includes(i.type)).reduce((n, i) => n + (i.pictures > 1 ? i.pictures : 1), 0)
         const files = [...PICTURE_SLOTS.slice(1, pictures), ...(format.inputs.some((i) => i.type === 'mask' || i.type === 'draw') ? ['mask'] : []),
           ...(format.inputs.some((i) => i.type === 'audio') ? ['audio'] : []), ...(format.inputs.some((i) => i.type === 'voice') ? ['voice'] : [])]
         const supplied = new Set(['prompt', 'width', 'height', 'count', 'frames', 'duration', 'start', 'seed', ...(hasVideo ? ['video'] : []), ...(stepOptions(format, step, values).images.length || upstream.length || pictures ? ['image'] : []), ...files, ...Object.keys(step.params || {}), ...Object.keys(step.bindings || {})])

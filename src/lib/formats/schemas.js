@@ -759,6 +759,8 @@ export const schemas = {
       "count",
       "height",
       "image",
+      "image2",
+      "image3",
       "prompt",
       "seed",
       "width"
@@ -983,10 +985,27 @@ export const schemas = {
       "start",
       "video"
     ],
+    "influencer_video": [
+      "cfg_weight",
+      "exaggeration",
+      "height",
+      "image",
+      "image2",
+      "image3",
+      "language",
+      "prompt",
+      "script",
+      "seconds",
+      "seed",
+      "voice",
+      "width"
+    ],
     "klein_character": [
       "count",
       "height",
       "image",
+      "image2",
+      "image3",
       "prompt",
       "seed",
       "width"
@@ -1038,6 +1057,16 @@ export const schemas = {
       "image",
       "image2",
       "image3",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "klein_reference_set": [
+      "height",
+      "image",
+      "image2",
+      "image3",
+      "image4",
       "prompt",
       "seed",
       "width"
@@ -1431,6 +1460,10 @@ export const schemas = {
       "start",
       "video"
     ],
+    "flux_character_set": [
+      "image2",
+      "image3"
+    ],
     "h3_lora_i2v": [
       "image2"
     ],
@@ -1451,9 +1484,23 @@ export const schemas = {
     "infinitetalk_tts": [
       "voice"
     ],
+    "influencer_video": [
+      "image2",
+      "image3",
+      "voice"
+    ],
+    "klein_character": [
+      "image2",
+      "image3"
+    ],
     "klein_moodboard": [
       "image2",
       "image3"
+    ],
+    "klein_reference_set": [
+      "image2",
+      "image3",
+      "image4"
     ],
     "ltx25_multishot": [
       "image"
