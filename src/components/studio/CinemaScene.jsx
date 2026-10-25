@@ -155,7 +155,7 @@ export default function CinemaScene({ storageKey, initialIdea = '' }) {
     <div className="cinema-journey">
       {!flow && <>
         <section className="cinema-idea cs-composer glass">
-          <div className="cinema-scene-heading"><h2>From idea to finished scene</h2><span className="muted">LTX-2.5</span></div>
+          <div className="cinema-scene-heading"><h2>From idea to finished scene</h2><span className="muted">LTX-2.5 on Comfy Cloud</span></div>
           <p className="muted">Plan 2–6 shots, shape each one, then render. Use the prompt writer in Connections or start with the portal example.</p>
           <label htmlFor={`${storageKey}-idea`}>Your cinematic idea</label>
           <div className="cs-write">
