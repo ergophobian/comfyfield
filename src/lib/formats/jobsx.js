@@ -444,8 +444,12 @@ const imageJobs = [
     id: 'ai-human', name: 'AI human', kind: 'image', category: 'characters',
     blurb: 'Create a person who does not exist, ready to save as a character.',
     // Krea's own advice: train on Raw, run on Turbo.
-    runsOn: 'Krea 2 Turbo', workflow: 'krea2_t2i',
+    runsOn: 'Krea 2 Turbo',
     inputs: [
+      { id: 'realism', type: 'choice', label: 'Look', default: 'real', options: [
+        { id: 'real', label: 'Real photo', note: 'Realism LoRA, no AI gloss' },
+        { id: 'polished', label: 'Polished', note: 'Krea 2 on its own' },
+      ] },
       { id: 'description', type: 'longtext', label: 'Who they are', placeholder: 'A cheerful baker in her 40s with flour on her apron and curly gray hair' },
       { id: 'framing', type: 'choice', label: 'Framing', half: true, default: 'half', options: [
         { id: 'close', label: 'Close up', text: 'A close up' },
@@ -461,6 +465,11 @@ const imageJobs = [
     ],
     prompt: '{framing} photo of a fictional person: {description}. {setting} Natural skin texture, true to life color and realistic proportions, like an unretouched professional photo. Not based on any real person.',
     settings: { aspect: '4:5' },
+    // Real photo adds Krea2-realism-V2, which Comfy Cloud lacks, so it runs on a Pod; Polished can run on Cloud.
+    steps: [{ id: 'generate', provider: 'comfy', kind: 'image', targetInput: 'realism', settings: { aspect: '4:5' }, targets: {
+      real: { workflow: 'krea2_realism_t2i' },
+      polished: { workflow: 'krea2_t2i' },
+    } }],
     cover: covers.peach,
   }),
 ]

@@ -1011,10 +1011,18 @@ export const schemas = {
       "width"
     ],
     "image_grade": [
+      "desat",
+      "glow",
       "grain",
+      "grain_base",
       "image",
-      "preset",
-      "temperature"
+      "matte",
+      "matte_amount",
+      "punch",
+      "seed",
+      "temperature",
+      "tint",
+      "tint_amount"
     ],
     "image_sdxl": [
       "count",
@@ -1760,6 +1768,39 @@ export const schemas = {
       "seconds",
       "seed",
       "width"
+    ],
+    "krea2_realism_t2i": [
+      "count",
+      "height",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "qwen2511_anypose": [
+      "image",
+      "image2",
+      "prompt",
+      "seed"
+    ],
+    "qwen2511_anything2real": [
+      "image",
+      "prompt",
+      "seed"
+    ],
+    "qwen_image21_faceswap": [
+      "image",
+      "image2",
+      "prompt",
+      "seed"
+    ],
+    "seedvr2_old_footage": [
+      "deinterlace",
+      "denoise",
+      "duration",
+      "seed",
+      "start",
+      "upscale_factor",
+      "video"
     ]
   },
   "comfyOptional": {

@@ -48,13 +48,14 @@ const characters = [
   open({
     id: 'face-swap', name: 'Face swap', kind: 'image', category: 'characters', hub: 'face',
     blurb: 'Swap the face in a photo for your own face or a saved character.',
-    engine: 'fal', model: 'fal-ai/nano-banana-2/edit', runsOn: 'Nano Banana 2 via fal',
-    steps: [{ id: 'generate', provider: 'fal', endpoint: 'fal-ai/nano-banana-2/edit', bindings: { image_urls: ['photo.url', 'character.faceUrl'] } }],
+    // BFS head swap V1.1, the most downloaded Qwen-Image 2.1 adapter. The photo is <image1>, the face
+    // <image2>, and the prompt is the trigger from the BFS guide.
+    runsOn: 'Qwen-Image 2.1 with BFS face swap', workflow: 'qwen_image21_faceswap',
     inputs: [
       { id: 'photo', type: 'image', label: 'Photo to change' },
       { id: 'character', type: 'face', label: 'Your own face or a saved character' },
     ],
-    prompt: 'Replace the face of the main person in this photo with the face of {character}. Keep the hair, pose, head angle, expression, outfit, lighting and background of the photo exactly the same, and blend skin tone and light so it looks natural.',
+    prompt: 'head_swap: start with <image1> as the base image, keeping its lighting, environment, and background. remove the head from <image1> completely and replace it with the head from <image2>, strictly preserving the hair, eye color, nose structure from <image2>. copy the direction of the eye, head rotation, micro expressions from <image1>, high quality, sharp details, 4k',
     settings: { aspect: 'auto' },
     cover: covers.sky,
   }),

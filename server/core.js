@@ -12,6 +12,7 @@ import { comfyVars, comfyRouterInput, falInput, estimate, fill, falEndpointFor, 
 import { renderStitch, ffmpeg, findFfmpeg } from './stitch.js'
 import { archOf, minVramOf, notOnCloud, podNeedsOf, volumeFor, RUNTIMES } from '../shared/modelFiles.js'
 import { DEFAULT_TIER, TIER_IDS } from '../shared/gpuTiers.js'
+import { REAL_LOOK } from '../shared/realism.js'
 
 import { podManager, GPU_LADDER, IDLE_CHOICES, POD_VOLUMES, STOPPED_DISK_USD_GB_MONTH, idleMinutes } from './pod.js'
 import { sandboxFetch } from './podSandbox.js'
@@ -413,7 +414,8 @@ export async function writePrompt({ instructions, note = '', images = [], target
     }
     return { inlineData: { mimeType: mime, data: buf.toString('base64') } }
   })
-  parts.push({ text: [target && `Target model or medium: ${target}`, note && `User note: ${note}`, promptOnly && 'Write only the finished generation prompt.'].filter(Boolean).join('\n\n') })
+  // The instructions pass through unchanged, so the house rule against the AI look rides with the request.
+  parts.push({ text: [target && `Target model or medium: ${target}`, note && `User note: ${note}`, `House style: ${REAL_LOOK}`, promptOnly && 'Write only the finished generation prompt.'].filter(Boolean).join('\n\n') })
   const r = await fetch(`${GEMINI}/models/gemini-flash-latest:generateContent`, {
     method: 'POST', headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' },
     body: JSON.stringify({ systemInstruction: { parts: [{ text: instructions }] }, contents: [{ role: 'user', parts }] }),
@@ -522,7 +524,7 @@ export async function balances() {
 export async function writePrompts({ idea, n = 6, kind = 'video' }) {
   const { key } = config('google')
   if (!key) throw Object.assign(new Error('Connect Google AI to write prompts with AI.'), { status: 400 })
-  const ask = `Write ${n} distinct ${kind} generation prompts for this idea: "${idea}". Vary subject, setting, camera and mood. Each prompt is one vivid sentence under 40 words. Return only a JSON array of strings.`
+  const ask = `Write ${n} distinct ${kind} generation prompts for this idea: "${idea}". Vary subject, setting, camera and mood. Each prompt is one vivid sentence under 40 words. ${REAL_LOOK} Return only a JSON array of strings.`
   const r = await fetch(`${GEMINI}/models/gemini-flash-latest:generateContent`, {
     method: 'POST', headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' },
     body: JSON.stringify({ contents: [{ parts: [{ text: ask }] }], generationConfig: { responseMimeType: 'application/json' } }),

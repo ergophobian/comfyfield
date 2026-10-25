@@ -124,6 +124,37 @@ const imageEdits = [
     cover: covers.night,
   }),
   open({
+    id: 'illustration-to-real', name: 'Illustration to real', kind: 'image', category: 'image-edit', hub: 'enhance',
+    blurb: 'Turn a drawing, anime frame or painting into a real photo.',
+    // Anything2Real 2601 A, the second most downloaded Edit 2511 adapter. Its card's prompt template.
+    runsOn: 'Qwen-Image Edit 2511 with Anything2Real', workflow: 'qwen2511_anything2real',
+    inputs: [
+      { id: 'image', type: 'image', label: 'Drawing, anime or painting' },
+      { id: 'subject', type: 'text', label: 'What it shows', optional: true, placeholder: 'A knight in silver armor in a misty pine forest' },
+    ],
+    prompt: 'change the picture 1 to realistic photograph, {subject}. Keep the composition, poses, outfits and colors, with real light, real skin texture and true to life materials.',
+    settings: { aspect: 'auto' },
+    cover: covers.dusk,
+  }),
+  open({
+    id: 'pose-transfer', name: 'Copy a pose', kind: 'image', category: 'image-edit', hub: 'professional',
+    blurb: 'Put the person in your photo into the pose from another picture. One person, full body, works best.',
+    // AnyPose base and helper LoRAs at 0.7 each with Lightning, and the prompt from the AnyPose card.
+    runsOn: 'Qwen-Image Edit 2511 with AnyPose', workflow: 'qwen2511_anypose',
+    inputs: [
+      { id: 'image', type: 'image', label: 'Person' },
+      { id: 'pose', type: 'image', label: 'Pose to copy' },
+      { id: 'background', type: 'choice', label: 'Background', default: 'keep', options: [
+        { id: 'keep', label: 'Keep mine', text: 'Remove the background of image 2, and replace it with the background of image 1.' },
+        { id: 'pose', label: 'From the pose picture', text: 'Keep the background of image 2.' },
+      ] },
+      { id: 'detail', type: 'text', label: 'Anything hidden in your photo', optional: true, placeholder: 'She is wearing white sneakers' },
+    ],
+    prompt: 'Make the person in image 1 do the exact same pose of the person in image 2. Changing the style and background of the image of the person in image 1 is undesirable, so don\'t do it. The new pose should be pixel accurate to the pose we are trying to copy. The position of the arms and head and legs should be the same as the pose we are trying to copy. Change the field of view and angle to match exactly image 2. Head tilt and eye gaze pose should match the person in image 2. {background} {detail}',
+    settings: { aspect: 'auto' },
+    cover: covers.lilac,
+  }),
+  open({
     id: 'sketch-to-image', name: 'Sketch to image', kind: 'image', category: 'image-edit', hub: 'games',
     blurb: 'Turn a rough drawing into a finished picture.',
     runsOn: 'Qwen-Image 2.1', workflow: 'qwen_edit',
@@ -380,6 +411,26 @@ const enhance = [
     ],
     settings: { aspect: 'auto' },
     cover: covers.sky,
+  }),
+  open({
+    id: 'old-footage', name: 'Restore old footage', kind: 'video', category: 'enhance', hub: 'enhance',
+    blurb: 'Clean up old tape, film or phone video, then sharpen it.',
+    // Deinterlace and denoise first, so SeedVR2 rebuilds detail instead of sharpening combing and noise.
+    runsOn: 'SeedVR2', workflow: 'seedvr2_old_footage',
+    inputs: [
+      clip,
+      { id: 'source', type: 'choice', label: 'Source', default: 'tape', options: [
+        { id: 'tape', label: 'VHS or camcorder tape', note: 'Deinterlace and denoise', params: { deinterlace: 1, denoise: 0.6 } },
+        { id: 'film', label: 'Old film scan', note: 'Calm the grain', params: { deinterlace: 0, denoise: 0.4 } },
+        { id: 'phone', label: 'Early phone video', note: 'Clean the noise', params: { deinterlace: 0, denoise: 0.7 } },
+      ] },
+      { id: 'factor', type: 'choice', label: 'Scale', default: '2', options: [
+        { id: '2', label: '2x', params: { upscale_factor: 2 } },
+        { id: '4', label: '4x', params: { upscale_factor: 4 } },
+      ] },
+    ],
+    settings: { aspect: 'auto' },
+    cover: covers.slate,
   }),
   open({
     id: 'slow-motion', name: 'Slow motion', kind: 'video', category: 'enhance',
