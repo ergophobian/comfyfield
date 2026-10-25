@@ -145,20 +145,32 @@
     }
   },
   "12": {
-    "class_type": "ComfyMathExpression",
+    "class_type": "PrimitiveFloat",
     "inputs": {
-      "expression": "max(a, 0) / 100",
-      "values.a": "{{temperature}}"
+      "value": "{{temperature}}"
     }
   },
   "13": {
     "class_type": "ComfyMathExpression",
     "inputs": {
-      "expression": "max(0 - a, 0) / 100",
-      "values.a": "{{temperature}}"
+      "expression": "max(a, 0) / 100",
+      "values.a": [
+        "12",
+        0
+      ]
     }
   },
   "14": {
+    "class_type": "ComfyMathExpression",
+    "inputs": {
+      "expression": "max(0 - a, 0) / 100",
+      "values.a": [
+        "12",
+        0
+      ]
+    }
+  },
+  "15": {
     "class_type": "EmptyImage",
     "inputs": {
       "width": 64,
@@ -167,7 +179,7 @@
       "color": 16747069
     }
   },
-  "15": {
+  "16": {
     "class_type": "ImageBlend",
     "inputs": {
       "image1": [
@@ -175,37 +187,7 @@
         0
       ],
       "image2": [
-        "14",
-        0
-      ],
-      "blend_factor": [
-        "12",
-        0
-      ],
-      "blend_mode": "soft_light"
-    },
-    "_meta": {
-      "title": "Warmer"
-    }
-  },
-  "16": {
-    "class_type": "EmptyImage",
-    "inputs": {
-      "width": 64,
-      "height": 64,
-      "batch_size": 1,
-      "color": 4033279
-    }
-  },
-  "17": {
-    "class_type": "ImageBlend",
-    "inputs": {
-      "image1": [
         "15",
-        0
-      ],
-      "image2": [
-        "16",
         0
       ],
       "blend_factor": [
@@ -215,36 +197,84 @@
       "blend_mode": "soft_light"
     },
     "_meta": {
-      "title": "Cooler"
+      "title": "Warmer"
+    }
+  },
+  "17": {
+    "class_type": "EmptyImage",
+    "inputs": {
+      "width": 64,
+      "height": 64,
+      "batch_size": 1,
+      "color": 4033279
     }
   },
   "18": {
-    "class_type": "ComfyMathExpression",
+    "class_type": "ImageBlend",
     "inputs": {
-      "expression": "max(a, b) * 0.0012",
-      "values.a": "{{grain}}",
-      "values.b": "{{grain_base}}"
-    }
-  },
-  "19": {
-    "class_type": "ImageAddNoise",
-    "inputs": {
-      "image": [
+      "image1": [
+        "16",
+        0
+      ],
+      "image2": [
         "17",
         0
       ],
-      "seed": "{{seed}}",
-      "strength": [
-        "18",
+      "blend_factor": [
+        "14",
+        0
+      ],
+      "blend_mode": "soft_light"
+    },
+    "_meta": {
+      "title": "Cooler"
+    }
+  },
+  "19": {
+    "class_type": "PrimitiveFloat",
+    "inputs": {
+      "value": "{{grain}}"
+    }
+  },
+  "20": {
+    "class_type": "PrimitiveFloat",
+    "inputs": {
+      "value": "{{grain_base}}"
+    }
+  },
+  "21": {
+    "class_type": "ComfyMathExpression",
+    "inputs": {
+      "expression": "max(a, b) * 0.0012",
+      "values.a": [
+        "19",
+        0
+      ],
+      "values.b": [
+        "20",
         0
       ]
     }
   },
-  "20": {
+  "22": {
+    "class_type": "ImageAddNoise",
+    "inputs": {
+      "image": [
+        "18",
+        0
+      ],
+      "seed": "{{seed}}",
+      "strength": [
+        "21",
+        0
+      ]
+    }
+  },
+  "23": {
     "class_type": "SaveImage",
     "inputs": {
       "images": [
-        "19",
+        "22",
         0
       ],
       "filename_prefix": "comfyfield/image_grade"

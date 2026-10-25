@@ -6,6 +6,7 @@ import { mock } from 'node:test'
 import { Readable } from 'node:stream'
 import { writePrompt, writePromptWithRouter } from '../server/core.js'
 import comfyfieldApi from '../server/plugin.js'
+import { REAL_LOOK } from '../shared/realism.js'
 
 // Isolate configuration so checks never read saved keys or provider environment variables.
 if (!process.argv.includes('--isolated')) {
@@ -48,6 +49,8 @@ check('Google request uses effect instructions, ordered inline images, note and 
   assert.deepEqual(parts[1], { inlineData: { mimeType: 'image/png', data: Buffer.from('local image bytes').toString('base64') } })
   assert.match(parts[2].text, /LTX video/)
   assert.match(parts[2].text, /Warm sunset/)
+  // The anti-AI-look rule rides in the request, never in the effect's own instructions.
+  assert.ok(parts[2].text.includes(`House style: ${REAL_LOOK}`))
 })
 
 check('text-only writer works without optional inputs', async () => {

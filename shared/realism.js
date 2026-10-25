@@ -1,0 +1,4 @@
+// The house rule against the "AI look" (glossy, waxy, too perfect), added to every prompt the writer
+// produces. Naming a camera, real light and real skin works; words like "realistic" or "8k" do little
+// (research_notes/Open weight model use cases/image_models.md, section 5).
+export const REAL_LOOK = 'Unless the instructions or the note ask for another medium, make photos and live action footage look real, not AI made: name a real camera or phone and the light that is really there, show real skin with pores, fine lines and slight unevenness, natural asymmetry, lived in surroundings and true to life color. Avoid glossy beauty stock looks, airbrushed or waxy skin, perfect symmetry, over sharpened detail and HDR glow, and leave out words such as flawless, ultra realistic, hyper detailed, 8k or masterpiece.'

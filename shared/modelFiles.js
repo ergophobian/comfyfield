@@ -59,6 +59,20 @@ export const MODEL_FILES = {
     sha256: '68bdc82bc1b66851162ae656225e7e2068166b603db19bd5d5a3b90eb12669a9' },
   'qwen_image_2.1_vae_bf16.safetensors': { repo: 'Comfy-Org/Qwen-Image-2.1', path: 'vae/qwen_image_2.1_vae_bf16.safetensors', dir: 'vae', gb: 0.68, vramGb: 0, cloud: false,
     sha256: 'bb21f7473051e1ac368515dd3f2e15cd44d7a11748ee8823e1ddca3e4876b7c9' },
+  // Image adapters for issue 181, sizes and sha256 from the Hugging Face API on 2026-10-25. Comfy Cloud lists none of them.
+  // BFS head swap V1.1 on Qwen-Image 2.1 (MIT): V1 with the skin-softening MLP modules cut from blocks 16-31.
+  'bfs_head_v1.1_qwen_2.1.safetensors': { repo: 'Alissonerdx/BFS-Best-Face-Swap', path: 'bfs_head_v1.1_qwen_2.1.safetensors', dir: 'loras', gb: 0.26, vramGb: 0, cloud: false,
+    label: 'The BFS face swap LoRA', sha256: 'd1d748d5601077f3b6d05766f6823510e901970d916afa404a97e85dc92fa88e' },
+  // Anything2Real 2601 A and AnyPose (base plus helper) on Qwen-Image-Edit 2511, Apache 2.0.
+  'anything2real_2601_A_final_patched.safetensors': { repo: 'lrzjason/Anything2Real', path: 'anything2real_2601_A_final_patched.safetensors', dir: 'loras', gb: 0.61, vramGb: 0, cloud: false,
+    label: 'The Anything2Real LoRA', sha256: 'd4cbbabf5610a8f0ea3f530dc0bc9e8a254be6563c4738795bea45d247903528' },
+  '2511-AnyPose-base-000006250.safetensors': { repo: 'lilylilith/AnyPose', path: '2511-AnyPose-base-000006250.safetensors', dir: 'loras', gb: 0.30, vramGb: 0, cloud: false,
+    label: 'The AnyPose LoRA', sha256: '0396314e43b94f7520cf5242e6aa6e8e9095d784f7e87ee45980c2e541ee8c4d' },
+  '2511-AnyPose-helper-00006000.safetensors': { repo: 'lilylilith/AnyPose', path: '2511-AnyPose-helper-00006000.safetensors', dir: 'loras', gb: 0.30, vramGb: 0, cloud: false,
+    label: 'The AnyPose helper LoRA', sha256: '674340c62fff3cf981d0cfc55daf2f0e6f51c56b50159e241d931748200cf1eb' },
+  // Krea2-realism-V2 on Krea 2 Turbo (MIT), a LoKr with native block names, so ComfyUI maps it as is.
+  'Krea2-realism-V2.safetensors': { repo: 'RudySen/Krea2-realism-V2', path: 'Krea2-realism-V2.safetensors', dir: 'loras', gb: 1.56, vramGb: 0, cloud: false,
+    label: 'The Krea 2 realism LoRA', sha256: 'fb0048ce3340adc2842ccfcc1a9a61a9773b6628b01ae5a2e139ca9c679e715d' },
   // Video edits (research_notes/engine/genjutsu.md), checked against the Hugging Face API on 2026-10-18.
   // Bernini-R (ByteDance) swaps, restyles, relights and, with the BFS LoRAs, swaps heads.
   'wan2.2_bernini_r_high_noise_fp8_scaled.safetensors': { refSec: 120, repo: 'Comfy-Org/Bernini-R', path: 'diffusion_models/wan2.2_bernini_r_high_noise_fp8_scaled.safetensors', dir: 'diffusion_models', gb: 15.57, vramGb: 24, cloud: true,

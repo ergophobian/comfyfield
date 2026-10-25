@@ -18,7 +18,7 @@ export const tools = [
   { id: 'character', name: 'Character', menu: 'image', route: '/character', blurb: 'Create a character that stays the same' },
   { id: 'influencer', name: 'AI influencer', menu: ['image', 'top'], route: '/influencer', blurb: 'Create and manage your AI influencer', badge: 'New' },
   { id: 'photodump', name: 'Photodump', menu: 'image', route: '/photodump', blurb: 'A set of photos in your aesthetic' },
-  { id: 'relight', name: 'Relight', menu: 'image', route: '/apps/relight', format: 'relight', blurb: 'Adjust light position, color and brightness' },
+  { id: 'relight', name: 'Relight', menu: 'image', route: '/apps/relight-photo', format: 'relight-photo', blurb: 'Adjust light position, color and brightness' },
   { id: 'inpaint', name: 'Inpaint', menu: 'image', route: '/edit', blurb: 'Select an area, describe the change' },
   { id: 'image-upscale', name: 'Image upscale', menu: 'image', route: '/upscale', blurb: 'Enhance image quality' },
   { id: 'face-swap', name: 'Face swap', menu: 'image', route: '/apps/face-swap', format: 'face-swap', blurb: 'Swap in your own face or a saved character' },

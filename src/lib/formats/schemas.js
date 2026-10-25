@@ -1055,6 +1055,13 @@ export const schemas = {
       "prompt",
       "seed"
     ],
+    "krea2_realism_t2i": [
+      "count",
+      "height",
+      "prompt",
+      "seed",
+      "width"
+    ],
     "krea2_t2i": [
       "count",
       "height",
@@ -1096,6 +1103,17 @@ export const schemas = {
     "minimax_music3": [
       "duration",
       "lyrics",
+      "prompt",
+      "seed"
+    ],
+    "qwen2511_anypose": [
+      "image",
+      "image2",
+      "prompt",
+      "seed"
+    ],
+    "qwen2511_anything2real": [
+      "image",
       "prompt",
       "seed"
     ],
@@ -1181,6 +1199,12 @@ export const schemas = {
       "prompt",
       "seed",
       "width"
+    ],
+    "qwen_image21_faceswap": [
+      "image",
+      "image2",
+      "prompt",
+      "seed"
     ],
     "qwen_image21_t2i": [
       "count",
@@ -1297,6 +1321,15 @@ export const schemas = {
       "seed",
       "target",
       "upscale_factor"
+    ],
+    "seedvr2_old_footage": [
+      "deinterlace",
+      "denoise",
+      "duration",
+      "seed",
+      "start",
+      "upscale_factor",
+      "video"
     ],
     "seedvr2_video": [
       "duration",

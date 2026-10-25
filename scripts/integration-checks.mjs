@@ -19,8 +19,8 @@ globalThis.fetch = () => { throw new Error('Network is forbidden in integration 
 const photo = { url: '/media/photo.png', ratio: '9:16' }
 const valuesFor = (format) => ({ ...initialValues(format), ...Object.fromEntries(format.inputs.filter((i) => i.type === 'image').map((i) => [i.id, photo])) })
 assert.equal(effects.length, 45)
-assert.equal(formats.length, 450)
-assert.equal(allFormats.length, 479)
+assert.equal(formats.length, 454)
+assert.equal(allFormats.length, 483)
 for (const [i, format] of effects.entries()) {
   assert.equal(format.steps[0].instructions, research.specs[i].writer_instructions)
   assert.deepEqual(validateFormat(format), [])
@@ -70,7 +70,6 @@ const inpaint = allFormats.find((f) => f.id === 'inpaint')
 const faceSwap = allFormats.find((f) => f.id === 'face-swap')
 for (const [format, values, expected] of [
   [inpaint, { image: { ...photo, maskUrl: '/media/mask.png' }, change: 'A bowl of lemons' }, { image_url: photo.url, mask_url: '/media/mask.png' }],
-  [faceSwap, { photo, character: { ...photo, name: 'Selected face', faceUrl: '/media/face.png' } }, { image_urls: [photo.url, '/media/face.png'] }],
 ]) {
   let mapped
   await runFormat(format, values, { run: async (model, opts) => {
@@ -80,6 +79,16 @@ for (const [format, values, expected] of [
   } })
   for (const [key, value] of Object.entries(expected)) assert.deepEqual(mapped[key], value)
 }
+// Face swap runs the BFS graph: the photo is <image1> and the selected face <image2>, in that order.
+let swapped
+await runFormat(faceSwap, { photo, character: { ...photo, name: 'Selected face', faceUrl: '/media/face.png' } }, { run: async (model, opts) => {
+  assert.equal(model.workflow, 'qwen_image21_faceswap')
+  swapped = comfyVars(model.kind, opts)
+  return [{ url: '/media/result.png', kind: 'image' }]
+} })
+assert.equal(swapped.image, photo.url)
+assert.equal(swapped.image2, '/media/face.png')
+assert.match(swapped.prompt, /^head_swap: start with <image1>/)
 const trim = { start: 1, end: 3 }
 const crop = { x: 0.1, y: 0, width: 0.8, height: 1 }
 assert.deepEqual(falInput({ video_url: {}, start_time: {}, end_time: {}, crop: {} }, { video: '/media/clip.mp4', trim, crop }), { video_url: '/media/clip.mp4', start_time: 1, end_time: 3, crop })
