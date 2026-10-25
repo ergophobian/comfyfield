@@ -167,6 +167,9 @@
   --agent-icon: 14px;
   --agent-border: 1px;
   --agent-stack: 112px;
+  --agent-dot: 8px;
+  --agent-dot-gap: 4px;
+  --agent-assign-offset: -30px;
   /* Agent colors: one per roster slot, Agent 1 to Agent 6. White text reads on each. */
   --agent-1: #2f3fe8;
   --agent-2: #0f766e;
@@ -208,6 +211,12 @@
 .agent-cursor, .agent-node-badge { background: var(--agent, var(--blue)); border-radius: var(--r-xs); padding: var(--agent-small-gap); width: max-content; box-shadow: var(--shadow-sm); animation: pop var(--dur-pop) var(--spring) backwards; }
 .agent-cursor { position: absolute; top: var(--agent-cursor-offset); left: calc(var(--stack, 0) * var(--agent-stack)); display: flex; align-items: center; gap: var(--agent-small-gap); }
 .agent-cursor svg { width: var(--agent-icon); height: var(--agent-icon); }
+.agent-dots { display: inline-flex; gap: var(--agent-dot-gap); margin-left: var(--agent-small-gap); }
+.agent-dots i, .agent-dot { display: inline-block; width: var(--agent-dot); height: var(--agent-dot); border-radius: 50%; background: var(--agent, var(--blue)); flex: 0 0 auto; }
+.menu .agent-row > span { display: flex; align-items: center; gap: var(--agent-small-gap); }
+.agent-assigned { position: absolute; top: 0; left: 0; z-index: 4; pointer-events: none; }
+.agent-assigned span { position: absolute; right: 0; top: var(--agent-assign-offset); display: flex; align-items: center; gap: var(--agent-dot-gap); width: max-content; padding: var(--agent-dot-gap) var(--agent-small-gap); border-radius: var(--r-pill); background: var(--surface); border: var(--agent-border) solid var(--agent, var(--blue)); color: var(--ink); font-size: var(--text-xs); }
+.fp-agent select { font: inherit; background: var(--surface); color: var(--ink); border: var(--agent-border) solid var(--line); border-radius: var(--r-sm); padding: var(--agent-dot-gap) var(--agent-small-gap); }
 .agent-node-badges { z-index: 5; display: flex; gap: var(--agent-small-gap); margin-top: var(--agent-badge-offset); }
 
 @media (max-width: 720px) {

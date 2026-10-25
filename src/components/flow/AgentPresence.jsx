@@ -4,7 +4,7 @@ import { useAgents } from '../../lib/agents.js'
 
 // How long an idle agent stays on screen while it fades out. Matches --dur-hero in styles.css.
 const FADE_MS = 700
-const colorVar = (color) => /^agent-\d+$/.test(color || '') ? `var(--${color})` : 'var(--blue)'
+export const agentColor = (color) => /^agent-\d+$/.test(color || '') ? `var(--${color})` : 'var(--blue)'
 
 // Agents with a flow open: working until `until` passes (null: until the Assistant turn ends), then idle and fading.
 export function useAgentPresence() {
@@ -32,7 +32,7 @@ export function AgentPresence({ flow, presence }) {
   const byNode = [...here.filter((p) => p.node).reduce((m, p) => m.set(p.node.id, [...(m.get(p.node.id) || []), p]), new Map()).values()]
   return <ViewportPortal>
     {here.map((p) => (
-      <div key={p.id} className={`agent-presence${p.idle ? ' idle' : ''}`} style={{ '--agent': colorVar(p.color), '--stack': place(p), transform: `translate(${p.at.x}px, ${p.at.y}px)` }}>
+      <div key={p.id} className={`agent-presence${p.idle ? ' idle' : ''}`} style={{ '--agent': agentColor(p.color), '--stack': place(p), transform: `translate(${p.at.x}px, ${p.at.y}px)` }}>
         <span className="agent-cursor" aria-label={`${p.name} cursor`}><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 2 16 10 10 11 8 17Z" fill="currentColor" /></svg>{p.name}</span>
       </div>
     ))}
@@ -40,8 +40,19 @@ export function AgentPresence({ flow, presence }) {
       const { node } = agents[0]
       const idle = agents.every((p) => p.idle)
       return <div key={`badge-${node.id}`} className={`agent-node-badges${idle ? ' idle' : ''}`} style={{ transform: `translate(${node.position.x}px, ${node.position.y}px)` }}>
-        {agents.map((p) => <span key={p.id} className="agent-node-badge" style={{ '--agent': colorVar(p.color) }}>{agents.length === 1 ? `${p.name} is working on this` : p.name}</span>)}
+        {agents.map((p) => <span key={p.id} className="agent-node-badge" style={{ '--agent': agentColor(p.color) }}>{agents.length === 1 ? `${p.name} is working on this` : p.name}</span>)}
       </div>
     })}
   </ViewportPortal>
+}
+
+// Who each node belongs to, as a chip on its top right corner.
+export function AgentAssignments({ flow, nodes, roster }) {
+  return <ViewportPortal>{nodes.filter((n) => n.assignee || flow.assignee).map((n) => {
+    const name = n.assignee || flow.assignee
+    const color = roster.find((a) => a.name === name)?.color
+    return <div key={n.id} className="agent-assigned" style={{ '--agent': agentColor(color), width: n.measured?.width || 0, transform: `translate(${n.position.x}px, ${n.position.y}px)` }}>
+      <span title={n.assignee ? `${name} has this node` : `${name} has this flow`}><i className="agent-dot" />{name}</span>
+    </div>
+  })}</ViewportPortal>
 }

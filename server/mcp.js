@@ -7,6 +7,7 @@ import * as core from './core.js'
 import { flows } from './flows.js'
 import { createPresence } from './presence.js'
 import { nodeTypes, sourceTypes, targetTypes } from '../shared/flowRules.js'
+import { tasksFor, rosterOf } from '../shared/agentRoster.js'
 
 const text = (data) => ({ content: [{ type: 'text', text: typeof data === 'string' ? data : JSON.stringify(data, null, 2) }] })
 const fail = (e) => ({ isError: true, content: [{ type: 'text', text: e.message || String(e) }] })
@@ -129,6 +130,23 @@ export function createServer({ invoke, handlers = new Map(), flowService = flows
     description: 'Remove a node, its connections and its results.',
     inputSchema: { ...flow, node_id: z.string() },
   }, tool(({ flow_id, node_id }, context) => { at(context, flow_id, node_id); return flowService.remove(flow_id, node_id) }))
+  register('my_tasks', {
+    description: 'What the user assigned to you in Flows: whole flows and single nodes, with node ids to pass to get_flow and update_node. Call it first when you start work on flows.',
+    inputSchema: {},
+  }, tool((args, context) => {
+    const name = context?.agent?.name
+    if (!name) throw new Error('This MCP session has no agent name. Start it with npx comfyfield mcp or the Assistant.')
+    const tasks = tasksFor(name, flowService.read().flows)
+    return { agent: name, tasks, ...(!tasks.length && { next: 'Nothing is assigned to you yet. Ask the user to assign a flow or node to you in Flows.' }) }
+  }))
+  register('assign_agent', {
+    description: 'Assign a whole flow, or one node with node_id, to an agent by name such as "Agent 2". Send agent null to clear it. Agents see their work with my_tasks.',
+    inputSchema: { ...flow, node_id: z.string().optional().describe('Leave out to assign the whole flow'), agent: z.string().min(1).max(60).nullable() },
+  }, tool(({ flow_id, node_id, agent }, context) => { const result = flowService.assign(flow_id, node_id, agent); at(context, flow_id, node_id); return result }))
+  register('list_agents', {
+    description: 'Agents connected to this ComfyField folder (the Assistant and terminal MCP sessions) with their colors, plus names that have assigned work.',
+    inputSchema: {},
+  }, tool((args, context) => ({ you: context?.agent?.name ?? null, agents: rosterOf(presence?.list().agents || [], flowService.read().flows).filter((a) => !a.spare) })))
   register('run_flow', {
     description: 'Run fills gaps: it runs only nodes that have no output yet and spends provider credits. It stops at Approve gates and Writer review; the user must press Send in Flows to continue. Returns outputs and what waits for the user.',
     inputSchema: flow,

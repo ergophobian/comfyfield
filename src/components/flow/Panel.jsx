@@ -128,7 +128,7 @@ function WriterPanel({ node, patch }) {
   )
 }
 
-export default function Panel({ node, patch, picker, connections, upload, uploading, remove }) {
+export default function Panel({ node, patch, picker, connections, upload, uploading, remove, agents = [], assign }) {
   const [error, setError] = useState(null)
   useEffect(() => setError(null), [node.id])
   return (
@@ -142,6 +142,12 @@ export default function Panel({ node, patch, picker, connections, upload, upload
       {node.type === 'model' && <ModelPanel node={node} patch={patch} picker={picker} connections={connections} />}
       {node.type === 'stitch' && <StitchPanel node={node} patch={patch} />}
       {blurbs[node.type] && <p className="muted fp-blurb">{blurbs[node.type]}</p>}
+      {assign && <label className="fp-row fp-agent">Agent
+        <select aria-label="Assign this node to an agent" value={node.assignee || ''} onChange={(e) => assign(node.id, e.target.value || null)}>
+          <option value="">Nobody</option>
+          {agents.map((a) => <option key={a.name} value={a.name}>{a.name}{a.live ? '' : ' (not connected)'}</option>)}
+        </select>
+      </label>}
       <button type="button" className="btn-soft sm fp-del" onClick={() => remove(node.id)}>Delete node</button>
     </aside>
   )

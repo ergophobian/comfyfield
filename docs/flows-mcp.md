@@ -33,6 +33,14 @@ Checks: `node scripts/flow-sync-checks.mjs`.
 
 Checks: `node scripts/agent-presence-checks.mjs`.
 
+## Assigning work to agents
+
+- In Flows, the Agents menu lists the roster: connected agents with their color, names that still have work, and the next free name (so you can hand work to a terminal before you start it). Pick a name to assign the whole flow. In a node's panel, the Agent field assigns that one node.
+- Assignments are agent names in the flow data: `flow.assignee` and `node.assignee`. They sync and merge per node like any other edit. A name keeps its color while that agent is not connected ("Agent N" uses `--agent-N`).
+- An agent calls `my_tasks` to see what it has: the whole flows assigned to its name (every node) and single nodes assigned to it, with a short summary of each node. Names come from the roster, so set `COMFYFIELD_AGENT_NAME` for a terminal that must keep its work after a restart.
+
+Checks: `node scripts/agent-assign-checks.mjs`.
+
 ## Tools
 
 | Tool | Input | What it does |
@@ -45,6 +53,9 @@ Checks: `node scripts/agent-presence-checks.mjs`.
 | `update_node` | `flow_id`, `node_id`, optional `data`, `position` | Merges `data` into the node |
 | `remove_node` | `flow_id`, `node_id` | Removes the node, its connections and its results |
 | `run_flow` | `flow_id` | Run: fills gaps, spends credits, stops at gates |
+| `my_tasks` | none | Whole flows and single nodes assigned to the calling agent |
+| `assign_agent` | `flow_id`, optional `node_id`, `agent` (a name or `null`) | Assigns a flow, or one node, to an agent by name |
+| `list_agents` | none | Your name, the connected agents with their colors, and names with assigned work |
 
 Node types: `prompt`, `image`, `writer`, `mask`, `face`, `video`, `crop`, `model`, `stitch`, `approve`, `output`, `note`. Each node has at most one input and one output:
 

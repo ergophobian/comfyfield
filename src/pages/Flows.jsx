@@ -11,7 +11,9 @@ import { originLabel } from '../../shared/flowShare.js'
 import { reloadFlows } from '../lib/remoteFlows.js'
 import { cleanNode } from '../../shared/flowMerge.js'
 import AssistantPanel from '../components/AssistantPanel.jsx'
-import { AgentPresence, useAgentPresence } from '../components/flow/AgentPresence.jsx'
+import { AgentPresence, AgentAssignments, useAgentPresence, agentColor } from '../components/flow/AgentPresence.jsx'
+import { useAgents } from '../lib/agents.js'
+import { rosterOf } from '../../shared/agentRoster.js'
 import { getConnections } from '../lib/providers.js'
 import { uploadFlowImage, legacyImages, migrateDataUrl, patchNode } from '../lib/flowImage.js'
 import { api } from '../lib/remoteFlows.js'
@@ -82,6 +84,7 @@ function Canvas({ picker }) {
   const { store, setStore, ready, error } = useFlowStorage()
   const [assistant, setAssistant] = useState(false)
   const presence = useAgentPresence()
+  const { presence: live } = useAgents()
   const [connections, setConnections] = useState({})
   const [note, setNote] = useState(null)
   const [wipe, setWipe] = useState(false)
@@ -194,6 +197,10 @@ function Canvas({ picker }) {
     update((f) => ({ ...f, nodes: [...f.nodes, made] }))
     setView((v) => ({ ...v, flow: flow.id, selected: [made.id], measured: v.flow === flow.id ? v.measured : {} }))
   }
+  // Hand a whole flow (no id) or one node to an agent by name. Agents read it with the my_tasks tool.
+  const roster = useMemo(() => rosterOf(live, store.flows), [live, store.flows])
+  const withAssignee = (item, name) => { const { assignee, ...rest } = item; return name ? { ...rest, assignee: name } : rest }
+  const assign = (id, name) => update((f) => id ? { ...f, nodes: f.nodes.map((n) => n.id === id ? withAssignee(n, name) : n) } : withAssignee(f, name))
   const remove = (id) => update((f) => ({ ...f, nodes: f.nodes.filter((n) => n.id !== id), edges: f.edges.filter((e) => e.source !== id && e.target !== id) }))
 
   const startFrom = (s) => { update((f) => ({ ...s.make(), id: f.id })); setTimeout(() => rf.fitView({ padding: 0.25, duration: 500 }), 60) }
@@ -270,6 +277,16 @@ function Canvas({ picker }) {
           <input className="fname" value={flow.name} aria-label="Flow name" onChange={(e) => update((f) => ({ ...f, name: e.target.value }))} />
           <span className="fgrow" />
           <Describe busy={drafting} onDraft={describe} />
+          <Pop label={<>Agents{roster.some((a) => a.live) && <span className="agent-dots" aria-hidden="true">{roster.filter((a) => a.live).map((a) => <i key={a.name} style={{ '--agent': agentColor(a.color) }} />)}</span>}</>}>
+            <h6>Assign this flow</h6>
+            {roster.map((a) => (
+              <button key={a.name} type="button" className={`agent-row${flow.assignee === a.name ? ' on' : ''}`} style={{ '--agent': agentColor(a.color) }} disabled={!ready} onClick={() => assign(null, a.name)}>
+                <span><i className="agent-dot" />{a.name}</span>
+                <small>{[a.live ? (a.kind === 'assistant' ? 'Assistant' : 'Terminal') : a.spare ? 'Next to connect' : 'Not connected', flow.assignee === a.name && 'has this flow'].filter(Boolean).join(' · ')}</small>
+              </button>
+            ))}
+            {flow.assignee && <button type="button" disabled={!ready} onClick={() => assign(null, null)}>Unassign this flow<small>{flow.assignee} keeps any nodes assigned to them</small></button>}
+          </Pop>
           <button type="button" className="btn-soft" aria-expanded={assistant} onClick={() => setAssistant((value) => !value)}>Assistant</button>
           {note && <span className="fnote pop">{note}</span>}
           <Pop label="Add">
@@ -320,6 +337,7 @@ function Canvas({ picker }) {
           <Background gap={22} size={1.6} color="rgb(15 18 34 / .16)" />
           <MiniMap pannable zoomable nodeColor={(n) => miniColor[n.type] || miniColor.image} maskColor="rgb(255 255 255 / .55)" />
           <Controls showInteractive={false} />
+          <AgentAssignments flow={flow} nodes={nodes} roster={roster} />
           <AgentPresence flow={flow} presence={presence} />
         </ReactFlow>
 
@@ -359,7 +377,7 @@ function Canvas({ picker }) {
         )}
 
         {assistant && <aside className="agent-canvas-panel glass"><button type="button" className="btn-soft" onClick={() => setAssistant(false)}>Close assistant</button><AssistantPanel /></aside>}
-        {node && !assistant && !draft && ready && <Panel node={node} patch={patch} picker={picker} connections={connections} upload={upload} uploading={uploads[node.id]} remove={remove} />}
+        {node && !assistant && !draft && ready && <Panel node={node} patch={patch} picker={picker} connections={connections} upload={upload} uploading={uploads[node.id]} remove={remove} agents={roster} assign={assign} />}
       </div>
     </FlowCtx.Provider>
   )

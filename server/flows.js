@@ -5,6 +5,7 @@ import * as core from './core.js'
 import { createEngine, topoOrder } from '../src/lib/flowEngine.js'
 import { nodeLabels, nodeDefaults, unknownType, missingNode, connectionProblem } from '../shared/flowRules.js'
 import { STALE } from '../shared/flowMerge.js'
+import { validAssignee } from '../shared/agentRoster.js'
 
 export const problem = (message, status = 400) => Object.assign(new Error(message), { status })
 export const clone = (value) => structuredClone(value)
@@ -71,8 +72,10 @@ export function createFlows({ directory = core.home, generate = core.generate, w
   }
   const validate = (flow) => {
     if (!flow || typeof flow.id !== 'string' || typeof flow.name !== 'string' || !Array.isArray(flow.nodes) || !Array.isArray(flow.edges)) throw problem('A flow needs a string id, a string name, a nodes array and an edges array.')
+    if (!validAssignee(flow.assignee)) throw problem(`Flow "${flow.name}": set assignee to an agent name such as "Agent 2", or null.`)
     const seen = new Set()
     for (const n of flow.nodes) {
+      if (!validAssignee(n?.assignee)) throw problem(`Node "${n?.id}": set assignee to an agent name such as "Agent 2", or null.`)
       if (typeof n?.id !== 'string' || !n.id) throw problem(`Every node needs a string id. Check the node of type "${n?.type}".`)
       if (seen.has(n.id)) throw problem(`Node id "${n.id}" is used twice in flow "${flow.name}". Give each node its own id.`)
       seen.add(n.id)
@@ -239,6 +242,19 @@ export function createFlows({ directory = core.home, generate = core.generate, w
       if (position) n.position = position
       return n
     }),
+    // Assign a whole flow (no node) or one node to an agent name; null clears it.
+    assign: (id, node, agent) => {
+      if (!validAssignee(agent)) throw problem('Name the agent, such as "Agent 2", or send null to clear the assignment.')
+      const name = agent?.trim() || null
+      return edit(id, (f) => {
+        if (!node) { if (name) f.assignee = name; else delete f.assignee; return { flow_id: id, assignee: name } }
+        const missing = missingNode(f, node)
+        if (missing) throw problem(missing, 404)
+        const n = f.nodes.find((x) => x.id === node)
+        if (name) n.assignee = name; else delete n.assignee
+        return { flow_id: id, node_id: node, assignee: name }
+      })
+    },
     remove: (id, node) => {
       const removed = edit(id, (f) => {
         const missing = missingNode(f, node)
