@@ -23,6 +23,16 @@ Flows used to live in this browser's `localStorage` (`comfyfield.flows`, `comfyf
 
 Checks: `node scripts/flow-sync-checks.mjs`.
 
+## Agents on the canvas
+
+- Every MCP session joins a shared roster in `.comfyfield/agents.json` (`server/presence.js`): the Assistant inside the app and every terminal running `npx comfyfield mcp`. Each one gets a name, "Agent 1", "Agent 2" and so on (the lowest number no live agent has), and the color token of that number, `--agent-1` to `--agent-6`. Set `COMFYFIELD_AGENT_NAME="Agent 3"` before starting a terminal server to keep a fixed name and color.
+- Flow tools that change a node (`create_flow`, `add_node`, `connect_nodes`, `update_node`, `remove_node`, `run_flow`) move the caller's cursor to that node. The canvas animates the cursor there and shows a badge on the node, such as "Agent 2 is working on this". Reading tools do not move it.
+- An Assistant session works until its turn ends. A terminal session has no turns, so it counts as working for 8 seconds after its last flow tool. Then the cursor and badge fade out.
+- A terminal session leaves the roster when it exits. If a terminal is closed without exiting, the next read of the roster drops it, because its process is gone.
+- The app reads the roster from `GET /api/agents/presence` and gets an `agents` event on `/api/agents/events` when it changes.
+
+Checks: `node scripts/agent-presence-checks.mjs`.
+
 ## Tools
 
 | Tool | Input | What it does |
