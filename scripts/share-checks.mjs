@@ -132,7 +132,7 @@ try {
   assert.equal(after.runs[imported.id], undefined, 'no results come along')
   assert.equal(after.flows.find((f) => f.id === imported.id).nodes.find((n) => n.id === 'img').data.url, null)
 
-  const file = await importFlow(store, { text: shareText(saved), name: '../../evil/boat.comfyfield.json' }, { now: 5 })
+  const file = await importFlow(store, { text: shareText(saved), name: 'C:\\evil/..\\boat.comfyfield.json' }, { now: 5 })
   assert.deepEqual(file.origin, { kind: 'file', name: 'boat.comfyfield.json', at: 5 })
   // The server checks models too: a flow naming a model this catalog lacks is refused, and nothing is saved.
   const unknown = JSON.stringify({ nodes: [{ id: 'm', type: 'model', position: { x: 0, y: 0 }, data: { model: { id: 'nope-model-xyz' } } }], edges: [] })

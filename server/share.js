@@ -1,12 +1,12 @@
 // Share and import flows: a secret gist made with the user's token, or a gist or file read back in.
-import path from 'node:path'
 import * as core from './core.js'
 import { createGist, readGist } from './gist.js'
 import { FLOW_SUFFIX, parseSharedFlow, shareFileName, shareText } from '../shared/flowShare.js'
 
 const fail = (message, status = 400) => Object.assign(new Error(message), { status })
 export const githubToken = () => core.config('github').key
-export const fileOrigin = (name) => ({ kind: 'file', name: path.basename(String(name || 'flow file')).slice(0, 120) })
+// The browser sends a bare file name; drop any folders either way, whatever the server's OS.
+export const fileOrigin = (name) => ({ kind: 'file', name: (String(name || '').split(/[\\/]/).pop() || 'a file').slice(0, 120) })
 
 export async function shareFlowGist(flows, id, { fetch = globalThis.fetch, token = githubToken() } = {}) {
   if (typeof id !== 'string') throw fail('Pick a flow to share.')
