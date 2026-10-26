@@ -76,7 +76,7 @@ const widenMix = (f) => ({
 
 export const allFormats = [...motion, ...presets, ...looks, ...edits, ...people, ...ads, ...fun, ...apps2, ...mixedLooks, ...jobs, ...three, ...fromFal, ...effects, ...music, ...photodumpReframe, ...presenterFormats]
   .map((f) => (f.id === 'cam-mix' ? widenMix(f) : f))
-  .map((f) => ['long-video', 'tts', 'drama3-tts', 'qwen3-tts', 'motion-control', 'character-swap-video'].includes(f.id) ? { ...f, limits: [f.limits, 'Multi-part runs are not available yet. Use one segment or a short script per run.'].filter(Boolean).join(' ') } : f)
+  .map((f) => ['long-video', 'tts', 'drama3-tts', 'qwen3-tts', 'motion-transfer', 'video-character-swap'].includes(f.id) ? { ...f, availabilityNote: 'Multi-part runs are not available yet. Use one segment or a short script per run.' } : f)
 
 export const formatProblems = new Map(allFormats.map((f) => [f.id, validateFormat(f)]))
 export const formats = allFormats.filter((f) => !formatProblems.get(f.id).length)

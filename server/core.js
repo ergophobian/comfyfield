@@ -1236,14 +1236,17 @@ async function runChain(workflow, vars, opts) {
       fs.rmSync(dir, { recursive: true, force: true })
       return one()
     }
-    const fps = Math.min(30, probed.fps)
+    const fps = workflow === 'wan_animate2' ? 16 : Math.min(30, probed.fps)
     const clip = await normalizeClip(source, path.join(dir, 'clip.mp4'), { start: Number(vars.start) || 0, duration: Number(vars.duration) || undefined, fps, binary })
     const chunks = clipChunks(clip.frames, spec, fps)
     if (chunks.length < 2) {
       fs.rmSync(dir, { recursive: true, force: true })
       return one()
     }
-    if (chunks.length > 1) throw multipartUnavailable('Multi-segment video')
+    if (chunks.length > 1) {
+      fs.rmSync(dir, { recursive: true, force: true })
+      throw multipartUnavailable('Multi-segment video')
+    }
     const parts = []
     let previous
     for (const [i, c] of chunks.entries()) {
@@ -1257,7 +1260,10 @@ async function runChain(workflow, vars, opts) {
   } else {
     const total = Number(vars.duration)
     const seconds = extendChunks(total, spec)
-    if (seconds.length > 1) throw multipartUnavailable('Multi-segment video')
+    if (seconds.length > 1) {
+      fs.rmSync(dir, { recursive: true, force: true })
+      throw multipartUnavailable('Multi-segment video')
+    }
     const first = await render(workflow, { ...vars, duration: seconds[0], frames: seconds[0] * spec.fps + 1 }, 0, seconds.length)
     const parts = [{ file: await local(first.url, 'chunk-0'), overlap: 0 }]
     for (const [k, add] of seconds.slice(1).entries()) {

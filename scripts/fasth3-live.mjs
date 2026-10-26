@@ -1,14 +1,9 @@
 // FastH3 cases stay available for planning; paid execution needs live-run ledger admission.
 const args = process.argv.slice(2)
 const flag = (name) => (args.find((a) => a.startsWith(`--${name}=`)) || '').slice(name.length + 3)
-const only = flag('only').split(',').filter(Boolean)
 const pics = flag('pics').split(',').filter(Boolean)
 const clip = flag('clip')
 const voice = flag('voice')
-
-// The template's own prompt for its plane picture, so the first case is a known-good run.
-const planePrompt = 'A 5-second, multi-cut cinematic aviation film. [Shot 1] A wide shot matches <Picture 1>: the yellow propeller plane climbs straight up above the towering cumulus cloud, smoke trail curling, and the camera tilts up with it. [Shot 2] At 00:02.000, the shot cuts to a close-up of the propeller and yellow nose as it slows at the top; the plane stalls, flips over and the camera follows it diving toward the bright cloud. Sound: straining engine, wind, a sudden silence at the stall and a roaring dive, with tense rising strings.'
-const userPrompt = (n) => `${Array.from({ length: n }, (_, i) => `<Picture ${i + 1}>`).join(', ')} are the references. Keep every person, product and place exactly as shown in them. A handheld cinematic shot that brings them together in one scene, with natural light and real sound.`
 
 const cases = [
   { id: 'fast-1pic-5s', workflow: 'fasth3_omni_r2v', pictures: 1, seconds: 5 },

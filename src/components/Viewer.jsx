@@ -104,7 +104,7 @@ export default function Viewer({ items, at, setAt, copy = copyPrompt, onClose })
             <UseIn item={it} up onUse={(format, values) => { onClose(); openFormat(format, values) }} />
             <Act label={it.approved ? 'Remove approval' : 'Approve'} on={it.approved} onClick={() => gens.toggleApprove(it.id)}><IconCheck /></Act>
             <a className="lib-act" href={it.url} download={`${it.id}.${ext[it.kind] || 'png'}`} aria-label="Download" title="Download"><IconDownload /></a>
-            {it.kind === '3d' && <Act label="Save as STL for 3D printing" wide onClick={() => saveStl(it.url, it.id).catch(() => {})}>STL</Act>}
+            {it.kind === '3d' && <Act label="Save a mesh for 3d printing" wide onClick={() => saveStl(it.url, it.id).catch(() => {})}>Print mesh</Act>}
             <Act label="Copy prompt" onClick={() => copy(it)}><IconCopy /></Act>
             <Act label="Delete" onClick={() => { gens.dismiss(it.id); items.length === 1 ? onClose() : setAt(Math.min(at, items.length - 2)) }}><IconTrash /></Act>
           </div>
