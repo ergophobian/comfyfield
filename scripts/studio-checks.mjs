@@ -49,16 +49,27 @@ async function run(id, values = {}) {
   const format = formatById(id)
   assert(format && isWired(format), `${id} must validate`)
   let result
-  const session = await runFormat(format, { ...defaults(format), ...values }, { run: async (model, options, meta) => {
+  const session = await runFormat(format, { ...defaults(format), ...values }, { writePrompt: async ({ note }) => note, run: async (model, options, meta) => {
     const vars = comfyVars(model.kind, options, model.sizes)
     const workflow = vars.image && model.imageWorkflow ? model.imageWorkflow : model.workflow
     const graph = fill(dropOptional(JSON.parse(readFileSync(`public/workflows/${workflow}.json`, 'utf8')), vars), vars)
     assert.equal(meta.formatId, id)
-    assert.equal(meta.stepId, 'generate')
+    assert(format.steps.some((step) => step.id === meta.stepId && !step.type), 'Generation metadata names a model step')
     assertFilled(graph)
     result = { model, options, vars, workflow, graph }
     return [{ url: '/mock-result', kind: model.kind }]
   } })
+  const writer = session.flow.nodes.find((node) => node.type === 'writer')
+  if (writer) {
+    assert.equal(result, undefined, 'Writer review holds generation')
+    await session.sendWriter(writer.id)
+  }
+  if (id === 'video-character-swap') {
+    assert.equal(result.vars.duration, 1, 'Studio first renders a short draft')
+    assert.equal(session.results().length, 0)
+    assert.equal(session.engine.gate('review').status, 'reviewing')
+    await session.send('review')
+  }
   assert.equal(session.results().length, 1)
   checked++
   return result
