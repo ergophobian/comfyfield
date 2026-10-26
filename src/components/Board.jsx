@@ -1,4 +1,5 @@
 import { takeLabel, usePod } from '../lib/usePod.js'
+import ModelView from './ModelView.jsx'
 import CreditsLink from './CreditsLink.jsx'
 import { progressText } from '../lib/jobs.js'
 import ProgressBar from './ProgressBar.jsx'
@@ -22,6 +23,7 @@ function Take({ it, onApprove, onDismiss }) {
       )
         : it.pending ? <span className="take-msg">{takeLabel(it, status) || progressText(it.progress) || (it.started ? 'Rendering' : 'Queued')}{!takeLabel(it, status) && <ProgressBar progress={it.progress} />}</span>
         : it.kind === 'video' ? <video src={it.url} autoPlay loop muted playsInline />
+        : it.kind === '3d' ? <ModelView url={it.url} alt={it.caption} />
         : it.kind === 'audio' ? <audio src={it.url} controls />
         : <img src={it.url} alt={it.caption} />}
       {!it.pending && !it.failed && (

@@ -36,11 +36,7 @@ export default function AudioStudio() {
         <Segmented value={mode} onChange={setMode} options={modes} />
       </Hero>
       {mode === 'translate' ? (
-        <div className="empty glass rise">
-          <strong>Translate is not wired yet.</strong>
-          <p>The dub workflow is not available. Translation will need speech recognition, translation, a new voice and lipsync.</p>
-          <button type="button" className="btn-blue" disabled>Translate</button>
-        </div>
+        <FormatWorkspace format={formatById('dub')} showMore={false} inputCache={inputCache} />
       ) : (
         <>
           {mode === 'speech' && <Box label="Audio model">

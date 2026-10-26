@@ -51,7 +51,7 @@ export async function durationsFor(model) {
 async function post(url, payload) {
   const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
   const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw Object.assign(new Error(data.error || `Request failed (${res.status})`), { status: res.status, code: data.code, retryable: data.retryable, requestId: data.requestId, idempotencyKey: data.idempotencyKey })
+  if (!res.ok) throw Object.assign(new Error(data.error || `Request failed (${res.status})`), { status: res.status, uncancelled: data.uncancelled, jobId: data.jobId, code: data.code, retryable: data.retryable, requestId: data.requestId, idempotencyKey: data.idempotencyKey })
   return data
 }
 
@@ -63,6 +63,8 @@ export async function run(model, opts, hooks = {}) {
     if (hooks.isCancelled?.()) throw new Cancelled()
     return runJob(route, payload, hooks)
   }
+  // A format's join step: the local stitch, kept out of the exports list like a Flows preview.
+  if (model.provider === 'stitch') return [await post('/api/stitch', { clips: opts.clips, aspect: opts.aspect, music: opts.music, preview: true })]
   if (model.provider === 'comfyRouter') {
     const batch = opts.routerBatch ||= createRouterBatch(model, opts)
     return runRouterBatch(batch, (payload, call) => {

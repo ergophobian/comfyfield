@@ -35,6 +35,8 @@ const unitLabel = (p) => {
 export const priceText = (p) => (p ? `${p.estimate ? '≈' : ''}$${p.amount < 0.01 ? p.amount.toFixed(4) : p.amount.toFixed(3).replace(/0$/, '')} ${unitLabel(p)}` : null)
 
 const matches = (q, ...parts) => !q || parts.join(' ').toLowerCase().includes(q.toLowerCase())
+// An open model runs once it has a catalog entry or a format of its own.
+const unwired = (m) => m.open && !m.format
 
 // Model menu: brand rail, search, list grouped by company with prices, and a preview of the hovered model.
 // `open` lists open-weight models (not wired yet) as the first group; they are choosable but never run.
@@ -96,7 +98,7 @@ export default function ModelPicker({ model, options, open = [], favorites, togg
         <button type="button" className="picker-btn picker-line" onClick={() => setOpen((o) => !o)} aria-expanded={isOpen}>
           <span className="picker-line-text">
             <small>Model</small>
-            <strong><Logo brand={shown.brand} />{model.name}{model.open && <em className="picker-todo">Not wired yet</em>}</strong>
+            <strong><Logo brand={shown.brand} />{model.name}{unwired(model) && <em className="picker-todo">Not wired yet</em>}</strong>
           </span>
           <Chevron right />
         </button>
@@ -141,12 +143,12 @@ export default function ModelPicker({ model, options, open = [], favorites, togg
               )}
               {openList.length > 0 && (
                 <div className="picker-group">
-                  <div className="picker-head"><OpenMark />Open weights<em className="picker-todo">Not wired yet</em></div>
+                  <div className="picker-head"><OpenMark />Open weights{openList.some(unwired) && <em className="picker-todo">Not wired yet</em>}</div>
                   {openList.map((m, i) => (
                     <div key={m.id} className={`picker-row${m.id === model.id ? ' on' : ''}`} style={{ '--i': Math.min(i, 12) }} onMouseEnter={() => setHover(m.id)}>
                       <button type="button" className="picker-pick" onClick={() => pick(m.id)}>
                         <span className="picker-name">{m.name}{m.badge && <em className="picker-badge">{m.badge}</em>}</span>
-                        <span className="picker-sub">{m.vendor} · <em className="picker-todo-text">Not wired yet</em></span>
+                        <span className="picker-sub">{m.vendor}{unwired(m) && <> · <em className="picker-todo-text">Not wired yet</em></>}</span>
                       </button>
                       <button type="button" className={`picker-star${favorites.includes(m.id) ? ' on' : ''}`} onClick={() => toggleFavorite(m.id)} aria-label="Favorite"><Star on={favorites.includes(m.id)} /></button>
                     </div>
@@ -185,7 +187,7 @@ export default function ModelPicker({ model, options, open = [], favorites, togg
               <strong>{preview.name}</strong>
               <span className="pv-brand"><Logo brand={preview.brand} size={12} />{preview.open ? preview.vendor : brands[preview.brand]?.name}</span>
               <p>{(pm.description || preview.note || preview.blurb || '').split('\n')[0].slice(0, 140)}</p>
-              {preview.open ? <span className="pv-todo">Not wired yet. Runs on Comfy Cloud or a Pod once its workflow is ready.</span>
+              {unwired(preview) ? <span className="pv-todo">Not wired yet. Runs on Comfy Cloud or a Pod once its workflow is ready.</span>
                 : pm.price && <span className="pv-price">{priceText(pm.price)}</span>}
             </aside>
           )}

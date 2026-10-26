@@ -51,7 +51,7 @@ const library = libraryStore(core.home)
 const voiceRoute = voiceRoutes({ home: core.home, saveMedia: core.saveMedia, library })
 const libraryRoute = libraryRoutes({ library, body, send })
 
-const extOf = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif', 'image/svg+xml': 'svg', 'image/x-icon': 'ico', 'image/vnd.microsoft.icon': 'ico' }
+const extOf = core.IMAGE_EXT
 
 function saveDataUrl(dataUrl) {
   const m = /^data:([\w.+/-]+);base64,(.+)$/s.exec(dataUrl || '')
@@ -59,83 +59,7 @@ function saveDataUrl(dataUrl) {
   return core.saveMedia(Buffer.from(m[2], "base64"), extOf[m[1]]).url
 }
 
-const decode = (s = '') => s.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#0?39;|&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#x27;/g, "'").trim()
-
-function attrs(tag) {
-  const out = {}
-  for (const a of tag.matchAll(/([\w:-]+)\s*=\s*("([^"]*)"|'([^']*)')/g)) out[a[1].toLowerCase()] = decode(a[3] ?? a[4])
-  return out
-}
-
-function parsePage(html, base) {
-  const meta = {}
-  for (const t of html.matchAll(/<meta\b[^>]*>/gi)) {
-    const a = attrs(t[0])
-    const k = (a.property || a.name || '').toLowerCase()
-    if (k && a.content && !(k in meta)) meta[k] = a.content
-  }
-  const links = [...html.matchAll(/<link\b[^>]*>/gi)].map((t) => attrs(t[0])).filter((a) => a.rel && a.href)
-  let product = null
-  for (const t of html.matchAll(/<script[^>]*application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)) {
-    try {
-      const walk = (n) => {
-        if (!n || product) return
-        if (Array.isArray(n)) return n.forEach(walk)
-        if (typeof n !== 'object') return
-        const types = [].concat(n['@type'] || [])
-        if (types.includes('Product')) product = n
-        else walk(n['@graph'])
-      }
-      walk(JSON.parse(t[1]))
-    } catch {}
-  }
-  const abs = (u) => { try { return new URL(decode(u), base).href } catch { return null } }
-  const offer = [].concat(product?.offers || [])[0] || {}
-  const amount = offer.price ?? offer.lowPrice ?? meta['product:price:amount'] ?? meta['og:price:amount']
-  const currency = offer.priceCurrency || meta['product:price:currency'] || meta['og:price:currency'] || ''
-  const price = amount != null && amount !== '' ? `${currency === 'USD' || !currency ? '$' : `${currency} `}${amount}` : ''
-  const pimg = [].concat(product?.image || []).map((i) => (typeof i === 'string' ? i : i?.url)).filter(Boolean)
-  const images = [meta['og:image'], meta['twitter:image'], ...pimg].filter(Boolean).map(abs).filter(Boolean)
-  const icon = links.find((a) => /apple-touch-icon/i.test(a.rel)) || links.find((a) => /(^|\s)icon/i.test(a.rel))
-  const title = decode(product?.name || meta['og:title'] || meta['twitter:title'] || html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] || '')
-  return {
-    title,
-    description: decode(product?.description || meta['og:description'] || meta.description || ''),
-    price,
-    images: [...new Set(images)].slice(0, 4),
-    siteName: decode(meta['og:site_name'] || ''),
-    themeColor: /^#[0-9a-f]{3,8}$/i.test(meta['theme-color'] || '') ? meta['theme-color'] : '',
-    logo: abs(icon?.href) || '',
-  }
-}
-
-async function pullImage(src) {
-  try {
-    const r = await fetch(src, { signal: AbortSignal.timeout(8000), headers: { 'User-Agent': UA } })
-    const type = (r.headers.get('content-type') || '').split(';')[0].trim()
-    if (!r.ok || !extOf[type]) return null
-    const buf = Buffer.from(await r.arrayBuffer())
-    return buf.length < 8_000_000 ? core.saveMedia(buf, extOf[type]).url : null
-  } catch { return null }
-}
-
-const UA = 'Mozilla/5.0 (compatible; ComfyField/0.1; +https://github.com/ergophobian/comfyfield)'
-
-async function importUrl({ url }) {
-  let target
-  try { target = new URL(url) } catch { throw Object.assign(new Error('That does not look like a web address.'), { status: 400 }) }
-  if (!/^https?:$/.test(target.protocol)) throw Object.assign(new Error('Use an http or https address.'), { status: 400 })
-  let r
-  try { r = await fetch(target, { signal: AbortSignal.timeout(10000), redirect: 'follow', headers: { 'User-Agent': UA, Accept: 'text/html,application/xhtml+xml' } }) } catch {
-    throw Object.assign(new Error('Could not reach that page.'), { status: 502 })
-  }
-  if (!r.ok) throw Object.assign(new Error(`That page answered ${r.status}.`), { status: 502 })
-  const html = (await r.text()).slice(0, 2_000_000)
-  const page = parsePage(html, r.url || target.href)
-  const images = (await Promise.all(page.images.map(pullImage))).filter(Boolean)
-  const logo = page.logo ? await pullImage(page.logo) : null
-  return { ...page, images, logo: logo || '', url: target.href, host: target.hostname.replace(/^www\./, '') }
-}
+const importUrl = (options) => core.readProduct(options)
 
 export default function comfyfieldApi({ harness } = {}) {
   return {
@@ -314,6 +238,8 @@ function mount(server, harness) {
         core.dismissLibraryImport((await body(req)).id)
         return send(res, 200, { ok: true })
       }
+      // Library import and the Ads studio's Read page read a product page the same way, with no keys.
+      if ((url.pathname === '/api/product/read' || url.pathname === '/api/library/import') && req.method === 'POST') return send(res, 200, await core.readProduct(await body(req)))
       if (url.pathname.startsWith('/api/library/') && await libraryRoute(req, res, url)) return
       if (url.pathname.startsWith('/media/')) {
         const file = core.mediaPath(url.pathname)
@@ -322,7 +248,7 @@ function mount(server, harness) {
       }
       if (url.pathname.startsWith('/comfy/')) return proxyComfy(req, res, url)
     } catch (e) {
-      return send(res, e.status || 500, { error: e.message, ...(e.requestId ? { requestId: e.requestId } : {}), ...(e.idempotencyKey ? { idempotencyKey: e.idempotencyKey } : {}), ...(e.code ? { code: e.code } : {}), ...(typeof e.retryable === 'boolean' ? { retryable: e.retryable } : {}), ...(e.reason ? { reason: e.reason } : {}), ...(e.fit ? { fit: e.fit } : {}) })
+      return send(res, e.status || 500, { error: e.message, ...(e.uncancelled ? { uncancelled: e.uncancelled } : {}), ...(e.jobId ? { jobId: e.jobId } : {}), ...(e.requestId ? { requestId: e.requestId } : {}), ...(e.idempotencyKey ? { idempotencyKey: e.idempotencyKey } : {}), ...(e.code ? { code: e.code } : {}), ...(typeof e.retryable === 'boolean' ? { retryable: e.retryable } : {}), ...(e.reason ? { reason: e.reason } : {}), ...(e.fit ? { fit: e.fit } : {}) })
     }
     next()
   })

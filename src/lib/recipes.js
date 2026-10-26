@@ -163,7 +163,8 @@ export const pictureTypes = ['image', 'draw', 'mask', 'face', 'crop', 'character
 
 // The files a ComfyUI graph takes by slot: one picture per picture-like input, in the order the format
 // lists them, so an empty optional input keeps its slot (a saved character or product gives its first
-// picture); the first audio input; a saved voice's sample. Null when the format has none of them.
+// picture, or its first `pictures` ones, which is how a reference set reaches the graph); the first audio
+// input; a saved voice's sample. Null when the format has none of them.
 export function fileSlots(recipe, values) {
   const shown = new Set(visibleInputs(recipe, values).map((i) => i.id))
   const value = (i) => (shown.has(i.id) ? values[i.id] : null)
@@ -177,7 +178,11 @@ export function fileSlots(recipe, values) {
     }
     return v.url || null
   }
-  const pictures = recipe.inputs.filter((i) => pictureTypes.includes(i.type)).map(picture)
+  const pictures = recipe.inputs.filter((i) => pictureTypes.includes(i.type)).flatMap((i) => {
+    if (!(i.pictures > 1)) return [picture(i)]
+    const images = value(i)?.images || []
+    return Array.from({ length: i.pictures }, (_, n) => images[n] || null)
+  })
   const audio = recipe.inputs.filter((i) => i.type === 'audio').map((i) => value(i)?.url).find(Boolean) || null
   const voice = recipe.inputs.filter((i) => i.type === 'voice').map((i) => value(i)?.sample).find(Boolean) || null
   if (!pictures.length && !recipe.inputs.some((i) => i.type === 'audio' || i.type === 'voice')) return null
@@ -214,7 +219,8 @@ export function recipeOptions(recipe, values) {
       if (input.field) fields[input.field] = v.url
       else images.push(v.url)
     } else if (input.type === 'video' || input.type === 'audio') {
-      if (v) media[input.id] = v.url
+      // `text` names an attached file in the prompt only when there is one, e.g. 'the voice from <Audio 1>'.
+      if (v) { media[input.id] = v.url; if (input.text) fill[input.id] = input.text }
     } else if (input.type === 'draw') {
       if (v) { images.push(v.url); if (v.strokes) media[`${input.id}Strokes`] = v.strokes }
     } else if (libraryPicks.includes(input.type)) {
@@ -228,11 +234,28 @@ export function recipeOptions(recipe, values) {
     } else fill[input.id] = (v || '').trim()
   }
   // Collapse spaces but keep line breaks, so shot lists stay one shot per line.
-  const prompt = recipe.prompt.replace(/\{(\w+)\}/g, (_, k) => fill[k] ?? '').replace(/[^\S\n]+/g, ' ').replace(/ *\n\s*/g, '\n').trim()
+  let prompt = recipe.prompt.replace(/\{(\w+)\}/g, (_, k) => fill[k] ?? '').replace(/[^\S\n]+/g, ' ').replace(/ *\n\s*/g, '\n').trim()
   const first = recipe.inputs.find((i) => i.type === 'image' || i.type === 'draw' || widgetTypes.includes(i.type))
   const slots = fileSlots(recipe, values)
   // A shape, length or quality choice sets the run's canvas or length; none is an input of the model.
-  const { aspect: shaped, duration: timed, scale, ...rest } = params
+  const { aspect: shaped, duration: timed, scale, clipsound, ...rest } = params
+  if (recipe.refTags && slots) {
+    // MiniMax H3 numbers its references in the order they arrive, so an empty slot would shift every
+    // later <Picture n>. Pack the pictures and renumber the user's tags to match.
+    const filled = slots.pictures.map((url, i) => [url, i + 1]).filter(([url]) => url)
+    const picture = Object.fromEntries(filled.map(([, n], i) => [n, i + 1]))
+    slots.pictures = filled.map(([url]) => url)
+    // A clip sent with its sound gets the first <Audio> label, so the user's audio moves up one and
+    // <Video 1 sound> names the clip's.
+    const sound = clipsound && (widgets.video || media.video)
+    prompt = prompt.replace(/<(Picture|Audio) (\d+)>/g, (tag, type, n) => type === 'Picture' ? (picture[n] ? `<Picture ${picture[n]}>` : tag) : sound ? `<Audio ${Number(n) + 1}>` : tag)
+      .replace(/<Video 1 sound>/g, sound ? '<Audio 1>' : 'the sound of <Video 1>')
+    if (sound) {
+      rest.clipvideo = sound
+      delete widgets.video
+      delete media.video
+    }
+  }
   return {
     ...widgets, prompt, caption: recipe.name, images, fields, params: rest, count: 1,
     ...(slots && { slots }),

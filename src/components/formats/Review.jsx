@@ -36,7 +36,7 @@ export default function FormatReview({ session, onActivityChange }) {
       const item = state[node.id]?.items?.find((i) => i.status === 'done')
       if (!item) return null
       return <div className="fp-field" key={node.id}>
-        <label htmlFor={`review-${node.id}`}>Review your prompt</label>
+        <label htmlFor={`review-${node.id}`}>{node.data.review || 'Review your prompt'}</label>
         <textarea id={`review-${node.id}`} aria-label="Written prompt" className="fp-text" rows={7} disabled={locked} value={item.text} onChange={(e) => session.engine.editWriter(session.flow, node.id, e.target.value)} />
         <p className="sheet-note">{session.scriptLimits ? `Approximately 480p canvas. Speech is capped at 30 seconds. Keep to 60 words or fewer; ${speechWords(item.text)} words now. Edit, then send and approve the script.` : 'Edit the prompt, then send it to the next step.'}</p>
         {limitError && <p className="sheet-error" role="alert">{limitError}</p>}

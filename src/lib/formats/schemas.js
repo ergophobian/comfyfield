@@ -741,6 +741,35 @@ export const schemas = {
       "seed",
       "voice"
     ],
+    "dub": [
+      "duration",
+      "language",
+      "prompt",
+      "seed",
+      "start",
+      "video"
+    ],
+    "fasth3_omni_r2v": [
+      "audio",
+      "clipvideo",
+      "duration",
+      "height",
+      "image",
+      "image2",
+      "image3",
+      "image4",
+      "image5",
+      "image6",
+      "image7",
+      "image8",
+      "image9",
+      "prompt",
+      "seconds",
+      "seed",
+      "start",
+      "video",
+      "width"
+    ],
     "flux3_klein_t2i": [
       "count",
       "height",
@@ -759,6 +788,8 @@ export const schemas = {
       "count",
       "height",
       "image",
+      "image2",
+      "image3",
       "prompt",
       "seed",
       "width"
@@ -767,6 +798,8 @@ export const schemas = {
       "count",
       "height",
       "image",
+      "image2",
+      "image3",
       "prompt",
       "seed",
       "width"
@@ -802,12 +835,16 @@ export const schemas = {
       "width"
     ],
     "flux_trellis2": [
+      "fill",
       "prompt",
-      "seed"
+      "seed",
+      "solid"
     ],
     "flux_trellis2_cloud": [
+      "fill",
       "prompt",
-      "seed"
+      "seed",
+      "solid"
     ],
     "h3_draw": [
       "duration",
@@ -881,6 +918,27 @@ export const schemas = {
       "lora_strength",
       "prompt",
       "seed"
+    ],
+    "h3_omni_r2v": [
+      "audio",
+      "clipvideo",
+      "duration",
+      "height",
+      "image",
+      "image2",
+      "image3",
+      "image4",
+      "image5",
+      "image6",
+      "image7",
+      "image8",
+      "image9",
+      "prompt",
+      "seconds",
+      "seed",
+      "start",
+      "video",
+      "width"
     ],
     "h3_open_i2v": [
       "frames",
@@ -969,10 +1027,18 @@ export const schemas = {
       "width"
     ],
     "image_grade": [
+      "desat",
+      "glow",
       "grain",
+      "grain_base",
       "image",
-      "preset",
-      "temperature"
+      "matte",
+      "matte_amount",
+      "punch",
+      "seed",
+      "temperature",
+      "tint",
+      "tint_amount"
     ],
     "image_sdxl": [
       "count",
@@ -1014,10 +1080,27 @@ export const schemas = {
       "start",
       "video"
     ],
+    "influencer_video": [
+      "cfg_weight",
+      "exaggeration",
+      "height",
+      "image",
+      "image2",
+      "image3",
+      "language",
+      "prompt",
+      "script",
+      "seconds",
+      "seed",
+      "voice",
+      "width"
+    ],
     "klein_character": [
       "count",
       "height",
       "image",
+      "image2",
+      "image3",
       "prompt",
       "seed",
       "width"
@@ -1026,6 +1109,8 @@ export const schemas = {
       "count",
       "height",
       "image",
+      "image2",
+      "image3",
       "prompt",
       "seed",
       "width"
@@ -1132,6 +1217,26 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "klein_reference_set": [
+      "height",
+      "image",
+      "image2",
+      "image3",
+      "image4",
+      "prompt",
+      "seed",
+      "width"
+    ],
+    "klein_reference_set_cloud": [
+      "height",
+      "image",
+      "image2",
+      "image3",
+      "image4",
+      "prompt",
+      "seed",
+      "width"
+    ],
     "klein_retouch": [
       "image",
       "prompt",
@@ -1142,11 +1247,28 @@ export const schemas = {
       "prompt",
       "seed"
     ],
+    "krea2_realism_t2i": [
+      "count",
+      "height",
+      "prompt",
+      "seed",
+      "width"
+    ],
     "krea2_t2i": [
       "count",
       "height",
       "prompt",
       "seed",
+      "width"
+    ],
+    "ltx25_a2v": [
+      "audio",
+      "duration",
+      "height",
+      "prompt",
+      "seed",
+      "shot",
+      "start",
       "width"
     ],
     "ltx25_i2v": [
@@ -1155,6 +1277,17 @@ export const schemas = {
       "image",
       "prompt",
       "seed",
+      "width"
+    ],
+    "ltx25_ia2v": [
+      "audio",
+      "duration",
+      "height",
+      "image",
+      "prompt",
+      "seed",
+      "shot",
+      "start",
       "width"
     ],
     "ltx25_multishot": [
@@ -1183,6 +1316,23 @@ export const schemas = {
     "minimax_music3": [
       "duration",
       "lyrics",
+      "prompt",
+      "seed"
+    ],
+    "minimax_music3_lyrics": [
+      "duration",
+      "prompt",
+      "seed",
+      "style"
+    ],
+    "qwen2511_anypose": [
+      "image",
+      "image2",
+      "prompt",
+      "seed"
+    ],
+    "qwen2511_anything2real": [
+      "image",
       "prompt",
       "seed"
     ],
@@ -1360,6 +1510,18 @@ export const schemas = {
       "seed",
       "width"
     ],
+    "qwen_image21_faceswap": [
+      "image",
+      "image2",
+      "prompt",
+      "seed"
+    ],
+    "qwen_image21_faceswap_cloud": [
+      "image",
+      "image2",
+      "prompt",
+      "seed"
+    ],
     "qwen_image21_t2i": [
       "count",
       "height",
@@ -1535,6 +1697,7 @@ export const schemas = {
     "scail2_character_swap": [
       "duration",
       "image",
+      "previous",
       "prompt",
       "seed",
       "start",
@@ -1545,6 +1708,15 @@ export const schemas = {
       "seed",
       "target",
       "upscale_factor"
+    ],
+    "seedvr2_old_footage": [
+      "deinterlace",
+      "denoise",
+      "duration",
+      "seed",
+      "start",
+      "upscale_factor",
+      "video"
     ],
     "seedvr2_video": [
       "duration",
@@ -1596,24 +1768,40 @@ export const schemas = {
       "width"
     ],
     "trellis2_character": [
+      "fill",
       "image",
       "prompt",
-      "seed"
+      "seed",
+      "solid"
     ],
     "trellis2_character_cloud": [
+      "fill",
       "image",
       "prompt",
-      "seed"
+      "seed",
+      "solid"
     ],
     "trellis2_image": [
+      "fill",
       "image",
       "resolution",
-      "seed"
+      "seed",
+      "solid"
     ],
     "trellis2_turntable": [
       "background",
       "image",
       "seed"
+    ],
+    "ugc_ad": [
+      "audio",
+      "height",
+      "image",
+      "image2",
+      "prompt",
+      "seconds",
+      "seed",
+      "width"
     ],
     "video_bg_change": [
       "duration",
@@ -1667,6 +1855,7 @@ export const schemas = {
       "image",
       "motion_frames",
       "motion_start",
+      "previous",
       "prompt",
       "seed",
       "video"
@@ -1695,8 +1884,44 @@ export const schemas = {
     "drama3_tts": [
       "voice"
     ],
+    "fasth3_omni_r2v": [
+      "audio",
+      "clipvideo",
+      "image2",
+      "image3",
+      "image4",
+      "image5",
+      "image6",
+      "image7",
+      "image8",
+      "image9",
+      "start",
+      "video"
+    ],
+    "flux_character_set": [
+      "image2",
+      "image3"
+    ],
+    "flux_character_set_cloud": [
+      "image2",
+      "image3"
+    ],
     "h3_lora_i2v": [
       "image2"
+    ],
+    "h3_omni_r2v": [
+      "audio",
+      "clipvideo",
+      "image2",
+      "image3",
+      "image4",
+      "image5",
+      "image6",
+      "image7",
+      "image8",
+      "image9",
+      "start",
+      "video"
     ],
     "h3_studio_ad": [
       "image2",
@@ -1705,6 +1930,19 @@ export const schemas = {
     "infinitetalk_tts": [
       "voice"
     ],
+    "influencer_video": [
+      "image2",
+      "image3",
+      "voice"
+    ],
+    "klein_character": [
+      "image2",
+      "image3"
+    ],
+    "klein_character_cloud": [
+      "image2",
+      "image3"
+    ],
     "klein_moodboard": [
       "image2",
       "image3"
@@ -1712,6 +1950,16 @@ export const schemas = {
     "klein_moodboard_cloud": [
       "image2",
       "image3"
+    ],
+    "klein_reference_set": [
+      "image2",
+      "image3",
+      "image4"
+    ],
+    "klein_reference_set_cloud": [
+      "image2",
+      "image3",
+      "image4"
     ],
     "ltx25_multishot": [
       "image"
@@ -1762,8 +2010,17 @@ export const schemas = {
       "image3",
       "image4"
     ],
+    "scail2_character_swap": [
+      "previous"
+    ],
+    "ugc_ad": [
+      "audio"
+    ],
     "wan22_i2v": [
       "image2"
+    ],
+    "wan_animate2": [
+      "previous"
     ]
   },
   "router": {

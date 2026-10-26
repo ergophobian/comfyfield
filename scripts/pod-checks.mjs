@@ -915,6 +915,30 @@ await test('fixes: the CLI and MCP see a new Pod at once, and never remove a new
   assert.equal(JSON.parse(fs.readFileSync(path.join(a.dir, 'pod-ledger.json'), 'utf8')).pod, 'pod2', 'only the app writes the ledger')
 })
 
+await test('fixes: an app that watched an old Pod never ends a new Pod another app started', async () => {
+  const a = setup()
+  const other = podManager({ ...a.opts })
+  await a.pod.start()
+  a.rp.statusd = readyStatus()
+  assert.equal((await other.tick()).phase, 'ready') // the other app saw pod1 ready and answering
+  a.rp.statusd = null
+  await a.pod.terminate({ now: true })
+  a.clock.t += 30 * 60_000
+  await a.pod.start() // pod2 still boots, so its status server does not answer yet
+  await new Promise((r) => setTimeout(r, 1100))
+  const s = await other.tick()
+  assert.equal(s.phase, 'starting')
+  assert.equal(s.event, null)
+  assert.equal(a.rp.count((c) => c.method === 'DELETE' && c.path.endsWith('/pod2')), 0)
+})
+
+await test('fixes: a failed start shows its reason in the status', async () => {
+  const { pod, rp } = setup()
+  rp.create.push({ status: 400, data: { error: 'bad image' } })
+  await assert.rejects(pod.start(), /bad image/)
+  assert.match(pod.status().event.text, /bad image/)
+})
+
 await test('fixes: requests from other sites are refused', async () => {
   const { crossSite } = await import('../server/plugin.js')
   const host = 'localhost:5173'
@@ -1877,7 +1901,11 @@ await test('fixes: a pack patch replaces the pinned file after checkout, before 
   const pack = script.slice(script.indexOf("<<'PACK'"), script.indexOf('\nPACK\n'))
   const call = pack.indexOf('declare -F cf_patch')
   assert(call > pack.indexOf('checkout --quiet --force "$commit"') && call < pack.indexOf('ln -sfn'), 'patched after checkout, before the link')
-  assert.equal(script.split('\n').filter((l) => /^ {2}[a-z0-9]+\)/.test(l) && l.includes('cf_patch')).length, 1, 'only packs with a patch get one')
+  assert.deepEqual(script.split('\n').filter((l) => /^ {2}[a-z0-9]+\)/.test(l) && l.includes('cf_patch')).map((l) => l.trim().split(')')[0]), ['wanvideo', 'chatterbox'], 'only packs with a patch get one')
+  const voice = script.split('\n').find((l) => l.startsWith('  chatterbox)'))
+  const init = Buffer.from(/echo (\S+) \| base64 -d > "\$d\/__init__\.py"/.exec(voice)[1], 'base64').toString()
+  assert.equal(init, fs.readFileSync('server/pack-patches/chatterbox/__init__.py', 'utf8'))
+  assert.match(init, /raise RuntimeError\("Chatterbox returned no sound/, 'a Chatterbox error fails the run instead of passing one sample of silence on')
 })
 
 await test('node packs: the boot script installs packs before ComfyUI starts, keeps them on the volume and whitelists them', async () => {
@@ -2186,13 +2214,15 @@ await test('uploads: a graph takes more pictures, a mask and audio, and an optio
     5: { class_type: 'LoadImage', inputs: { image: '{{mask}}' } },
     6: { class_type: 'LoadAudio', inputs: { audio: '{{audio}}' } },
     7: { class_type: 'LoadAudio', inputs: { audio: '{{voice}}' } },
-    8: { class_type: 'LoadImage', inputs: { image: '{{image7}}' } },
+    8: { class_type: 'LoadImage', inputs: { image: '{{image10}}' } },
+    9: { class_type: 'LoadImage', inputs: { image: '{{image9}}' } },
+    10: { class_type: 'LoadVideo', inputs: { file: '{{clipvideo}}' } },
   }
   const without = dropOptional(graph, { image: 'a' })
-  assert.deepEqual(Object.keys(without), ['1', '4', '5', '6', '7', '8'])
+  assert.deepEqual(Object.keys(without), ['1', '4', '5', '6', '7', '8', '9', '10'])
   assert.deepEqual(without['4'].inputs, { image1: ['1', 0], prompt: '{{prompt}}' }, 'the input linked to the dropped node goes too')
   assert.equal(dropOptional(graph, { image: 'a', image3: 'b' }), graph, 'with the file, nothing changes')
-  assert.deepEqual(core.uploadsOf(graph).map((u) => `${u.id}.${u.field}=${u.key}`), ['1.image=image', '2.image=image3', '5.image=mask', '6.audio=audio', '7.audio=voice'], 'only known slots upload')
+  assert.deepEqual(core.uploadsOf(graph).map((u) => `${u.id}.${u.field}=${u.key}`), ['1.image=image', '2.image=image3', '5.image=mask', '6.audio=audio', '7.audio=voice', '9.image=image9', '10.file=clipvideo'], 'only known slots upload')
 
   const { fileSlots } = await import('../src/lib/recipes.js')
   const tryOn = { inputs: [{ id: 'person', type: 'image' }, { id: 'garment', type: 'image' }, { id: 'garment2', type: 'image', optional: true }, { id: 'character', type: 'character' }, { id: 'track', type: 'audio' }] }
@@ -2203,6 +2233,18 @@ await test('uploads: a graph takes more pictures, a mask and audio, and an optio
   assert.equal(fileSlots({ inputs: [{ id: 'prompt', type: 'text' }] }, {}), null, 'no slots without files')
   const composer = comfyVars('image', { prompt: 'x', aspect: '1:1', images: ['/a.png', '/b.png'] })
   assert.deepEqual([composer.image, composer.image2], ['/a.png', '/b.png'], 'the composer\'s attachments fill the slots in order')
+  // FastH3 Omni numbers references in arrival order: refTags packs the pictures and renumbers the tags.
+  const { recipeOptions } = await import('../src/lib/recipes.js')
+  const omni = { refTags: true, prompt: '{scene}', params: {}, settings: { aspect: '16:9', duration: 5 }, inputs: [{ id: 'scene', type: 'longtext' }, ...[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => ({ id: `ref${n}`, type: 'image', optional: n > 1 })), { id: 'video', type: 'video', optional: true }, { id: 'track', type: 'audio', optional: true },
+    { id: 'clipsound', type: 'choice', default: 'use', options: [{ id: 'use', params: { clipsound: true } }, { id: 'mute' }] }] }
+  const clip = { url: '/c.mp4', duration: 9, trim: { start: 1, end: 6 } }
+  const packed = recipeOptions(omni, { scene: '<Picture 1>, <Picture 3> and <Picture 9> to <Video 1 sound>, voice <Audio 1>', ref1: { url: '/1.png' }, ref3: { url: '/3.png' }, ref9: { url: '/9.png' }, video: clip, track: { url: '/v.wav' }, clipsound: 'use' })
+  assert.equal(packed.prompt, '<Picture 1>, <Picture 2> and <Picture 3> to <Audio 1>, voice <Audio 2>')
+  const pv = comfyVars('video', packed)
+  assert.deepEqual([pv.image, pv.image2, pv.image3, pv.image4, pv.video, pv.clipvideo, pv.start, pv.duration], ['/1.png', '/3.png', '/9.png', undefined, undefined, '/c.mp4', 1, 5], 'a clip with its sound goes to clipvideo, trimmed')
+  const muted = recipeOptions(omni, { scene: '<Audio 1> over <Video 1 sound>', ref1: { url: '/1.png' }, video: clip, track: { url: '/v.wav' }, clipsound: 'mute' })
+  assert.equal(muted.prompt, '<Audio 1> over the sound of <Video 1>')
+  assert.equal(comfyVars('video', muted).video, '/c.mp4')
 
   const { open } = await import('../src/lib/formats/parts.js')
   const { validateFormat } = await import('../src/lib/formats/validate.js')
@@ -2430,7 +2472,16 @@ await test('image services: every Comfy format that shows fills its graph with i
         const o = stepOptions(f, step, values)
         // A writer step writes the prompt when the format runs.
         if (f.writer || f.steps.some((s) => s.type === 'writer')) o.prompt = 'Written prompt'
+        const at = f.steps.indexOf(raw)
+        const from = (raw.from ?? (at ? [f.steps[at - 1].id] : [])).map((id) => f.steps.find((s) => s.id === id))
+        // An upstream song reaches the step as its audio when the format runs.
+        if (from.some((s) => s?.kind === 'audio')) o.audio = '/media/song.mp3'
         if (o.aspect === 'auto') o.aspect = nearestAspect(o.shape)
+        // As in runFormat, an image from an upstream model step takes the first picture slot.
+        if (from.some((s) => !s.type && (s.kind || f.kind) === 'image')) {
+          o.images = ['/media/upstream.png']
+          if (o.slots) o.slots = { ...o.slots, pictures: ['/media/upstream.png', ...o.slots.pictures.slice(1)] }
+        }
         const vars = comfyVars(model.kind, o, model.sizes)
         const w = vars.image && model.imageWorkflow ? model.imageWorkflow : model.workflow
         const graph = dropOptional(readGraph(w), vars)
@@ -2611,8 +2662,8 @@ await test('edits and enhance: Bernini-R, VOID, SCAIL-2, SeedVR2, RIFE and BiRef
   const leases = []
   const lease = async (o) => { leases.push(o); return { baseUrl: 'https://p-8189.proxy.runpod.net', token: 't', sandbox: false, signal: new AbortController().signal, reason: () => null, release() {} } }
   const png = 'data:image/png;base64,iVBORw0KGgo='
-  const vars = { prompt: 'A look', seed: 1, start: 0, duration: 3, video: 'data:video/mp4;base64,AAAAIGZ0eXBpc29t', image: png, image2: png, image3: png,
-    fps: 12, stride: 2, strength: 0.65, target: 'person', trajectory: 'arc_left', orbit: false, upscale_factor: 2, multiplier: 2, output: 'alpha', background: 'A beach', preset: 'natural', temperature: 0, grain: 0 }
+  const vars = { prompt: 'A look', seed: 1, start: 0, duration: 3, motion_frames: 48, motion_start: 0, video: 'data:video/mp4;base64,AAAAIGZ0eXBpc29t', image: png, image2: png, image3: png,
+    fps: 12, stride: 2, strength: 0.65, target: 'person', preset: 'natural', trajectory: 'arc_left', orbit: false, upscale_factor: 2, multiplier: 2, output: 'alpha', background: 'A beach', desat: 0, tint: 8421504, tint_amount: 0, matte: 8421504, matte_amount: 0, punch: 0, glow: 0, grain_base: 0, temperature: 0, grain: 0 }
   const run = (w, phase = 'none', vram = 24, type = null) => core.runComfy(w, vars, { createClient: () => client, lease, podPhase: async () => phase, podVram: () => vram, podRoom: () => ({}), run: type })
   for (const w of ['bernini_mixed', 'bernini_grade', 'bernini_clone_edit', 'bernini_recreate_ad', 'void_inpaint', 'video_bg_change', 'scail2_character_swap', 'recammaster',
     'seedvr2_image', 'seedvr2_video', 'image_upscale', 'image_upscale_esrgan', 'rife_interpolate', 'birefnet_image', 'birefnet_video_matte', 'birefnet_video_matte_alpha', 'image_grade']) {
@@ -2679,7 +2730,7 @@ await test('pack files: a pack\'s own files download with it, pinned, and the Po
   assert(!script.includes('  chatterbox/chatterbox_vc:'), 'ComfyUI\'s own folder list never names a pack folder')
   assert(script.includes('foley\tComfyUI-HunyuanVideo_Foley\tHunyuanFoleyModelLoader,LoadDACHunyuanVAE,HunyuanFoleySampler,DACHunyuanVAEDecode\thunyuan_foley/hunyuanvideo_foley.pth,vae/vae_128d_48k.pth\n'),
     'the status server learns which files Foley waits for')
-  assert(script.includes('folder=ComfyUI_Fill-ChatterBox; pip="pykakasi==2.3.0 spacy-pkuseg==1.0.1"; ;;'), 'Chatterbox gets its Japanese and Mandarin text packages, pinned')
+  assert(script.includes('folder=ComfyUI_Fill-ChatterBox; pip="pykakasi==2.3.0 spacy-pkuseg==1.0.1"; cf_patch() {'), 'Chatterbox gets its Japanese and Mandarin text packages, pinned')
   assert(script.includes('folder=ComfyUI-Qwen-TTS; skip="onnxruntime-openvino"; ;;'))
   for (const d of ['wav2vec2', 'asr', 'hunyuan_foley']) assert(script.includes(`  ${d}: ${d}\n`), `ComfyUI finds ${d} on the volume`)
   const ok = { repo: 'x/y', commit: 'a'.repeat(40), folder: 'F', classes: ['C'] }
@@ -2796,6 +2847,7 @@ await test('audio and 3D: Chatterbox, MiniMax Music 3 and Stable Audio 3 go to C
   const vars = { prompt: 'A line', script: 'Hello there', lyrics: '[Instrumental]', language: 'English (en)', exaggeration: 0.5, cfg_weight: 0.5, seed: 1, start: 0, duration: 5,
     resolution: 1024, background: '#ffffff', image: png, audio: flac, voice, video: 'data:video/mp4;base64,AAAAIGZ0eXBpc29t' }
   const run = (w, phase = 'none') => core.runComfy(w, { ...vars, ...(w === 'chatterbox_clone' ? { audio: voice } : {}) }, { createClient: () => client, lease, podPhase: async () => phase, podVram: () => 24, podRoom: () => ({}) })
+  Object.assign(vars, { fill: 0, solid: false })
   for (const w of ['chatterbox_tts', 'chatterbox_clone', 'chatterbox_vc', 'minimax_music3', 'stable_audio3']) {
     const files = await run(w)
     assert.deepEqual(files.map((f) => f.kind), ['audio'], `${w} keeps its speech`)
@@ -2851,6 +2903,12 @@ await test('audio and 3D: formats send Chatterbox its own language labels, a scr
   assert(!by['talking-head'].inputs.some((i) => i.id === 'accent'), 'Chatterbox has no accent control')
   assert.deepEqual(['', '   ', null, 'Verse one'].map((lyrics) => pick('music', { lyrics }).o.fields.lyrics), ['[Instrumental]', '[Instrumental]', '[Instrumental]', 'Verse one'])
   assert.deepEqual(['draft', 'final'].map((detail) => pick('image-to-3d', { detail }).o.params.resolution), [1024, 1536])
+  for (const id of ['image-to-3d', 'text-to-3d', 'character-to-3d']) {
+    const made = (use) => pick(id, { use }).o.params
+    assert.deepEqual([made('screen').fill, made('screen').solid, made('print').fill, made('print').solid], [0, false, 0.03, true], `${id} prints from one solid shell with small holes filled`)
+    assert(/not rig-ready/i.test(by[id].limits), `${id} says its mesh is not rig-ready`)
+  }
+  assert.equal(pick('image-to-3d', { detail: 'final', use: 'print' }).o.params.resolution, 1536, 'the print pass keeps the detail')
   const spin = pick('turntable', { background: 'dark' })
   assert.deepEqual([spin.o.params.background, spin.o.prompt], ['#1c1c22', ''])
   assert.equal(pick('voice-clone', { name: 'My narrator voice' }).o.prompt, 'Hello, this is My narrator voice. It is ready to read anything you write.')

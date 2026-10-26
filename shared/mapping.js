@@ -41,7 +41,7 @@ export function dropOptional(graph, vars) {
 const motionStrokes = (o) => Object.entries(o.media || {}).find(([k]) => k.endsWith('Strokes'))?.[1]
 
 // Upload slots a graph can take besides `image` and `video`.
-export const PICTURE_SLOTS = ['image', 'image2', 'image3', 'image4', 'image5']
+export const PICTURE_SLOTS = ['image', 'image2', 'image3', 'image4', 'image5', 'image6', 'image7', 'image8', 'image9']
 
 // `sizes` lets a model use its own canvas per aspect ratio, for example multiples of 64 for LTX-2.5.
 // A video edit reads the trimmed part of its clip: `start` and `duration` in seconds. A format's

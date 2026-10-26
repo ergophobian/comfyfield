@@ -44,7 +44,7 @@ export function createJobs(file) {
     save()
     Promise.resolve().then(() => task(ctx)).then(
       (files) => { if (!ctx.cancelled) jobs.set(id, { ...withoutProgress(jobs.get(id)), status: 'done', files }) },
-      (e) => { if (!ctx.cancelled) jobs.set(id, { ...withoutProgress(jobs.get(id)), status: 'failed', error: { message: e.message, status: e.status, code: e.code, requestId: e.requestId, idempotencyKey: e.idempotencyKey, retryable: e.retryable, reason: e.reason, fit: e.fit } }) },
+      (e) => { if (!ctx.cancelled) jobs.set(id, { ...withoutProgress(jobs.get(id)), status: 'failed', error: { message: e.message, status: e.status, uncancelled: e.uncancelled, jobId: e.jobId, code: e.code, requestId: e.requestId, idempotencyKey: e.idempotencyKey, retryable: e.retryable, reason: e.reason, fit: e.fit } }) },
     ).finally(() => { live.delete(id); save() })
     return id
   }

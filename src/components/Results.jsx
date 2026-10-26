@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import UseIn from './formats/UseIn.jsx'
 import Viewer, { Act, ext } from './Viewer.jsx'
+import ModelView from './ModelView.jsx'
 import { useApp } from '../lib/appContext.js'
 import { takeLabel, usePod } from '../lib/usePod.js'
 import { IconCheck, IconDownload, IconTrash } from './Icons.jsx'
@@ -61,6 +62,7 @@ export default function Results({ items, onUse, size }) {
               </span>
             </span>
           ) : it.kind === 'video' ? <video src={it.url} autoPlay loop muted playsInline />
+            : it.kind === '3d' ? <ModelView url={it.url} alt={it.caption} />
             : it.kind === 'audio' ? <div className="audio-card"><p>{it.caption}</p>{it.restoreNote && <small>{it.restoreNote}</small>}<audio src={it.url} controls /></div>
             : <img src={it.url} alt={it.caption} />}
           {viewable(it) && <div className="result-cap">{it.model} · {it.caption}{it.restoreNote && <div>{it.restoreNote}</div>}</div>}

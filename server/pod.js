@@ -105,7 +105,7 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
   const file = (name) => path.join(dir(), name)
   // `since` is when this process began watching, so a restart never counts the Pod as silent for its whole life.
   const m = { record: undefined, readAt: 0, remote: null, status: null, seenAt: null, since: now(), action: null, placing: false, ending: null, event: null,
-    leases: new Set(), timer: null, loop: null, ticking: false, quote: null, listedAt: 0, owner }
+    leases: new Set(), timer: null, loop: null, ticking: false, quote: null, listedAt: 0, owner, bound: undefined }
 
   const key = () => keys().key || ''
   const cap = () => { const c = parseFloat(keys().cap); return Number.isFinite(c) && c > 0 ? c : DEFAULT_CAP }
@@ -147,6 +147,7 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
     if (m.record === undefined || Date.now() - m.readAt > 1000) {
       m.record = readJson(file('pod.json'), null)
       m.readAt = Date.now()
+      bind()
     }
     return m.record
   }
@@ -154,6 +155,19 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
     m.record = rec
     m.readAt = Date.now()
     writeJson(file('pod.json'), rec)
+    bind()
+  }
+  // What this process saw of a Pod belongs to that Pod only. When another process starts or resumes
+  // one, the last Pod's status and last answer would make the guards end the new Pod at once.
+  function bind() {
+    const id = m.record ? `${m.record.id}|${m.record.startedAt}` : null
+    if (id === m.bound) return
+    m.bound = id
+    m.status = null
+    m.seenAt = null
+    m.remote = null
+    m.ending = null
+    m.since = now()
   }
 
   // Adds spend between two times, split at local midnight so each day gets its own share.
@@ -195,7 +209,7 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
     // Another process may have saved a newer Pod meanwhile; remove only the record that ended.
     const onDisk = readJson(file('pod.json'), null)
     if (!onDisk || onDisk.id === ended) save(null)
-    else { m.record = onDisk; m.readAt = Date.now() }
+    else { m.record = onDisk; m.readAt = Date.now(); bind() }
   }
 
   // ---- reading the Pod ---------------------------------------------------------------------------
@@ -410,11 +424,6 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
           save({ id: r.data.id, name, token, gpuTypeId: rung.gpuTypeId, gpu: rung.name, vramGb: rung.vramGb, cloudType: rung.cloudType, arch: rung.arch || null, costPerHr: r.data.costPerHr || 0, volumeGb: volume, idleMin, createdAt: t, startedAt: t, pausedAt: null,
             tier: tier || null, fellBack: Boolean(order && refused > 0),
             ...(ready && (ready.files?.length || ready.runtimes?.length) ? { prepare: { files: ready.files || [], runtimes: ready.runtimes || [] } } : {}) })
-          // The last Pod's status (ready, models, disk) says nothing about this one, and a lease that
-          // trusted it would send a run to a Pod still booting.
-          m.status = null
-          m.remote = null
-          m.seenAt = null
           charge(t)
           m.placing = false
           kick()
@@ -430,6 +439,10 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
       }
       if (gpu) throw fail(`RunPod has no free ${rungs[0].name} on ${rungs[0].cloudType === 'SECURE' ? 'Secure' : 'Community'} cloud right now. Pick another GPU or try again in a few minutes.`, 503, { code: 'no_capacity' })
       throw fail(`RunPod has no free GPU right now. ComfyField tried ${refused} GPU${refused === 1 ? '' : 's'}. Try again in a few minutes.`, 503, { code: 'no_capacity' })
+    } catch (e) {
+      // A start can outlast the request that asked for it, so the chip and /api/pod show why it failed.
+      m.event = { text: e.message, at: now() }
+      throw e
     } finally {
       m.placing = false
     }
@@ -490,9 +503,6 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
       }
       charge()
       save({ ...record(), pausedAt: null, startedAt: now() })
-      m.status = null
-      m.seenAt = null
-      m.since = now()
       m.event = null
     } finally {
       m.action = null

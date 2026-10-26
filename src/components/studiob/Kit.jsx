@@ -64,6 +64,17 @@ export function NotWired({ label = 'Generate', runsOn, summary, inline }) {
   )
 }
 
+// The wired version of NotWired: a real run button, the batch summary and what is still needed.
+export function RunBar({ label, summary, note, disabled, onRun }) {
+  return (
+    <div className="sb-go">
+      {summary && <span className="sb-sum">{summary}</span>}
+      <button type="button" className="btn-blue" disabled={disabled} onClick={onRun}>{label}</button>
+      {note && <span className="muted">{note}</span>}
+    </div>
+  )
+}
+
 // Settings on the left, the workspace on the right, the way Higgsfield lays out its studio tools.
 export function Split({ name, panel, foot, children }) {
   return (

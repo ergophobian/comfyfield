@@ -4,6 +4,7 @@ import path from 'node:path'
 import { test } from 'node:test'
 import { Comfy } from '@comfyorg/sdk'
 import * as core from '../server/core.js'
+import { publicGet } from '../server/publicPage.js'
 import { createServer } from '../server/mcp.js'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
@@ -14,6 +15,7 @@ import { runFormat } from '../src/lib/formats/runner.js'
 import { expectedInputs, prompt } from './fixtures/router-payloads.mjs'
 import { offlineRequirements } from './fixtures/format-planning.mjs'
 import { comfyRouterInput } from '../shared/mapping.js'
+import { ffmpeg, findFfmpeg } from '../server/stitch.js'
 
 // No inherited provider configuration can reach these mocked checks.
 if (!process.argv.includes('--isolated')) {
@@ -481,4 +483,45 @@ await test('Real Cloud SDK against mocked HTTP: asset upload, submit, poll, down
   assert(calls.includes('GET /api/v2/assets/output-asset/content'))
   credits = false
   await assert.rejects(core.runComfy('h3_open_i2v', vars, { createClient }), /insufficient credits/)
+})
+
+await test('Multi-part speech refuses initial runs and retries before any provider submission', async () => {
+  setup('cloud')
+  const binary = await findFfmpeg()
+  const tone = path.join(process.env.COMFYFIELD_HOME, 'tone.flac')
+  await ffmpeg(['-y', '-f', 'lavfi', '-i', 'sine=frequency=440:duration=0.4:sample_rate=24000', '-c:a', 'flac', tone], { binary })
+  const sentence = 'The keeper climbed the stairs again tonight, and the light came on over the water. '
+  const script = sentence.repeat(12).trim()
+  const runs = []
+  const createClient = () => {
+    const client = new Comfy({ apiKey: 'pod-token' })
+    client.run = async (wf) => {
+      runs.push({ text: wf.json['2'].inputs.text, seed: wf.json['2'].inputs.seed })
+      return { outputs: [{ type: 'audio', contentType: 'audio/flac', name: 'tts.flac', toBytes: async () => fs.readFileSync(tone) }] }
+    }
+    // A Pod run submits, then waits, so a refused submit can be sent again.
+    client.submit = async (wf) => ({ id: `j${runs.length}`, status: 'succeeded', wait: async () => {}, ...(await client.run(wf)) })
+    return client
+  }
+  const pod = { podPhase: async () => 'ready', podVram: () => 96, podRoom: () => ({}), podArch: () => null, lease: async () => ({ token: 'pod-token', baseUrl: 'https://pod.test', release() {}, reason: () => null }) }
+  globalThis.fetch = async () => { throw new Error('Unexpected network call') }
+  const longVars = { prompt: script, language: 'English (en)', exaggeration: 0.5, cfg_weight: 0.5, seed: 7 }
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await assert.rejects(core.runComfy('chatterbox_tts', longVars, { createClient, ...pod }), (e) => e.code === 'multipart_unavailable' && e.retryable === false && /not available yet/.test(e.message))
+  }
+  assert.equal(runs.length, 0, 'A retry cannot pay again for parts 1 and 2 because multi-part submission is disabled')
+  runs.length = 0
+  await core.runComfy('chatterbox_tts', { prompt: sentence.trim(), language: 'English (en)', exaggeration: 0.5, cfg_weight: 0.5, seed: 7 }, { createClient, ...pod })
+  assert.equal(runs.length, 1, 'a short script runs once')
+  assert.deepEqual(core.speechParts('你好。我很好。今天天气很好，我们去公园吧！', 8), ['你好。我很好。', '今天天气很好，', '我们去公园吧！'])
+  assert.deepEqual(core.speechParts('One. Two.\n\nThree.', 300), ['One. Two.', 'Three.'], 'a paragraph break ends a part')
+  await assert.rejects(core.runComfy('chatterbox_tts', { prompt: sentence.repeat(500), seed: 7 }, { createClient, ...pod }), /Split it into chapters/)
+})
+
+await test('Input media URLs from a request cannot reach private addresses', async () => {
+  await assert.rejects(core.comfyMedia('http://[::ffff:127.0.0.1]/private-video'), /Private|public/i)
+  const redirect = (url, options) => publicGet(url, { ...options, resolve: async () => [{ address: '8.8.8.8', family: 4 }], request: async () => ({ status: 302, headers: { location: 'http://127.0.0.1/private-video' } }) })
+  await assert.rejects(core.comfyMedia('https://example.com/clip.mp4', { get: redirect }), /Private|public/i)
+  const ok = (url, options) => publicGet(url, { ...options, resolve: async () => [{ address: '8.8.8.8', family: 4 }], request: async () => ({ status: 200, headers: { 'content-type': 'video/mp4' }, body: Buffer.from('mp4') }) })
+  assert.deepEqual(await core.comfyMedia('https://example.com/clip.mp4', { get: ok }), { buf: Buffer.from('mp4'), mime: 'video/mp4' })
 })

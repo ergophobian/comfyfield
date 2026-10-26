@@ -36,7 +36,7 @@ export function libraryStore(home) {
 }
 
 const shape = {
-  characters: { name: 's', notes: 's', images: ['a', 6] },
+  characters: { name: 's', notes: 's', images: ['a', 6], refset: 's' },
   products: { name: 's', description: 's', price: 's', url: 's', images: ['a', 8] },
   brands: { name: 's', logo: 's', voice: 's', url: 's', colors: ['a', 8] },
 }

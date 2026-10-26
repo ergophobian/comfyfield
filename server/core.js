@@ -8,16 +8,19 @@ import { randomUUID } from 'node:crypto'
 import { setTimeout as delay } from 'node:timers/promises'
 import { Comfy, JobFailed } from '@comfyorg/sdk'
 import { models as pinned, falCategories, podWorkflows, routerWriterModel } from '../src/lib/catalog.js'
-import { comfyVars, comfyRouterInput, falInput, estimate, fill, falEndpointFor, dropOptional } from '../shared/mapping.js'
+import { comfyVars, comfyRouterInput, falInput, estimate, fill, falEndpointFor, dropOptional, PICTURE_SLOTS } from '../shared/mapping.js'
+import { renderStitch, ffmpeg, findFfmpeg, probeVideo, normalizeClip, cutFrames, joinChunks } from './stitch.js'
+import { CHAINS, clipChunks, extendChunks } from '../shared/longVideo.js'
+import { archOf, minVramOf, notOnCloud, podNeedsOf, volumeFor, RUNTIMES } from '../shared/modelFiles.js'
+import { CLOUD_USD_PER_GPU_SEC, DEFAULT_TIER, TIER_IDS } from '../shared/gpuTiers.js'
+import { REAL_LOOK } from '../shared/realism.js'
 import { routerEntry } from '../shared/routerModels.js'
-import { renderStitch, findFfmpeg } from './stitch.js'
 import { draftInstructions, parseDraft } from '../shared/flowDraft.js'
 import { renderBlender, blenderVersion } from './blender.js'
 import { renderThree } from './threejs.js'
-import { importBusinessPage as readBusinessPage } from './publicPage.js'
+import { importBusinessPage as readBusinessPage, publicGet, publicAddress } from './publicPage.js'
+import { isIP } from 'node:net'
 import { validateWorkflowVoices } from './voiceConsent.js'
-import { archOf, minVramOf, notOnCloud, podNeedsOf, volumeFor, RUNTIMES } from '../shared/modelFiles.js'
-import { CLOUD_USD_PER_GPU_SEC, DEFAULT_TIER, TIER_IDS } from '../shared/gpuTiers.js'
 
 import { podManager, GPU_LADDER, IDLE_CHOICES, POD_VOLUMES, STOPPED_DISK_USD_GB_MONTH, idleMinutes } from './pod.js'
 import { sandboxFetch } from './podSandbox.js'
@@ -279,6 +282,91 @@ export async function saveToLibrary(files, metadata = {}) {
   return items
 }
 
+// Product pages, read with no keys: the title, description, price, photos, site name, theme color and
+// icon, from Open Graph and Twitter tags, schema.org Product JSON-LD and the page title. The photos and
+// icon are saved under media, so a run uploads them like any other file. Used by Library import and
+// by link-to-ads in the Ads studio.
+export const IMAGE_EXT = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif', 'image/svg+xml': 'svg', 'image/x-icon': 'ico', 'image/vnd.microsoft.icon': 'ico' }
+
+const decode = (s = '') => s.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#0?39;|&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#x27;/g, "'").trim()
+
+function attrs(tag) {
+  const out = {}
+  for (const a of tag.matchAll(/([\w:-]+)\s*=\s*("([^"]*)"|'([^']*)')/g)) out[a[1].toLowerCase()] = decode(a[3] ?? a[4])
+  return out
+}
+
+export function parsePage(html, base) {
+  const meta = {}
+  const metaImages = []
+  for (const t of html.matchAll(/<meta\b[^>]*>/gi)) {
+    const a = attrs(t[0])
+    const k = (a.property || a.name || '').toLowerCase()
+    if (k && a.content && !(k in meta)) meta[k] = a.content
+    // A shop often lists every product photo as its own og:image.
+    if (a.content && ['og:image', 'og:image:secure_url', 'twitter:image', 'product:image'].includes(k)) metaImages.push(a.content)
+  }
+  const links = [...html.matchAll(/<link\b[^>]*>/gi)].map((t) => attrs(t[0])).filter((a) => a.rel && a.href)
+  let product = null
+  for (const t of html.matchAll(/<script[^>]*application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)) {
+    try {
+      const walk = (n) => {
+        if (!n || product) return
+        if (Array.isArray(n)) return n.forEach(walk)
+        if (typeof n !== 'object') return
+        const types = [].concat(n['@type'] || [])
+        if (types.includes('Product')) product = n
+        else walk(n['@graph'])
+      }
+      walk(JSON.parse(t[1]))
+    } catch {}
+  }
+  const abs = (u) => { try { return new URL(decode(u), base).href } catch { return null } }
+  const offer = [].concat(product?.offers || [])[0] || {}
+  const amount = offer.price ?? offer.lowPrice ?? meta['product:price:amount'] ?? meta['og:price:amount']
+  const currency = offer.priceCurrency || meta['product:price:currency'] || meta['og:price:currency'] || ''
+  const price = amount != null && amount !== '' ? `${currency === 'USD' || !currency ? '$' : `${currency} `}${amount}` : ''
+  const pimg = [].concat(product?.image || []).map((i) => (typeof i === 'string' ? i : i?.url)).filter(Boolean)
+  const images = [...metaImages, ...pimg].filter(Boolean).map(abs).filter(Boolean)
+  const icon = links.find((a) => /apple-touch-icon/i.test(a.rel)) || links.find((a) => /(^|\s)icon/i.test(a.rel))
+  const title = decode(product?.name || meta['og:title'] || meta['twitter:title'] || html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] || '')
+  return {
+    title,
+    description: decode(String(product?.description || meta['og:description'] || meta.description || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ')),
+    price,
+    images: [...new Set(images)].slice(0, 8),
+    siteName: decode(meta['og:site_name'] || ''),
+    themeColor: /^#[0-9a-f]{3,8}$/i.test(meta['theme-color'] || '') ? meta['theme-color'] : '',
+    logo: abs(icon?.href) || '',
+  }
+}
+
+// The public reader pins DNS and checks every redirect for pages, photos and logos.
+export const localAddress = (host) => {
+  const address = host.replace(/^\[|\]$/g, '')
+  return isIP(address) ? !publicAddress(address) : /^(localhost|.*\.(local|internal|localhost|home))$/i.test(address)
+}
+
+async function pullImage(src, get) {
+  try {
+    const r = await get(src, { limit: 8_000_000, timeout: 8000, accept: 'image/*' })
+    const type = (r.headers['content-type'] || '').split(';')[0].trim()
+    return IMAGE_EXT[type] ? saveMedia(r.body, IMAGE_EXT[type]).url : null
+  } catch { return null }
+}
+
+export async function readProduct({ url } = {}, { get = publicGet } = {}) {
+  const r = await get(url)
+  if (!/text\/html|application\/xhtml\+xml/i.test(r.headers['content-type'] || '')) {
+    throw Object.assign(new Error('That page did not return HTML.'), { status: 415 })
+  }
+  const target = new URL(r.url)
+  const page = parsePage(r.body.toString('utf8'), target.href)
+  const images = (await Promise.all(page.images.map((src) => pullImage(src, get)))).filter(Boolean)
+  const logo = page.logo ? await pullImage(page.logo, get) : null
+  return { ...page, images, logo: logo || '', url: target.href, host: target.hostname.replace(/^www\./, '') }
+}
+
 // Gemini TTS returns raw 16-bit PCM at 24 kHz; wrap it in a WAV header so browsers can play it.
 function pcmToWav(pcm, rate = 24000) {
   const h = Buffer.alloc(44)
@@ -330,7 +418,8 @@ export async function writePrompt({ instructions, note = '', images = [], target
     }
     return { inlineData: { mimeType: mime, data: buf.toString('base64') } }
   })
-  parts.push({ text: [target && `Target model or medium: ${target}`, note && `User note: ${note}`, promptOnly && 'Write only the finished generation prompt.'].filter(Boolean).join('\n\n') })
+  // The instructions pass through unchanged, so the house rule against the AI look rides with the request.
+  parts.push({ text: [target && `Target model or medium: ${target}`, note && `User note: ${note}`, `House style: ${REAL_LOOK}`, promptOnly && 'Write only the finished generation prompt.'].filter(Boolean).join('\n\n') })
   const r = await fetch(`${GEMINI}/models/gemini-flash-latest:generateContent`, {
     method: 'POST', headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' },
     body: JSON.stringify({ systemInstruction: { parts: [{ text: instructions }] }, contents: [{ role: 'user', parts }] }),
@@ -448,7 +537,7 @@ export async function balances() {
 export async function writePrompts({ idea, n = 6, kind = 'video' }) {
   const { key } = config('google')
   if (!key) throw Object.assign(new Error('Connect Google AI to write prompts with AI.'), { status: 400 })
-  const ask = `Write ${n} distinct ${kind} generation prompts for this idea: "${idea}". Vary subject, setting, camera and mood. Each prompt is one vivid sentence under 40 words. Return only a JSON array of strings.`
+  const ask = `Write ${n} distinct ${kind} generation prompts for this idea: "${idea}". Vary subject, setting, camera and mood. Each prompt is one vivid sentence under 40 words. ${REAL_LOOK} Return only a JSON array of strings.`
   const r = await fetch(`${GEMINI}/models/gemini-flash-latest:generateContent`, {
     method: 'POST', headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' },
     body: JSON.stringify({ contents: [{ parts: [{ text: ask }] }], generationConfig: { responseMimeType: 'application/json' } }),
@@ -725,11 +814,11 @@ export async function runComfyRouter({ model, input, idempotencyKey = randomUUID
   }
 }
 
-async function comfyMedia(source) {
+// Input URLs come from the request, so they get the same public-address and redirect checks as page imports.
+export async function comfyMedia(source, { get = publicGet } = {}) {
   if (/^https?:/.test(source)) {
-    const r = await fetch(source)
-    if (!r.ok) throw new Error(`Could not download an input file (${r.status}).`)
-    return { buf: Buffer.from(await r.arrayBuffer()), mime: r.headers.get('content-type') || 'image/png' }
+    const r = await get(source, { limit: 200_000_000, accept: '*/*', timeout: 120000 })
+    return { buf: r.body, mime: r.headers['content-type'] || 'image/png' }
   }
   return readLocal(source)
 }
@@ -980,8 +1069,8 @@ const unsetInput = (template, vars) => [...JSON.stringify(template).matchAll(/\{
 // The loader inputs a run uploads its own files to, by placeholder: attached images and a mask, a video
 // edit's clip, and audio (a recording, or a saved voice's sample).
 export const UPLOAD_KEYS = {
-  LoadImage: ['image', ['image', 'image2', 'image3', 'image4', 'image5', 'mask']],
-  LoadVideo: ['file', ['video']],
+  LoadImage: ['image', [...PICTURE_SLOTS, 'mask']],
+  LoadVideo: ['file', ['video', 'clipvideo', 'previous']],
   VHS_LoadVideo: ['video', ['video']],
   LoadAudio: ['audio', ['audio', 'voice']],
 }
@@ -1093,8 +1182,171 @@ async function submitAndWait(client, wf, { apiKey, timeoutMs, signal, split, whe
   return job
 }
 
+const multipartUnavailable = (name) => Object.assign(new Error(`${name} is not available yet. Use one part per run until completed parts can be resumed safely.`), { status: 400, code: 'multipart_unavailable', retryable: false })
+
+export function segmentError(error, index, total) {
+  error.message = `Segment ${index + 1} of ${total} failed. ${error.message}`
+  return error
+}
+
+// A run longer than one chunk of its graph (shared/longVideo.js) renders chunk by chunk, each one
+// continuing the one before, and returns one joined video. The chunks stay out of the Library; when a
+// chunk fails, the finished ones stay in the media folder so the error can say how far the run got.
+async function runChain(workflow, vars, opts) {
+  const spec = CHAINS[workflow]
+  const chunkOpts = { ...opts, chunk: true }
+  const one = () => runComfy(workflow, vars, chunkOpts)
+  if (spec.mode === 'extend' ? !(Number(vars.duration) > spec.first) : !vars.video) return one()
+  const binary = await findFfmpeg()
+  const base = path.join(home(), 'chain')
+  fs.mkdirSync(base, { recursive: true })
+  const dir = fs.mkdtempSync(path.join(base, 'run-'))
+  const made = []
+  const local = async (url, name) => {
+    const { buf, mime } = await comfyMedia(url)
+    const file = path.join(dir, `${name}.${mimeExt(mime)}`)
+    fs.writeFileSync(file, buf)
+    return file
+  }
+  const upload = (file) => {
+    const saved = saveMedia(fs.readFileSync(file), 'mp4')
+    made.push(saved.path)
+    return saved.url
+  }
+  const render = async (graph, chunkVars, i, total) => {
+    let files
+    try {
+      files = await runComfy(graph, chunkVars, chunkOpts)
+    } catch (e) {
+      // needs_pod and pod_too_small reach the app as they are, so it can still offer a Pod.
+      if (e.code) throw e
+      throw segmentError(e, i, total)
+    }
+    made.push(...files.map((f) => f.path).filter(Boolean))
+    const video = files.find((f) => f.kind === 'video')
+    if (!video) throw new Error(`Segment ${i + 1} of ${total} returned no video.`)
+    return video
+  }
+  let joined
+  if (spec.mode === 'clip') {
+    const source = await local(vars.video, 'source')
+    // A clip ffmpeg cannot read goes to the graph as it is, which says what is wrong with it.
+    const probed = await probeVideo(source, { binary }).catch(() => null)
+    if (!probed) {
+      fs.rmSync(dir, { recursive: true, force: true })
+      return one()
+    }
+    const fps = workflow === 'wan_animate2' ? 16 : Math.min(30, probed.fps)
+    const clip = await normalizeClip(source, path.join(dir, 'clip.mp4'), { start: Number(vars.start) || 0, duration: Number(vars.duration) || undefined, fps, binary })
+    const chunks = clipChunks(clip.frames, spec, fps)
+    if (chunks.length < 2) {
+      fs.rmSync(dir, { recursive: true, force: true })
+      return one()
+    }
+    if (chunks.length > 1) {
+      fs.rmSync(dir, { recursive: true, force: true })
+      throw multipartUnavailable('Multi-segment video')
+    }
+    const parts = []
+    let previous
+    for (const [i, c] of chunks.entries()) {
+      const cut = await cutFrames(clip.path, path.join(dir, `cut-${i}.mp4`), { from: c.from, count: c.count, fps, binary })
+      // The graph reads the whole cut; `previous` anchors its first frames to the chunk before.
+      const video = await render(workflow, { ...vars, video: upload(cut), start: 0, duration: c.count / fps + 1, previous }, i, chunks.length)
+      previous = video.url
+      parts.push({ file: await local(video.url, `chunk-${i}`), overlap: c.overlap })
+    }
+    joined = await joinChunks(parts, path.join(dir, 'joined.mp4'), { fps, blend: spec.blend, audio: clip.audio ? clip.path : undefined, binary })
+  } else {
+    const total = Number(vars.duration)
+    const seconds = extendChunks(total, spec)
+    if (seconds.length > 1) {
+      fs.rmSync(dir, { recursive: true, force: true })
+      throw multipartUnavailable('Multi-segment video')
+    }
+    const first = await render(workflow, { ...vars, duration: seconds[0], frames: seconds[0] * spec.fps + 1 }, 0, seconds.length)
+    const parts = [{ file: await local(first.url, 'chunk-0'), overlap: 0 }]
+    for (const [k, add] of seconds.slice(1).entries()) {
+      const i = k + 1
+      const last = parts[parts.length - 1].file
+      const frames = (await probeVideo(last, { binary })).frames
+      const count = Math.min(spec.tail, frames)
+      const tail = await cutFrames(last, path.join(dir, `tail-${i}.mp4`), { from: frames - count, count, fps: spec.fps, sound: true, binary })
+      // h3_extend returns the tail it was given, then the new frames.
+      const prompt = `Continue the video seamlessly from its last frame with the same subjects, camera, lighting and pace. ${vars.prompt || ''}`.trim()
+      const video = await render(spec.extend, { prompt, seed: vars.seed, video: upload(tail), start: 0, duration: count / spec.fps + 1, seconds: add }, i, seconds.length)
+      parts.push({ file: await local(video.url, `chunk-${i}`), overlap: count })
+    }
+    joined = await joinChunks(parts, path.join(dir, 'joined.mp4'), { fps: spec.fps, audio: 'chunks', duration: total, binary })
+  }
+  const file = { ...saveMedia(fs.readFileSync(joined.path), 'mp4'), kind: 'video', name: `${workflow}-long.mp4` }
+  for (const p of made) fs.rmSync(p, { force: true })
+  fs.rmSync(dir, { recursive: true, force: true })
+  return [file]
+}
+
 // Runs a bundled workflow on Comfy Cloud or the Pod, or in development on a local ComfyUI, and returns file URLs.
+// Speech models stay steady for about 20 to 30 seconds of speech; Chatterbox drifts and hisses past that.
+// A longer script, such as an audiobook chapter, reads in parts of at most this many characters.
+export const SPEECH_PARTS = { chatterbox_tts: 300, qwen3_tts: 500, drama3_tts: 500 }
+export const MAX_SPEECH_PARTS = 120
+
+// Splits a script at sentence ends, then at commas, then at spaces, so no part is longer than `max`.
+// Paragraph breaks always end a part.
+export function speechParts(text, max) {
+  // After a mark and a space, or right after a CJK mark, which takes no space.
+  const ends = [/(?<=[.!?…]+["'”’)\]]*\s+)|(?<=[。！？]+)/, /(?<=[,;:]\s+)|(?<=[，；、])/]
+  const cut = (s) => {
+    if (s.length <= max) return [s]
+    for (const at of ends) {
+      const split = s.split(at).filter((p) => p.trim())
+      if (split.length > 1) return split.flatMap(cut)
+    }
+    const words = s.split(/(?<=\s)/)
+    if (words.length > 1) return words.flatMap(cut)
+    return s.match(new RegExp(`.{1,${max}}`, 'gs'))
+  }
+  const parts = []
+  for (const paragraph of String(text).split(/\n\s*\n/)) {
+    let part = ''
+    for (const piece of cut(paragraph.replace(/\s+/g, ' ').trim())) {
+      if (part && (part + piece).trim().length > max) {
+        parts.push(part.trim())
+        part = ''
+      }
+      part += piece
+    }
+    if (part.trim()) parts.push(part.trim())
+  }
+  return parts
+}
+
+// Each part is its own job with the same seed and voice, and the parts join into one FLAC file.
+async function runSpeechParts(workflow, vars, opts, max) {
+  const parts = speechParts(vars.prompt, max)
+  if (parts.length > MAX_SPEECH_PARTS) {
+    throw Object.assign(new Error(`This script needs ${parts.length} parts; one run reads up to ${MAX_SPEECH_PARTS}. Split it into chapters.`), { status: 400 })
+  }
+  if (parts.length > 1) throw multipartUnavailable('Multi-part speech')
+  const binary = await (opts.findFfmpeg || findFfmpeg)()
+  const files = []
+  for (const [i, prompt] of parts.entries()) {
+    const file = (await runComfy(workflow, { ...vars, prompt }, { ...opts, part: true })).find((f) => f.kind === 'audio')
+    if (!file) throw new Error(`Part ${i + 1} of ${parts.length} returned no audio.`)
+    files.push(file.path || saveMedia(Buffer.from(await (await fetch(file.url)).arrayBuffer()), outputExt('', file.name)).path)
+  }
+  const out = saveMedia(Buffer.alloc(0), 'flac')
+  const join = `${files.map((_, i) => `[${i}:a]`).join('')}concat=n=${files.length}:v=0:a=1[a]`
+  await ffmpeg(['-y', ...files.flatMap((f) => ['-i', f]), '-filter_complex', join, '-map', '[a]', '-c:a', 'flac', out.path], { binary })
+  for (const f of files) fs.rmSync(f, { force: true })
+  return [{ ...out, kind: 'audio', name: path.basename(out.path), parts: parts.length }]
+}
+
 export async function runComfy(workflow, vars = {}, opts = {}) {
+  opts.signal?.throwIfAborted()
+  const max = SPEECH_PARTS[workflow]
+  if (max && !opts.part && typeof vars.prompt === 'string' && vars.prompt.length > max) return runSpeechParts(workflow, vars, opts, max)
+  if (CHAINS[workflow] && !opts.chunk) return runChain(workflow, vars, opts)
   const { createClient = (key, baseUrl) => comfyClient(baseUrl, key), lease = (o) => pod().lease(o), podPhase = () => pod().phaseNow(), podVram = () => pod().vramGb(), podRoom = () => pod().room(), podArch = () => pod().arch(), run = runType(), signal, retried = 0, pause = (ms, s) => delay(ms, undefined, s ? { signal: s } : undefined), patchGraph = (g) => g, onSubmitted, onProgress, onComplete = () => {}, onStage, timeoutMs } = opts
   signal?.throwIfAborted()
   // Library voice ids resolve to their consented samples before any graph is filled.

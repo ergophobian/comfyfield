@@ -64,6 +64,20 @@ export const MODEL_FILES = {
     sha256: '68bdc82bc1b66851162ae656225e7e2068166b603db19bd5d5a3b90eb12669a9' },
   'qwen_image_2.1_vae_bf16.safetensors': { repo: 'Comfy-Org/Qwen-Image-2.1', path: 'vae/qwen_image_2.1_vae_bf16.safetensors', dir: 'vae', gb: 0.68, vramGb: 0, cloud: false,
     sha256: 'bb21f7473051e1ac368515dd3f2e15cd44d7a11748ee8823e1ddca3e4876b7c9' },
+  // Image adapters for issue 181, sizes and sha256 from the Hugging Face API on 2026-10-25. Comfy Cloud lists none of them.
+  // BFS head swap V1.1 on Qwen-Image 2.1 (MIT): V1 with the skin-softening MLP modules cut from blocks 16-31.
+  'bfs_head_v1.1_qwen_2.1.safetensors': { repo: 'Alissonerdx/BFS-Best-Face-Swap', path: 'bfs_head_v1.1_qwen_2.1.safetensors', dir: 'loras', gb: 0.26, vramGb: 0, cloud: false,
+    label: 'The BFS face swap LoRA', sha256: 'd1d748d5601077f3b6d05766f6823510e901970d916afa404a97e85dc92fa88e' },
+  // Anything2Real 2601 A and AnyPose (base plus helper) on Qwen-Image-Edit 2511, Apache 2.0.
+  'anything2real_2601_A_final_patched.safetensors': { repo: 'lrzjason/Anything2Real', path: 'anything2real_2601_A_final_patched.safetensors', dir: 'loras', gb: 0.61, vramGb: 0, cloud: false,
+    label: 'The Anything2Real LoRA', sha256: 'd4cbbabf5610a8f0ea3f530dc0bc9e8a254be6563c4738795bea45d247903528' },
+  '2511-AnyPose-base-000006250.safetensors': { repo: 'lilylilith/AnyPose', path: '2511-AnyPose-base-000006250.safetensors', dir: 'loras', gb: 0.30, vramGb: 0, cloud: false,
+    label: 'The AnyPose LoRA', sha256: '0396314e43b94f7520cf5242e6aa6e8e9095d784f7e87ee45980c2e541ee8c4d' },
+  '2511-AnyPose-helper-00006000.safetensors': { repo: 'lilylilith/AnyPose', path: '2511-AnyPose-helper-00006000.safetensors', dir: 'loras', gb: 0.30, vramGb: 0, cloud: false,
+    label: 'The AnyPose helper LoRA', sha256: '674340c62fff3cf981d0cfc55daf2f0e6f51c56b50159e241d931748200cf1eb' },
+  // Krea2-realism-V2 on Krea 2 Turbo (MIT), a LoKr with native block names, so ComfyUI maps it as is.
+  'Krea2-realism-V2.safetensors': { repo: 'RudySen/Krea2-realism-V2', path: 'Krea2-realism-V2.safetensors', dir: 'loras', gb: 1.56, vramGb: 0, cloud: false,
+    label: 'The Krea 2 realism LoRA', sha256: 'fb0048ce3340adc2842ccfcc1a9a61a9773b6628b01ae5a2e139ca9c679e715d' },
   // Video edits (research_notes/engine/genjutsu.md), checked against the Hugging Face API on 2026-10-18.
   // Bernini-R (ByteDance) swaps, restyles, relights and, with the BFS LoRAs, swaps heads.
   'wan2.2_bernini_r_high_noise_fp8_scaled.safetensors': { refSec: 120, repo: 'Comfy-Org/Bernini-R', path: 'diffusion_models/wan2.2_bernini_r_high_noise_fp8_scaled.safetensors', dir: 'diffusion_models', gb: 15.57, vramGb: 24, cloud: true,
@@ -121,6 +135,9 @@ export const MODEL_FILES = {
   // Video services (research_notes/engine/video-gen and effects-loras), checked against the Hugging Face API and the Comfy Cloud listing on 2026-10-19. Comfy Cloud has no effect LoRA.
   'minimax_h3_ref2va_pruned_int8_convrot.safetensors': { repo: 'Comfy-Org/MiniMax-H3', path: 'diffusion_models/minimax_h3_ref2va_pruned_int8_convrot.safetensors', dir: 'diffusion_models', gb: 20.97, vramGb: 32, cloud: true,
     label: 'MiniMax H3 Reference to Video', sha256: '9255f52b6677845ad238f20dfaafa94727053694127ab7f255c048f0f9365779' },
+  // FastVideo's 8-step FastH3 Omni (2026-10-20), on H3's text encoder and VAEs. Not on Comfy Cloud yet.
+  'fasth3_omniref_8step_pruned_int8_convrot.safetensors': { repo: 'FastVideo/FastH3-Omni-Comfy', path: 'diffusion_models/fasth3_omniref_8step_pruned_int8_convrot.safetensors', dir: 'diffusion_models', gb: 22.21, vramGb: 32, cloud: false,
+    label: 'FastH3 Omni', sha256: '851b2dc9670ed864b7f1e951ac9da047d83b1c04ded9bfcc1a9e5bba0ee33f80' },
   'minimax_h3_fun_controlnet_union_2.0_pruned_int8_convrot.safetensors': { repo: 'Comfy-Org/MiniMax-H3', path: 'model_patches/minimax_h3_fun_controlnet_union_2.0_pruned_int8_convrot.safetensors', dir: 'model_patches', gb: 4.53, vramGb: 0, cloud: false,
     label: 'The MiniMax H3 Fun ControlNet 2.0 patch', sha256: '890af58bb350f0c2f6c409b1c67ea8f4196654297d037769b72de1e6f504c612' },
   'gemma4_e2b_it_int8_convrot.safetensors': { repo: 'Comfy-Org/gemma-4', path: 'text_encoders/gemma4_e2b_it_int8_convrot.safetensors', dir: 'text_encoders', gb: 5.20, vramGb: 0, cloud: true,

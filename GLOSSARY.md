@@ -72,6 +72,10 @@ _Avoid_: input size, base resolution
 The resolution Upscale delivers: 1080p, 1440p or 4K. Auto picks 1080p, or 4K when the source is already 1080p.
 _Avoid_: output size, final resolution
 
+**Segment**:
+One run of a graph inside a longer video. The planned long-video path continues one segment from the one before and joins their outputs. Multi-segment runs are currently unavailable until completed segments can be resumed safely.
+_Avoid_: chunk (in copy), part, window
+
 ## Flows
 
 **Flows engine**:

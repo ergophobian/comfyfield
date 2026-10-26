@@ -13,6 +13,7 @@ import { libraryChanged } from './flowStore.js'
 // Server and provider errors are already written for people. A JS error is a bug in the app, so the
 // user gets one plain line and the details go to the console.
 export const plainError = (e) => {
+  if (e?.uncancelled) return `${e.message} Job ${e.uncancelled} could not be cancelled and may still be spending. Check the provider before retrying.`
   if (e instanceof TypeError && /fetch|network/i.test(e.message)) return 'Could not reach ComfyField. Check that the app is still running, then retry.'
   if (e instanceof TypeError || e instanceof ReferenceError || e instanceof SyntaxError || e instanceof RangeError) {
     console.error(e)

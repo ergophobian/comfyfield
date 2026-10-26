@@ -42,7 +42,7 @@
     "class_type": "GetImageSize",
     "inputs": {
       "image": [
-        "3",
+        "41",
         0
       ]
     }
@@ -79,7 +79,7 @@
     "class_type": "ImageScale",
     "inputs": {
       "image": [
-        "3",
+        "41",
         0
       ],
       "upscale_method": "lanczos",
@@ -108,10 +108,14 @@
   "10": {
     "class_type": "ComfyMathExpression",
     "inputs": {
-      "expression": "a",
+      "expression": "min(30, a / b)",
       "values.a": [
         "3",
         2
+      ],
+      "values.b": [
+        "40",
+        0
       ]
     }
   },
@@ -426,6 +430,33 @@
       "format": "mp4",
       "codec": "h264",
       "format.codec": "h264"
+    }
+  },
+  "40": {
+    "class_type": "ComfyMathExpression",
+    "inputs": {
+      "expression": "max(1, round(a / 25), ceil(a / 30))",
+      "values.a": [
+        "3",
+        2
+      ]
+    },
+    "_meta": {
+      "title": "Every nth frame, at most 30 fps"
+    }
+  },
+  "41": {
+    "class_type": "VHS_SelectEveryNthImage",
+    "inputs": {
+      "images": [
+        "3",
+        0
+      ],
+      "select_every_nth": [
+        "40",
+        1
+      ],
+      "skip_first_images": 0
     }
   },
   "30": {

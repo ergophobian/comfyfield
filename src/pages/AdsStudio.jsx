@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import Segmented from '../components/Segmented.jsx'
 import { Field } from '../components/formats/Fields.jsx'
 import { IconLink } from '../components/Icons.jsx'
@@ -224,6 +225,7 @@ export default function AdsStudio() {
           </button>
         ))}
       </div>
+      <p className="sheet-note"><Link to="/apps/link-to-ads">Ads from a link</Link> · <Link to="/apps/ugc-ad">Creator product video</Link></p>
       {tool === 'create' ? <CreateAds /> : <Multiplier />}
     </main>
   )

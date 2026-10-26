@@ -261,7 +261,11 @@
       "pose_strength": 1.0,
       "pose_start_percent": 0.0,
       "pose_end_percent": 1.0,
-      "reference_image_strength": 1.0
+      "reference_image_strength": 1.0,
+      "continue_motion": [
+        "91",
+        0
+      ]
     }
   },
   "18": {
@@ -382,6 +386,29 @@
       "format": "mp4",
       "codec": "h264",
       "format.codec": "h264"
+    }
+  },
+  "90": {
+    "class_type": "LoadVideo",
+    "inputs": {
+      "file": "{{previous}}"
+    },
+    "_meta": {
+      "title": "Previous segment (optional)",
+      "optional": "previous"
+    }
+  },
+  "91": {
+    "class_type": "GetVideoComponents",
+    "inputs": {
+      "video": [
+        "90",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Previous segment frames (optional)",
+      "optional": "previous"
     }
   }
 }

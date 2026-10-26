@@ -47,6 +47,14 @@ export const remove = async (type, id) => {
 }
 
 export const importUrl = (url) => call('/api/library/import', 'POST', { url })
+export const readProduct = (url) => call('/api/product/read', 'POST', { url })
+
+// What a product page says, short enough for an ad prompt: name, price, then the description.
+export const pageSummary = (page) => {
+  const head = [page.title, page.price].filter(Boolean).join(', ')
+  const text = [head && `${head}.`, page.description].filter(Boolean).join(' ')
+  return text.length > 400 ? `${text.slice(0, 400).replace(/\s+\S*$/, '')}...` : text
+}
 
 // Shared across the app: composer, recipes and flows read the same lists.
 export function useLibrary() {

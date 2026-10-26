@@ -378,8 +378,21 @@ const sourceOf = async (f, extra) => {
 assert.equal(await sourceOf(allFormats.find((f) => f.id === 'image-upscale')), photo.url)
 assert.equal(await sourceOf(allFormats.find((f) => f.id === 'erase'), { target: 'The sign' }), photo.url)
 assert.equal(await sourceOf(imageRecipe), undefined, 'Only edits and upscales carry a source')
-assert.equal(formats.length, 459)
-assert.equal(allFormats.length, 488, 'Do not delete planned formats')
+// Dub runs on one bundled graph. The language choice gives Chatterbox its own label and names the
+// language in Gemma 4's instructions; the clip's trim sets the part that is dubbed.
+const dub = formats.find((f) => f.id === 'dub')
+assert(dub, 'dub runs on bundled graphs')
+const dubCalls = []
+const clipValue = { url: '/media/talk.mp4', name: 'talk.mp4', ratio: '9:16', duration: 40, trim: { start: 2, end: 32 } }
+await runFormat(dub, { ...valuesFor(dub), video: clipValue, language: 'zh' }, { run: async (model, opts) => { dubCalls.push({ model, opts }); return [{ url: 'dub.mp4', kind: 'video' }] } })
+assert.equal(dubCalls[0].model.workflow, 'dub')
+assert.equal(dubCalls[0].opts.params.language, 'Chinese (zh)')
+assert.match(dubCalls[0].opts.prompt, /conversational Mandarin/)
+const dubVars = comfyVars('video', dubCalls[0].opts)
+assert.deepEqual([dubVars.start, dubVars.duration, dubVars.video], [2, 30, '/media/talk.mp4'])
+assert.equal(dub.inputs.find((i) => i.id === 'language').options[0].id, 'es', 'Spanish stays the first dub language')
+assert.equal(formats.length, 473)
+assert.equal(allFormats.length, 497, 'Do not delete planned formats')
 assert.equal(allFormats.filter((f) => f.category === 'camera').length > 0, true, 'Keep Create prompt presets')
 assert(allFormats.filter((f) => !formats.includes(f)).every((f) => formatProblems.get(f.id).length))
 
@@ -395,6 +408,91 @@ const motion = formats.find((f) => f.inputs.some((i) => i.type === 'draw' && i.m
 const frame = { url: '/media/frame.png', name: 'frame.png', ratio: '16:9' }
 assert.throws(() => compileFormat(motion, { ...valuesFor(motion), image: frame }), /Still needed/)
 assert.doesNotThrow(() => compileFormat(motion, { ...valuesFor(motion), image: { ...frame, strokes: 'data:image/png;base64,AA==' } }))
+// A character with pictures: n fills n slots from its reference set, and leaves the rest empty.
+const scene = formats.find((f) => f.id === 'character-scene')
+const mara = { type: 'character', name: 'Mara', images: ['/media/front.png', '/media/side.png'] }
+const sceneVars = comfyVars('image', recipeOptions({ ...scene, params: {} }, { ...valuesFor(scene), character: mara, scene: 'A rainy platform' }))
+assert.deepEqual([sceneVars.image, sceneVars.image2, sceneVars.image3], ['/media/front.png', '/media/side.png', undefined])
+
+// The influencer video speaks the script with Chatterbox and cuts it to the picked length, all in one graph.
+const talk = formats.find((f) => f.id === 'ai-influencer-video')
+const talkStep = compileFormat(talk, { ...valuesFor(talk), character: mara, script: 'Three things I wish I knew', voice: { name: 'Mine', sample: '/media/voice.flac' } }).nodes.find((n) => n.type === 'model').data.model
+assert.equal(talkStep.workflow, 'influencer_video')
+const talkVars = comfyVars('video', talkStep.formatStep.options, talkStep.sizes)
+assert.equal(talkVars.script, 'Three things I wish I knew')
+assert.equal(talkVars.seconds, 10)
+assert.equal(talkVars.voice, '/media/voice.flac')
+assert.deepEqual([talkVars.width, talkVars.height], [768, 1344])
+
+// The persona's full-body shot starts from its portrait, so both show the same face.
+const persona = formats.find((f) => f.id === 'influencer-persona')
+const personaRuns = []
+const personaSession = await runFormat(persona, { persona: 'a young adult woman with a high black ponytail' }, {
+  run: async (model, opts, meta) => { personaRuns.push([meta.stepId, model.workflow, opts.images[0]]); return [{ url: `/media/${meta.stepId}.png` }] },
+})
+assert.deepEqual(personaRuns, [['portrait', 'flux3_klein_t2i', undefined], ['body', 'klein_character', '/media/portrait.png']])
+assert.deepEqual(personaSession.results().map((r) => r.url), ['/media/portrait.png', '/media/body.png'])
+const fromPhoto = compileFormat(persona, { persona: 'a runner', start: 'photo', photo }).nodes.find((n) => n.id === 'portrait').data.model
+assert.equal(fromPhoto.workflow, 'klein_character')
+// A UGC ad sends the character and the product as H3's first two pictures, and names a voice sample only when one is attached.
+const ugc = formats.find((f) => f.id === 'ugc-ad')
+const ugcValues = { ...valuesFor(ugc), character: { type: 'character', name: 'Maya', images: ['/media/maya.png'] }, product: { type: 'product', name: 'Linen tote', images: ['/media/tote.png'] }, script: 'I did not expect to love this.' }
+const ugcOpts = (values) => compileFormat(ugc, values).nodes.find((n) => n.type === 'model').data.model.formatStep.options
+assert.deepEqual(ugcOpts(ugcValues).slots.pictures, ['/media/maya.png', '/media/tote.png'])
+assert.equal(ugcOpts(ugcValues).params.seconds, 10)
+assert(!ugcOpts(ugcValues).prompt.includes('<Audio 1>'), 'No voice sample, no <Audio 1>')
+const voiced = ugcOpts({ ...ugcValues, voice: { url: '/media/voice.wav', name: 'voice.wav' } })
+assert.equal(voiced.slots.audio, '/media/voice.wav')
+assert(voiced.prompt.includes('the voice from <Audio 1>'))
+// A music video renders one shot per slice of the song, hands the song to each, then joins the shots in order.
+const song = { url: '/media/song.mp3', name: 'song.mp3' }
+const musicRuns = []
+const musicSession = await runFormat(formats.find((f) => f.id === 'song-music-video'), { ...valuesFor(formats.find((f) => f.id === 'song-music-video')), brief: 'Synth pop', artist: null, pace: '4' }, {
+  run: async (model, opts, metadata) => {
+    musicRuns.push({ model, opts, metadata })
+    if (model.provider === 'stitch') return [{ url: '/media/joined.mp4', kind: 'video' }]
+    return [{ url: model.kind === 'audio' ? song.url : `/media/${metadata.stepId}.mp4`, kind: model.kind }]
+  },
+})
+const musicShots = musicRuns.filter((r) => r.model.kind === 'video' && r.model.provider === 'comfy')
+assert.equal(musicRuns[0].model.workflow, 'minimax_music3')
+assert.equal(comfyVars('audio', musicRuns[0].opts).duration, 30, 'The song is as long as the six shots')
+assert.equal(musicShots.length, 6)
+assert.deepEqual(musicShots.map((r) => comfyVars('video', r.opts, r.model.sizes).audio), Array(6).fill(song.url), 'Every shot hears the song')
+assert.deepEqual(musicShots.map((r) => r.opts.params.shot), [0, 1, 2, 3, 4, 5])
+const stitched = musicRuns.find((r) => r.model.provider === 'stitch')
+assert.deepEqual(stitched.opts.clips.map((c) => c.url), [1, 2, 3, 4, 5, 6].map((n) => `/media/shot${n}.mp4`), 'Shots join in song order')
+assert.equal(stitched.opts.aspect, '16:9')
+assert.equal(stitched.metadata.formatId, 'song-music-video')
+assert.deepEqual(musicSession.results().map((r) => r.url), ['/media/joined.mp4'])
+const uploaded = formats.find((f) => f.id === 'music-video')
+const uploadFlow = compileFormat(uploaded, { ...valuesFor(uploaded), song, pace: '3', shape: 'tall' })
+assert.equal(uploadFlow.nodes.filter((n) => n.type === 'model').length, 6)
+assert.equal(uploadFlow.nodes.find((n) => n.type === 'stitch').data.aspect, '9:16')
+const firstShot = uploadFlow.nodes.find((n) => n.id === 'shot2').data.model.formatStep.options
+assert.equal(comfyVars('video', firstShot).audio, song.url)
+assert.equal(comfyVars('video', firstShot).duration, 3, 'The pace sets the clip length the graph slices by')
+assert.deepEqual(uploadFlow.edges.filter((e) => e.target === 'join').map((e) => e.source), ['shot1', 'shot2', 'shot3', 'shot4', 'shot5', 'shot6'])
+assert.deepEqual(validateFormat({ ...uploaded, steps: [...uploaded.steps, { id: 'bad', type: 'stitch', from: [] }] }).filter((p) => p.startsWith('bad')), ['bad: A join needs upstream video steps'])
+
+// The rap video writes a verse, sings it on the chosen beat, and performs it from the photo.
+const rap = formats.find((f) => f.id === 'rap-video')
+const rapRuns = []
+const rapSession = await runFormat(rap, { ...valuesFor(rap), topic: 'Monday mornings', beat: 'trap' }, {
+  writePrompt: async () => '[Verse] Up at six',
+  run: async (model, opts) => { rapRuns.push({ model, opts }); return [{ url: model.kind === 'audio' ? song.url : '/media/rap.mp4', kind: model.kind }] },
+})
+assert.equal(rapRuns.length, 0, 'The verse waits for review')
+await rapSession.sendWriter('lyrics')
+assert.deepEqual(rapRuns.map((r) => r.model.workflow), ['minimax_music3_lyrics', 'ltx25_ia2v'])
+const rapSong = comfyVars('audio', rapRuns[0].opts)
+assert.equal(rapSong.prompt, '[Verse] Up at six')
+assert.match(rapSong.style, /^Hard hitting trap/)
+const rapVideo = comfyVars('video', rapRuns[1].opts, rapRuns[1].model.sizes)
+assert.equal(rapVideo.audio, song.url)
+assert.equal(rapVideo.image, photo.url)
+assert.equal(rapVideo.shot, 0)
+
 console.log(`Format runner checks ok: ${checked} recipe cases, approval and batching, concurrency, schema rejection, Comfy placeholders, writer handoff and provider failures. No network calls.`)
 
 // A writer edit changes the request even when the downstream text unit keeps its unit id.

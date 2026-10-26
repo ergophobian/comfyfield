@@ -2,10 +2,10 @@ import { useId, useRef, useState } from 'react'
 import InputWidget from '../widgets/index.jsx'
 import { widgetTypes } from '../../../shared/widgetInputs.js'
 import { Link } from 'react-router-dom'
-import { IconUpload } from '../Icons.jsx'
+import { IconUpload, IconLink } from '../Icons.jsx'
 import MediaPicker from '../generate/MediaPicker.jsx'
 import { uploadFile, pastedFile } from '../../lib/uploads.js'
-import { useLibrary, toRef } from '../../lib/useLibrary.js'
+import { useLibrary, toRef, readProduct, pageSummary } from '../../lib/useLibrary.js'
 import VoicePicker from '../generate/Voices.jsx'
 
 const media = {
@@ -238,7 +238,32 @@ function LibraryPick({ input, value, onChange, labelId }) {
   )
 }
 
-export function Field({ input, value, onChange, setError = () => {} }) {
+// A product link with Read page: the page's text and first photo fill the inputs named in `reads`.
+function PageLink({ input, value, onChange, onFill, setError, id }) {
+  const [reading, setReading] = useState(false)
+  const read = async () => {
+    setReading(true)
+    setError(null)
+    try {
+      const page = await readProduct(value)
+      const patch = {}
+      if (input.reads.text) patch[input.reads.text] = pageSummary(page)
+      if (input.reads.image && page.images?.[0]) patch[input.reads.image] = { url: page.images[0], name: page.title || page.host }
+      onFill(patch)
+      if (!page.images?.length) setError('That page has no product photo we could read. Add one by hand.')
+    } catch (e) { setError(e.message) }
+    finally { setReading(false) }
+  }
+  return (
+    <div className="import">
+      <IconLink />
+      <input id={id} value={value ?? ''} onChange={(e) => onChange(e.target.value)} placeholder={input.placeholder} />
+      <button type="button" className="btn-blue sm" disabled={reading || !value?.trim()} onClick={read}>{reading ? 'Reading' : 'Read page'}</button>
+    </div>
+  )
+}
+
+export function Field({ input, value, onChange, onFill, setError = () => {} }) {
   const id = useId()
   const labelId = `${id}-label`
   const { type } = input
@@ -248,6 +273,7 @@ export function Field({ input, value, onChange, setError = () => {} }) {
   else if (widgetTypes.includes(type) || (type === 'draw' && input.mode !== 'motion')) body = <InputWidget type={type === 'draw' ? 'mask' : type} {...props} setError={setError} />
   else if (media[type]) body = <MediaField {...props} setError={setError} />
   else if (type === 'draw') body = <DrawField {...props} setError={setError} />
+  else if (type === 'text' && input.reads && onFill) body = <PageLink {...props} id={id} onFill={onFill} setError={setError} />
   else if (type === 'text') body = <input id={id} value={value ?? ''} onChange={(e) => onChange(e.target.value)} placeholder={input.placeholder} />
   else if (type === 'longtext') body = <textarea id={id} rows={input.rows || 3} value={value ?? ''} onChange={(e) => onChange(e.target.value)} placeholder={input.placeholder} />
   else if (type === 'choice') body = <Choice {...props} />

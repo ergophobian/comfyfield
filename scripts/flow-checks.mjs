@@ -543,6 +543,43 @@ check('model and writer adapters receive stable unit identities across failures'
   assert.equal(typeof identities[0].unitId, 'string')
 })
 
+check('An upstream song reaches every shot as its audio, and the shots join in order', async () => {
+  const m = mock()
+  const song = { kind: 'audio', provider: 'x', name: 'Song' }
+  const joined = []
+  const eng = createEngine({ run: m.run, stitch: async (opts) => { joined.push(opts); return { url: 'mock://video', kind: 'video' } } })
+  const f = {
+    nodes: [n('m', 'model', { model: song, prompt: 'a song' }), n('s1', 'model', { model: vid, prompt: 'shot one' }), n('s2', 'model', { model: vid, prompt: 'shot two' }), n('j', 'stitch')],
+    edges: [e('m', 's1'), e('m', 's2'), e('s1', 'j'), e('s2', 'j')],
+  }
+  assert.equal(eng.plan(f, 's1').blocked, true, 'A shot waits for its song')
+  await eng.runNew(f)
+  const url = eng.itemsOf(f, 'm')[0].url
+  assert.deepEqual(m.calls.filter((c) => c.model === 'Vid').map((c) => c.audio), [url, url])
+  assert.equal(m.count('Song'), 1)
+  assert.equal(joined.length, 1)
+  assert.deepEqual(joined[0].clips.map((c) => c.url), [eng.itemsOf(f, 's1')[0].url, eng.itemsOf(f, 's2')[0].url])
+  const plain = { nodes: [n('p', 'prompt', { text: 'x' }), n('v', 'model', { model: vid })], edges: [e('p', 'v')] }
+  assert.equal('audio' in eng.plan(plain, 'v').units[0].opts, false, 'No song, no audio option')
+})
+
+check('A reviewed song and video both reach the same downstream shot', async () => {
+  const m = mock()
+  const eng = createEngine({ run: m.run })
+  const f = {
+    nodes: [n('a', 'model', { model: { kind: 'audio', name: 'Song' }, prompt: 'song' }), n('v', 'model', { model: vid, prompt: 'clip' }), n('g', 'approve'), n('o', 'model', { model: vid, prompt: 'edit' })],
+    edges: [e('a', 'g'), e('v', 'g'), e('g', 'o')],
+  }
+  await eng.runNew(f)
+  assert.equal(m.calls.filter((c) => c.prompt === 'edit').length, 0)
+  await eng.send(f, 'g')
+  const shot = m.calls.find((c) => c.prompt === 'edit')
+  assert.equal(shot.audio, eng.itemsOf(f, 'a')[0].url)
+  assert.equal(shot.video, eng.itemsOf(f, 'v')[0].url)
+  await eng.runNew(f)
+  assert.equal(m.calls.filter((c) => c.prompt === 'edit').length, 1, 'Completed downstream output is retained')
+})
+
 let bad = 0
 for (const [name, fn] of checks) {
   try { await fn(); console.log('ok   ', name) } catch (err) { bad++; console.log('FAIL ', name, '\n     ', err.message) }

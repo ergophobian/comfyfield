@@ -45,6 +45,12 @@ export default function FormatWorkspace({ format, motion = false, showMore = tru
     setValues((x) => ({ ...x, [id]: v }))
   }
 
+  const fill = (patch) => {
+    if (inputCache) Object.assign(inputCache.current, patch)
+    setSession(null)
+    setValues((x) => ({ ...x, ...patch }))
+  }
+
   const model = stepModel(format, format.steps.find((step) => !step.type), values)
   const metaOf = useModelMeta([model])
   const provider = providerInfo[model.provider === 'comfyRouter' ? 'comfy' : model.provider]
@@ -112,7 +118,7 @@ export default function FormatWorkspace({ format, motion = false, showMore = tru
             </span>
             {main && (
               <div className="app-main">
-                <Field input={main} value={values[main.id]} onChange={(v) => set(main.id, v)} setError={setError} />
+                <Field input={main} value={values[main.id]} onChange={(v) => set(main.id, v)} onFill={fill} setError={setError} />
               </div>
             )}
           </div>
@@ -122,7 +128,7 @@ export default function FormatWorkspace({ format, motion = false, showMore = tru
           <h2><Icon />{format.name}</h2>
           {format.output && <p className="sheet-output"><strong>You get</strong> {format.output}</p>}
           {rest.length > 0 ? rest.map((input) => (
-            <Field key={input.id} input={input} value={values[input.id]} onChange={(v) => set(input.id, v)} setError={setError} />
+            <Field key={input.id} input={input} value={values[input.id]} onChange={(v) => set(input.id, v)} onFill={fill} setError={setError} />
           )) : (
             <p className="sheet-note">Nothing else to set. Add your {(main?.label || 'media').toLowerCase()} and generate.</p>
           )}

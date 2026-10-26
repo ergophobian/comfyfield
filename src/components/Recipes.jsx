@@ -73,6 +73,7 @@ export function RecipeSheet({ recipe, gens, connections, onClose, initial }) {
   const provider = providerInfo[model.provider === 'comfyRouter' ? 'comfy' : model.provider]
   const metaOf = useModelMeta([model])
   const set = (id, v) => { setSession(null); setValues((x) => ({ ...x, [id]: v })) }
+  const fill = (patch) => { setSession(null); setValues((x) => ({ ...x, ...patch })) }
   const wired = isWired(recipe)
   const connected = model.provider === 'comfy' || connections[model.provider === 'comfyRouter' ? 'comfy' : model.provider]?.connected
   const missing = missingInputs(recipe, values)
@@ -106,7 +107,7 @@ export function RecipeSheet({ recipe, gens, connections, onClose, initial }) {
           {recipe.output && <p className="sheet-output"><strong>You get</strong> {recipe.output}</p>}
           <div className="sheet-fields">
             {visibleInputs(recipe, values).map((input) => (
-              <Field key={input.id} input={input} value={values[input.id]} onChange={(v) => set(input.id, v)} setError={setError} />
+              <Field key={input.id} input={input} value={values[input.id]} onChange={(v) => set(input.id, v)} onFill={fill} setError={setError} />
             ))}
           </div>
           <RunNotes format={recipe} values={values} />

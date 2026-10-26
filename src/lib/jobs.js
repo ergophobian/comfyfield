@@ -8,7 +8,7 @@ export class Cancelled extends Error {
 export async function startJob(route, body) {
   const res = await fetch('/api/jobs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ route, body }) })
   const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw Object.assign(new Error(data.error || `Request failed (${res.status})`), { status: res.status, code: data.code, requestId: data.requestId, idempotencyKey: data.idempotencyKey, retryable: data.retryable })
+  if (!res.ok) throw Object.assign(new Error(data.error || `Request failed (${res.status})`), { status: res.status, uncancelled: data.uncancelled, jobId: data.jobId, code: data.code, requestId: data.requestId, idempotencyKey: data.idempotencyKey, retryable: data.retryable })
   return data.id
 }
 

@@ -15,7 +15,7 @@ const core = await import('../server/core.js')
 core.writeKeys({ comfy: { key: 'synthetic-cloud-key' } })
 const read = (name) => JSON.parse(fs.readFileSync(`public/workflows/${name}.json`, 'utf8'))
 const media = 'data:image/png;base64,iVBORw0KGgo='
-const vars = { prompt: 'A fox', background: 'A forest', motion: 'Slow orbit', width: 1024, height: 1024, count: 2, frames: 121, duration: 5, start: 0, seed: 7, pad: 'square', image: media, image2: media, image3: media, image4: media, image5: media, video: media }
+const vars = { prompt: 'A fox', background: 'A forest', motion: 'Slow orbit', width: 1024, height: 1024, count: 2, frames: 121, duration: 5, start: 0, seed: 7, pad: 'square', fill: 0, solid: false, image: media, image2: media, image3: media, image4: media, image5: media, video: media }
 let submitted
 let leased
 let released

@@ -12,6 +12,7 @@ const filters = [
   { value: 'image', label: 'Images' },
   { value: 'video', label: 'Videos' },
   { value: 'audio', label: 'Audio' },
+  { value: '3d', label: '3D' },
   { value: 'approved', label: 'Approved' },
 ]
 const ratio = (a) => (a || '1:1').replace(':', ' / ')
@@ -81,7 +82,7 @@ export default function Generations({ gens }) {
     return (
       <div className="empty glass">
         <PageArt id="library" className="empty-art" />
-        <p>Nothing made yet. Your images, videos and audio land here.</p>
+        <p>Nothing made yet. Your images, videos, audio and 3D models land here.</p>
         <Link className="btn-blue" to="/">Start creating</Link>
       </div>
     )

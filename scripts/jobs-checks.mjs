@@ -21,9 +21,9 @@ const ok = (name) => { passed++; console.log(`ok    ${name}`) }
   assert.deepEqual(jobs.get(id).files, [{ url: '/media/a.png', kind: 'image' }])
   ok('A job runs on its own and keeps its files')
 
-  const bad = jobs.start(async () => { throw Object.assign(new Error('needs a Pod'), { status: 503, code: 'needs_pod', requestId: 'request-1', idempotencyKey: 'key-1', retryable: false, reason: 'too big', fit: { gb: 48 } }) })
+  const bad = jobs.start(async () => { throw Object.assign(new Error('needs a Pod'), { status: 503, uncancelled: 'provider-job', jobId: 'provider-job', code: 'needs_pod', requestId: 'request-1', idempotencyKey: 'key-1', retryable: false, reason: 'too big', fit: { gb: 48 } }) })
   await sleep(10)
-  assert.deepEqual(jobs.get(bad).error, { message: 'needs a Pod', status: 503, code: 'needs_pod', requestId: 'request-1', idempotencyKey: 'key-1', retryable: false, reason: 'too big', fit: { gb: 48 } })
+  assert.deepEqual(jobs.get(bad).error, { message: 'needs a Pod', status: 503, uncancelled: 'provider-job', jobId: 'provider-job', code: 'needs_pod', requestId: 'request-1', idempotencyKey: 'key-1', retryable: false, reason: 'too big', fit: { gb: 48 } })
   assert.equal(jobs.get(bad).status, 'failed')
   const originalFetch = globalThis.fetch
   try {

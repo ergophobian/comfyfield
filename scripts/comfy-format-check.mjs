@@ -103,7 +103,7 @@ for (const [original, cloud] of Object.entries(cloudWorkflows)) {
   const optional = schemas.comfyOptional[cloud] || []
   // Exercise every subset, including a later reference supplied without earlier optional ones.
   for (let bits = 0; bits < 2 ** optional.length; bits++) {
-    const vars = Object.fromEntries(schemas.comfy[cloud].map((key) => [key, key.startsWith('image') || key === 'video' ? 'example.png' : key === 'pad' ? 'square' : key === 'prompt' || key === 'motion' || key === 'background' ? 'A fox' : key === 'width' || key === 'height' ? 1024 : key === 'frames' ? 121 : 1]))
+    const vars = Object.fromEntries(schemas.comfy[cloud].map((key) => [key, key.startsWith('image') || key === 'video' ? 'example.png' : key === 'pad' ? 'square' : key === 'prompt' || key === 'motion' || key === 'background' ? 'A fox' : key === 'width' || key === 'height' ? 1024 : key === 'frames' ? 121 : key === 'solid' ? false : key === 'fill' ? 0 : 1]))
     optional.forEach((key, i) => { if (!(bits & (1 << i))) delete vars[key] })
     const filled = fill(dropOptional(graph, vars), vars)
     assert(!JSON.stringify(filled).includes('{{'), `${cloud}: unresolved placeholder`)

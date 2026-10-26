@@ -30,6 +30,7 @@ assert.throws(() => assertFilled(fill({ inputs: { missing: '{{absent}}' } }, {})
 assert.throws(() => assertFilled(fill({ inputs: { missing: 'prefix {{absent}}' } }, {})), /unresolved/)
 
 // Resolve the actual numeric graph links rather than searching serialized copy.
+const pyRound = (x) => { const r = Math.round(x); return Math.abs(x % 1) === 0.5 && r % 2 ? r - 1 : r }
 function numberAt(graph, link, fixtures = {}) {
   if (!Array.isArray(link)) return link
   const [id, output] = link
@@ -40,7 +41,7 @@ function numberAt(graph, link, fixtures = {}) {
   const vars = Object.entries(node.inputs).filter(([key]) => key.startsWith('values.'))
   const keys = vars.map(([key]) => key.slice(7))
   const values = vars.map(([, value]) => numberAt(graph, value, fixtures))
-  const result = Function(...keys, 'min', 'max', 'floor', `return ${node.inputs.expression}`)(...values, Math.min, Math.max, Math.floor)
+  const result = Function(...keys, 'min', 'max', 'floor', 'round', 'ceil', `return ${node.inputs.expression}`)(...values, Math.min, Math.max, Math.floor, pyRound, Math.ceil)
   return output === 1 ? Math.trunc(result) : result
 }
 let checked = 0
@@ -182,17 +183,25 @@ for (const look of looks) {
     }
   }
 }
-for (const [duration, sourceFps] of [[5.25, 15], [30, 15], [60, 15], [30, 60], [0.5, 24]]) {
+for (const [duration, sourceFps, outputFps, stride] of [[5.25, 15, 15, 1], [30, 15, 15, 1], [60, 15, 15, 1], [30, 60, 30, 2], [0.5, 24, 24, 1], [30, 35, 17.5, 2], [30, 120, 24, 5]]) {
   const r = await run('lipsync', { video: { ...video, trim: { start: 2, end: 2 + duration } } })
-  const fixtures = { '3': [null, null, sourceFps], '5': [160, 90, Math.ceil(Math.min(30, duration) * sourceFps)] }
+  const fixtures = { '3': [null, null, sourceFps], '5': [160, 90, Math.ceil(Math.ceil(Math.min(30, duration) * sourceFps) / stride)] }
   const frames = numberAt(r.graph, r.graph['22'].inputs.num_frames, fixtures)
   const audioDuration = numberAt(r.graph, r.graph['27'].inputs.duration, fixtures)
   assert.equal(numberAt(r.graph, r.graph['2'].inputs.duration, fixtures), Math.min(30, duration))
-  assert.equal(numberAt(r.graph, r.graph['28'].inputs.fps, fixtures), sourceFps)
-  assert.equal(frames, Math.floor(Math.min(30, duration) * sourceFps))
+  assert.deepEqual(r.graph['5'].inputs.image, ['41', 0], 'Duration uses the downsampled frame count')
+  assert.equal(numberAt(r.graph, ['40', 1], fixtures), stride)
+  assert.equal(numberAt(r.graph, r.graph['28'].inputs.fps, fixtures), outputFps)
+  assert.equal(frames, Math.floor(Math.min(30, duration) * outputFps))
   assert.equal(audioDuration, Math.min(30, duration))
-  assert(frames / sourceFps <= 30)
+  assert(frames / outputFps <= 30)
   assert.deepEqual(r.graph['22'].inputs.audio_1, ['27', 0])
+}
+for (const [sourceFps, outputFps, outputFrames] of [[60, 30, 300], [35, 17.5, 175]]) {
+  const r = await run('lipsync', { video: { ...video, trim: { start: 0, end: 30 } } })
+  const fixtures = { '3': [null, null, sourceFps], '5': [160, 90, outputFrames] }
+  assert.equal(numberAt(r.graph, r.graph['27'].inputs.duration, fixtures), 10, 'A source that ends before the requested trim caps speech at its actual duration')
+  assert.equal(numberAt(r.graph, r.graph['22'].inputs.num_frames, fixtures), 10 * outputFps)
 }
 for (const id of ['edit-video', 'video-character-swap', 'reshoot', 'color-grade', looks[0].id]) {
   const r = await run(id)

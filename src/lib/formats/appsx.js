@@ -7,6 +7,11 @@ const product = { id: 'image', type: 'image', label: 'Product photo' }
 const still = { aspect: 'auto' }
 const moving = { aspect: 'auto', duration: 5 }
 
+// image_grade runs on core color nodes (the GLSL shader could not start EGL on the Pod). Each look
+// sets every knob: desat blends toward luma, tint soft-lights a color, matte pulls toward a color
+// (lifted blacks, rolled highlights), punch adds an S-curve, glow screens a blurred copy.
+const grade = (p) => ({ desat: 0, tint: 0x808080, tint_amount: 0, matte: 0x808080, matte_amount: 0, punch: 0, glow: 0, grain_base: 0, ...p })
+
 const qwen = { runsOn: 'Qwen-Image 2.1', workflow: 'qwen_edit' }
 const klein = { runsOn: 'FLUX 3 Image Klein', workflow: 'klein_edit' }
 const ltx = { runsOn: 'LTX-2.5', workflow: 'ltx25_i2v', sizes: ltx25Sizes }
@@ -127,14 +132,14 @@ const professional = [
     inputs: [
       photo,
       { id: 'look', type: 'choice', label: 'Look', default: 'natural', options: [
-        { id: 'natural', label: 'Natural', note: 'Clean and true', params: { preset: 'natural' } },
-        { id: 'split-tone', label: 'Split tone', note: 'Teal shadows, warm highlights', params: { preset: 'split_tone' } },
-        { id: 'soft-skin', label: 'Soft skin', note: 'Gentle and flattering', params: { preset: 'soft_skin' } },
-        { id: 'old-lens', label: 'Old lens', note: 'Soft glow and vignette', params: { preset: 'old_lens' } },
-        { id: '16mm', label: '16mm', note: 'Grain and lifted blacks', params: { preset: '16mm' } },
-        { id: 'faded', label: 'Faded film', note: 'Matte and washed', params: { preset: 'faded' } },
-        { id: 'mono', label: 'Black and white', note: 'Punchy contrast', params: { preset: 'mono' } },
-        { id: 'warm-70s', label: 'Warm 70s', note: 'Golden and soft', params: { preset: 'warm_70s' } },
+        { id: 'natural', label: 'Natural', note: 'Clean and true', params: grade({}) },
+        { id: 'split-tone', label: 'Split tone', note: 'Teal shadows, warm highlights', params: grade({ tint: 0xffa060, tint_amount: 0.4, matte: 0x0f2a30, matte_amount: 0.08, punch: 0.15 }) },
+        { id: 'soft-skin', label: 'Soft skin', note: 'Gentle and flattering', params: grade({ desat: 0.05, tint: 0xffb080, tint_amount: 0.1, matte: 0x8a8078, matte_amount: 0.07, glow: 0.2 }) },
+        { id: 'old-lens', label: 'Old lens', note: 'Soft glow and halation', params: grade({ desat: 0.1, tint: 0xffb070, tint_amount: 0.12, matte: 0x605850, matte_amount: 0.08, glow: 0.3 }) },
+        { id: '16mm', label: '16mm', note: 'Grain and lifted blacks', params: grade({ desat: 0.15, matte: 0x283028, matte_amount: 0.08, punch: 0.05, grain_base: 25 }) },
+        { id: 'faded', label: 'Faded film', note: 'Matte and washed', params: grade({ desat: 0.28, matte: 0x84827e, matte_amount: 0.18 }) },
+        { id: 'mono', label: 'Black and white', note: 'Punchy contrast', params: grade({ desat: 1, punch: 0.35 }) },
+        { id: 'warm-70s', label: 'Warm 70s', note: 'Golden and soft', params: grade({ desat: 0.1, tint: 0xffa050, tint_amount: 0.5, matte: 0x504030, matte_amount: 0.06, glow: 0.15 }) },
       ] },
       { id: 'warmth', type: 'choice', label: 'Temperature', half: true, default: 'neutral', options: [
         { id: 'cool', label: 'Cooler', params: { temperature: -20 } },
@@ -288,7 +293,7 @@ const enhanceAndStyle = [
 const faceAndIdentity = [
   open({
     id: 'video-character-swap', name: 'Video character swap', kind: 'video', category: 'video-edit', hub: 'face', layout: 'wide',
-    blurb: 'Replace the person in a video with your character, same moves and timing.',
+    blurb: 'Replace the person in a video with your character, same moves and timing. Clips up to 40 seconds.',
     runsOn: 'SCAIL-2', workflow: 'scail2_character_swap',
     steps: [{ id: 'generate', provider: 'comfy', workflow: 'scail2_character_swap', kind: 'video', targetInput: 'source', targets: {
       photo: { bindings: { image: 'face.url' } },
@@ -786,20 +791,29 @@ const trending = [
   open({
     id: 'rap-video', name: 'Rap video', kind: 'video', category: 'fun', hub: 'trending',
     blurb: 'Your photo performs a rap with fresh lyrics and a beat.',
-    runsOn: 'Qwen3.8, MiniMax Music 3 and InfiniteTalk', workflow: 'rap_video',
+    job: 'A rap verse performed by the person in your photo', shape: 'pipeline',
+    runsOn: 'MiniMax Music 3 and LTX-2.5 audio to video',
     inputs: [
       photo,
       { id: 'topic', type: 'text', label: 'What the verse is about', optional: true, placeholder: 'Being the first one up on a Monday' },
       { id: 'beat', type: 'choice', label: 'Beat', default: 'boom-bap', options: [
-        { id: 'boom-bap', label: 'Boom bap', text: 'a dusty boom bap' },
-        { id: 'trap', label: 'Trap', text: 'a hard hitting trap' },
-        { id: 'old-school', label: 'Old school', text: 'a bouncy old school' },
-        { id: 'lofi', label: 'Lo-fi', text: 'a mellow lo-fi' },
+        { id: 'boom-bap', label: 'Boom bap', text: 'Dusty boom bap hip hop, 90 bpm, punchy drums, vinyl crackle, a confident rap vocal' },
+        { id: 'trap', label: 'Trap', text: 'Hard hitting trap, 140 bpm, booming 808s and rolling hi-hats, a confident rap vocal' },
+        { id: 'old-school', label: 'Old school', text: 'Bouncy old school hip hop, 100 bpm, funky break beat and scratches, a playful rap vocal' },
+        { id: 'lofi', label: 'Lo-fi', text: 'Mellow lo-fi hip hop, 80 bpm, dusty keys and soft drums, a relaxed rap vocal' },
       ] },
     ],
-    prompt: 'Write a short, clean, playful rap verse about {topic}, produce {beat} beat with the vocal on it, and make the person in the photo perform it to the camera with accurate lip sync, head nods and hand gestures in a moody music video set with colored lights.',
+    settings: { aspect: '9:16', duration: 10 },
+    steps: [
+      { id: 'lyrics', type: 'writer', target: 'Rap lyrics', review: 'Review your lyrics',
+        instructions: 'Write a short, clean, playful rap verse of four lines about the user note, or about the person in the photo when there is no note. Keep it friendly, with no profanity. Start with the line [Verse] and put each rap line on its own line. Return only the lyrics.' },
+      // The beat picks the song's style; the written verse is its lyrics.
+      { id: 'song', kind: 'audio', provider: 'comfy', workflow: 'minimax_music3_lyrics', prompt: '{topic}', bindings: { style: 'beat' } },
+      { id: 'video', kind: 'video', provider: 'comfy', workflow: 'ltx25_ia2v', sizes: ltx25Sizes, params: { shot: 0 },
+        prompt: 'The person in the photo performs a rap verse straight to the camera with accurate lip sync, head nods and hand gestures, in a moody music video set with colored lights. Handheld camera that moves with the beat.' },
+    ],
+    outputs: [{ step: 'video', kind: 'video' }],
     output: 'A music video with lyrics and a beat',
-    settings: { aspect: '9:16', duration: 15 },
     cover: covers.night,
   }),
   template({

@@ -35,7 +35,7 @@ Keys go in Connections (saved to `.comfyfield/keys.json`, gitignored) or `.env` 
 - `server/flows.js`, `shared/flowRules.js`: flows saved in `.comfyfield/flows.json`, shared by the app and the MCP flow tools; node types and connection rules (see `docs/flows-mcp.md`)
 - `src/lib/formats/`: formats as data (apps, presets, effects, looks, jobs). `index.js` holds categories, app hubs and helpers. `src/lib/recipes.js` keeps the teammate's fal recipes
 - `src/lib/skills.js`: the skill library on /skills (agent jobs, their prompts and the formats they run) and the agent setup snippets. Plain JS so `server/mcp.js` can import it
-- `public/workflows/`: ComfyUI workflows in API format with `{{placeholders}}`. Uploads: `{{image}}` to `{{image5}}`, `{{mask}}`, `{{video}}`, `{{audio}}`, `{{voice}}`; a node with `"_meta": { "optional": "<key>" }` drops out, with its links, when the run has no such file. `node scripts/graph-check.mjs` checks every graph against `scripts/fixtures/comfy-nodes.json` (rebuild it with `scripts/node-schema.mjs` after moving the ComfyUI pin or adding a pack; a pack the Comfy registry has no node scan for takes a hand schema from `scripts/fixtures/pack-nodes.json`)
+- `public/workflows/`: ComfyUI workflows in API format with `{{placeholders}}`. Uploads: `{{image}}` to `{{image9}}`, `{{mask}}`, `{{video}}`, `{{clipvideo}}` (a reference clip whose sound the model also hears), `{{audio}}`, `{{voice}}`; a node with `"_meta": { "optional": "<key>" }` drops out, with its links, when the run has no such file. `node scripts/graph-check.mjs` checks every graph against `scripts/fixtures/comfy-nodes.json` (rebuild it with `scripts/node-schema.mjs` after moving the ComfyUI pin or adding a pack; a pack the Comfy registry has no node scan for takes a hand schema from `scripts/fixtures/pack-nodes.json`)
 - `shared/modelFiles.js`: every model file and LoRA a Pod can download (pinned by sha256), the loaders that name them, and the node packs a Pod installs (pinned by commit), with the files a pack reads from its own folder. A graph's loaders and node classes decide what a Pod gets
 - `server/pod.js`, `server/podBoot.js`, `server/pod-statusd.py`: the Pod manager, its boot script and the status server that runs on the Pod
 - `server/pack-patches/<pack id>/`: ComfyField's fixes to a pinned node pack. The Pod writes each file over the pack's own after checkout
@@ -81,9 +81,13 @@ without removing their copy, controls, prompt templates or provider settings.
 - `inputs`: typed slots with unique `id`, `type`, `label`, optional `optional`, `default`
   and `when: [choiceId, optionId]`. Types: `text`, `longtext`, `choice`, `count`,
   `image`, `video`, `audio`, `draw`, `mask`, `face`, `crop`, `character`, `product`, `brand`, `voice`.
-  Media values are `{ url, name, ratio }`. Choices have `options: [{ id, label,
+  Media values are `{ url, name, ratio }`. A `character` input with `pictures: n` fills n picture
+  slots from the character's images (a reference set), not only the first. Choices have `options: [{ id, label,
   text?, params? }]`; counts have numeric `options`. `field` binds a media slot to
   a named fal input. A UI widget alone does not make an unsupported slot runnable.
+  A `text` input with `reads: { text, image }` is a product link: Read page
+  (`POST /api/product/read`, no keys) fills the named inputs with the page's text and first photo.
+  An `audio` or `video` input's `text` goes into the prompt only when a file is attached.
 - `writer` (optional): prompt-writer instructions. The runner requires an injected
   `writePrompt({ instructions, inputs, format }) -> Promise<string>` when present.
   It compiles to a native Writer node. The UI injects the `/api/prompt` client;
@@ -102,6 +106,9 @@ without removing their copy, controls, prompt templates or provider settings.
   A step's `from: [stepId]` overrides the default previous-step dependency;
   `from: []` starts an independent branch. `{ id, type: 'approve', from: [...] }`
   inserts an engine approval gate. Image outputs can feed the next fal model.
+  Audio outputs (a song, a voice) feed a Comfy graph that takes `{{audio}}`.
+  `{ id, type: 'stitch', from: [...] }` joins the listed video steps, in order and each
+  with its own sound, through the local stitch (`server/stitch.js`); see `music-video`.
   Comfy image and video uploads work on Comfy Cloud and the Pod, including `ltx_i2v` and `h3_open_i2v`.
   Users never run ComfyUI on their own GPU; `COMFY_MODE=local` in `.env` is for development only.
   Other media chaining remains limited to the supported node/provider contracts.

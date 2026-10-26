@@ -44,7 +44,10 @@ export function compileFormat(format, userInputs = {}) {
         return value?.url ? [value.faceUrl || value.url] : value?.images || []
       })
       const note = visibleInputs(format, values).filter((i) => ['text', 'longtext'].includes(i.type)).map((i) => values[i.id]).filter(Boolean).join('\n\n')
-      nodes.push({ id: step.id, type: 'writer', data: { instructions: step.instructions || step.writer_instructions || format.writer, note, images: media, target: step.target || format.runsOn || format.kind } })
+      nodes.push({ id: step.id, type: 'writer', data: { instructions: step.instructions || step.writer_instructions || format.writer, note, images: media, target: step.target || format.runsOn || format.kind, ...(step.review && { review: step.review }) } })
+    } else if (step.type === 'stitch') {
+      // Joins the upstream clips in the order `from` lists them, each with its own sound.
+      nodes.push({ id: step.id, type: 'stitch', data: { clips: [], aspect: stepOptions(format, step, values).aspect } })
     } else if (step.type === 'approve') {
       nodes.push({ id: step.id, type: 'approve', data: {} })
     } else {
@@ -108,9 +111,13 @@ export async function runFormat(format, inputs, { run, writePrompt, onChange = (
   const sourceInput = !setupError && format.kind === 'image' && ['image-edit', 'enhance'].includes(format.category)
     && visibleInputs(format, flow.values).find((i) => ['image', 'draw', 'mask', 'product'].includes(i.type) && flow.values[i.id]?.url)
   const source = sourceInput ? flow.values[sourceInput.id].url : undefined
+  const join = format.steps.find((s) => s.type === 'stitch')
   const engine = createEngine({
     concurrency,
     onChange: notify,
+    // A join runs through the same adapter, so it queues and saves to the Library like a generation.
+    stitch: async (opts) => (await run({ id: `format:${format.id}:${join.id}`, provider: 'stitch', kind: 'video', name: 'Stitch' }, { ...opts, caption: format.name },
+      { formatId: format.id, stepId: join.id, formatRunId: batch }))[0],
     writePrompt: writePrompt ? async (input, identity) => {
       const adapter = adapterFor(identity, { ...input, inputs: flow.values, format })
       adapter.options.idempotencyKey ||= crypto.randomUUID()
@@ -133,6 +140,12 @@ export async function runFormat(format, inputs, { run, writePrompt, onChange = (
         // An upstream picture takes the first slot; the format's other pictures keep theirs.
         if (options.slots) options.slots = { ...options.slots, pictures: [unit.image, ...options.slots.pictures.slice(1)] }
       }
+      // An upstream song is the graph's audio file.
+      if (formatStep.from.length && unit.audio) {
+        options.audio = unit.audio
+        if (options.slots) options.slots = { ...options.slots, audio: unit.audio }
+      }
+      // A graph needs a canvas: 'auto' takes the one nearest the first picture's shape.
       if (target.provider === 'comfy' && options.aspect === 'auto') options.aspect = nearestAspect(options.shape)
       const adapter = adapterFor(identity, options)
       const files = await run(target, adapter.options, { formatId: format.id, stepId: formatStep.id, formatRunId: batch, itemId: adapter.itemId, prompt: adapter.options.prompt, ...(source && { source }) })
