@@ -76,8 +76,10 @@ try {
     calls.push(options)
     progressHooks.push(options.onProgress)
     options.onProgress({ status: 'running', value: 0.42 })
+    if (calls.length === 4) progressHooks[1]({ status: 'running', value: 0.99 })
     const active = Object.values(store.read().runs['cinema-check']).flatMap((node) => node.items || [])
     assert(active.some((item) => item.status === 'pending' && item.progress?.value === 0.42), 'Provider progress is persisted for the live canvas')
+    assert(!active.some((item) => item.status === 'pending' && item.progress?.value === 0.99), 'An earlier take cannot report progress on its replacement')
     return [{ kind: 'video', url: `/media/${options.prompt.includes('Replaced') ? 'replacement' : calls.length}.mp4` }]
   }, stitch: async (options) => {
     stitches.push(options)
