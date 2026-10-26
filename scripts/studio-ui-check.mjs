@@ -46,8 +46,13 @@ const server = await preview({ configFile: false, envFile: false, plugins: [{
       if (!url.pathname.startsWith('/api/')) return next()
       res.setHeader('Content-Type', 'application/json')
       if (url.pathname === '/api/upload') {
-        req.resume()
-        const type = req.headers['content-type'] || ''
+        // Library uploads send JSON with a data URL; widget uploads send the raw file.
+        let type = req.headers['content-type'] || ''
+        if (type.startsWith('application/json')) {
+          let body = ''
+          for await (const chunk of req) body += chunk
+          type = /^data:([^;,]+)/.exec(JSON.parse(body).dataUrl || '')?.[1] || ''
+        } else req.resume()
         return res.end(JSON.stringify({ url: type.startsWith('video/') ? '/mock-clip.webm' : type.startsWith('audio/') ? '/mock-audio.wav' : '/mock-photo.svg' }))
       }
       if (url.pathname === '/api/comfy/requirements') {
@@ -227,7 +232,11 @@ try {
   await type('.app-panel textarea', 'This is a mock speech check.')
   await click('Excited')
   await click('Mandarin')
-  await upload('.app-panel input[type=file]', 'audio/wav')
+  // The voice slot is the Voice Library picker: upload a sample in its menu, then confirm consent.
+  await evaluate(`document.querySelector('.app-panel .voice-card').click()`)
+  await upload('[aria-label="Upload voice sample"]', 'audio/wav')
+  await wait('document.querySelector(".voice-request-consent input")')
+  await evaluate('document.querySelector(".voice-request-consent input").click()')
   await generate('chatterbox_tts', (vars) => { assert.equal(vars.language, 'Chinese (zh)'); assert.equal(vars.exaggeration, 0.9); assert.equal(vars.voice, '/mock-audio.wav'); assert.equal(vars.prompt, 'This is a mock speech check.') })
   await pair('audio')
   await click('Drama 3Read a script, optionally in a sample voice')

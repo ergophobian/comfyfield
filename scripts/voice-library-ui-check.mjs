@@ -191,9 +191,9 @@ try {
     for (const deadline = Date.now() + uiTimeout; Date.now() < deadline;) { if (await evaluate(`Boolean(${expression})`)) return; await pause(100) }
     throw new Error(`Timed out: ${expression}\n${await evaluate('document.body.innerText')}\n${errors.join('\n')}`)
   }
-  // Generations run as polled jobs, so a button can still read "Working" for a moment.
+  // Generations run as polled jobs, so a button can still read "Working" for a moment. The cost tag is not part of the label.
   const click = async (text) => {
-    const find = `[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === ${JSON.stringify(text)} && !b.disabled)`
+    const find = `[...document.querySelectorAll('button')].find((b) => [...b.childNodes].filter((n) => !n.classList?.contains('app-cost')).map((n) => n.textContent).join('').trim() === ${JSON.stringify(text)} && !b.disabled)`
     await wait(find)
     return evaluate(`${find}.click()`)
   }

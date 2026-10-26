@@ -161,7 +161,7 @@
   --agent-thread: 50vh;
   --agent-inset: 12px;
   --agent-toolbar: 76px;
-  --agent-toolbar-mobile: 128px;
+  --agent-toolbar-mobile: 176px;
   --agent-cursor-offset: -80px;
   --agent-badge-offset: -40px;
   --agent-icon: 14px;
@@ -1001,6 +1001,9 @@ code { font-size: .92em; }
 @media (max-width: 720px) {
   .flows { height: calc(100vh - 72px); }
   .ftool { border-radius: var(--r-xl); flex-wrap: wrap; }
+  /* Toolbar menus open under the whole toolbar, so a menu from any wrapped row stays on screen. */
+  .ftool .fpop { position: static; }
+  .ftool .fpop .menu, .ftool .fpop .menu.right { left: 0; right: 0; min-width: 0; transform-origin: top center; }
   .fshare, .forigin { top: var(--agent-toolbar-mobile); }
   .fpanel { left: 12px; right: 12px; top: auto; bottom: 12px; width: auto; max-height: 55%; }
   .fnote { display: none; }

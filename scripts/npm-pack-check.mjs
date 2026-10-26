@@ -36,7 +36,7 @@ for (const need of ['package.json', 'README.md', 'LICENSE', 'bin/comfyfield.js',
   assert.ok(shipped.has(need), `the package ships ${need}`)
 }
 assert.ok(files.some((f) => /^public\/workflows\/.+\.json$/.test(f)), 'the package ships the bundled workflows')
-const allowedRoots = ['bin/', 'server/', 'shared/', 'src/lib/', 'dist/', 'public/workflows/', 'public/art/video/index.json', 'research_notes/effect-specs.json', 'docs/setup.md', 'NOTICE.md', 'README.md', 'LICENSE', 'package.json']
+const allowedRoots = ['bin/', 'server/', 'shared/', 'src/lib/', 'src/components/studio/presets.js', 'dist/', 'public/workflows/', 'public/art/video/index.json', 'research_notes/effect-specs.json', 'docs/setup.md', 'NOTICE.md', 'README.md', 'LICENSE', 'package.json']
 for (const file of files) {
   assert.ok(allowedRoots.some((r) => file === r || file.startsWith(r)), `unexpected file in the package: ${file}`)
   assert.ok(!/(^|\/)(\.comfyfield|\.env|keys\.json|outputs|node_modules|__pycache__|browser-profiles)(\/|$)/.test(file), `the package must not ship ${file}`)

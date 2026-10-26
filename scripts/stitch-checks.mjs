@@ -99,12 +99,12 @@ if (bundledFfmpeg) {
 console.log('check narration plays once, then silence')
 assert.throws(() => stitchOptions({ clips: [blue], narration: { url: music, volume: 3 } }), /Narration volume/)
 assert.throws(() => stitchOptions({ clips: [blue], narration: { url: '' } }), /Narration needs/)
-const narrated = await renderStitch({ clips: [{ url: blue, end: 1.2 }], narration: { url: music, volume: 1 } }, { home: core.home, mediaPath: core.mediaPath, binary: bundledFfmpeg, timeout: 30000 })
+const narrated = await renderStitch({ clips: [{ url: blueUrl, end: 1.2 }], narration: { url: musicUrl, volume: 1 } }, { home: core.home, mediaPath: core.mediaPath, binary: bundledFfmpeg, timeout: 30000 })
 assert.equal(narrated.duration, 1.2)
 assert(rms(narrated.path, 0.1) > 0.03, 'Narration is audible initially')
 assert(rms(narrated.path, 0.7) < 0.001, 'Short narration does not repeat')
 assert(rms(narrated.path, 1.1) < 0.001, 'Narration tail is silent through the video end')
-const both = await renderStitch({ clips: [{ url: blue, end: 1.2 }], music: { url: music, volume: 0.2, fade: 0 }, narration: { url: music, volume: 1 } }, { home: core.home, mediaPath: core.mediaPath, binary: bundledFfmpeg, timeout: 30000 })
+const both = await renderStitch({ clips: [{ url: blueUrl, end: 1.2 }], music: { url: musicUrl, volume: 0.2, fade: 0 }, narration: { url: musicUrl, volume: 1 } }, { home: core.home, mediaPath: core.mediaPath, binary: bundledFfmpeg, timeout: 30000 })
 assert(rms(both.path, 0.1) > rms(both.path, 0.7) * 3, 'Narration and looping music can coexist')
 console.log('ok    narration plays once, pads silence, preserves video duration and coexists with music')
 
@@ -159,14 +159,14 @@ console.log('check story stills and per-shot narration')
 const still = core.mediaPath('story.png')
 const stillUrl = '/media/story.png'
 await run(['-f', 'lavfi', '-i', 'color=c=green:s=160x90', '-frames:v', '1', still])
-const narrated = await renderStitch({ clips: [
+const shotNarrated = await renderStitch({ clips: [
   { url: stillUrl, kind: 'image', duration: 1, caption: 'A narrated still', narration: { url: musicUrl } },
   { url: blueUrl, start: 0.1, end: 0.3, narration: { url: musicUrl } },
 ], aspect: '1:1', captionStyle: 'boxed', music: { url: musicUrl, volume: 0.1 } }, { home: core.home, mediaPath: core.mediaPath, binary, timeout: 30000 })
-assert.equal(narrated.duration, 0.6, 'Per-shot audio determines final duration')
-assert.ok(rms(narrated.path, 0.1) > 0.02, 'Still shot includes narration')
-assert.ok(rms(narrated.path, 0.4) > 0.02, 'Video shot includes narration')
-assert.equal(frame(narrated.path, 0.4).length, 720 * 720 * 3)
+assert.equal(shotNarrated.duration, 0.6, 'Per-shot audio determines final duration')
+assert.ok(rms(shotNarrated.path, 0.1) > 0.02, 'Still shot includes narration')
+assert.ok(rms(shotNarrated.path, 0.4) > 0.02, 'Video shot includes narration')
+assert.equal(frame(shotNarrated.path, 0.4).length, 720 * 720 * 3)
 assert.throws(() => stitchOptions({ clips: [{ url: stillUrl, kind: 'image' }] }), /duration/)
 assert.throws(() => stitchOptions({ clips: [blueUrl], captionStyle: 'word-by-word' }), /caption style/)
 console.log('ok    story stills, narration, frozen video tails and boxed captions')
