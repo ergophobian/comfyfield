@@ -256,7 +256,7 @@ const videoEdits = [
     ],
     // Wan Animate 2 takes the motion from the video and the look from the prompt, which must not
     // describe motion. The background comes from the prompt too, not from either input.
-    prompt: 'Character appearance: the person from the image, with their own face, hair, outfit and look. Background: {background}. Scene note: {scene}. {note}',
+    prompt: 'Character appearance: the person from the image, with their own face, hair, outfit and look. Background: {background}. {scene} {note}',
     settings: { aspect: 'auto' },
     cover: covers.rose,
   }),

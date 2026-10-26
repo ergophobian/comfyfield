@@ -318,7 +318,7 @@ const faceAndIdentity = [
       { id: 'face', type: 'image', label: 'Character photo', half: true, when: ['source', 'photo'] },
       { id: 'character', type: 'character', label: 'Saved character', half: true, when: ['source', 'character'] },
     ],
-    prompt: 'The character from the reference image, with their own face, hair, body and outfit, performing the movements of the original video in the original scene. Preserve the original room and lighting. Scene note: {scene}.',
+    prompt: 'The character from the reference image, with their own face, hair, body and outfit, performing the movements of the original video in the original scene. Preserve the original room and lighting. {scene}',
     settings: still,
     cover: covers.dusk,
   }),
