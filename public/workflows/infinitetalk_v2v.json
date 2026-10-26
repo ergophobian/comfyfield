@@ -42,7 +42,7 @@
     "class_type": "GetImageSize",
     "inputs": {
       "image": [
-        "3",
+        "41",
         0
       ]
     }
@@ -435,14 +435,14 @@
   "40": {
     "class_type": "ComfyMathExpression",
     "inputs": {
-      "expression": "max(1, round(a / 25))",
+      "expression": "max(1, round(a / 25), ceil(a / 30))",
       "values.a": [
         "3",
         2
       ]
     },
     "_meta": {
-      "title": "Every nth frame, for about 25 fps"
+      "title": "Every nth frame, at most 30 fps"
     }
   },
   "41": {
