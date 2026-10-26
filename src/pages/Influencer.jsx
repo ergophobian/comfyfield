@@ -73,10 +73,11 @@ function Choices({ group, value, onChange }) {
   )
 }
 
-function Builder({ picks, setPicks, open, setOpen }) {
+function Builder({ picks, setPicks, open, setOpen, name, setName }) {
   const toggle = (id) => setOpen((xs) => (xs.includes(id) ? xs.filter((x) => x !== id) : [...xs, id]))
   return (
     <div className="inf-build">
+      <Field input={{ id: 'name', type: 'text', label: 'Name', optional: true }} value={name} onChange={setName} />
       <p className="sa-hint">Design a generated fictional character. Use a saved fictional presenter in Motion or Creator video.</p>
       {builder.map((g) => {
         const value = picks[g.id]
@@ -99,6 +100,55 @@ function PresenterFields({ format, values, setValues, setError }) {
     {visibleInputs(format, values).map((input) => <Field key={input.id} input={input} value={values[input.id]}
       onChange={(value) => setValues((current) => ({ ...current, [input.id]: value }))} setError={setError} />)}
   </div>
+}
+
+function PersonaHistory({ onSave, saved }) {
+  const { gens } = useApp()
+  const mine = gens.items.filter((g) => g.formatId === 'influencer-persona')
+  const runs = []
+  for (const item of mine.filter((g) => g.formatId === 'influencer-persona')) {
+    const run = runs.find((r) => r.id === item.formatRunId)
+    if (run) run.items.push(item)
+    else runs.push({ id: item.formatRunId, items: [item] })
+  }
+  const other = mine.filter((g) => g.formatId !== 'influencer-persona' && !g.failed)
+  if (!mine.length) {
+    return (
+      <div className="empty">
+        <p>Influencers you generate show up here. Save one to post, film and put into any trend.</p>
+      </div>
+    )
+  }
+  return (
+    <div className="inf-history">
+      {runs.map((run) => {
+        // The portrait comes first, as the character's main picture.
+        const shown = [...run.items].sort((a, b) => (b.stepId === 'portrait') - (a.stepId === 'portrait'))
+        const done = shown.filter((i) => i.url && !i.pending && !i.failed)
+        const failed = run.items.find((i) => i.failed)
+        const busy = run.items.some((i) => i.pending)
+        return (
+          <section key={run.id} className="inf-run">
+            <Results items={shown.filter((i) => !i.failed)} />
+            <div className="inf-run-foot">
+              {failed && <p className="plist-note">{failed.failed}</p>}
+              {saved[run.id] ? <span className="status ok" role="status">Saved as {saved[run.id]}</span> : (
+                <button type="button" className="btn-soft sm" disabled={!done.length || busy} onClick={() => onSave(run.id, done.map((i) => i.url), run.items[0].prompt)}>
+                  {busy ? 'Rendering' : 'Save as influencer'}
+                </button>
+              )}
+            </div>
+          </section>
+        )
+      })}
+      {other.length > 0 && (
+        <>
+          <h3 className="inf-history-head">Posts, videos and trends</h3>
+          <Results items={other} />
+        </>
+      )}
+    </div>
+  )
 }
 
 function Fan({ items }) {
@@ -179,6 +229,9 @@ export default function Influencer() {
   const [tab, setTab] = useState('create')
   const [main, setMain] = useState('explore')
   const [picks, setPicks] = useState({})
+  const [name, setName] = useState('')
+  const [saved, setSaved] = useState({})
+  const lib = useLibrary()
   const [open, setOpen] = useState(['type'])
   const { gens, openFormat } = useApp()
   const [ugcId, setUgcId] = useState(ugcFormats[0].id)
@@ -228,8 +281,19 @@ export default function Influencer() {
   ))
   const filled = builder.filter((g) => (g.multi ? picks[g.id]?.length : picks[g.id])).length
 
+  const savePersona = async (runId, images, notes) => {
+    const title = name.trim() || `Influencer ${lib.characters.length + 1}`
+    setError(null)
+    try {
+      await lib.create('characters', { name: title, notes, images })
+      setSaved((current) => ({ ...current, [runId]: title }))
+    } catch (error) { setError(error.message) }
+  }
+  const hasPersona = gens.items.some((item) => item.formatId === 'influencer-persona')
+
   const recreate = (preset) => {
     setPicks(preset.picks)
+    setName(preset.name)
     changeTab('create')
     setOpen(['type'])
   }
@@ -244,7 +308,7 @@ export default function Influencer() {
         <Segmented value={tab} onChange={changeTab} className="inf-seg"
           options={[{ value: 'create', label: 'Create influencer' }, { value: 'motion', label: 'Motion' }, { value: 'ugc', label: 'Creator video' }]} />
         <div className="inf-scroll" key={tab}>
-          {tab === 'create' ? <Builder picks={picks} setPicks={setPicks} open={open} setOpen={setOpen} /> : <>
+          {tab === 'create' ? <Builder picks={picks} setPicks={setPicks} open={open} setOpen={setOpen} name={name} setName={setName} /> : <>
             {tab === 'ugc' && <div className="field">
               <label htmlFor="presenter-format">Video format</label>
               <select id="presenter-format" value={ugcId} disabled={locked} onChange={(event) => { if (operation.current || session?.engine.isRunning()) return; setUgcId(event.target.value); setSession(null); setSessionAction(null); setError(null) }}>
@@ -285,7 +349,9 @@ export default function Influencer() {
         </div>
         <div key={main} className="inf-main-body">
           {main === 'explore' ? <Explore onRecreate={recreate} /> : (
-            history.length ? <>
+            history.length || hasPersona ? <>
+              {hasPersona && <PersonaHistory onSave={savePersona} saved={saved} />}
+              {tab === 'create' && error && <p className="sheet-error" role="alert">{error}</p>}
               <p className="sheet-note">Presenter stills and finished videos save to Assets as each step finishes.</p>
               {history.filter((item) => item.failed).map((item) => <p key={item.id} className="sheet-error" role="alert">{item.failed}</p>)}
               <Results items={history.filter((item) => !item.failed)} />
