@@ -18,6 +18,7 @@ fs.mkdirSync(media, { recursive: true })
 const binary = await findFfmpeg()
 await ffmpeg(['-f', 'lavfi', '-i', 'testsrc2=s=320x180:r=24:d=0.5', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', path.join(media, 'mock.mp4')], { binary })
 await ffmpeg(['-i', path.join(media, 'mock.mp4'), '-frames:v', '1', path.join(media, 'start.png')], { binary })
+const streams = new Set()
 const calls = []
 const assemblies = []
 const exports = []
@@ -28,10 +29,13 @@ let plannerFailure = null
 let failPlan = false
 let failRender = false
 let failStitch = false
-const flows = createFlows({ directory: core.home, generate: async (options) => {
+const flows = createFlows({ directory: core.home, changed: (event) => { for (const res of streams) res.write(`data: ${JSON.stringify(event)}\n\n`) }, generate: async (options) => {
   calls.push(options)
+  const callNumber = calls.length
+  options.onProgress({ where: 'Comfy Cloud', status: 'running', value: 0.42, step: 4, steps: 10 })
+  await new Promise((resolve) => setTimeout(resolve, 1500))
   if (failRender && options.image) { failRender = false; throw new Error('Mock shot failure; retry this shot') }
-  const name = `mock-shot-${calls.length}.mp4`
+  const name = `mock-shot-${callNumber}.mp4`
   fs.copyFileSync(path.join(media, 'mock.mp4'), path.join(media, name))
   return [{ kind: 'video', url: `/media/${name}` }]
 }, stitch: async (options) => {
@@ -55,6 +59,8 @@ const server = await preview({ configFile: false, envFile: false, plugins: [{
       try {
         if (url.pathname === '/api/agents/events') {
           res.setHeader('Content-Type', 'text/event-stream')
+          streams.add(res)
+          req.on('close', () => streams.delete(res))
           return res.write(': mock stream\n\n')
         }
         if (url.pathname === '/api/agents') return send(res, [])
@@ -213,6 +219,8 @@ try {
     console.log(`check ${label}: render and per-shot review`)
     failRender = width === 390
     await click('Generate scene')
+    await wait('document.querySelector(".cinema-shot [role=progressbar]")?.getAttribute("aria-valuenow") === "42"')
+    assert(await evaluate('document.querySelector(".cinema-shot").textContent.includes("Rendering 42%, step 4 of 10")'), 'Cinema shows actual provider progress during the run')
     await wait('document.querySelectorAll(".cinema-scene .cinema-shot").length === 3 && !document.querySelector(".cinema-scene > button").disabled')
     const id = flows.read().current
     assert.equal(flows.get(id).nodes.filter((node) => node.type === 'model').length, 3)
@@ -287,5 +295,6 @@ try {
 } finally {
   global.fetch = network
   await browser?.close()
+  for (const res of streams) res.end()
   await server.close()
 }

@@ -71,8 +71,13 @@ try {
   const directory = mkdtempSync(join(tmpdir(), 'comfyfield-cinema-check-'))
   const calls = []
   const stitches = []
+  const progressHooks = []
   const store = createFlows({ directory: () => directory, generate: async (options) => {
     calls.push(options)
+    progressHooks.push(options.onProgress)
+    options.onProgress({ status: 'running', value: 0.42 })
+    const active = Object.values(store.read().runs['cinema-check']).flatMap((node) => node.items || [])
+    assert(active.some((item) => item.status === 'pending' && item.progress?.value === 0.42), 'Provider progress is persisted for the live canvas')
     return [{ kind: 'video', url: `/media/${options.prompt.includes('Replaced') ? 'replacement' : calls.length}.mp4` }]
   }, stitch: async (options) => {
     stitches.push(options)
@@ -89,6 +94,8 @@ try {
   assert.equal(createFlows({ directory: () => directory }).get(flow.id).name, cinemaPlan.title, 'Standalone MCP sees the saved Flow')
   await store.perform(flow.id, 'runNew')
   assert.equal(calls.length, 3)
+  progressHooks[0]({ status: 'running', value: 0.99 })
+  assert(!Object.values(store.read().runs[flow.id]).flatMap((node) => node.items || []).some((item) => item.status === 'pending'), 'Late progress cannot revive completed work')
   assert.equal(stitches.length, 0)
   assert(calls.every((options) => options.model === 'comfy-ltx25' && options.duration === 5))
   await store.perform(flow.id, 'runNew')

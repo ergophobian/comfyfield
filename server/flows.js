@@ -142,7 +142,14 @@ export function createFlows({ directory = core.home, generate = core.generate, w
   }
   // A failed Library save never fails the step: the engine keeps the provider file either way.
   const keep = (id, generator) => async (model, opts, unit = {}) => {
-    const files = await generator({ ...opts, model: model.id })
+    const onProgress = (progress) => {
+      const eng = engine(id)
+      const node = eng.state[unit.stepId]
+      // Late provider events must not restore pending state after completion.
+      if (!node?.items?.some((item) => item.unit === unit.unitId && item.status === 'pending')) return
+      eng.load({ ...eng.state, [unit.stepId]: { ...node, items: node.items.map((item) => item.unit === unit.unitId && item.status === 'pending' ? { ...item, progress } : item) } })
+    }
+    const files = await generator({ ...opts, model: model.id, onProgress })
     if (!library || !Array.isArray(files)) return files
     try {
       const flow = read().flows.find((f) => f.id === id)
