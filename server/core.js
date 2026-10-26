@@ -814,11 +814,11 @@ export async function runComfyRouter({ model, input, idempotencyKey = randomUUID
   }
 }
 
-async function comfyMedia(source) {
+// Input URLs come from the request, so they get the same public-address and redirect checks as page imports.
+export async function comfyMedia(source, { get = publicGet } = {}) {
   if (/^https?:/.test(source)) {
-    const r = await fetch(source)
-    if (!r.ok) throw new Error(`Could not download an input file (${r.status}).`)
-    return { buf: Buffer.from(await r.arrayBuffer()), mime: r.headers.get('content-type') || 'image/png' }
+    const r = await get(source, { limit: 200_000_000, accept: '*/*', timeout: 120000 })
+    return { buf: r.body, mime: r.headers['content-type'] || 'image/png' }
   }
   return readLocal(source)
 }

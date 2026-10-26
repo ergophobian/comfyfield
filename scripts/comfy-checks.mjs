@@ -4,6 +4,7 @@ import path from 'node:path'
 import { test } from 'node:test'
 import { Comfy } from '@comfyorg/sdk'
 import * as core from '../server/core.js'
+import { publicGet } from '../server/publicPage.js'
 import { createServer } from '../server/mcp.js'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
@@ -515,4 +516,12 @@ await test('Multi-part speech refuses initial runs and retries before any provid
   assert.deepEqual(core.speechParts('你好。我很好。今天天气很好，我们去公园吧！', 8), ['你好。我很好。', '今天天气很好，', '我们去公园吧！'])
   assert.deepEqual(core.speechParts('One. Two.\n\nThree.', 300), ['One. Two.', 'Three.'], 'a paragraph break ends a part')
   await assert.rejects(core.runComfy('chatterbox_tts', { prompt: sentence.repeat(500), seed: 7 }, { createClient, ...pod }), /Split it into chapters/)
+})
+
+await test('Input media URLs from a request cannot reach private addresses', async () => {
+  await assert.rejects(core.comfyMedia('http://[::ffff:127.0.0.1]/private-video'), /Private|public/i)
+  const redirect = (url, options) => publicGet(url, { ...options, resolve: async () => [{ address: '8.8.8.8', family: 4 }], request: async () => ({ status: 302, headers: { location: 'http://127.0.0.1/private-video' } }) })
+  await assert.rejects(core.comfyMedia('https://example.com/clip.mp4', { get: redirect }), /Private|public/i)
+  const ok = (url, options) => publicGet(url, { ...options, resolve: async () => [{ address: '8.8.8.8', family: 4 }], request: async () => ({ status: 200, headers: { 'content-type': 'video/mp4' }, body: Buffer.from('mp4') }) })
+  assert.deepEqual(await core.comfyMedia('https://example.com/clip.mp4', { get: ok }), { buf: Buffer.from('mp4'), mime: 'video/mp4' })
 })
