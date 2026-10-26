@@ -2,6 +2,7 @@
   "name": "comfyfield",
   "private": false,
   "version": "0.1.0",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",
