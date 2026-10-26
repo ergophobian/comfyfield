@@ -79,7 +79,7 @@ try {
     await wait('document.querySelector(".viewer .model-view.full.ready canvas")')
     await wait('document.querySelector(".viewer-text span").innerText.includes("closed surface, ready to slice")')
     assert.match(await evaluate('document.querySelector(".viewer-text span").innerText'), /2,880 faces/)
-    assert(await evaluate('Boolean(document.querySelector(".viewer [aria-label=\'Save as STL for 3D printing\']"))'), 'the viewer saves STL')
+    assert(await evaluate('Boolean(document.querySelector(".viewer [aria-label=\'Save a mesh for 3d printing\']"))'), 'the viewer saves STL')
     // Drag to turn the model.
     const box = await evaluate('(() => { const r = document.querySelector(".viewer canvas").getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2] })()')
     await cdp('Input.dispatchMouseEvent', { type: 'mousePressed', x: box[0], y: box[1], button: 'left', clickCount: 1 })
