@@ -131,7 +131,7 @@ export default function ShortsStudio() {
               )} />
           )}
           {tab === 'presets' && !shown.length && <Empty title={`No looks match "${query}"`}>Try a mood, a color or a place.</Empty>}
-          {tab === 'history' && <div>{gens.items.filter((item) => item.storyStudio === 'Shorts studio').map((item) => <video className="story-result" key={item.id} src={item.url} controls aria-label="Saved short" />)}<p className="sheet-note">Finished shorts also appear in the Library.</p></div>}
+          {tab === 'history' && <div>{gens.items.filter((item) => item.storyStudio === 'Shorts studio').map((item) => <video className="story-result" key={item.id} src={item.url} controls aria-label="Saved short" />)}<p className="sheet-note">Finished shorts also appear in Assets.</p></div>}
           {tab === 'how' && (
             <Steps items={[
               { title: 'Pick a look', text: 'Choose a look to guide cutaways and captions, or name your own from reference stills.' },

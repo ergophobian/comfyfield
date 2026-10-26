@@ -124,7 +124,7 @@ function BlenderPanel({ node, patch }) {
       <div className="fp-field"><label htmlFor="blender-script">Python script</label>
         <textarea id="blender-script" className="fp-text fp-code" rows={12} spellCheck={false} value={data.script || ''} onChange={(e) => patch(id, { script: e.target.value })} />
       </div>
-      <p className="muted fp-blurb">Runs <code>blender -b -P script.py -- --output file</code> where Connections says. Save the render to the path after <code>--output</code>: a PNG for an image, an MP4 for a video. The result goes to the Library and to the next node.</p>
+      <p className="muted fp-blurb">Runs <code>blender -b -P script.py -- --output file</code> where Connections says. Save the render to the path after <code>--output</code>: a PNG for an image, an MP4 for a video. The result goes to Assets and to the next node.</p>
     </>
   )
 }
@@ -151,7 +151,7 @@ function ThreePanel({ node, patch }) {
         <textarea id="three-script" className="fp-text fp-code" rows={14} spellCheck={false} value={data.script || ''} onChange={(e) => patch(id, { script: e.target.value })} />
       </div>
       <p className={`muted fp-blurb${frames > threeLimits.frames ? ' bad' : ''}`}>{data.width} x {data.height}, {frames} frames{frames > threeLimits.frames ? `. The limit is ${threeLimits.frames}: shorten it or lower the frame rate` : ''}.</p>
-      <p className="muted fp-blurb">An ES module. Its default export gets <code>{'{ THREE, renderer, width, height, fps, duration }'}</code> and returns <code>{'{ scene, camera, update(time) }'}</code>. Run draws each frame in headless Chrome on a fixed clock and saves an MP4 to the Library and the next node. The page cannot reach the network.</p>
+      <p className="muted fp-blurb">An ES module. Its default export gets <code>{'{ THREE, renderer, width, height, fps, duration }'}</code> and returns <code>{'{ scene, camera, update(time) }'}</code>. Run draws each frame in headless Chrome on a fixed clock and saves an MP4 to Assets and the next node. The page cannot reach the network.</p>
     </>
   )
 }

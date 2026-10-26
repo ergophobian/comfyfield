@@ -34,6 +34,15 @@ export const GPU_EXTRA = [
 export const GPU_CATALOG = [...GPU_LADDER, ...GPU_EXTRA]
 
 export const IDLE_MIN = 10
+// The Pod's disk for the Pods page. RunPod's volume is a shared filesystem that reports the whole
+// cluster's size (petabytes), so a total above the Pod's own volume falls back to the volume less its models.
+export const podDisk = (st, volumeGb) => {
+  const total = st.diskTotalGb ?? null
+  if (total == null || !volumeGb || total <= volumeGb) return { freeGb: st.diskFreeGb ?? null, totalGb: total }
+  const used = (st.models || []).reduce((n, f) => n + (f.bytes || 0), 0) / 1e9
+  return { freeGb: Math.max(0, Math.round((volumeGb - used) * 10) / 10), totalGb: volumeGb }
+}
+
 // Idle shutdown the user can pick on the Pods page, in minutes, and the disk sizes it offers in GB.
 export const IDLE_CHOICES = [5, 10, 15, 30, 60]
 export const POD_VOLUMES = [120, 200, 300]
@@ -285,7 +294,7 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
       runs: m.leases.size, queue: m.status?.queue ?? null, downloads: downloads(), runtimes: runtimes(),
       safety: { selfTerminateReady: m.status?.selfTerminateReady === true, proofDeadline: m.status?.proofDeadline ?? null },
       // What is on the Pod's disk, for the Pods page. Known only while the Pod runs.
-      models: m.status?.models || [], disk: m.status ? { freeGb: m.status.diskFreeGb ?? null, totalGb: m.status.diskTotalGb ?? null } : null,
+      models: m.status?.models || [], disk: m.status ? podDisk(m.status, rec?.volumeGb) : null,
       evicted: m.status?.evicted || [], preparing: Boolean(rec?.prepare),
       ending: m.ending?.then || null, event: m.event, connected: Boolean(key()),
     }

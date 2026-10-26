@@ -7,7 +7,7 @@ export default function RunChip() {
   return (
     <span className="run-chip-slot" aria-live="polite">
       {running > 0 && (
-        <Link to="/assets" className="status run-chip pop" title="See them in Library" aria-label={`${running} running. See them in Library`}>
+        <Link to="/assets" className="status run-chip pop" title="See them in Assets" aria-label={`${running} running. See them in Assets`}>
           {running}<span className="run-word">running</span>
         </Link>
       )}

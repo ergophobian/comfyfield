@@ -149,7 +149,7 @@ export default function Photodump() {
         </footer>
         {session && !running && <p className="pd-note"><button type="button" className="btn-soft" onClick={() => { setSession(null); setStep(0); setConsent(false) }}>Start a new set</button></p>}
         {failed.length > 0 && <p className="pd-note" role="status">{failed.length} failed {failed.length === 1 ? 'shot' : 'shots'}. Retry only these shots; completed photos stay in this set and the Library.</p>}
-        {error && <p className="pd-note" role="alert">{error} Completed photos remain below and in the <Link to="/assets">Library</Link>.</p>}
+        {error && <p className="pd-note" role="alert">{error} Completed photos remain below and in the <Link to="/assets">Assets</Link>.</p>}
         {step === 2 && <p className="pd-note">Qwen edit 2511 · {size} separate generations · up to {quality} · untested live</p>}
       </section>
 

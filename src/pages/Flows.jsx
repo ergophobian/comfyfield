@@ -25,7 +25,7 @@ const addable = [
   ['image', 'Upload a reference image'],
   ['writer', 'Write a prompt, then review and send'],
   ['mask', 'Paint an area to change'],
-  ['face', 'Choose a face or Library character'],
+  ['face', 'Choose a face or a saved character'],
   ['video', 'Upload, trim and pick a poster'],
   ['crop', 'Choose an aspect and crop area'],
   ['model', 'Any image, video or audio model'],

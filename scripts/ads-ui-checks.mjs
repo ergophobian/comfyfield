@@ -145,7 +145,7 @@ try {
   assert.equal(renders().length, 2)
   const firstPrompt = renders()[0].body.vars.prompt
   await click('Retry render ad-2-1-1')
-  await wait('document.body.innerText.includes("Saved to Library")')
+  await wait('document.body.innerText.includes("Saved to Assets")')
   assert.equal(renders().length, 3)
   assert.equal(renders().filter((r) => r.body.vars.prompt === firstPrompt).length, 1, 'Retry preserves successful variant')
   assert.equal(requests.filter((r) => r.path === '/api/prompt').length, 1, 'Retry does not call the writer again')
@@ -178,7 +178,7 @@ try {
   await screen('mock-marketing-review-desktop', 1440)
   await screen('mock-marketing-review-mobile', 390)
   await click('Approve and render')
-  await wait('document.body.innerText.includes("Saved to Library")')
+  await wait('document.body.innerText.includes("Saved to Assets")')
   assert.equal(renders().length, 4)
   assert.equal(renders().at(-1).body.workflow, 'h3_studio_ad')
   assert.equal(renders().at(-1).body.vars.duration, 15)

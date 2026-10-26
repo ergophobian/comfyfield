@@ -18,7 +18,7 @@
   /* Text and lines */
   --ink: #0f1222;
   --ink-2: #4a4f66;
-  --muted: #6e7389;
+  --muted: #666b81;
   --faint: #c3c6d4;
   --line: rgb(15 18 34 / .08);
   --paper: #fff;
@@ -2790,7 +2790,12 @@ button.gen-step:active { transform: scale(.97); }
 @media (max-width: 720px) {
   /* The Pod charges by the minute, so its chip stays in the bar on phones. */
   .nav-right > .nav-menu.pod { display: block; }
-  .pod-chip { height: 38px; padding: 0 12px; }
+  /* A long status shrinks with an ellipsis so the menu button always fits. */
+  .nav-right { min-width: 0; flex-shrink: 1; }
+  .nav-right > .nav-menu.pod { min-width: 0; }
+  .nav-burger { flex-shrink: 0; }
+  .pod-chip { height: 38px; max-width: 100%; padding: 0 12px; }
+  .pod-chip > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .pod-spend, .pod-eta { display: none; }
   .pod-pop { position: fixed; top: 64px; right: 16px; left: 16px; width: auto; max-width: none; }
 }

@@ -10,6 +10,17 @@ import { waitJob, cancelJob, Cancelled } from './jobs.js'
 import { createRouterBatch } from './routerBatch.js'
 import { libraryChanged } from './flowStore.js'
 
+// Server and provider errors are already written for people. A JS error is a bug in the app, so the
+// user gets one plain line and the details go to the console.
+export const plainError = (e) => {
+  if (e instanceof TypeError && /fetch|network/i.test(e.message)) return 'Could not reach ComfyField. Check that the app is still running, then retry.'
+  if (e instanceof TypeError || e instanceof ReferenceError || e instanceof SyntaxError || e instanceof RangeError) {
+    console.error(e)
+    return 'Something went wrong on our side. Retry, or pick another model.'
+  }
+  return e?.message || 'The run failed. Retry, or pick another model.'
+}
+
 const KEY = 'comfyfield.library'
 const MAX_PARALLEL = 3
 const restorable = (item) => !item.pending || item.jobs?.length || item.run?.opts.routerBatch
@@ -129,7 +140,7 @@ export function useGenerations() {
           (files) => { if (!cancelled.current.has(id)) finish(id, base, files.flat()) },
           (e) => {
             if (e instanceof Cancelled || cancelled.current.has(id)) setItems((xs) => xs.filter((x) => x.id !== id))
-            else fail(id, { ...base, retryMayCharge: e.code === 'interrupted' }, e.message)
+            else fail(id, { ...base, retryMayCharge: e.code === 'interrupted' }, plainError(e))
           },
         )
       }
@@ -189,7 +200,8 @@ export function useGenerations() {
             setItems((xs) => xs.filter((x) => x.id !== id))
             return reject(new Cancelled())
           }
-          fail(id, { ...base, retryMayCharge: e.code === 'interrupted' }, e.message, retryStep, after)
+          fail(id, { ...base, retryMayCharge: e.code === 'interrupted' }, plainError(e), retryStep, after)
+          e.onTile = true // so a page does not show this error a second time
           reject(e)
         }
       })
@@ -256,5 +268,6 @@ export function useGenerations() {
     setItems((xs) => xs.filter((x) => x.id !== id))
   }
 
-  return { items, error, retry: retryLast, busy, generate, generateFormat, add, refresh, cancel, toggleApprove, dismiss, clear: () => setItems([]) }
+  const dismissError = () => { errorOwner.current = null; setError(null); setRetryLast(null) }
+  return { items, error, retry: retryLast, dismissError, busy, generate, generateFormat, add, refresh, cancel, toggleApprove, dismiss, clear: () => setItems([]) }
 }

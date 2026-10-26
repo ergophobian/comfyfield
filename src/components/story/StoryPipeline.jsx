@@ -126,7 +126,7 @@ export default function StoryPipeline({ values, disabled = false, onComplete, on
       </>}
       {stage === 'render' && <><p role="status">{progress}</p>{!busy && <button type="button" className="btn-blue" onClick={render}>Retry remaining steps</button>}</>}
       {error && <p role="alert" className="error">{error}</p>}
-      {result && <><video className="story-result" controls src={result.url} aria-label="Finished story" /><p>Saved to the Library.</p><a className="btn-soft" href={result.url} download>Download video</a></>}
+      {result && <><video className="story-result" controls src={result.url} aria-label="Finished story" /><p>Saved to Assets.</p><a className="btn-soft" href={result.url} download>Download video</a></>}
       {!busy && stage !== 'idle' && <button type="button" className="btn-soft" onClick={reset}>Edit settings</button>}
     </section>
   )

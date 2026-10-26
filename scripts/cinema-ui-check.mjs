@@ -236,7 +236,7 @@ try {
       await click('Stitch scene')
     }
     await wait('document.querySelector(".stitch-preview")?.readyState >= 2')
-    await wait('[...document.querySelectorAll("button")].some((button) => button.textContent === "Export to Library" && !button.disabled)')
+    await wait('[...document.querySelectorAll("button")].some((button) => button.textContent === "Export to Assets" && !button.disabled)')
     console.log(`check ${label}: replace, re-stitch and export`)
     const before = calls.length
     await fill('Shot 2 prompt', `Replacement ${label}: a bright ocean swells through the portal`)
@@ -245,7 +245,7 @@ try {
     assert.equal(calls.length, before + 1, 'Only the edited shot reruns')
     assert.match(calls.at(-1).prompt, /Replacement/)
     assert.equal(flows.engine(id).state['scene-stitch'].items[0].stale, true)
-    assert(await evaluate('[...document.querySelectorAll("button")].find((button) => button.textContent === "Export to Library").disabled'))
+    assert(await evaluate('[...document.querySelectorAll("button")].find((button) => button.textContent === "Export to Assets").disabled'))
     const count = assemblies.length
     await evaluate('document.querySelector(".cinema-scene-heading a").click()')
     await wait('document.querySelector(".f-stitch")?.textContent.includes("Out of date, stitch again") && document.querySelector(".f-output")')
@@ -257,10 +257,10 @@ try {
     assert.equal(assemblies.length, count, 'Replacement Send must preserve stale Stitch output')
     await screenshot(`mock-replace-${label}`)
     await click('Re-stitch')
-    await wait('[...document.querySelectorAll("button")].some((button) => button.textContent === "Export to Library" && !button.disabled)')
+    await wait('[...document.querySelectorAll("button")].some((button) => button.textContent === "Export to Assets" && !button.disabled)')
     assert.equal(assemblies.length, count + 1)
     assert(assemblies.at(-1).clips[1].url.endsWith(`mock-shot-${calls.length}.mp4`), 'The replacement occupies its original slot')
-    await click('Export to Library')
+    await click('Export to Assets')
     await wait('document.querySelector("a[download]")')
     const exported = exports.at(-1)
     assert(fs.statSync(core.mediaPath(exported.url)).size > 0, 'Export is a real local video')
