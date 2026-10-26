@@ -1,11 +1,10 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useRef, useState, useSyncExternalStore } from 'react'
 import { Link } from 'react-router-dom'
 import { cinemaCost, cinemaExample, cinemaExamplePlan, cinemaFlow, cinemaInstructions, cinemaModel, cinemaPrompt, validateCinemaPlan } from '../../lib/cinema.js'
 import { engineFor, openFlow, useFlowStorage } from '../../lib/flowStore.js'
 import { reloadFlows } from '../../lib/remoteFlows.js'
 import { keepRequestKey } from '../../lib/routerBatch.js'
 import { writePrompt } from '../../lib/providers.js'
-import { useApp } from '../../lib/appContext.js'
 import { money } from '../../lib/cost.js'
 import { FlowCtx } from '../flow/nodes.jsx'
 import StitchPanel from '../flow/StitchPanel.jsx'
@@ -29,7 +28,6 @@ function ShotFields({ shot, index, edit, frames = false, setError }) {
 }
 
 function RenderedScene({ flow, setStore, storageError, ready }) {
-  const { gens } = useApp()
   const engine = engineFor(flow.id)
   const state = useSyncExternalStore(engine.subscribe, () => engine.state)
   const [drafts, setDrafts] = useState({})
@@ -39,13 +37,6 @@ function RenderedScene({ flow, setStore, storageError, ready }) {
   const stitch = flow.nodes.find((node) => node.type === 'stitch')
   const busy = working || engine.isRunning() || !ready
   const edited = shots.some((node) => drafts[node.id] && JSON.stringify(drafts[node.id]) !== JSON.stringify(node.data.cinemaShot))
-
-  useEffect(() => {
-    const files = shots.flatMap((node) => (state[node.id]?.items || []).filter((item) => item.status === 'done').map((item) => ({
-      ...item, id: `${flow.id}:${item.id}:${item.created}`, model: cinemaModel.name, provider: 'comfy', flowId: flow.id, caption: item.prompt,
-    })))
-    if (files.length) gens.add(files)
-  }, [state, flow.id])
 
   const patch = (id, data) => setStore((store) => ({ ...store, flows: store.flows.map((value) => value.id === flow.id ? {
     ...value, updated: Date.now(), nodes: value.nodes.map((node) => node.id === id ? { ...node, data: { ...node.data, ...data } } : node),
@@ -155,7 +146,7 @@ export default function CinemaScene({ storageKey, initialIdea = '' }) {
     <div className="cinema-journey">
       {!flow && <>
         <section className="cinema-idea cs-composer glass">
-          <div className="cinema-scene-heading"><h2>From idea to finished scene</h2><span className="muted">LTX-2.5</span></div>
+          <div className="cinema-scene-heading"><h2>From idea to finished scene</h2><span className="muted">LTX-2.5 on Comfy Cloud</span></div>
           <p className="muted">Plan 2–6 shots, shape each one, then render. Use the prompt writer in Connections or start with the portal example.</p>
           <label htmlFor={`${storageKey}-idea`}>Your cinematic idea</label>
           <div className="cs-write">

@@ -295,6 +295,10 @@ const faceAndIdentity = [
     id: 'video-character-swap', name: 'Video character swap', kind: 'video', category: 'video-edit', hub: 'face', layout: 'wide',
     blurb: 'Replace the person in a video with your character, same moves and timing. Clips up to 40 seconds.',
     runsOn: 'SCAIL-2', workflow: 'scail2_character_swap',
+    steps: [{ id: 'generate', provider: 'comfy', workflow: 'scail2_character_swap', kind: 'video', targetInput: 'source', targets: {
+      photo: { bindings: { image: 'face.url' } },
+      character: { bindings: { image: 'character.images.0' } },
+    } }],
     inputs: [
       clip,
       { id: 'source', type: 'choice', label: 'New character', half: true, default: 'photo', options: [

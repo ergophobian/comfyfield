@@ -2,8 +2,10 @@ import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
 import * as core from './core.js'
-import { createEngine, topoOrder } from '../src/lib/flowEngine.js'
+import { createEngine, topoOrder, executableTypes } from '../src/lib/flowEngine.js'
 import { nodeLabels, nodeDefaults, unknownType, missingNode, connectionProblem } from '../shared/flowRules.js'
+import { STALE } from '../shared/flowMerge.js'
+import { validAssignee } from '../shared/agentRoster.js'
 
 export const problem = (message, status = 400) => Object.assign(new Error(message), { status })
 export const clone = (value) => structuredClone(value)
@@ -29,10 +31,13 @@ function withModel(type, data) {
   return { ...data, model: resolved, ...(['image', 'video', 'audio'].includes(resolved.kind) && { kind: resolved.kind }) }
 }
 
-export function createFlows({ directory = core.home, generate = core.generate, writePrompt = core.writePrompt, stitch = core.stitch, changed = () => {} } = {}) {
+// library saves model outputs to Library > Generations. It defaults on only for the app's own
+// folder, so checks that point flows at a scratch folder never write the real Library.
+export function createFlows({ directory = core.home, generate = core.generate, writePrompt = core.writePrompt, stitch = core.stitch, render = core.render, library = directory === core.home ? core.saveToLibrary : null, changed = () => {} } = {}) {
   const engines = new Map()
   const locks = new Set()
   let quiet = false
+  let own = null
   const file = () => path.join(directory(), 'flows.json')
   const read = () => {
     try { return { runs: {}, ...JSON.parse(fs.readFileSync(file(), 'utf8')) } } catch (e) {
@@ -44,8 +49,20 @@ export function createFlows({ directory = core.home, generate = core.generate, w
     fs.mkdirSync(directory(), { recursive: true })
     fs.writeFileSync(`${file()}.tmp`, JSON.stringify(store))
     fs.renameSync(`${file()}.tmp`, file())
+    try { own = fs.statSync(file()).mtimeMs } catch {}
     changed({ type: 'flows', revision: store.revision })
     return clone(store)
+  }
+  // A standalone MCP server (npx comfyfield mcp) is another process that writes the same file, also
+  // run state that keeps the revision. Polling the file passes its writes on to every open page.
+  const watch = () => {
+    const target = file()
+    const seen = (cur, prev) => {
+      if (cur.mtimeMs === prev.mtimeMs || cur.mtimeMs === own) return
+      try { changed({ type: 'flows', revision: read().revision }) } catch {}
+    }
+    fs.watchFile(target, { interval: 250, persistent: false }, seen)
+    return () => fs.unwatchFile(target, seen)
   }
   const get = (id) => {
     const { flows } = read()
@@ -55,8 +72,10 @@ export function createFlows({ directory = core.home, generate = core.generate, w
   }
   const validate = (flow) => {
     if (!flow || typeof flow.id !== 'string' || typeof flow.name !== 'string' || !Array.isArray(flow.nodes) || !Array.isArray(flow.edges)) throw problem('A flow needs a string id, a string name, a nodes array and an edges array.')
+    if (!validAssignee(flow.assignee)) throw problem(`Flow "${flow.name}": set assignee to an agent name such as "Agent 2", or null.`)
     const seen = new Set()
     for (const n of flow.nodes) {
+      if (!validAssignee(n?.assignee)) throw problem(`Node "${n?.id}": set assignee to an agent name such as "Agent 2", or null.`)
       if (typeof n?.id !== 'string' || !n.id) throw problem(`Every node needs a string id. Check the node of type "${n?.type}".`)
       if (seen.has(n.id)) throw problem(`Node id "${n.id}" is used twice in flow "${flow.name}". Give each node its own id.`)
       seen.add(n.id)
@@ -84,7 +103,7 @@ export function createFlows({ directory = core.home, generate = core.generate, w
   }
   const save = ({ revision, flows, current, runs }) => {
     const store = read()
-    if (revision !== store.revision) throw problem('Flows changed elsewhere. Reload flows before editing again.', 409)
+    if (revision !== store.revision) throw problem(STALE, 409)
     if (!Array.isArray(flows)) throw problem('Send flows as an array.')
     const ids = flows.map((f) => f?.id)
     const twice = ids.find((id, i) => ids.indexOf(id) !== i)
@@ -112,7 +131,7 @@ export function createFlows({ directory = core.home, generate = core.generate, w
     if (id !== undefined && !idPattern.test(id)) throw problem(`Node id "${id}" is not valid. Use 1 to 64 letters, digits, "-" or "_".`)
     if (id !== undefined && flow.nodes.some((n) => n.id === id)) throw problem(`Flow "${flow.name}" already has a node "${id}". Pick another id or leave id out.`)
     const last = flow.nodes.at(-1)?.position
-    return { id: id ?? `${type}-${shortId()}`, type, position: position || (last ? { x: last.x + 340, y: last.y } : { x: 0, y: 40 }), data: withModel(type, { ...nodeDefaults(type), ...data }) }
+    return { id: id ?? `${type}-${shortId()}`, type, position: position || (last ? { x: last.x + 340, y: last.y } : { x: 0, y: 40 }), data: withModel(type, { ...nodeDefaults(type, data), ...data }) }
   }
   const link = (flow, { source, target }) => {
     const issue = connectionProblem(flow, source, target)
@@ -121,12 +140,26 @@ export function createFlows({ directory = core.home, generate = core.generate, w
     flow.edges.push(edge)
     return edge
   }
+  // A failed Library save never fails the step: the engine keeps the provider file either way.
+  const keep = (id, generator) => async (model, opts, unit = {}) => {
+    const files = await generator({ ...opts, model: model.id })
+    if (!library || !Array.isArray(files)) return files
+    try {
+      const flow = read().flows.find((f) => f.id === id)
+      await library(files.filter((f) => f?.url), {
+        model: model.name, kind: model.kind, provider: model.provider, caption: opts.prompt, aspect: opts.aspect,
+        flowId: id, flowName: flow?.name, flowNode: unit.stepId, from: '/flows',
+      })
+    } catch (e) { console.warn(`Flow "${id}": could not save to the Library. ${e.message}`) }
+    return files
+  }
   const engine = (id) => {
     if (!engines.has(id)) {
       const eng = createEngine({
-        run: (model, opts) => generate({ ...opts, model: model.id }),
+        run: keep(id, generate),
         writePrompt,
         stitch: (opts) => stitch({ ...opts, preview: true }),
+        render,
         onChange: (state) => {
           if (quiet) return
           const store = read()
@@ -146,7 +179,7 @@ export function createFlows({ directory = core.home, generate = core.generate, w
     }
     return eng
   }
-  const perform = async (id, action, node, item, { flow = get(id), generate: guardedGenerate, writePrompt: guardedWriter, stitch: guardedStitch } = {}) => {
+  const perform = async (id, action, node, item, { flow = get(id), generate: guardedGenerate, writePrompt: guardedWriter, stitch: guardedStitch, render: guardedRender } = {}) => {
     if (!actions.includes(action)) throw problem(`Unknown flow action "${action}". Use one of: ${actions.join(', ')}.`)
     if (node) { const missing = missingNode(flow, node); if (missing) throw problem(missing, 404) }
     if (!['runNew', 'regenerateAll'].includes(action) && !node) throw problem(`Choose a node for ${action}.`)
@@ -156,9 +189,10 @@ export function createFlows({ directory = core.home, generate = core.generate, w
       // Each invocation gets its own runner so a session can gate every provider call.
       const base = engine(id)
       const eng = guardedGenerate ? createEngine({
-        run: (model, opts) => guardedGenerate({ ...opts, model: model.id }),
+        run: keep(id, guardedGenerate),
         writePrompt: guardedWriter,
         stitch: guardedStitch,
+        render: guardedRender,
         onChange: (state) => base.load(state),
       }) : base
       if (eng !== base) eng.load(base.state)
@@ -173,7 +207,7 @@ export function createFlows({ directory = core.home, generate = core.generate, w
     const waiting = flow.nodes.filter((n) => n.type === 'approve' && eng.gate(n.id).status === 'reviewing').map((n) => n.id)
     const writers = flow.nodes.filter((n) => n.type === 'writer' && !eng.state[n.id]?.sent && eng.state[n.id]?.items?.some((i) => i.status === 'done')).map((n) => n.id)
     const failed = flow.nodes.flatMap((n) => (eng.state[n.id]?.items || []).filter((i) => i.status === 'failed').map((i) => ({ node: n.id, error: i.error })))
-    const blocked = flow.nodes.filter((n) => ['model', 'writer', 'stitch'].includes(n.type) && !eng.state[n.id]?.items?.some((i) => i.status === 'done') && eng.plan(flow, n.id).blocked).map((n) => n.id)
+    const blocked = flow.nodes.filter((n) => executableTypes.includes(n.type) && !eng.state[n.id]?.items?.some((i) => i.status === 'done') && eng.plan(flow, n.id).blocked).map((n) => n.id)
     const made = Object.fromEntries(flow.nodes.map((n) => [n.id, (eng.state[n.id]?.items || []).filter((i) => i.status === 'done').map(({ kind, url, text, prompt }) => ({ kind, url, text, prompt }))]).filter(([, items]) => items.length))
     const next = [
       ...waiting.map((n) => `${name(flow.nodes.find((x) => x.id === n))} is waiting for review. The user must pick takes and press Send in Flows; agents cannot send it.`),
@@ -183,7 +217,7 @@ export function createFlows({ directory = core.home, generate = core.generate, w
     return { flow_id: id, ran: result.ran ?? 0, waiting_for_send: waiting, writers_waiting_for_send: writers, blocked, failed, outputs: made, next }
   }
   return {
-    read, get, save, engine, perform, validate, report,
+    read, get, save, engine, perform, validate, report, watch,
     create: ({ name, nodes = [], edges = [] }) => {
       if (typeof name !== 'string' || !name.trim()) throw problem('Give the flow a name.')
       const flow = { id: shortId(), name: name.trim(), nodes: [], edges: [], updated: Date.now() }
@@ -192,6 +226,13 @@ export function createFlows({ directory = core.home, generate = core.generate, w
       const store = read()
       save({ ...store, flows: [flow, ...store.flows], current: store.current ?? flow.id })
       return flow
+    },
+    // A shared flow arrives as a new flow with its own id; blank flows make room for it, as on the canvas.
+    insert: ({ name, nodes, edges, origin }) => {
+      const flow = validate({ id: shortId(), name, nodes, edges, ...(origin && { origin }), updated: Date.now() })
+      const store = read()
+      save({ ...store, flows: [flow, ...store.flows.filter((f) => f.nodes.length)], current: flow.id })
+      return clone(flow)
     },
     add: (id, spec) => edit(id, (f) => { const node = makeNode(f, spec); f.nodes.push(node); return node }),
     connect: (id, edge) => edit(id, (f) => link(f, edge)),
@@ -203,6 +244,19 @@ export function createFlows({ directory = core.home, generate = core.generate, w
       if (position) n.position = position
       return n
     }),
+    // Assign a whole flow (no node) or one node to an agent name; null clears it.
+    assign: (id, node, agent) => {
+      if (!validAssignee(agent)) throw problem('Name the agent, such as "Agent 2", or send null to clear the assignment.')
+      const name = agent?.trim() || null
+      return edit(id, (f) => {
+        if (!node) { if (name) f.assignee = name; else delete f.assignee; return { flow_id: id, assignee: name } }
+        const missing = missingNode(f, node)
+        if (missing) throw problem(missing, 404)
+        const n = f.nodes.find((x) => x.id === node)
+        if (name) n.assignee = name; else delete n.assignee
+        return { flow_id: id, node_id: node, assignee: name }
+      })
+    },
     remove: (id, node) => {
       const removed = edit(id, (f) => {
         const missing = missingNode(f, node)

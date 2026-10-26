@@ -1,18 +1,22 @@
 import { ArtImage } from '../components/Art.jsx'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Segmented from '../components/Segmented.jsx'
-import Results from '../components/Results.jsx'
 import { Field } from '../components/formats/Fields.jsx'
 import { Section, UseMenu } from '../components/studio/Shell.jsx'
 import { TypeArt } from '../components/studio/Art.jsx'
 import { IconShuffle, IconCompass, IconHistory } from '../components/studio/icons.jsx'
-import { builder, influencerPresets, motionModes, personaText } from '../components/studio/presets.js'
+import { builder, influencerPresets } from '../components/studio/presets.js'
 import { useApp } from '../lib/appContext.js'
-import { useLibrary } from '../lib/useLibrary.js'
+import { useLibrary, toRef } from '../lib/useLibrary.js'
+import { modelsFor } from '../lib/tools.js'
+import { presenterFormats } from '../lib/formats/presenters.js'
+import { initialValues, missingInputs, visibleInputs } from '../lib/recipes.js'
+import FormatReview from '../components/formats/Review.jsx'
+import Results from '../components/Results.jsx'
 import { characterUses, trendIds } from '../lib/characterUses.js'
-import { formatById } from '../lib/formats/index.js'
-import { initialValues, missingInputs } from '../lib/recipes.js'
+import { personaText } from '../components/studio/presets.js'
+import { motionSeconds } from '../lib/formats/presenterSession.js'
 
 const pickOne = (list) => list[Math.floor(Math.random() * list.length)]
 const labelOf = (group, id) => group.options.find((o) => o.id === id)?.label
@@ -25,11 +29,9 @@ const shuffle = () => Object.fromEntries(builder.map((g) => {
   const n = Math.floor(Math.random() * 3)
   return [g.id, [...g.options].sort(() => Math.random() - 0.5).slice(0, n).map((o) => o.id)]
 }))
-const persona = formatById('influencer-persona')
-// Motion transfer copies the moves onto the character; the swap puts the character into the clip.
-const motionFormats = { transfer: formatById('motion-transfer'), swap: formatById('video-character-swap') }
-// What each run of this page can make, so History shows only these.
-const madeHere = new Set(['influencer-persona', 'influencer-post', 'ai-influencer-video', 'character-scene', ...trendIds])
+const runsOnImage = modelsFor('image').find((m) => m.id === 'z-image-turbo')?.name || 'open weights'
+const ugcFormats = presenterFormats.filter((format) => format.id.startsWith('ugc-'))
+const motionFormat = presenterFormats.find((format) => format.id === 'influencer-motion')
 
 function Choices({ group, value, onChange }) {
   const multi = !!group.multi
@@ -72,15 +74,11 @@ function Choices({ group, value, onChange }) {
   )
 }
 
-function Builder({ picks, setPicks, open, setOpen, photo, setPhoto, name, setName }) {
+function Builder({ picks, setPicks, open, setOpen }) {
   const toggle = (id) => setOpen((xs) => (xs.includes(id) ? xs.filter((x) => x !== id) : [...xs, id]))
   return (
     <div className="inf-build">
-      <Field input={{ id: 'name', type: 'text', label: 'Name', optional: true, placeholder: 'Mara, the rooftop runner' }} value={name} onChange={setName} />
-      <div className="inf-photo">
-        <Field input={{ id: 'photo', type: 'image', label: 'Your photo', optional: true }} value={photo} onChange={setPhoto} />
-        <p className="sa-hint">Keeps your face. Use only your own, or one you have permission to use.</p>
-      </div>
+      <p className="sa-hint">Design a generated fictional character. Use a saved fictional presenter in Motion or Creator video.</p>
       {builder.map((g) => {
         const value = picks[g.id]
         const set = summaryOf(g, value)
@@ -95,87 +93,13 @@ function Builder({ picks, setPicks, open, setOpen, photo, setPhoto, name, setNam
   )
 }
 
-function MotionTab({ motion, setMotion }) {
-  const set = (k) => (v) => setMotion((m) => ({ ...m, [k]: v }))
-  return (
-    <div className="inf-build inf-motion">
-      <Field input={{ id: 'who', type: 'character', label: 'Influencer' }} value={motion.who} onChange={set('who')} />
-      <div className="field">
-        <label>Mode</label>
-        <div className="opt-grid" role="group" aria-label="Mode">
-          {motionModes.map((m) => (
-            <button key={m.id} type="button" aria-pressed={motion.mode === m.id} className={`opt${motion.mode === m.id ? ' on' : ''}`} onClick={() => set('mode')(m.id)}>
-              <strong>{m.label}</strong><small>{m.note}</small>
-            </button>
-          ))}
-        </div>
-      </div>
-      <Field input={{ id: 'video', type: 'video', label: 'Reference video, 4 to 30s' }} value={motion.video} onChange={set('video')} />
-      {motion.mode === 'transfer' && (
-        <>
-          <Field input={{ id: 'style', type: 'text', label: 'Style', optional: true, placeholder: 'Soft daylight, handheld phone feel' }} value={motion.style} onChange={set('style')} />
-          <Field input={{ id: 'prompt', type: 'longtext', label: 'Prompt', optional: true, placeholder: 'Anything to add about the look or the scene' }} value={motion.prompt} onChange={set('prompt')} />
-        </>
-      )}
-    </div>
-  )
-}
-
-// The values each motion format takes from this tab.
-function motionValues(motion) {
-  if (motion.mode === 'swap') return { video: motion.video, source: 'character', character: motion.who }
-  const image = motion.who?.images?.[0] ? { url: motion.who.images[0], name: motion.who.name } : null
-  return { video: motion.video, image, note: [motion.style, motion.prompt].map((x) => x.trim()).filter(Boolean).join('. ') }
-}
-
-// Each persona run gives a portrait and a full-body shot; Save keeps both as a character in Assets.
-function History({ onSave, saved }) {
-  const { gens } = useApp()
-  const mine = gens.items.filter((g) => madeHere.has(g.formatId))
-  const runs = []
-  for (const item of mine.filter((g) => g.formatId === 'influencer-persona')) {
-    const run = runs.find((r) => r.id === item.formatRunId)
-    if (run) run.items.push(item)
-    else runs.push({ id: item.formatRunId, items: [item] })
-  }
-  const other = mine.filter((g) => g.formatId !== 'influencer-persona' && !g.failed)
-  if (!mine.length) {
-    return (
-      <div className="empty">
-        <p>Influencers you generate show up here. Save one to post, film and put into any trend.</p>
-      </div>
-    )
-  }
-  return (
-    <div className="inf-history">
-      {runs.map((run) => {
-        // The portrait comes first, as the character's main picture.
-        const shown = [...run.items].sort((a, b) => (b.stepId === 'portrait') - (a.stepId === 'portrait'))
-        const done = shown.filter((i) => i.url && !i.pending && !i.failed)
-        const failed = run.items.find((i) => i.failed)
-        const busy = run.items.some((i) => i.pending)
-        return (
-          <section key={run.id} className="inf-run">
-            <Results items={shown.filter((i) => !i.failed)} />
-            <div className="inf-run-foot">
-              {failed && <p className="plist-note">{failed.failed}</p>}
-              {saved[run.id] ? <span className="status ok" role="status">Saved as {saved[run.id]}</span> : (
-                <button type="button" className="btn-soft sm" disabled={!done.length || busy} onClick={() => onSave(run.id, done.map((i) => i.url), run.items[0].prompt)}>
-                  {busy ? 'Rendering' : 'Save as influencer'}
-                </button>
-              )}
-            </div>
-          </section>
-        )
-      })}
-      {other.length > 0 && (
-        <>
-          <h3 className="inf-history-head">Posts, videos and trends</h3>
-          <Results items={other} />
-        </>
-      )}
-    </div>
-  )
+function PresenterFields({ format, values, setValues, setError }) {
+  return <div className="inf-build inf-motion">
+    <p className="sa-hint">{format.output}</p>
+    {format.id === 'influencer-motion' && values.video?.duration && <p className="sheet-note" role="status">Output length: {motionSeconds(values.video).toFixed(2)} seconds at 16 fps. Original audio is dropped.</p>}
+    {visibleInputs(format, values).map((input) => <Field key={input.id} input={input} value={values[input.id]}
+      onChange={(value) => setValues((current) => ({ ...current, [input.id]: value }))} setError={setError} />)}
+  </div>
 }
 
 function Fan({ items }) {
@@ -190,29 +114,7 @@ function Fan({ items }) {
   )
 }
 
-// "Bring them into any trend": the formats that put a saved character into a video that already exists.
-function Trends({ onMotion }) {
-  const lib = useLibrary()
-  const { openFormat } = useApp()
-  const first = lib.characters.find((c) => c.images?.length)
-  const mix = () => {
-    const [omni] = first ? characterUses(first, openFormat, ['omni-reference']) : []
-    if (omni) omni.onClick()
-    else openFormat('omni-reference')
-  }
-  return (
-    <div className="inf-trends rise" style={{ '--d': 'calc(3 * var(--stagger))' }}>
-      <strong>Bring them into any trend</strong>
-      <div className="inf-trend-acts">
-        <button type="button" className="btn-soft sm" onClick={() => onMotion('transfer')}>Copy the moves</button>
-        <button type="button" className="btn-soft sm" onClick={() => onMotion('swap')}>Swap into a video</button>
-        <button type="button" className="btn-soft sm" onClick={mix}>Mix references</button>
-      </div>
-    </div>
-  )
-}
-
-function Explore({ onRecreate, onMotion }) {
+function Explore({ onRecreate }) {
   const lib = useLibrary()
   const { openFormat } = useApp()
   const [feed, setFeed] = useState('mine')
@@ -220,14 +122,16 @@ function Explore({ onRecreate, onMotion }) {
     ...lib.characters.filter((c) => c.images?.[0]).map((c) => ({ img: c.images[0] })),
     ...influencerPresets.map((p) => ({ cover: p.cover, type: p.picks.type })),
   ]
-  const uses = (item) => characterUses(item, openFormat, ['influencer-post', 'ai-influencer-video', 'character-scene', ...trendIds])
+  const uses = (item) => [
+    ...characterUses(item, openFormat, ['influencer-post', 'ai-influencer-video', 'character-scene', ...trendIds]),
+    ...[motionFormat, ...ugcFormats].map((format) => ({ label: format.name, onClick: () => openFormat(format.id, { character: toRef('character', item) }) })),
+  ]
   return (
     <>
       <div className="inf-hero">
         <Fan items={fan} />
         <h2 className="rise">A face to build a following on</h2>
-        <p className="rise" style={{ '--d': 'calc(2 * var(--stagger))' }}>Pick the face, body and style from the menus, or shuffle them all. Each run gives a close-up portrait and a full-body shot.</p>
-        <Trends onMotion={onMotion} />
+        <p className="rise" style={{ '--d': 'calc(2 * var(--stagger))' }}>Design a fictional character with the menus, or use a saved presenter from Assets for a reference motion clip or a creator video.</p>
       </div>
       <div className="inf-feed-tabs">
         <Segmented value={feed} onChange={setFeed} options={[{ value: 'mine', label: 'Your influencers' }, { value: 'presets', label: 'Presets' }]} />
@@ -235,8 +139,8 @@ function Explore({ onRecreate, onMotion }) {
       {feed === 'mine' && (
         lib.ready && !lib.characters.length ? (
           <div className="empty">
-            <p>No influencers yet. Generate one, save it, and it shows up here, ready to post and film.</p>
-            <Link className="btn-soft" to="/character">Or make one from your photos</Link>
+            <p>No influencers yet. Save a generated fictional character in Assets to use it in videos.</p>
+            <Link className="btn-blue" to="/library?tab=characters">Open characters in Assets</Link>
           </div>
         ) : (
           <div className="inf-grid">
@@ -272,57 +176,63 @@ function Explore({ onRecreate, onMotion }) {
   )
 }
 
-const blankMotion = { who: null, mode: 'transfer', video: null, style: '', prompt: '' }
-
 export default function Influencer() {
-  const { gens } = useApp()
-  const lib = useLibrary()
   const [tab, setTab] = useState('create')
   const [main, setMain] = useState('explore')
   const [picks, setPicks] = useState({})
   const [open, setOpen] = useState(['type'])
-  const [photo, setPhoto] = useState(null)
-  const [name, setName] = useState('')
-  const [motion, setMotion] = useState(blankMotion)
-  const [error, setError] = useState('')
-  const [saved, setSaved] = useState({})
-  const filled = builder.filter((g) => (g.multi ? picks[g.id]?.length : picks[g.id])).length
-
-  // What Generate runs on the open tab, with the values it sends.
-  const format = tab === 'create' ? persona : motionFormats[motion.mode]
-  const values = { ...initialValues(format), ...(tab === 'create'
-    ? { persona: personaText(picks), start: photo ? 'photo' : 'text', photo }
-    : motionValues(motion)) }
+  const { gens, openFormat } = useApp()
+  const [ugcId, setUgcId] = useState(ugcFormats[0].id)
+  const [valuesById, setValuesById] = useState({})
+  const [session, setSession] = useState(null)
+  const [running, setRunning] = useState(false)
+  const [engineState, setEngineState] = useState({})
+  const [sessionAction, setSessionAction] = useState(null)
+  const operation = useRef(false)
+  const locked = running || Object.values(engineState).some((state) => state.running > 0)
+  useEffect(() => {
+    if (!session) { setEngineState({}); return }
+    const sync = () => setEngineState(session.engine.state)
+    sync()
+    return session.engine.subscribe(sync)
+  }, [session])
+  const [error, setError] = useState(null)
+  const format = tab === 'motion' ? motionFormat : ugcFormats.find((item) => item.id === ugcId)
+  const values = valuesById[format.id] || initialValues(format)
   const missing = missingInputs(format, values)
-  // The motion tab names its own fields; the format's labels would ask for a "Who performs it".
-  const still = tab === 'motion' ? [!motion.who && 'an influencer', !motion.video && 'a reference video'].filter(Boolean) : missing.map((i) => i.label.toLowerCase())
+  const setValues = (update) => {
+    if (operation.current || session?.engine.isRunning()) return
+    setSession(null)
+    setSessionAction(null)
+    setValuesById((current) => ({ ...current, [format.id]: update(current[format.id] || initialValues(format)) }))
+  }
+  const changeTab = (value) => { if (operation.current || locked || session?.engine.isRunning()) return; setTab(value); setSession(null); setSessionAction(null); setError(null) }
+  const generate = async () => {
+    if (operation.current || locked || session?.engine.isRunning() || missing.length) return
+    operation.current = true
+    setRunning(true)
+    setMain('history')
+    setError(null)
+    setSessionAction(null)
+    try {
+      if (session) await session.resume()
+      else await gens.generateFormat(format, values, { onSession: setSession })
+    } catch (error) {
+      setError(error.message)
+      if (error.runAsSession) setSessionAction(() => error.runAsSession)
+    } finally { operation.current = false; setRunning(false) }
+  }
+  const currentScript = engineState.script?.items?.find((item) => item.status === 'done')?.text
+  const history = gens.items.filter((item) => presenterFormats.some((format) => format.id === item.formatId)).map((item) => (
+    item.kind === 'video' && item.formatRunId === session?.formatRunId && currentScript && item.prompt !== currentScript
+      ? { ...item, caption: `${item.caption} · Older script` } : item
+  ))
+  const filled = builder.filter((g) => (g.multi ? picks[g.id]?.length : picks[g.id])).length
 
   const recreate = (preset) => {
     setPicks(preset.picks)
-    setName(preset.name)
-    setTab('create')
+    changeTab('create')
     setOpen(['type'])
-  }
-  const toMotion = (mode) => {
-    setMotion((m) => ({ ...m, mode }))
-    setTab('motion')
-  }
-
-  // A run takes minutes, so Generate only queues it; History shows it rendering.
-  const generate = () => {
-    if (missing.length) return
-    setError('')
-    setMain('history')
-    gens.generateFormat(format, values).catch((e) => setError(e.message))
-  }
-
-  const save = async (runId, images, notes) => {
-    const title = name.trim() || `Influencer ${lib.characters.length + 1}`
-    setError('')
-    try {
-      await lib.create('characters', { name: title, notes: notes || personaText(picks), images })
-      setSaved((s) => ({ ...s, [runId]: title }))
-    } catch (e) { setError(e.message) }
   }
 
   return (
@@ -330,14 +240,27 @@ export default function Influencer() {
       <aside className="inf-panel glass" aria-label="Build an influencer">
         <div className="inf-title">
           <small>Build a character with</small>
-          <h1>AI influencer</h1>
+          <h1>Influencer studio</h1>
         </div>
-        <Segmented value={tab} onChange={setTab} className="inf-seg"
-          options={[{ value: 'create', label: 'Create influencer' }, { value: 'motion', label: 'Motion' }]} />
+        <Segmented value={tab} onChange={changeTab} className="inf-seg"
+          options={[{ value: 'create', label: 'Create influencer' }, { value: 'motion', label: 'Motion' }, { value: 'ugc', label: 'Creator video' }]} />
         <div className="inf-scroll" key={tab}>
-          {tab === 'create'
-            ? <Builder picks={picks} setPicks={setPicks} open={open} setOpen={setOpen} photo={photo} setPhoto={setPhoto} name={name} setName={setName} />
-            : <MotionTab motion={motion} setMotion={setMotion} />}
+          {tab === 'create' ? <Builder picks={picks} setPicks={setPicks} open={open} setOpen={setOpen} /> : <>
+            {tab === 'ugc' && <div className="field">
+              <label htmlFor="presenter-format">Video format</label>
+              <select id="presenter-format" value={ugcId} disabled={locked} onChange={(event) => { if (operation.current || session?.engine.isRunning()) return; setUgcId(event.target.value); setSession(null); setSessionAction(null); setError(null) }}>
+                {ugcFormats.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+              </select>
+            </div>}
+            <fieldset disabled={locked} className="inf-inputs">
+              <PresenterFields format={format} values={values} setValues={setValues} setError={setError} />
+            </fieldset>
+            {session && <FormatReview session={session} onActivityChange={(active) => { operation.current = active; setRunning(active) }} />}
+            {sessionAction && <button type="button" className="btn-soft" disabled={locked} onClick={async () => {
+              try { await sessionAction(); setError(null); setSessionAction(null) } catch (error) { setError(error.message) }
+            }}>Run as a Session</button>}
+            {error && <p className="sheet-error" role="alert">{error}</p>}
+          </>}
         </div>
         <div className="inf-foot">
           <div className="inf-go">
@@ -346,12 +269,13 @@ export default function Influencer() {
                 <IconShuffle />
               </button>
             )}
-            <button type="button" className="btn-blue inf-generate" disabled={missing.length > 0} onClick={generate}>Generate</button>
+            {tab === 'create' ? <button type="button" className="btn-blue inf-generate" onClick={() => openFormat('influencer-persona', { persona: personaText(picks), start: 'text' })}>Create influencer</button> : <button type="button" className="btn-blue inf-generate" disabled={locked || missing.length > 0} onClick={generate}>
+              {locked ? 'Working' : tab === 'ugc' ? 'Prepare video' : 'Generate motion'}
+            </button>}
           </div>
           <p className="inf-meta">
             {tab === 'create' && <span>{filled} of {builder.length} groups set{filled < builder.length ? ', the rest left to chance' : ''}.</span>}
-            {still.length > 0 ? <span>Still needed: {still.join(', ')}.</span> : <span>Runs on {format.runsOn}.</span>}
-            {error && <span className="inf-error" role="alert">{error}</span>}
+            {tab === 'create' ? <span>Review the description and generate a portrait and full-body photo on {runsOnImage}.</span> : <span>{missing.length ? `Still needed: ${missing.map((input) => input.label).join(', ')}` : format.runsOn}</span>}
           </p>
         </div>
       </aside>
@@ -361,7 +285,13 @@ export default function Influencer() {
           <button type="button" aria-pressed={main === 'history'} className={main === 'history' ? 'on' : ''} onClick={() => setMain('history')}><IconHistory />History</button>
         </div>
         <div key={main} className="inf-main-body">
-          {main === 'explore' ? <Explore onRecreate={recreate} onMotion={toMotion} /> : <History onSave={save} saved={saved} />}
+          {main === 'explore' ? <Explore onRecreate={recreate} /> : (
+            history.length ? <>
+              <p className="sheet-note">Presenter stills and finished videos save to Assets as each step finishes.</p>
+              {history.filter((item) => item.failed).map((item) => <p key={item.id} className="sheet-error" role="alert">{item.failed}</p>)}
+              <Results items={history.filter((item) => !item.failed)} />
+            </> : <div className="empty"><p>Your presenter stills and motion clips will appear here and in Assets.</p></div>
+          )}
         </div>
       </section>
     </main>

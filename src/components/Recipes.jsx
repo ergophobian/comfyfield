@@ -1,3 +1,4 @@
+import RunNotes from './formats/RunNotes.jsx'
 import { ArtImage } from './Art.jsx'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -109,6 +110,7 @@ export function RecipeSheet({ recipe, gens, connections, onClose, initial }) {
               <Field key={input.id} input={input} value={values[input.id]} onChange={(v) => set(input.id, v)} onFill={fill} setError={setError} />
             ))}
           </div>
+          <RunNotes format={recipe} values={values} />
           {error && !session && <p className="sheet-error">{error}</p>}
           {session && <FormatReview session={session} />}
           {wired && !connected && <p className="sheet-note">This runs on {provider.name}. <Link to="/connections">Add your key</Link> to use it.</p>}

@@ -12,8 +12,15 @@ import { comfyVars, comfyRouterInput, falInput, estimate, fill, falEndpointFor, 
 import { renderStitch, ffmpeg, findFfmpeg, probeVideo, normalizeClip, cutFrames, joinChunks } from './stitch.js'
 import { CHAINS, clipChunks, extendChunks } from '../shared/longVideo.js'
 import { archOf, minVramOf, notOnCloud, podNeedsOf, volumeFor, RUNTIMES } from '../shared/modelFiles.js'
-import { DEFAULT_TIER, TIER_IDS } from '../shared/gpuTiers.js'
+import { CLOUD_USD_PER_GPU_SEC, DEFAULT_TIER, TIER_IDS } from '../shared/gpuTiers.js'
 import { REAL_LOOK } from '../shared/realism.js'
+import { routerEntry } from '../shared/routerModels.js'
+import { draftInstructions, parseDraft } from '../shared/flowDraft.js'
+import { renderBlender, blenderVersion } from './blender.js'
+import { renderThree } from './threejs.js'
+import { importBusinessPage as readBusinessPage, publicGet, publicAddress } from './publicPage.js'
+import { isIP } from 'node:net'
+import { validateWorkflowVoices } from './voiceConsent.js'
 
 import { podManager, GPU_LADDER, IDLE_CHOICES, POD_VOLUMES, STOPPED_DISK_USD_GB_MONTH, idleMinutes } from './pod.js'
 import { sandboxFetch } from './podSandbox.js'
@@ -32,6 +39,10 @@ export const providers = {
   google: { env: ['GEMINI_API_KEY'], fields: ['key'] },
   elevenlabs: { env: ['ELEVENLABS_API_KEY'], fields: ['key'] },
   runpod: { env: ['RUNPOD_API_KEY', 'RUNPOD_DAILY_CAP', 'RUNPOD_AUTO_START', 'RUNPOD_IDLE_MIN', 'RUNPOD_TIER'], fields: ['key', 'cap', 'auto', 'idle', 'tier'] },
+  // Shares flows and formats as gists. Not GITHUB_TOKEN: a developer's shell token must not post gists unasked.
+  github: { env: ['COMFYFIELD_GITHUB_TOKEN'], fields: ['key'] },
+  // Not a key: where Blender runs. With a host, path is the Blender binary on that host.
+  blender: { env: ['BLENDER_PATH', 'BLENDER_SSH_HOST'], fields: ['path', 'host'] },
 }
 
 export const home = () => dataDirectory()
@@ -66,9 +77,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 // The one Pod manager for this process. COMFYFIELD_POD_SANDBOX swaps RunPod and the Pod for fakes.
 let podOne
 const sandboxed = () => Boolean(process.env.COMFYFIELD_POD_SANDBOX)
+export { CLOUD_USD_PER_GPU_SEC }
 // Comfy Cloud runs of the last day, so the app can say when a session would cost less on a Pod.
-// About $4.54 per GPU hour: Comfy's published RTX PRO 6000 rate, which matches the Cloud workflow rate.
-export const CLOUD_USD_PER_GPU_SEC = 4.54 / 3600
 const HOUR = 3_600_000
 const cloudRunsFile = () => path.join(home(), 'cloud-runs.json')
 function readCloudRuns() {
@@ -113,7 +123,7 @@ export function pod() {
   if (!podOne) {
     const sandbox = sandboxed()
     podOne = podManager({
-      dir: home, sandbox,
+      dir: home, sandbox, adoptPrefix: process.env.COMFYFIELD_POD_ADOPT_PREFIX || undefined,
       keys: () => (sandbox ? { ...config('runpod'), key: 'sandbox' } : config('runpod')),
       ...(sandbox ? { fetch: sandboxFetch({ file: () => path.join(home(), 'pod-sandbox.json') }) } : {}),
     })
@@ -331,36 +341,29 @@ export function parsePage(html, base) {
   }
 }
 
-// The app runs on the user's machine, so a page must not point it at their own network.
-export const localAddress = (host) => /^(localhost|.*\.local|.*\.internal|0\.0\.0\.0|127\.|10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.|\[?(::1?\]?$|f[cd][0-9a-f]{2}:|fe80:))/i.test(host)
+// The public reader pins DNS and checks every redirect for pages, photos and logos.
+export const localAddress = (host) => {
+  const address = host.replace(/^\[|\]$/g, '')
+  return isIP(address) ? !publicAddress(address) : /^(localhost|.*\.(local|internal|localhost|home))$/i.test(address)
+}
 
-async function pullImage(src) {
+async function pullImage(src, get) {
   try {
-    if (localAddress(new URL(src).hostname)) return null
-    const r = await fetch(src, { signal: AbortSignal.timeout(8000), headers: { 'User-Agent': UA } })
-    const type = (r.headers.get('content-type') || '').split(';')[0].trim()
-    if (!r.ok || !IMAGE_EXT[type]) return null
-    const buf = Buffer.from(await r.arrayBuffer())
-    return buf.length < 8_000_000 ? saveMedia(buf, IMAGE_EXT[type]).url : null
+    const r = await get(src, { limit: 8_000_000, timeout: 8000, accept: 'image/*' })
+    const type = (r.headers['content-type'] || '').split(';')[0].trim()
+    return IMAGE_EXT[type] ? saveMedia(r.body, IMAGE_EXT[type]).url : null
   } catch { return null }
 }
 
-const UA = 'Mozilla/5.0 (compatible; ComfyField/0.1; +https://github.com/ergophobian/comfyfield)'
-
-export async function readProduct({ url } = {}) {
-  let target
-  try { target = new URL(url) } catch { throw Object.assign(new Error('That does not look like a web address.'), { status: 400 }) }
-  if (!/^https?:$/.test(target.protocol)) throw Object.assign(new Error('Use an http or https address.'), { status: 400 })
-  if (localAddress(target.hostname)) throw Object.assign(new Error('Use a public web address.'), { status: 400 })
-  let r
-  try { r = await fetch(target, { signal: AbortSignal.timeout(10000), redirect: 'follow', headers: { 'User-Agent': UA, Accept: 'text/html,application/xhtml+xml' } }) } catch {
-    throw Object.assign(new Error('Could not reach that page.'), { status: 502 })
+export async function readProduct({ url } = {}, { get = publicGet } = {}) {
+  const r = await get(url)
+  if (!/text\/html|application\/xhtml\+xml/i.test(r.headers['content-type'] || '')) {
+    throw Object.assign(new Error('That page did not return HTML.'), { status: 415 })
   }
-  if (!r.ok) throw Object.assign(new Error(`That page answered ${r.status}.`), { status: 502 })
-  const html = (await r.text()).slice(0, 2_000_000)
-  const page = parsePage(html, r.url || target.href)
-  const images = (await Promise.all(page.images.map(pullImage))).filter(Boolean)
-  const logo = page.logo ? await pullImage(page.logo) : null
+  const target = new URL(r.url)
+  const page = parsePage(r.body.toString('utf8'), target.href)
+  const images = (await Promise.all(page.images.map((src) => pullImage(src, get)))).filter(Boolean)
+  const logo = page.logo ? await pullImage(page.logo, get) : null
   return { ...page, images, logo: logo || '', url: target.href, host: target.hostname.replace(/^www\./, '') }
 }
 
@@ -428,6 +431,15 @@ export async function writePrompt({ instructions, note = '', images = [], target
   const text = (candidate?.content?.parts || []).filter((p) => !p.thought).map((p) => p.text || '').join('').trim()
   if (!text) throw new Error('Google returned no prompt. The request may have been filtered.')
   return text
+}
+
+// Describe a flow, get a draft: the prompt writer (Google key first, then Comfy Router) returns flow JSON,
+// and parseDraft keeps only nodes and connections the flow rules allow.
+export async function draftFlow({ description } = {}, { write = writePrompt } = {}) {
+  if (typeof description !== 'string' || !description.trim()) throw Object.assign(new Error('Describe the flow you want first.'), { status: 400 })
+  if (write === writePrompt && !config('google').key && !config('comfy').key) throw Object.assign(new Error('Add a Google or Comfy key in Connections to draft a flow.'), { status: 400 })
+  const text = await write({ instructions: draftInstructions(), note: description.trim().slice(0, 2000), target: 'ComfyField flow JSON', promptOnly: false })
+  return parseDraft(text, { makeId: (type) => `${type}-${randomUUID().slice(0, 8)}` })
 }
 
 // Google AI (Gemini API key): image and speech via generateContent, Veo via a long-running operation.
@@ -557,8 +569,13 @@ export async function testConnection(id) {
     const r = await fetch('https://api.elevenlabs.io/v1/models', { headers: { 'xi-api-key': c.key } })
     return r.ok
   }
+  if (id === 'github') {
+    const r = await fetch('https://api.github.com/user', { headers: { Authorization: `Bearer ${c.key}`, Accept: 'application/vnd.github+json', 'User-Agent': 'ComfyField' } })
+    return r.ok
+  }
   if (id === 'fal') return Boolean(c.key) // fal has no free auth-check endpoint
   if (id === 'runpod') return pod().test()
+  if (id === 'blender') return Boolean(await blenderVersion({ config: c }))
   return false
 }
 
@@ -595,10 +612,40 @@ export async function stitch({ preview = false, ...options } = {}) {
   return item
 }
 
+// A Blender node's render: run the script where Connections says, keep the file in media and the Library.
+export async function blender(options, { render = renderBlender } = {}) {
+  const file = await render(options, {
+    config: config('blender'),
+    keep: (from, output) => {
+      const saved = saveMedia(fs.readFileSync(from), output === 'video' ? 'mp4' : 'png')
+      return { ...saved, kind: output === 'video' ? 'video' : 'image' }
+    },
+  })
+  const [item] = await saveToLibrary([file], { model: 'Blender', caption: 'Blender render' })
+  return item
+}
+
+// A Three.js node's render: headless Chrome draws the scene, ffmpeg makes an MP4 for media and the Library.
+export async function threejs(options, { render = renderThree } = {}) {
+  const file = await render(options, {
+    keep: (from) => ({ ...saveMedia(fs.readFileSync(from), 'mp4'), kind: 'video' }),
+  })
+  const [item] = await saveToLibrary([file], { model: 'Three.js', caption: 'Three.js render' })
+  return item
+}
+
+// Flow nodes that render on this machine (or a host it reaches) instead of a provider.
+export const render = (type, options) => {
+  if (type === 'blender') return blender(options)
+  if (type === 'threejs') return threejs(options)
+  throw Object.assign(new Error(`No local renderer for ${type} nodes.`), { status: 400 })
+}
+
 export function connections() {
   const out = Object.fromEntries(Object.keys(providers).map((id) => {
     const c = config(id)
     // Comfy Cloud + Pod can run with a Comfy key, or with a RunPod key through a Pod.
+    if (id === 'blender') return [id, { connected: Boolean(c.path || c.host), path: c.path, host: c.host }]
     const on = id !== 'comfy' ? c.key : c.mode === 'cloud' ? c.key || config('runpod').key || sandboxed() : c.url || c.key
     return [id, { connected: Boolean(on), key: mask(c.key), ...(id === 'comfy' ? { mode: c.mode } : {}) }]
   }))
@@ -616,6 +663,7 @@ export function saveConnection(id, values) {
   if (id === 'runpod' && values.auto != null && !['on', 'off'].includes(values.auto)) throw Object.assign(new Error('Start Pods automatically is on or off.'), { status: 400 })
   if (id === 'runpod' && values.cap != null && !(parseFloat(values.cap) > 0)) throw Object.assign(new Error('The daily cap is a dollar amount above 0.'), { status: 400 })
   if (id === 'runpod' && values.idle != null && !IDLE_CHOICES.includes(Number(values.idle))) throw Object.assign(new Error(`Idle shutdown is ${IDLE_CHOICES.join(', ')} minutes.`), { status: 400 })
+  if (id === 'blender' && Object.entries(values).some(([k, v]) => !['path', 'host'].includes(k) || typeof v !== 'string' || /[\r\n]/.test(v))) throw Object.assign(new Error('Blender takes a path and an SSH host, each on one line.'), { status: 400 })
   if (id === 'runpod' && values.cap != null) values = { ...values, cap: String(Math.round(parseFloat(values.cap) * 100) / 100) }
   const keys = readKeys()
   keys[id] = { ...keys[id], ...values }
@@ -641,7 +689,7 @@ function comfyError(response, data) {
   const code = response.headers?.get('X-Comfy-Error-Type') || data.error_type || data.error?.code
   const requestId = response.headers?.get('X-Comfy-Request-Id') || data.request_id
   const message = response.status === 402 || code === 'insufficient_credits'
-    ? 'Comfy has insufficient credits. Add credits to your Comfy workspace billing, then try again.'
+    ? 'Comfy has insufficient credits. Add credits at platform.comfy.org (profile menu, Manage plan, Add credits), then try again.'
     : `Comfy request failed (${code || response.status}): ${data.message || data.error?.message || (typeof data.detail === 'string' ? data.detail : '') || 'Check the request and your connection.'}`
   return Object.assign(new Error(`${message}${requestId ? ` Request ${requestId}.` : ''}`), { status: response.status >= 400 ? response.status : 502, requestId, code,
     retryable: data.retryable ?? (response.status === 408 || response.status === 429 || response.status >= 500) })
@@ -661,6 +709,27 @@ export async function listComfyRouterModels({ limit = 50, cursor } = {}) {
   const data = await response.json()
   if (!response.ok) throw comfyError(response, data)
   return data
+}
+
+// The whole Router catalog, shaped for the picker, cached for ten minutes per key.
+// Without a key it answers `connected: false` so the app can ask for one.
+export const ROUTER_MODELS_TTL = 10 * 60 * 1000
+let routerCatalog = null
+export async function comfyModels({ now = Date.now() } = {}) {
+  const { key } = config('comfy')
+  if (!key) return { connected: false, models: [] }
+  if (routerCatalog?.key === key && now - routerCatalog.at < ROUTER_MODELS_TTL) return { connected: true, models: routerCatalog.models, at: routerCatalog.at, cached: true }
+  const models = []
+  let cursor
+  for (let page = 0; page < 40; page++) {
+    const data = await listComfyRouterModels({ limit: 100, cursor })
+    models.push(...(Array.isArray(data.data) ? data.data : []).map(routerEntry).filter(Boolean))
+    if (!data.has_more) break
+    if (!data.next_cursor || data.next_cursor === cursor) throw new Error('The Comfy Router catalog stopped paging.')
+    cursor = data.next_cursor
+  }
+  routerCatalog = { key, at: now, models }
+  return { connected: true, models, at: now, cached: false }
 }
 
 // Router returns each partner's native JSON; normalize media for the shared generation callers.
@@ -1002,6 +1071,7 @@ const unsetInput = (template, vars) => [...JSON.stringify(template).matchAll(/\{
 export const UPLOAD_KEYS = {
   LoadImage: ['image', [...PICTURE_SLOTS, 'mask']],
   LoadVideo: ['file', ['video', 'clipvideo', 'previous']],
+  VHS_LoadVideo: ['video', ['video']],
   LoadAudio: ['audio', ['audio', 'voice']],
 }
 export const uploadsOf = (template) => Object.entries(template).flatMap(([id, node]) => {
@@ -1072,19 +1142,51 @@ async function resolveComfyRoute(original, vars, { run, podPhase, podVram, podAr
 }
 
 // Submits and then waits when the caller must know whether the job was accepted: a Pod retry, or the spend ledger.
-async function submitAndWait(client, wf, { apiKey, timeoutMs, signal, split }, onSubmitted) {
+// The SDK's live event stream, reduced to what a generation tile shows. The poll in job.wait stays the
+// source of truth for completion, so a stream that drops or is not offered only loses the progress.
+export function progressOf(event, where) {
+  if (event.kind === 'statusChange') return { where, status: event.status, queuePosition: event.queuePosition ?? null }
+  if (event.kind !== 'progress') return null
+  const value = Number.isFinite(event.value) ? Math.min(1, Math.max(0, event.value)) : null
+  return { where, status: 'running', value, step: event.step ?? null, steps: event.steps ?? null, nodesDone: event.nodesDone ?? null, nodesTotal: event.nodesTotal ?? null, node: event.currentNodeClass ?? null }
+}
+
+async function watchProgress(job, where, onProgress, signal) {
+  try {
+    for await (const event of job.events(signal)) {
+      const progress = progressOf(event, where)
+      if (progress) onProgress(progress)
+    }
+  } catch {}
+}
+
+async function submitAndWait(client, wf, { apiKey, timeoutMs, signal, split, where, onProgress }, onSubmitted) {
   if (!split || !client.submit) return client.run(wf, { apiKey, timeoutMs, ...(signal ? { signal } : {}) })
   const job = await client.submit(wf, { apiKey, ...(signal ? { signal } : {}) })
+  const stopWatching = new AbortController()
   try {
     await onSubmitted({ id: job.id })
+    if (onProgress && job.events) {
+      onProgress({ where, status: job.status || 'queued', queuePosition: job.queuePosition ?? null })
+      watchProgress(job, where, onProgress, signal ? AbortSignal.any([signal, stopWatching.signal]) : stopWatching.signal)
+    }
     await job.wait(timeoutMs, signal)
   } catch (e) {
     // A job nobody is waiting on would keep spending, so a cancel that fails is reported, not swallowed.
     const stopped = job.cancel ? await job.cancel().then(() => true, () => false) : true
     throw stopped ? e : Object.assign(e, { uncancelled: job.id })
+  } finally {
+    stopWatching.abort()
   }
   if (job.status !== 'succeeded') throw new JobFailed(`job ${job.id} ended ${job.status}`, { error: job.error })
   return job
+}
+
+const multipartUnavailable = (name) => Object.assign(new Error(`${name} is not available yet. Use one part per run until completed parts can be resumed safely.`), { status: 400, code: 'multipart_unavailable', retryable: false })
+
+export function segmentError(error, index, total) {
+  error.message = `Segment ${index + 1} of ${total} failed. ${error.message}`
+  return error
 }
 
 // A run longer than one chunk of its graph (shared/longVideo.js) renders chunk by chunk, each one
@@ -1118,7 +1220,7 @@ async function runChain(workflow, vars, opts) {
     } catch (e) {
       // needs_pod and pod_too_small reach the app as they are, so it can still offer a Pod.
       if (e.code) throw e
-      throw Object.assign(new Error(`Segment ${i + 1} of ${total} failed. ${e.message}`), { status: e.status })
+      throw segmentError(e, i, total)
     }
     made.push(...files.map((f) => f.path).filter(Boolean))
     const video = files.find((f) => f.kind === 'video')
@@ -1141,6 +1243,7 @@ async function runChain(workflow, vars, opts) {
       fs.rmSync(dir, { recursive: true, force: true })
       return one()
     }
+    if (chunks.length > 1) throw multipartUnavailable('Multi-segment video')
     const parts = []
     let previous
     for (const [i, c] of chunks.entries()) {
@@ -1154,6 +1257,7 @@ async function runChain(workflow, vars, opts) {
   } else {
     const total = Number(vars.duration)
     const seconds = extendChunks(total, spec)
+    if (seconds.length > 1) throw multipartUnavailable('Multi-segment video')
     const first = await render(workflow, { ...vars, duration: seconds[0], frames: seconds[0] * spec.fps + 1 }, 0, seconds.length)
     const parts = [{ file: await local(first.url, 'chunk-0'), overlap: 0 }]
     for (const [k, add] of seconds.slice(1).entries()) {
@@ -1217,6 +1321,8 @@ async function runSpeechParts(workflow, vars, opts, max) {
   if (parts.length > MAX_SPEECH_PARTS) {
     throw Object.assign(new Error(`This script needs ${parts.length} parts; one run reads up to ${MAX_SPEECH_PARTS}. Split it into chapters.`), { status: 400 })
   }
+  if (parts.length > 1) throw multipartUnavailable('Multi-part speech')
+  const binary = await (opts.findFfmpeg || findFfmpeg)()
   const files = []
   for (const [i, prompt] of parts.entries()) {
     const file = (await runComfy(workflow, { ...vars, prompt }, { ...opts, part: true })).find((f) => f.kind === 'audio')
@@ -1225,17 +1331,21 @@ async function runSpeechParts(workflow, vars, opts, max) {
   }
   const out = saveMedia(Buffer.alloc(0), 'flac')
   const join = `${files.map((_, i) => `[${i}:a]`).join('')}concat=n=${files.length}:v=0:a=1[a]`
-  await ffmpeg(['-y', ...files.flatMap((f) => ['-i', f]), '-filter_complex', join, '-map', '[a]', '-c:a', 'flac', out.path], { binary: await findFfmpeg() })
+  await ffmpeg(['-y', ...files.flatMap((f) => ['-i', f]), '-filter_complex', join, '-map', '[a]', '-c:a', 'flac', out.path], { binary })
   for (const f of files) fs.rmSync(f, { force: true })
   return [{ ...out, kind: 'audio', name: path.basename(out.path), parts: parts.length }]
 }
 
 export async function runComfy(workflow, vars = {}, opts = {}) {
+  opts.signal?.throwIfAborted()
   const max = SPEECH_PARTS[workflow]
   if (max && !opts.part && typeof vars.prompt === 'string' && vars.prompt.length > max) return runSpeechParts(workflow, vars, opts, max)
   if (CHAINS[workflow] && !opts.chunk) return runChain(workflow, vars, opts)
-  const { createClient = (key, baseUrl) => comfyClient(baseUrl, key), lease = (o) => pod().lease(o), podPhase = () => pod().phaseNow(), podVram = () => pod().vramGb(), podRoom = () => pod().room(), podArch = () => pod().arch(), run = runType(), signal, retried = 0, pause = (ms, s) => delay(ms, undefined, s ? { signal: s } : undefined), patchGraph = (g) => g, onSubmitted, onComplete = () => {}, timeoutMs } = opts
+  const { createClient = (key, baseUrl) => comfyClient(baseUrl, key), lease = (o) => pod().lease(o), podPhase = () => pod().phaseNow(), podVram = () => pod().vramGb(), podRoom = () => pod().room(), podArch = () => pod().arch(), run = runType(), signal, retried = 0, pause = (ms, s) => delay(ms, undefined, s ? { signal: s } : undefined), patchGraph = (g) => g, onSubmitted, onProgress, onComplete = () => {}, onStage, timeoutMs } = opts
   signal?.throwIfAborted()
+  // Library voice ids resolve to their consented samples before any graph is filled.
+  vars = { ...vars }
+  await validateWorkflowVoices(workflow, readWorkflow(workflow).template, vars, home)
   const original = workflowGraph(workflow, vars)
   let { file, template, graph } = original
   const unset = unsetInput(template, vars)
@@ -1269,7 +1379,8 @@ export async function runComfy(workflow, vars = {}, opts = {}) {
     let client
     let partner
     if (target === 'pod') {
-      held = await lease({ files: needs.filter((n) => !n.runtime), runtimes: needs.filter((n) => n.runtime).map((n) => n.runtime), ...(signal ? { signal } : {}) })
+      // onStage tells the run's job what it waits on: the Pod, a runtime install, or which files to download.
+      held = await lease({ files: needs.filter((n) => !n.runtime), runtimes: needs.filter((n) => n.runtime).map((n) => n.runtime), ...(signal ? { signal } : {}), ...(onStage ? { onStage } : {}) })
       if (held.sandbox) {
         held.release()
         throw new Error('This is the sandbox Pod, so nothing renders. Unset COMFYFIELD_POD_SANDBOX to run on a real Pod.')
@@ -1292,7 +1403,7 @@ export async function runComfy(workflow, vars = {}, opts = {}) {
       const runSignal = signal && held?.signal ? AbortSignal.any([signal, held.signal]) : signal || held?.signal
       // A Pod is paid by the hour and runs one job at a time, so its runs may take longer: a talking head of
       // 10 to 20 seconds on InfiniteTalk renders for more than 30 minutes.
-      const job = await submitAndWait(client, wf, { apiKey: partner, timeoutMs: timeoutMs ?? (target === 'pod' ? 90 : 30) * 60 * 1000, signal: runSignal, split: Boolean(held || onSubmitted) }, async (j) => { submitted = true; await onSubmitted?.(j) })
+      const job = await submitAndWait(client, wf, { apiKey: partner, timeoutMs: timeoutMs ?? (target === 'pod' ? 90 : 30) * 60 * 1000, signal: runSignal, split: Boolean(held || onSubmitted || onProgress), where, onProgress }, async (j) => { submitted = true; await onSubmitted?.(j) })
       await onComplete({ id: job.id, actualCost: null, seconds: gpuSeconds(job, t0) })
       if (target === 'cloud') {
         try { logCloudRun({ seconds: gpuSeconds(job, t0), minVramGb: minVramOf(needs) }) } catch {}
@@ -1490,4 +1601,13 @@ export async function saveFiles(files, dir) {
     saved.push(dest)
   }
   return saved
+}
+
+// Business-page import stays isolated from provider execution.
+export const importBusinessPage = (options, deps = {}) => readBusinessPage(options, { save: saveMedia, ...deps })
+export async function stitchStatus() {
+  try {
+    await findFfmpeg()
+    return { available: true }
+  } catch (e) { return { available: false, error: e.message } }
 }

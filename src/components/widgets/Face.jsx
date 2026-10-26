@@ -28,7 +28,7 @@ export default function Face({ value, onChange, setError }) {
   }
   return <div className="widget">
     <div className="pills" role="group" aria-label="Face source">
-      {[['photo', 'From a photo'], ['library', 'Library character']].map(([id, label]) => <button type="button" key={id} disabled={busy} aria-pressed={source === id} className={source === id ? 'on' : ''} onClick={() => { if (source !== id) { setSource(id); onChange(null) } }}>{label}</button>)}
+      {[['photo', 'From a photo'], ['library', 'Saved character']].map(([id, label]) => <button type="button" key={id} disabled={busy} aria-pressed={source === id} className={source === id ? 'on' : ''} onClick={() => { if (source !== id) { setSource(id); onChange(null) } }}>{label}</button>)}
     </div>
     {source === 'photo' && (!value ? <Upload onChange={onChange} setError={setError} /> : <>
       <fieldset className="widget-fieldset" disabled={busy}>
@@ -41,9 +41,9 @@ export default function Face({ value, onChange, setError }) {
       <p className="sheet-note">Move and resize the box around the face you want to use.</p>
     </>)}
     {source === 'library' && <>
-      {!lib.ready && <p className="sheet-note">Loading Library</p>}
-      {lib.ready && !lib.characters.length && <p className="sheet-note">No characters yet. <Link to="/library?tab=characters">Add a character in Library</Link></p>}
-      <div className="picks" role="group" aria-label="Library characters">
+      {!lib.ready && <p className="sheet-note">Loading Assets</p>}
+      {lib.ready && !lib.characters.length && <p className="sheet-note">No characters yet. <Link to="/library?tab=characters">Add a character in Assets</Link></p>}
+      <div className="picks" role="group" aria-label="Saved characters">
         {lib.characters.map((item) => <button type="button" key={item.id} className={`pick${value?.characterId === item.id ? ' on' : ''}`} aria-pressed={value?.characterId === item.id} disabled={!item.images?.length}
           onClick={() => onChange({ url: item.images[0], faceUrl: item.images[0], name: item.name, characterId: item.id, images: item.images })}>
           <span className="pick-img">{item.images?.[0] ? <img src={item.images[0]} alt="" /> : item.name?.[0]}</span><small>{item.name}</small>

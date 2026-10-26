@@ -14,6 +14,8 @@ import { jobs } from './jobsx.js'
 import { validateFormat } from './validate.js'
 import { effects } from './effects.js'
 import { music } from './music.js'
+import { photodumpReframe } from './photodumpReframe.js'
+import { presenterFormats } from './presenters.js'
 
 export const categories = [
   { id: 'camera', name: 'Camera moves', blurb: 'One photo, one camera move.' },
@@ -72,8 +74,9 @@ const widenMix = (f) => ({
   }),
 })
 
-export const allFormats = [...motion, ...presets, ...looks, ...edits, ...people, ...ads, ...fun, ...apps2, ...mixedLooks, ...jobs, ...three, ...fromFal, ...effects, ...music]
+export const allFormats = [...motion, ...presets, ...looks, ...edits, ...people, ...ads, ...fun, ...apps2, ...mixedLooks, ...jobs, ...three, ...fromFal, ...effects, ...music, ...photodumpReframe, ...presenterFormats]
   .map((f) => (f.id === 'cam-mix' ? widenMix(f) : f))
+  .map((f) => ['long-video', 'tts', 'drama3-tts', 'qwen3-tts', 'motion-control', 'character-swap-video'].includes(f.id) ? { ...f, limits: [f.limits, 'Multi-part runs are not available yet. Use one segment or a short script per run.'].filter(Boolean).join(' ') } : f)
 
 export const formatProblems = new Map(allFormats.map((f) => [f.id, validateFormat(f)]))
 export const formats = allFormats.filter((f) => !formatProblems.get(f.id).length)
@@ -89,13 +92,23 @@ export const hubs = [
   { id: 'extras', name: 'Extras', blurb: 'Handy one-click utilities.' },
   { id: 'trending', name: 'Trending templates', blurb: 'The templates everyone is making this week.' },
 ]
-export const appsIn = (hub) => formats.filter((f) => f.hub === hub)
+// Formats the user imported from a file or gist. src/lib/userFormats.js loads them from the local
+// server and sets them here, so lookups and the Apps page see them next to the catalog.
+export const yoursHub = { id: 'yours', name: 'Yours', blurb: 'Formats you imported from a file or a gist.' }
+let yours = []
+export const setUserFormats = (list) => { yours = list.map((f) => ({ ...f, hub: yoursHub.id })) }
+export const userFormats = () => yours
 
-export const isWired = (f) => !(formatProblems.get(f.id) || validateFormat(f)).length
+export const appsIn = (hub) => (hub === yoursHub.id ? yours : formats.filter((f) => f.hub === hub))
+
+// Imported formats are not in formatProblems; check each object once.
+const checked = new WeakMap()
+const problemsOf = (f) => formatProblems.get(f.id) || checked.get(f) || (checked.set(f, validateFormat(f)), checked.get(f))
+export const isWired = (f) => !problemsOf(f).length
 export const isOpen = (f) => f.engine === 'comfy'
 
 // Studio scaffolds still read controls from planned formats; galleries use the validated list.
-export const formatById = (id) => allFormats.find((f) => f.id === id)
+export const formatById = (id) => allFormats.find((f) => f.id === id) || yours.find((f) => f.id === id)
 
 export const filterFormats = ({ category = 'all', openOnly = true, query = '' } = {}) => {
   const q = query.trim().toLowerCase()

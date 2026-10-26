@@ -1,7 +1,8 @@
 import { useEffect, useSyncExternalStore } from 'react'
+import { voiceValue } from '../../shared/voices.js'
 
 const types = ['characters', 'products', 'brands', 'voices']
-let state = { characters: [], products: [], brands: [], voices: [], ready: false }
+let state = { characters: [], products: [], brands: [], voices: [], ready: false, error: null }
 let started = false
 const subs = new Set()
 
@@ -16,8 +17,9 @@ async function call(url, method = 'GET', data) {
 }
 
 async function refresh() {
-  const lists = await Promise.all(types.map((t) => call(`/api/library/${t}`).catch(() => [])))
-  set({ ...Object.fromEntries(types.map((t, i) => [t, lists[i]])), ready: true })
+  const errors = []
+  const lists = await Promise.all(types.map((t) => call(`/api/library/${t}`).then((list) => Array.isArray(list) ? list : []).catch((e) => { errors.push(e.message); return state[t] })))
+  set({ ...Object.fromEntries(types.map((t, i) => [t, lists[i]])), ready: true, error: errors[0] || null })
 }
 
 export const upload = (file) => new Promise((resolve, reject) => {
@@ -61,10 +63,15 @@ export function useLibrary() {
   return { ...snap, refresh, create, update, remove, upload, importUrl }
 }
 
-// What a generate call receives in opts.refs. A voice brings its first sample, which a graph's
-// `{{voice}}` loads.
-export const toRef = (type, item) => ({
+// What a generate call receives in opts.refs.
+export const toRef = (type, item) => type === 'voice' ? voiceValue(item) : ({
   type, id: item.id, name: item.name, images: item.images || [],
   ...(type === 'product' ? { description: item.description, price: item.price } : { notes: item.notes }),
-  ...(type === 'voice' && { sample: item.samples?.[0] }),
 })
+
+export { voiceValue }
+
+export function useVoices() {
+  const { voices, ready, error, refresh } = useLibrary()
+  return { voices, ready, error, refresh, toValue: voiceValue }
+}

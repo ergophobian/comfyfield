@@ -55,14 +55,14 @@ export default function StitchPanel({ node, patch, disabled = false }) {
   const music = node.data.music
   return (
     <>
-      <p className="muted fp-blurb">Connect video results or add clips. Run makes a preview; export saves it to your Library.</p>
+      <p className="muted fp-blurb">Connect video results or add clips. Run makes a preview; export saves it to Assets.</p>
       <fieldset className="stitch-fields" disabled={busy}>
         <input ref={upload} type="file" accept="video/mp4,video/webm,video/quicktime" multiple hidden onChange={(e) => { addFiles([...e.target.files]); e.target.value = '' }} />
         <button type="button" className="btn-soft sm" onClick={() => upload.current.click()}>Add clips</button>
-        <label className="fp-field">From Library
-          <select className="fp-text" aria-label="Add a Library clip" value="" onChange={(e) => {
+        <label className="fp-field">From Assets
+          <select className="fp-text" aria-label="Add a clip from Assets" value="" onChange={(e) => {
             const item = gens.items.find((item) => item.id === e.target.value)
-            if (item) setClips([...clips, { id: crypto.randomUUID(), url: item.url, name: item.caption || 'Library clip' }])
+            if (item) setClips([...clips, { id: crypto.randomUUID(), url: item.url, name: item.caption || 'Clip from Assets' }])
           }}>
             <option value="">Choose a video</option>
             {gens.items.filter((item) => item.kind === 'video' && item.url).map((item) => <option key={item.id} value={item.id}>{item.caption || item.model || 'Video'}</option>)}
@@ -106,7 +106,7 @@ export default function StitchPanel({ node, patch, disabled = false }) {
       {result && <>
         <video className="stitch-preview" aria-label="Stitch preview" src={result.url} controls playsInline preload="metadata" />
         {!current && <p className="muted fp-blurb">Settings changed. Render again before exporting.</p>}
-        <button type="button" className="btn-blue sm" disabled={busy || !current || exported} onClick={save}>{exported ? 'Saved to Library' : 'Export to Library'}</button>
+        <button type="button" className="btn-blue sm" disabled={busy || !current || exported} onClick={save}>{exported ? 'Saved to Assets' : 'Export to Assets'}</button>
         {current && exported && !busy && <a className="btn-soft sm" href={result.url} download>Download video</a>}
       </>}
     </>

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { answerPod, money, podAction, podQuote, spendText, usePod } from '../../lib/usePod.js'
+import { answerPod, etaText, money, podAction, podQuote, spendText, usePod } from '../../lib/usePod.js'
 
 const COPY = {
   start: { title: 'Start a Session', go: 'Start a Session and run', busy: 'Starting' },
@@ -101,8 +101,8 @@ export default function PodSheet() {
         )}
         {quote && (
           <dl className="pod-facts">
-            {fresh && <div><dt>Ready in</dt><dd>Usually 5 to 8 minutes, then the downloads</dd></div>}
-            {quote.files.length > 0 && <div><dt>Downloads</dt><dd title={quote.files.map(fileText).join('\n')}>{downloadGb.toFixed(0)} GB in {quote.files.length} {quote.files.length === 1 ? 'file' : 'files'}, the first time</dd></div>}
+            {fresh && <div><dt>Ready in</dt><dd>Usually 5 to 8 minutes</dd></div>}
+            {quote.files.length > 0 && <div><dt>Downloads</dt><dd title={quote.files.map(fileText).join('\n')}>{downloadGb.toFixed(0)} GB in {quote.files.length} {quote.files.length === 1 ? 'file' : 'files'}, about {etaText(quote.downloadSec || 1)}{fresh ? ' while the Pod boots' : ' the first time'}</dd></div>}
             {quote.runtimes?.map((e) => <div key={e.name}><dt>Installs</dt><dd>{e.name}, about {e.gb} GB, in {e.minutes[0]} to {e.minutes[1]} minutes the first time</dd></div>)}
             <div><dt>Spent</dt><dd>{spendText(quote)}</dd></div>
           </dl>

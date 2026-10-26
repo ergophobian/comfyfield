@@ -124,10 +124,10 @@ const imageJobs = [
     runsOn: 'SeedVR2', workflow: 'seedvr2_image',
     inputs: [
       photo,
-      { id: 'size', type: 'choice', label: 'Size', default: '2k', options: [
+      { id: 'size', type: 'choice', label: 'Out at', default: '2k', options: [
         { id: 'same', label: 'Same size', params: { upscale_factor: 1, target: 0 } },
-        { id: '2k', label: '2K', params: { upscale_factor: 1, target: 2048 } },
-        { id: '4k', label: '4K', params: { upscale_factor: 1, target: 4096 } },
+        { id: '2k', label: '2k', params: { upscale_factor: 1, target: 2048 } },
+        { id: '4k', label: '4k', params: { upscale_factor: 1, target: 4096 } },
       ] },
     ],
     settings: still,

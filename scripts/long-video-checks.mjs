@@ -134,64 +134,42 @@ function fakePod() {
 
 const media = () => { const folder = path.dirname(core.mediaPath('x')); return new Set(fs.existsSync(folder) ? fs.readdirSync(folder) : []) }
 
-await test('runs: a character swap longer than one segment renders three chained segments as one video', async () => {
+await test('runs: multi-segment clips refuse initial runs and retries before paying', async () => {
   const clip = core.saveMedia(fs.readFileSync(source), 'mp4')
   const { runs, opts } = fakePod()
   const vars = { video: clip.url, image: core.saveMedia(Buffer.from('png'), 'png').url, prompt: 'Swap', seed: 7, start: 0, duration: 200 / 24 }
-  const before = media()
-  const files = await core.runComfy('scail2_character_swap', vars, opts)
-  assert.equal(runs.length, 3)
-  assert(!runs[0].graph['90'], 'the first segment has nothing before it')
-  for (const r of runs.slice(1)) {
-    assert.deepEqual(r.graph['25'].inputs.previous_frames, ['91', 0])
-    assert(r.inputs['90'].buf.length > 0, 'the segment before is uploaded')
-  }
-  assert(runs.every((r) => r.graph['28'].inputs.noise_seed === 7), 'one seed for every segment')
-  assert.equal(files.length, 1)
-  assert.equal(files[0].kind, 'video')
-  const out = await probeVideo(files[0].path, { binary })
-  assert.equal(out.frames, 197)
-  assert(out.audio, 'the clip sound runs under the whole video')
-  assert(diff(await frameAt(files[0].path, 154), await frameAt(source, 154)) < 4, 'the second seam lines up with the clip')
-  const left = [...media()].filter((f) => !before.has(f))
-  assert.deepEqual(left, [path.basename(files[0].path)], 'segments and cuts leave the media folder')
+  for (let attempt = 0; attempt < 2; attempt++) await assert.rejects(core.runComfy('scail2_character_swap', vars, opts), (e) => e.code === 'multipart_unavailable' && e.retryable === false)
+  assert.equal(runs.length, 0, 'No completed segment can be resubmitted while multi-part runs are unavailable')
 })
 
 await test('runs: a clip that fits one segment runs the graph once, unchanged', async () => {
   const short = path.join(dir, 'short.mp4')
   await run(['-i', source, '-frames:v', '60', ...enc, short])
   const { runs, opts } = fakePod()
-  const vars = { video: core.saveMedia(fs.readFileSync(short), 'mp4').url, image: core.saveMedia(Buffer.from('png'), 'png').url, prompt: 'Swap', seed: 1, start: 0, duration: 2.5 }
+  const vars = { video: core.saveMedia(fs.readFileSync(short), 'mp4').url, image: core.saveMedia(Buffer.from('png'), 'png').url, prompt: 'Swap', seed: 1, start: 0, duration: 2.5, motion_frames: 40, motion_start: 0 }
   await core.runComfy('wan_animate2', vars, opts)
   assert.equal(runs.length, 1)
-  assert.equal(runs[0].graph['2'].inputs.duration, 2.5, 'the user trim reaches the graph')
+  assert.equal(runs[0].graph['1'].inputs.frame_load_cap, 40, 'the user trim reaches the graph at 16 fps')
   assert(!runs[0].graph['90'])
 })
 
-await test('runs: a 30-second H3 prompt opens with 10 seconds and extends three times into one video', async () => {
+await test('runs: long H3 videos refuse initial runs and retries before paying', async () => {
   const { runs, opts } = fakePod()
   const vars = { prompt: 'A hiker crosses a ridge', width: 1344, height: 768, frames: 721, duration: 30, seed: 3 }
-  const files = await core.runComfy('h3_open_t2v', vars, opts)
-  assert.deepEqual(runs.map((r) => r.name), ['h3_open_t2v', 'h3_extend', 'h3_extend', 'h3_extend'])
-  assert.equal(runs[0].graph['6'].inputs.length, 241, 'the opening part is 10 seconds')
-  for (const r of runs.slice(1)) assert.match(r.graph['6'].inputs.prompt, /^Continue the video seamlessly .* A hiker crosses a ridge$/)
-  assert.deepEqual(runs.slice(1).map((r) => r.graph['60'].inputs.value), [8, 8, 3])
-  const out = await probeVideo(files[0].path, { binary })
-  assert(Math.abs(out.frames - 720) <= 1, `${out.frames} frames`)
-  assert(out.audio)
-  // Each extension's copy of the tail drops, so the first blue frame follows the opening part directly.
-  const opening = diff(await frameAt(files[0].path, 239), await frameAt(files[0].path, 238))
-  assert(diff(await frameAt(files[0].path, 240), await frameAt(files[0].path, 239)) > opening, 'the extension starts at frame 240')
+  for (let attempt = 0; attempt < 2; attempt++) await assert.rejects(core.runComfy('h3_open_t2v', vars, opts), (e) => e.code === 'multipart_unavailable')
+  assert.equal(runs.length, 0)
 })
 
 await test('runs: a short H3 run and a failed segment', async () => {
   const { runs, opts } = fakePod()
   await core.runComfy('h3_open_t2v', { prompt: 'Short', width: 1344, height: 768, frames: 121, duration: 5, seed: 3 }, opts)
   assert.equal(runs.length, 1, 'five seconds is one run')
-  let n = 0
-  const failing = { ...opts, createClient: () => ({ ...opts.createClient(), run: async (wf) => { if (++n === 2) throw new Error('GPU out of memory'); return opts.createClient().run(wf) } }) }
-  await assert.rejects(core.runComfy('h3_open_t2v', { prompt: 'Long', width: 1344, height: 768, frames: 481, duration: 20, seed: 3 }, failing), /^Error: Segment 2 of 3 failed. GPU out of memory$/)
-  // With no Pod and no Comfy key the run needs a Pod: that reaches the app as it is, so it can offer one.
-  await assert.rejects(core.runComfy('h3_open_t2v', { prompt: 'Long', width: 1344, height: 768, frames: 481, duration: 20, seed: 3 }, { ...opts, podPhase: async () => 'none' }),
-    (e) => e.code === 'needs_pod' && !e.message.startsWith('Segment'))
+  const original = Object.assign(new Error('Timed out'), { status: 504, uncancelled: 'provider-job-3', jobId: 'provider-job-3', requestId: 'request-3' })
+  const contextual = core.segmentError(original, 2, 4)
+  assert.equal(contextual, original, 'Segment context preserves the original error and its properties')
+  assert.equal(contextual.message, 'Segment 3 of 4 failed. Timed out')
+  assert.equal(contextual.uncancelled, 'provider-job-3')
+  assert.equal(contextual.jobId, 'provider-job-3')
+  assert.equal(contextual.requestId, 'request-3')
+  assert.equal(contextual.status, 504)
 })

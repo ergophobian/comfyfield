@@ -206,10 +206,12 @@ try {
       }
       await evaluate(`[...document.querySelectorAll('.picker-pick')].find((button) => button.querySelector('.picker-name').textContent === ${JSON.stringify(model.name)}).click()`)
       await wait(`document.querySelector('.picker-btn').textContent.includes(${JSON.stringify(model.name)})`)
-      await fill(kind === 'audio' ? '#script' : 'textarea[aria-label=Prompt]', prompt)
-      await wait('!document.querySelector(".gen-go").disabled')
+      // Audio runs Router models through the provider panel on the Audio studio.
+      const go = kind === 'audio' ? '.app-panel .btn-blue' : '.gen-go'
+      await fill(kind === 'audio' ? '#provider-audio-prompt' : 'textarea[aria-label=Prompt]', prompt)
+      await wait(`!document.querySelector('${go}').disabled`)
       const before = requests.length
-      await evaluate('document.querySelector(".gen-go").click()')
+      await evaluate(`document.querySelector('${go}').click()`)
       for (const deadline = Date.now() + uiTimeout; requests.length === before && Date.now() < deadline;) await pause(100)
       assert.equal(requests.length, before + 1)
       const payload = requests.at(-1)
@@ -225,11 +227,11 @@ try {
   await wait(`document.querySelector('.picker-btn')?.textContent.includes('Flux 2 max')`)
   await fill('textarea[aria-label=Prompt]', prompt)
   for (let i = 0; i < 4; i++) {
-    await evaluate(`document.querySelector('[aria-label="Add from Library"]').click()`)
+    await evaluate(`document.querySelector('[aria-label="Add from Assets"]').click()`)
     await wait(`document.querySelectorAll('.gen-lib').length === 5`)
     await evaluate(`document.querySelectorAll('.gen-lib')[${i}].click()`)
     await wait(`document.querySelectorAll('.ref').length === ${i + 1}`)
-    await evaluate(`document.querySelector('[aria-label="Add from Library"]').click()`)
+    await evaluate(`document.querySelector('[aria-label="Add from Assets"]').click()`)
   }
   await evaluate(`document.querySelector('[aria-label="Add reference images"]').click()`)
   await wait('document.querySelector(".mp input[type=file]")')
@@ -258,10 +260,10 @@ try {
   await evaluate('document.querySelector(".ref button").click()')
   await wait('!document.querySelector(".gen-go").disabled')
   assert.equal(await evaluate(`document.querySelector('[aria-label="Add reference images"]').disabled`), true)
-  await evaluate(`document.querySelector('[aria-label="Add from Library"]').click()`)
+  await evaluate(`document.querySelector('[aria-label="Add from Assets"]').click()`)
   await wait(`document.querySelectorAll('.gen-lib').length === 5`)
   assert.equal(await evaluate('[...document.querySelectorAll(".gen-lib")].filter((b) => b.getAttribute("aria-pressed") === "false").every((b) => b.disabled)'), true)
-  await evaluate(`document.querySelector('[aria-label="Add from Library"]').click()`)
+  await evaluate(`document.querySelector('[aria-label="Add from Assets"]').click()`)
   await evaluate('document.querySelector(".gen-go").click()')
   await wait('!document.querySelector(".gen-feed .pending")')
   assert.deepEqual(requests.at(-1).input, { prompt, aspect_ratio: '1:1', input_image: reference, input_image_2: 'https://example.test/character-1.png', input_image_3: 'https://example.test/character-2.png', input_image_4: 'https://example.test/character-3.png' })

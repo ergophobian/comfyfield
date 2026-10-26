@@ -51,7 +51,7 @@ export async function durationsFor(model) {
 async function post(url, payload) {
   const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
   const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw Object.assign(new Error(data.error || `Request failed (${res.status})`), { status: res.status, code: data.code, retryable: data.retryable, requestId: data.requestId, idempotencyKey: data.idempotencyKey })
+  if (!res.ok) throw Object.assign(new Error(data.error || `Request failed (${res.status})`), { status: res.status, uncancelled: data.uncancelled, jobId: data.jobId, code: data.code, retryable: data.retryable, requestId: data.requestId, idempotencyKey: data.idempotencyKey })
   return data
 }
 
@@ -122,6 +122,10 @@ export async function run(model, opts, hooks = {}) {
   throw new Error(`${model.provider} is not wired up yet.`)
 }
 
+// The connection list has loaded and no provider is connected: a first visit.
+// GitHub and Blender are not generation keys, so they do not count.
+export const noKeys = (connections = {}) => Object.keys(connections).length > 0 && !Object.entries(connections).some(([id, c]) => !['github', 'blender'].includes(id) && c.connected)
+
 export async function getConnections() {
   const res = await fetch('/api/connections')
   return res.ok ? res.json() : {}
@@ -136,6 +140,7 @@ export async function saveConnection(id, values) {
   await post('/api/connections', { id, values })
 }
 
+// Resolves { ok, error }. error says why the test failed when the server knows, such as Blender not found.
 export async function testConnection(id) {
-  return (await post('/api/connections/test', { id })).ok
+  return post('/api/connections/test', { id })
 }

@@ -1,7 +1,7 @@
 import { useEffect, useSyncExternalStore } from 'react'
 import { api } from './remoteFlows.js'
 
-let snapshot = { sessions: [], setup: [], loading: true, error: '' }
+let snapshot = { sessions: [], setup: [], presence: [], skew: 0, loading: true, error: '' }
 const listeners = new Set()
 let events
 let timer
@@ -18,18 +18,30 @@ export async function refreshAgents() {
   }
 }
 
+// Every agent with a name and a color: Assistant sessions and terminal MCP servers.
+let presenceTimer
+export async function refreshPresence() {
+  try {
+    const { agents, now } = await api('/api/agents/presence')
+    emit({ presence: Array.isArray(agents) ? agents : [], skew: Number.isFinite(now) ? now - Date.now() : 0 })
+  } catch {}
+}
+
 export function useAgents() {
   useEffect(() => {
     if (!events) {
       events = new EventSource('/api/agents/events')
       events.onmessage = (event) => {
-        if (!JSON.parse(event.data).sessionId) return
+        const data = JSON.parse(event.data)
+        if (data.type === 'agents') { clearTimeout(presenceTimer); presenceTimer = setTimeout(refreshPresence, 30); return }
+        if (!data.sessionId) return
         clearTimeout(timer)
         timer = setTimeout(refreshAgents, 30)
       }
-      events.onopen = refreshAgents
+      events.onopen = () => { refreshAgents(); refreshPresence() }
       events.onerror = () => emit({ error: 'Reconnecting to the local server…' })
       refreshAgents()
+      refreshPresence()
     }
   }, [])
   return useSyncExternalStore((fn) => { listeners.add(fn); return () => listeners.delete(fn) }, () => snapshot)

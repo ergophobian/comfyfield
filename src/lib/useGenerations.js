@@ -1,10 +1,26 @@
 import { useEffect, useRef, useState } from 'react'
 import { run, writePrompt } from './providers.js'
-import { modelPrices } from './cost.js'
+import { modelPrices, runCost } from './cost.js'
+import { checkSpend } from './spendCap.js'
 import { runFormat } from './formats/runner.js'
+import { createPresenterSession, isPresenterFormat, presenterBlock, presenterRequirements } from './formats/presenterSession.js'
+import { askPod, refreshPod, runTypeOf, setRunType } from './usePod.js'
 import { preflightFlow } from './formats/preflight.js'
 import { waitJob, cancelJob, Cancelled } from './jobs.js'
 import { createRouterBatch } from './routerBatch.js'
+import { libraryChanged } from './flowStore.js'
+
+// Server and provider errors are already written for people. A JS error is a bug in the app, so the
+// user gets one plain line and the details go to the console.
+export const plainError = (e) => {
+  if (e?.uncancelled) return `${e.message} Job ${e.uncancelled} could not be cancelled and may still be spending. Check the provider before retrying.`
+  if (e instanceof TypeError && /fetch|network/i.test(e.message)) return 'Could not reach ComfyField. Check that the app is still running, then retry.'
+  if (e instanceof TypeError || e instanceof ReferenceError || e instanceof SyntaxError || e instanceof RangeError) {
+    console.error(e)
+    return 'Something went wrong on our side. Retry, or pick another model.'
+  }
+  return e?.message || 'The run failed. Retry, or pick another model.'
+}
 
 const KEY = 'comfyfield.library'
 const MAX_PARALLEL = 3
@@ -39,9 +55,13 @@ export function useGenerations() {
     setItems((xs) => [...files.filter((file) => !xs.some((item) => item.id === file.id)), ...xs])
   }
   const patch = (id, fn) => setItems((xs) => xs.map((x) => (x.id === id ? fn(x) : x)))
+  // Flow runs save on the server, so pick up new files after each flow action and when the Library opens.
+  const refresh = () => fetch('/api/library/generations').then((res) => res.ok ? res.json() : []).then(add).catch(() => {})
   useEffect(() => {
     fetch('/api/stitch/exports').then((res) => res.ok ? res.json() : []).then(add).catch(() => {})
-    fetch('/api/library/generations').then((res) => res.ok ? res.json() : []).then(add).catch(() => {})
+    refresh()
+    window.addEventListener(libraryChanged, refresh)
+    return () => window.removeEventListener(libraryChanged, refresh)
   }, [])
 
   useEffect(() => {
@@ -116,11 +136,12 @@ export function useGenerations() {
         if (!jobs?.length) continue
         // A Pod fallback supersedes the failed Cloud job in this same run.
         const currentJobs = base.run?.model.provider === 'comfyRouter' ? jobs : jobs.slice(-1)
-        Promise.all(currentJobs.map(waitJob)).then(
+        const onProgress = (progress) => patch(id, (x) => ({ ...x, progress }))
+        Promise.all(currentJobs.map((job) => waitJob(job, { onProgress }))).then(
           (files) => { if (!cancelled.current.has(id)) finish(id, base, files.flat()) },
           (e) => {
             if (e instanceof Cancelled || cancelled.current.has(id)) setItems((xs) => xs.filter((x) => x.id !== id))
-            else fail(id, { ...base, retryMayCharge: e.code === 'interrupted' }, e.message)
+            else fail(id, { ...base, retryMayCharge: e.code === 'interrupted' }, plainError(e))
           },
         )
       }
@@ -129,7 +150,9 @@ export function useGenerations() {
 
   // `after` also follows a retried take. Stable ids and the session retry adapter retain completed
   // format steps; the saved run retains outstanding Router calls and their request keys on reload.
-  function execute(model, opts, meta = {}, after, id = crypto.randomUUID(), retryStep) {
+  // `spendExtra` adds a follow-on run's estimate (Upscale) to this run's spend check; `spendCounted`
+  // marks that follow-on, already counted. Neither is kept on the item.
+  function execute(model, opts, { spendExtra = 0, spendCounted = false, ...meta } = {}, after, id = crypto.randomUUID(), retryStep) {
     cancelled.current.delete(id)
     // A Router input the model cannot take fails this item, not the caller's loop.
     let setupError
@@ -138,11 +161,18 @@ export function useGenerations() {
     }
     const previous = live.current.find((item) => item.id === id)
     const from = previous?.from || window.location.pathname + window.location.search
-    const base = { aspect: opts.shape || opts.aspect, caption: opts.caption, model: model.name, kind: model.kind, provider: model.provider, from, restoreNote: previous?.restoreNote, ...meta, run: { model, opts, meta } }
+    const base = { aspect: opts.aspect === 'auto' ? opts.shape : opts.aspect || opts.shape, caption: opts.caption, model: model.name, kind: model.kind, provider: model.provider, from, restoreNote: previous?.restoreNote, ...meta, run: { model, opts, meta } }
     const owner = meta.formatRunId || id
     clearError(meta.formatRunId ? owner : errorOwner.current)
     setItems((xs) => [{ id, pending: true, ...base, jobs: opts.routerBatch?.calls.map((call) => call.jobId).filter(Boolean) || [] }, ...xs.filter((x) => x.id !== id)])
-    return new Promise((resolve, reject) => {
+    // A run that would pass the session's spend cap asks first. A run resumed after a reload was counted when it started.
+    const own = runCost(model, opts)
+    const allowed = previous?.pending || spendCounted ? Promise.resolve(true) : checkSpend(own == null ? null : own + spendExtra)
+    return new Promise((resolve, reject) => allowed.then((ok) => {
+      if (!ok) {
+        setItems((xs) => xs.filter((x) => x.id !== id))
+        return reject(new Cancelled())
+      }
       waiting.current.push(async () => {
         if (cancelled.current.has(id)) return reject(new Cancelled())
         patch(id, (x) => ({ ...x, started: true }))
@@ -152,6 +182,8 @@ export function useGenerations() {
             isCancelled: () => cancelled.current.has(id),
             onFiles: (files, index) => partial(id, base, files, index),
             onPod: () => patch(id, (x) => ({ ...x, pod: true })),
+            onProgress: (progress) => patch(id, (x) => ({ ...x, progress })),
+            onStage: (stage) => patch(id, (x) => ({ ...x, podStage: stage })),
             onJob: (job) => {
               patch(id, (x) => ({ ...x, jobs: [...(x.jobs || []), job] }))
               if (cancelled.current.has(id)) cancelJob(job)
@@ -169,16 +201,36 @@ export function useGenerations() {
             setItems((xs) => xs.filter((x) => x.id !== id))
             return reject(new Cancelled())
           }
-          fail(id, { ...base, retryMayCharge: e.code === 'interrupted' }, e.message, retryStep, after)
+          fail(id, { ...base, retryMayCharge: e.code === 'interrupted' }, plainError(e), retryStep, after)
+          e.onTile = true // so a page does not show this error a second time
           reject(e)
         }
       })
       pump()
-    })
+    }))
   }
 
   const generate = (model, opts, meta, after) => { execute(model, opts, meta, after).catch(() => {}) }
+  // UGC and influencer motion keep their own presenter session: script limits, stale-script Rerun and a Session guard.
+  const generatePresenter = async (format, values, { onSession } = {}) => {
+    const adapters = { run: execute, writePrompt: ({ instructions, note, images, target }) => writePrompt({ instructions, note, images, target }) }
+    const guard = async (flow) => {
+      const requirements = await presenterRequirements(flow, async (workflow) => {
+        const response = await fetch(`/workflows/${workflow}.json`)
+        if (!response.ok) throw new Error('Could not check this format’s Session requirements. Try again.')
+        return response.json()
+      })
+      const status = await refreshPod()
+      const block = presenterBlock(requirements, status, runTypeOf(status))
+      if (block) throw Object.assign(new Error(block.message), { runAsSession: async () => { await setRunType('session'); await askPod(block.workflow, block.message) } })
+    }
+    const session = createPresenterSession(format, values, { ...adapters, guard })
+    onSession?.(session)
+    await session.resume()
+    return session
+  }
   const generateFormat = (format, values, options = {}) => {
+    if (isPresenterFormat(format)) return generatePresenter(format, values, options)
     let session
     return runFormat(format, values, {
       prices: modelPrices,
@@ -217,5 +269,6 @@ export function useGenerations() {
     setItems((xs) => xs.filter((x) => x.id !== id))
   }
 
-  return { items, error, retry: retryLast, busy, generate, generateFormat, add, cancel, toggleApprove, dismiss, clear: () => setItems([]) }
+  const dismissError = () => { errorOwner.current = null; setError(null); setRetryLast(null) }
+  return { items, error, retry: retryLast, dismissError, busy, generate, generateFormat, add, refresh, cancel, toggleApprove, dismiss, clear: () => setItems([]) }
 }

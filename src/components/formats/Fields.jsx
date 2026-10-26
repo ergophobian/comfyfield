@@ -6,6 +6,7 @@ import { IconUpload, IconLink } from '../Icons.jsx'
 import MediaPicker from '../generate/MediaPicker.jsx'
 import { uploadFile, pastedFile } from '../../lib/uploads.js'
 import { useLibrary, toRef, readProduct, pageSummary } from '../../lib/useLibrary.js'
+import VoicePicker from '../generate/Voices.jsx'
 
 const media = {
   image: { accept: 'image/png,image/jpeg,image/webp,image/gif', hint: 'Drop an image or click to choose', noun: 'an image' },
@@ -18,7 +19,6 @@ const picks = {
   character: { list: 'characters', noun: 'characters' },
   product: { list: 'products', noun: 'products' },
   brand: { list: 'brands', noun: 'brand kits' },
-  voice: { list: 'voices', noun: 'voices' },
 }
 
 const textual = ['text', 'longtext']
@@ -181,6 +181,7 @@ function DrawField({ input, value, onChange, setError, labelId }) {
 }
 
 function Choice({ input, value, onChange, labelId }) {
+  if (input.confirmation) return <label className="presenter-confirmation"><input type="checkbox" checked={value === input.options[0].id} onChange={(event) => onChange(event.target.checked ? input.options[0].id : null)} />{input.options[0].note}</label>
   const cards = input.options.some((o) => o.note)
   return (
     <div className={cards ? 'opt-grid' : 'pills'} role="group" aria-labelledby={labelId}>
@@ -217,8 +218,8 @@ function LibraryPick({ input, value, onChange, labelId }) {
   const lib = useLibrary()
   const { list, noun } = picks[input.type]
   const items = lib[list] || []
-  if (!lib.ready) return <p className="sheet-note">Loading Library</p>
-  if (!items.length) return <p className="sheet-note">No {noun} yet. <Link to={`/library?tab=${list}`}>Add one in Library</Link></p>
+  if (!lib.ready) return <p className="sheet-note">Loading Assets</p>
+  if (!items.length) return <p className="sheet-note">No {noun} yet. <Link to={`/library?tab=${list}`}>Add one in Assets</Link></p>
   const brand = input.type === 'brand'
   return (
     <div className="picks" role="group" aria-labelledby={labelId}>
@@ -268,7 +269,8 @@ export function Field({ input, value, onChange, onFill, setError = () => {} }) {
   const { type } = input
   const props = { input, value, onChange, labelId }
   let body
-  if (widgetTypes.includes(type) || (type === 'draw' && input.mode !== 'motion')) body = <InputWidget type={type === 'draw' ? 'mask' : type} {...props} setError={setError} />
+  if (type === 'voice' || input.voiceSample) body = <VoicePicker value={value} onChange={onChange} title={input.label} optional={!!input.optional} />
+  else if (widgetTypes.includes(type) || (type === 'draw' && input.mode !== 'motion')) body = <InputWidget type={type === 'draw' ? 'mask' : type} {...props} setError={setError} />
   else if (media[type]) body = <MediaField {...props} setError={setError} />
   else if (type === 'draw') body = <DrawField {...props} setError={setError} />
   else if (type === 'text' && input.reads && onFill) body = <PageLink {...props} id={id} onFill={onFill} setError={setError} />

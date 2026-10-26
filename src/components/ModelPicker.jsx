@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { brands, brandOf, Logo } from '../lib/brands.jsx'
+import { models as catalog } from '../lib/catalog.js'
 import { useModelMeta, money } from '../lib/cost.js'
 
 const Star = ({ on }) => (
@@ -86,6 +87,10 @@ export default function ModelPicker({ model, options, open = [], favorites, togg
   const pm = preview && !preview.open ? metaOf(preview) : {}
   const pick = (id) => { choose(id); setOpen(false) }
   const nothing = !ordered.length && !openList.length
+  // Without a Comfy key the Router models stay out of the list; one row says how to get them.
+  const kind = model.kind || options[0]?.kind
+  const askKey = 'comfyRouter' in connections && !connections.comfyRouter.connected && (rail === 'all' || rail === 'comfy')
+    && options.length > 0 && catalog.some((m) => m.provider === 'comfyRouter' && m.kind === kind)
 
   return (
     <div className={`picker${variant === 'row' ? ' as-row' : ''}${up ? ' up' : ''}`} ref={ref}>
@@ -125,6 +130,17 @@ export default function ModelPicker({ model, options, open = [], favorites, togg
               <input ref={search} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search models" />
             </label>
             <div className="picker-list" onMouseLeave={() => setHover(null)}>
+              {askKey && (
+                <div className="picker-group">
+                  <div className="picker-head"><Logo brand="comfy" size={12} />Comfy Router</div>
+                  <Link to="/connections" className="picker-row picker-key" onClick={() => setOpen(false)}>
+                    <span className="picker-pick">
+                      <span className="picker-name">Add your Comfy key</span>
+                      <span className="picker-sub">Hosted models with prices, through one key</span>
+                    </span>
+                  </Link>
+                </div>
+              )}
               {openList.length > 0 && (
                 <div className="picker-group">
                   <div className="picker-head"><OpenMark />Open weights{openList.some(unwired) && <em className="picker-todo">Not wired yet</em>}</div>

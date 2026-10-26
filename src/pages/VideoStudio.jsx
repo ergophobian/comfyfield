@@ -12,7 +12,7 @@ import AutoUpscale, { useUpscalePrefs } from '../components/generate/AutoUpscale
 import { LibraryPicks, RefTags, refOf } from '../components/generate/Library.jsx'
 import MentionText from '../components/generate/Mentions.jsx'
 import { PresetCard, PresetPicker, PresetRow, cameraPresets, general, presetText } from '../components/generate/Presets.jsx'
-import { Banner, Feed, GoButton, PanelTabs, StatusNote, Steps, balanceText, canRun, costText, noun, useBatches, useSticky } from '../components/generate/parts.jsx'
+import { Feed, GoButton, PanelTabs, StatusNote, Steps, balanceText, canRun, costText, noun, useBatches, useSticky } from '../components/generate/parts.jsx'
 import { asOpen, useDurations, useGenModel } from '../components/generate/useGenModel.js'
 import EnhanceChip, { enhancePrompt, useEnhance } from '../components/generate/Enhance.jsx'
 import { label, paramsFor, useModelInputs } from '../components/generate/useModelInputs.js'
@@ -21,12 +21,14 @@ import { IconAspect, IconClock, IconImage, IconSpark, IconStack, IconVideo } fro
 import { useApp } from '../lib/appContext.js'
 import { chooseModel, useHandoff } from '../lib/handoff.js'
 import { usePod } from '../lib/usePod.js'
-import { acceptsImage } from '../lib/providers.js'
+import { acceptsImage, noKeys } from '../lib/providers.js'
 import { openModels } from '../lib/tools.js'
 import { estimate, useBalance, useModelMeta } from '../lib/cost.js'
 import { flowFromBatch, openFlow } from '../lib/flowStore.js'
 import { covers } from '../lib/formats/parts.js'
 import { measureVideo, planUpscale, sourcesFor, upscaleJob, upscalerModel } from '../lib/upscale.js'
+import ConnectComfy from '../components/generate/ConnectComfy.jsx'
+import CreditsLink from '../components/CreditsLink.jsx'
 
 const panelTabs = [
   { value: 'create', label: 'Create video' },
@@ -97,8 +99,11 @@ function CreateVideo({ preset, onPresets, setError, onRan, addBatch }) {
   const prompts = multi ? [shotsPrompt(shots)].filter(Boolean) : batching ? rows.map((r) => r.text.trim()).filter(Boolean) : prompt.trim() ? [prompt.trim()] : []
   const perPrompt = batching ? takes : 1
   const total = prompts.length * perPrompt
-  const each = estimate(model, metaOf(model), { aspect: ratio, count: 1, duration: dur, takes: perPrompt })
-  const cost = each && prompts.length ? { usd: each.usd * prompts.length, approx: each.approx } : null
+  // A Pod bills by the hour, not per run, so a Pod run shows no per-run estimate. The Upscale run is part of each take's.
+  const onPod = model.provider === 'comfy' && (pod?.phase === 'ready' || model.pod)
+  const each = onPod ? null : estimate(model, metaOf(model), { aspect: ratio, count: 1, duration: dur, takes: perPrompt })
+  const upEach = upscaling && each && pod?.phase !== 'ready' ? estimate(upscalerModel(up.upscaler), {}, { duration: dur, takes: perPrompt }) : null
+  const cost = each && prompts.length ? { usd: (each.usd + (upEach?.usd || 0)) * prompts.length, approx: each.approx || Boolean(upEach) } : null
   const bal = !model.open && balanceText(balance, model.provider)
 
   const go = async (e) => {
@@ -125,7 +130,7 @@ function CreateVideo({ preset, onPresets, setError, onRan, addBatch }) {
     const upscale = (caption, meta) => async (files) => {
       for (const f of files.filter((x) => x.url && (!x.kind || x.kind === 'video'))) {
         const job = upscaleJob(target, await measureVideo(f.url), { short: plan.source?.short, seconds: dur })
-        if (job) gens.generate(upscaler, { prompt: '', caption, aspect: ratio, count: 1, video: f.url, duration: job.duration, params: { upscale_factor: job.factor } }, { ...meta, upscaled: target.label })
+        if (job) gens.generate(upscaler, { prompt: '', caption, aspect: ratio, count: 1, video: f.url, duration: job.duration, params: { upscale_factor: job.factor } }, { ...meta, upscaled: target.label, spendCounted: true })
       }
     }
     ready.forEach((p, r) => {
@@ -136,7 +141,7 @@ function CreateVideo({ preset, onPresets, setError, onRan, addBatch }) {
         gens.generate(model, {
           prompt: full, caption, aspect: ratio, count: 1, duration: dur, images, ...(scale && { scale }),
           ...(Object.keys(params).length && { params }), ...(refs.length && { refs }),
-        }, meta, upscaling ? upscale(caption, meta) : undefined)
+        }, { ...meta, ...(upEach && { spendExtra: upEach.usd / perPrompt }) }, upscaling ? upscale(caption, meta) : undefined)
       }
     })
     onRan()
@@ -171,7 +176,7 @@ function CreateVideo({ preset, onPresets, setError, onRan, addBatch }) {
             onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), go())} />
         )}
         <div className="chips">
-          <Pop keep icon={<IconAt />} label={refs.length ? `${refs.length} ${refs.length === 1 ? 'element' : 'elements'}` : 'Elements'} lit={refs.length > 0} title="Elements from Library">
+          <Pop keep icon={<IconAt />} label={refs.length ? `${refs.length} ${refs.length === 1 ? 'element' : 'elements'}` : 'Elements'} lit={refs.length > 0} title="Elements from Assets">
             <LibraryPicks refs={refs} setRefs={setRefs} />
           </Pop>
           {!model.open && !multi && <EnhanceChip on={enhance} setOn={setEnhance} busy={enhancing} />}
@@ -224,7 +229,7 @@ function CreateVideo({ preset, onPresets, setError, onRan, addBatch }) {
           {shots.length} {shots.length === 1 ? 'shot' : 'shots'} · {shotTotal}s{durations.length > 0 && dur !== shotTotal ? `, renders as ${dur}s` : ''}
         </p>
       )}
-      <StatusNote model={model} connected={connected} />
+      {noKeys(connections) ? <ConnectComfy /> : <StatusNote model={model} connected={connected} />}
       <div className="gen-go-row">
         {batching && prompts.length > 0 && !model.open && <button type="button" className="btn-soft" onClick={openAsFlow}>Open as flow</button>}
         <GoButton total={total} cost={costText(cost)} disabled={!total || !connected || (needsFrame && !start) || enhancing} />
@@ -348,6 +353,8 @@ export default function VideoStudio() {
     </div>
   )
 
+  // A failed tile already shows its own error with Retry and Dismiss.
+  const runError = gens.items.some((i) => i.failed === gens.error) ? null : gens.error
   return (
     <main className="gen gen-split">
       <aside className={`gen-panel glass${sticks ? ' stick' : ''}`} ref={panel} aria-label="Video settings">
@@ -363,9 +370,8 @@ export default function VideoStudio() {
         <div className="gen-main-head">
           <Segmented value={main} onChange={setMain} options={mainTabs} />
         </div>
-        <Banner />
         <Tip page="video" onLearn={() => setMain('how')} />
-        {gens.error && <div className="notice glass error gen-notice">{gens.error}{gens.retry && <button type="button" className="link-btn" onClick={gens.retry}>{gens.retry.label || 'Retry'}</button>}</div>}
+        {runError && <div className="notice glass error gen-notice">{runError}<CreditsLink message={runError} />{gens.retry && <button type="button" className="link-btn" onClick={gens.retry}>{gens.retry.label || 'Retry'}</button>}<button type="button" className="link-btn" onClick={gens.dismissError}>Dismiss</button></div>}
         {main === 'how' ? explainer : <Feed kind="video" gens={gens} batches={batches} empty={explainer} />}
       </section>
 
