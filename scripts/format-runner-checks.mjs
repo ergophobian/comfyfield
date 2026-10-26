@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { recipes, initialValues, recipeOptions } from '../src/lib/recipes.js'
 import { allFormats, formats, formatProblems } from '../src/lib/formats/index.js'
 import { compileFormat, runFormat as runWithPlanning, preflight } from '../src/lib/formats/runner.js'
+import { stepOptions } from '../src/lib/formats/options.js'
 import { validateFormat } from '../src/lib/formats/validate.js'
 import { schemas } from '../src/lib/formats/schemas.js'
 import { falInput, comfyVars } from '../shared/mapping.js'
@@ -642,6 +643,8 @@ for (const id of ['motion-transfer', 'video-character-swap']) {
   assert(format, `${id} remains runnable`)
   assert.match(format.blurb, /Use footage you own or have permission to use\./)
   const values = { ...initialValues(format), video: { url: 'https://example.test/owned.mp4', duration: 8, trim: { start: 3, end: 7 } }, image: photo, face: photo, scene: 'A small kitchen with warm window light' }
+  const short = stepOptions(format, format.steps.find((step) => step.id === 'draft'), { ...values, video: { ...values.video, trim: { start: 3, end: 3.5 } } })
+  assert.equal(comfyVars('video', short).duration, 0.5, 'Draft cannot extend a short selection')
   for (const source of id === 'video-character-swap' ? ['photo', 'character'] : ['photo']) {
     for (const mode of ['note', 'write', 'disconnected']) {
       const calls = []

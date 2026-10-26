@@ -298,7 +298,7 @@ const faceAndIdentity = [
     shape: 'pipeline',
     steps: [
       sceneWriter,
-      { id: 'draft', provider: 'comfy', workflow: 'scail2_character_swap', kind: 'video', params: { duration: 1 }, targetInput: 'source', targets: {
+      { id: 'draft', provider: 'comfy', workflow: 'scail2_character_swap', kind: 'video', settings: { aspect: 'auto', duration: 1 }, targetInput: 'source', targets: {
         photo: { bindings: { image: 'face.url' } },
         character: { bindings: { image: 'character.images.0' } },
       } },

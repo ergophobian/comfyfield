@@ -23,6 +23,8 @@ export function stepModel(format, step, values) {
 export function stepOptions(format, step, values) {
   step = selectedStep(format, step, values)
   const opts = recipeOptions({ ...format, prompt: step.prompt ?? format.prompt ?? '', params: step.params || {}, settings: step.settings || format.settings || {} }, values)
+  // A short draft starts at the selected trim without extending past its end.
+  if (step.settings?.duration > 0 && opts.trim) opts.trim = { ...opts.trim, end: Math.min(opts.trim.end, opts.trim.start + step.settings.duration) }
   for (const [field, slot] of Object.entries(step.bindings || {})) {
     let value = bindingValue(values, slot)
     // A choice passes its option's text, as it does in a prompt.
