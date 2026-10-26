@@ -679,7 +679,7 @@ for (const id of ['motion-transfer', 'video-character-swap']) {
       }
       assert.equal(calls.length, 1, 'Only the draft renders before approval')
       assert.equal(calls[0].vars.duration, 1)
-      if (id === 'motion-transfer') assert.equal(calls[0].vars.motion_frames, 17)
+      if (id === 'motion-transfer') assert.equal(calls[0].vars.motion_frames, 13)
       assert.equal(session.engine.gate('review').status, 'reviewing')
       assert.equal(session.results().length, 0)
       await session.engine.runNew(session.flow)

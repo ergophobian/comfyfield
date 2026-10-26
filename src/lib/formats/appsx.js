@@ -293,7 +293,7 @@ const enhanceAndStyle = [
 const faceAndIdentity = [
   open({
     id: 'video-character-swap', name: 'Video character swap', kind: 'video', category: 'video-edit', hub: 'face', layout: 'wide',
-    blurb: 'Replace the person in a video with your character, same moves and timing. Review a one-second draft before the final. Use footage you own or have permission to use.',
+    blurb: 'Replace the person in a video with your character, same moves and timing. Review a short draft before the final. Use footage you own or have permission to use.',
     runsOn: 'SCAIL-2', workflow: 'scail2_character_swap',
     shape: 'pipeline',
     steps: [
