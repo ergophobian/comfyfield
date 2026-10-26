@@ -5,10 +5,10 @@ name: Build and checks
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review, labeled]
-    paths-ignore: ['**.md', 'research_notes/**', 'docs/**', '**/screenshots/**']
+    paths-ignore: ['**.md', 'research_notes/**', 'docs/**', '**/screenshots/**', 'site/**']
   push:
     branches: [main]
-    paths-ignore: ['**.md', 'research_notes/**', 'docs/**', '**/screenshots/**']
+    paths-ignore: ['**.md', 'research_notes/**', 'docs/**', '**/screenshots/**', 'site/**']
   workflow_dispatch:
 
 concurrency:

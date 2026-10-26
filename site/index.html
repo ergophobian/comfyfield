@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ComfyField is a local-first, open-source creative studio for images, video and audio. Start with Comfy Cloud and Comfy Router, using your own keys.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' file:; style-src 'self' file:; base-uri 'none'; form-action 'none'">
+  <title>ComfyField — Your own creative studio</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="wrap">
+    <a class="brand" href="#main">ComfyField</a>
+    <nav aria-label="Main navigation"><a href="#features">Features</a><a href="#install">Install</a><a href="https://github.com/ergophobian/comfyfield">GitHub</a></nav>
+  </header>
+  <main id="main" class="wrap">
+    <div class="hero">
+      <span class="kicker">Open source. Your own keys.</span>
+      <h1>Your ideas.<br>Your creative studio.</h1>
+      <p>Make images, video and audio in one local-first studio. Start with Comfy Cloud and Comfy Router. Connect your own keys and keep your work on your machine.</p>
+      <div class="actions"><a class="btn-blue" href="https://github.com/ergophobian/comfyfield">Get ComfyField on GitHub</a><a href="#install">Run it locally</a></div>
+      <p class="small">The studio runs locally. Generation runs at your connected providers and uses their credits.</p>
+    </div>
+    <figure class="hero-shot glass">
+      <img src="assets/create.webp" width="1440" height="900" alt="ComfyField image composer with a paper boat prompt and no provider keys connected">
+      <figcaption>Real app capture: editing a prompt before generation. No keys or generated results. Captured for the launch README; some controls have since changed.</figcaption>
+    </figure>
+    <section id="demo" aria-labelledby="demo-title">
+      <h2 id="demo-title">See the studio in action</h2>
+      <div class="demo" role="note"><span class="kicker">Demo video</span><h3>Recording coming here</h3><p>TODO: Add the demo video link before submission.</p></div>
+    </section>
+    <section id="features" aria-labelledby="features-title">
+      <h2 id="features-title">One composer. Connected steps.</h2>
+      <p class="section-intro">Generate through connected models, organize results in the Library, and build repeatable work in Flows. Features depend on the selected provider and model. Some tools remain marked “Not wired yet.”</p>
+      <div class="grid">
+        <article class="card glass"><h3>Start with a batch</h3><p>Write several prompts in the composer. Run them together or open them as a flow.</p><figure><img loading="lazy" src="assets/batch.webp" width="1440" height="900" alt="Real batch composer containing three prompts before generation"><figcaption>Batch editing, without a generation run.</figcaption></figure></article>
+        <article class="card glass"><h3>Review before the next step</h3><p>Connect prompts, models and Approve gates. Run fills gaps; Send continues past a review gate.</p><figure><img loading="lazy" src="assets/flows.webp" width="1440" height="900" alt="Real Flows canvas showing an image model, an Approve gate and a video model"><figcaption>Image then animate starter flow, before execution.</figcaption></figure></article>
+        <article class="card glass"><h3>Keep your work together</h3><p>The Library holds generations and reusable characters, products, brand kits and voices.</p><figure><img loading="lazy" src="assets/library.webp" width="1440" height="900" alt="Real Library interface showing its empty state and asset tabs"><figcaption>Empty Library. This capture contains no generated media.</figcaption></figure></article>
+        <article class="card glass"><h3>Connect your agent</h3><p>The command line and MCP server share the studio's provider code and saved connections. Agents can build and run flows, stopping at review gates.</p><figure><img loading="lazy" src="assets/skills.webp" width="1440" height="900" alt="Real Skills page showing agent setup instructions"><figcaption>Agent setup interface. Use the source checkout configuration in the project README.</figcaption></figure></article>
+      </div>
+      <p class="small">All five images are existing real app captures from docs/screenshots/readme in the project. They show the interface without keys, not proof of paid generation. No mock screenshots are used.</p>
+    </section>
+    <section id="install" aria-labelledby="install-title">
+      <h2 id="install-title">Run it on your computer</h2>
+      <div class="glass card">
+        <ol class="steps">
+          <li>Install Node.js 22 or newer and Git.</li>
+          <li>Clone and start the studio:
+<pre><code>git clone https://github.com/ergophobian/comfyfield.git
+cd comfyfield
+npm install
+npm run dev</code></pre></li>
+          <li>Open the local address printed in your terminal.</li>
+          <li>Get a key from <a href="https://platform.comfy.org/profile/api-keys">Comfy Platform</a>. In Connections, add it to the ComfyUI card and choose Save and test.</li>
+          <li>Open Image, choose an available Comfy model, enter a prompt and generate. The selected model needs the appropriate account access and credits.</li>
+        </ol>
+        <p>No local GPU is needed for cloud generation. For a container, use <code>docker compose up -d</code> from the clone. <a href="https://github.com/ergophobian/comfyfield/blob/main/docs/docker.md">Read Docker setup</a>.</p>
+        <p class="small">Browse without a key. Generation uses provider credits. The optional session cap asks before estimates exceed your cap in this tab. Unknown prices pass without counting; it is not a provider billing limit. Pods have a separate daily cap and idle shutdown.</p>
+      </div>
+    </section>
+    <section id="providers" aria-labelledby="providers-title">
+      <h2 id="providers-title">Choose your connections</h2>
+      <dl class="provider-list">
+        <dt>Comfy Cloud and Router</dt><dd>Start with one Comfy key. Run bundled workflows on Cloud or hosted models through Router.</dd>
+        <dt>fal</dt><dd>Optional hosted image, video and audio models with your fal key.</dd>
+        <dt>Google AI</dt><dd>Optional media generation and prompt writing with your Google key.</dd>
+        <dt>ElevenLabs</dt><dd>Optional speech and sound effects with your ElevenLabs key.</dd>
+        <dt>RunPod</dt><dd>Optional rented ComfyUI sessions. Compute, storage and partner-node costs can be separate.</dd>
+      </dl>
+    </section>
+    <section id="comfy" aria-labelledby="comfy-title">
+      <h2 id="comfy-title">Built on the Comfy Developer Platform</h2>
+      <div class="grid">
+        <article class="card glass"><h3>Comfy Router</h3><p>The server discovers models through API v2, submits requests with an idempotency key, polls status and downloads results. Hosted image, video and audio paths share the app's model mapping.</p><p><code>api.comfy.org/v2/models</code></p></article>
+        <article class="card glass"><h3>Comfy SDK</h3><p>Bundled API-format workflows load through <code>@comfyorg/sdk</code>. The runner binds media uploads, submits jobs, waits for completion and downloads outputs. It targets Cloud or a rented Pod.</p><p>Instant and Session can use different model variants. Check the model notes.</p></article>
+      </div>
+      <p class="small">Built for Open Source Higgsfield. These paths are implemented in the project; this launch page does not claim every workflow has passed a live render.</p>
+    </section>
+    <section aria-labelledby="license-title">
+      <h2 id="license-title">Open source, with room to contribute</h2>
+      <p>ComfyField is <a href="https://github.com/ergophobian/comfyfield/blob/main/LICENSE">MIT licensed</a>. Providers, model weights, ffmpeg and the caption font have separate terms. Read the <a href="https://github.com/ergophobian/comfyfield/blob/main/NOTICE.md">third-party notices</a> and <a href="https://github.com/ergophobian/comfyfield/blob/main/AGENTS.md">contribution rules</a>.</p>
+    </section>
+  </main>
+  <footer class="wrap"><p>ComfyField · Local-first creative tools</p><a href="https://github.com/ergophobian/comfyfield">Source on GitHub</a></footer>
+</body>
+</html>
