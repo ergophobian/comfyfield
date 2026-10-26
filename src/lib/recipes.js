@@ -192,10 +192,12 @@ export function recipeOptions(recipe, values) {
   const refs = []
   const inputs = {}
   let widgets = {}
+  let voiceConsent = false
   let params = { ...recipe.params }
   const fill = {}
   for (const input of visibleInputs(recipe, values)) {
     const v = values[input.id]
+    if ((input.type === 'voice' || input.voiceSample) && v?.consent === true) voiceConsent = true
     if (widgetTypes.includes(input.type) || (input.type === 'draw' && input.mode !== 'motion')) {
       const type = input.type === 'draw' ? 'mask' : input.type
       if (!widgetReady(type, v)) continue
@@ -234,6 +236,7 @@ export function recipeOptions(recipe, values) {
   return {
     ...widgets, prompt, caption: recipe.name, images, fields, params: rest, count: 1,
     ...(slots && { slots }),
+    ...(voiceConsent && { voiceConsent: true }),
     ...(Object.keys(inputs).length && { inputs }),
     ...(Object.keys(media).length && { media }), ...(refs.length && { refs }),
     aspect: shaped || recipe.settings.aspect, duration: timed || recipe.settings.duration, ...(scale && { scale }), shape: first ? values[first.id]?.ratio : undefined,

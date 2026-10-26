@@ -281,7 +281,7 @@ const voice = [
     blurb: 'Turn a short sample of your voice into a reusable voice.',
     runsOn: 'Chatterbox', workflow: 'chatterbox_clone',
     inputs: [
-      { id: 'audio', type: 'audio', label: 'Sample, 10 to 30 seconds' },
+      { id: 'audio', type: 'audio', voiceSample: true, label: 'Voice sample, 6 to 60 seconds' },
       { id: 'name', type: 'text', label: 'Voice name', placeholder: 'My narrator voice' },
     ],
     // Chatterbox clones from the sample itself (its first 10 seconds count), so the run reads a short

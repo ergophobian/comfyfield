@@ -2977,6 +2977,42 @@ a.skill-chip:active { transform: scale(.96); }
 .presenter-confirmation { display: flex; align-items: start; gap: var(--agent-small-gap); font-size: var(--text-sm); }
 .presenter-confirmation input { width: auto; flex-shrink: 0; }
 .presenter-stale { padding: var(--agent-small-gap); border: var(--agent-border) solid var(--line); border-radius: var(--r-sm); }
+/* Voice library: saved samples, editor and shared picker */
+.voice-library { display: grid; gap: var(--agent-gap); min-width: 0; }
+.voice-library-toolbar, .voice-library-actions, .voice-library-upload { display: flex; align-items: center; gap: var(--widget-space); flex-wrap: wrap; }
+.voice-library-toolbar { justify-content: space-between; }
+.voice-library-toolbar p { margin: 0; color: var(--ink-2); }
+.voice-library-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--agent-panel)), 1fr)); gap: var(--agent-gap); }
+.voice-library-card { min-width: 0; padding: var(--agent-pad); border-radius: var(--r-lg); display: grid; gap: var(--widget-space); }
+.voice-library-card h3, .voice-library-card p { margin: 0; overflow-wrap: anywhere; }
+.voice-library-card h3 { font-size: var(--text-lg); font-weight: 500; }
+.voice-library-card audio, .voice-library-sample audio { display: block; width: 100%; min-width: 0; }
+.voice-library-actions { font-size: var(--text-sm); }
+.voice-library-overlay { padding: var(--widget-space); }
+.voice-library-editor { max-width: 100%; max-height: calc(100dvh - var(--agent-pad)); overflow-y: auto; }
+.voice-library-editor .form-note { margin: 0; }
+.voice-library-upload label { cursor: pointer; }
+.voice-library-sample { min-width: 0; display: grid; gap: var(--widget-space); }
+.voice-library-sample > span { overflow-wrap: anywhere; font-size: var(--text-sm); }
+.voice-library-trim { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--widget-space); }
+.voice-library-trim label { display: grid; gap: var(--widget-gap); font-size: var(--text-sm); }
+.voice-library-trim input { min-width: 0; width: 100%; }
+.voice-library-consent { display: flex; align-items: center; gap: var(--widget-space); font-size: var(--text-md); }
+.voice-library-consent input { flex: none; width: var(--text-lg); height: var(--text-lg); accent-color: var(--blue); }
+.voice-library-error { color: var(--danger); font-size: var(--text-sm); }
+.voice .voice-menu { max-width: 100%; max-height: var(--widget-stage); overflow-y: auto; }
+.voice .voice-row, .voice .voice-pick, .voice .voice-text { min-width: 0; }
+.voice .voice-pick > span:last-child { overflow-wrap: anywhere; }
+.page:has(.voice-library) .page-head .seg { max-width: 100%; overflow-x: auto; }
+.page:has(.voice-library) .page-head .seg button { flex-shrink: 0; white-space: nowrap; }
+.voice-library-trim input { height: var(--widget-touch); padding: 0 var(--widget-space); border: var(--widget-border) solid var(--line); border-radius: var(--r-md); background: var(--glass-strong); }
+.voice-library-trim input:focus { outline: var(--widget-border) solid var(--blue-focus); box-shadow: var(--ring); }
+
+/* Voice request consent */
+.voice-request-consent { display: grid; gap: var(--widget-gap); margin-top: var(--widget-gap); }
+.voice-request-consent audio { width: 100%; min-width: 0; }
+.voice-request-consent label { display: flex; align-items: flex-start; gap: var(--widget-gap); }
+.voice-request-consent input { flex: none; width: var(--text-lg); height: var(--text-lg); accent-color: var(--blue); }
 /* Art stays inside existing glass layouts and never stands in for saved results. */
 .art-image { display: block; width: 100%; height: 100%; object-fit: cover; }
 .art-media { position: relative; aspect-ratio: var(--art-card-ratio); overflow: hidden; }

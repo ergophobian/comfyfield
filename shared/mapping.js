@@ -64,6 +64,7 @@ export function comfyVars(kind, o, sizes) {
     ...Object.fromEntries(PICTURE_SLOTS.map((key, i) => [key, pictures[i] || undefined])),
     mask: o.mask || motionStrokes(o) || undefined, video: o.video || o.media?.video, audio: o.slots?.audio || o.media?.audio || o.audio || undefined, voice: o.slots?.voice || undefined,
     seed: Math.floor(Math.random() * 2 ** 31), ...o.params, ...o.fields,
+    ...(o.voiceConsent === true && { voiceConsent: true }),
   }
 }
 

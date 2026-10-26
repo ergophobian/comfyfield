@@ -6,6 +6,7 @@ import { IconUpload } from '../Icons.jsx'
 import MediaPicker from '../generate/MediaPicker.jsx'
 import { uploadFile, pastedFile } from '../../lib/uploads.js'
 import { useLibrary, toRef } from '../../lib/useLibrary.js'
+import VoicePicker from '../generate/Voices.jsx'
 
 const media = {
   image: { accept: 'image/png,image/jpeg,image/webp,image/gif', hint: 'Drop an image or click to choose', noun: 'an image' },
@@ -13,7 +14,7 @@ const media = {
   audio: { accept: 'audio/*', hint: 'Drop an audio file or click to choose', noun: 'an audio file' },
 }
 
-// Library list and tab behind each saved asset pick.
+// Library list and tab behind each pick.
 const picks = {
   character: { list: 'characters', noun: 'characters' },
   product: { list: 'products', noun: 'products' },
@@ -237,26 +238,14 @@ function LibraryPick({ input, value, onChange, labelId }) {
   )
 }
 
-// A voice is a real uploaded sample, using the runner's existing voice.sample contract.
-function VoiceField({ value, onChange, ...props }) {
-  return (
-    <div>
-      <MediaField {...props} input={{ type: 'audio' }} value={value?.sample ? { ...value, url: value.sample } : null}
-        onChange={(v) => onChange({ name: v.name, sample: v.url })} />
-      <p className="sheet-note">Use a voice sample only with the speaker's prior consent or another legal right to use their voice.</p>
-      {value?.sample && <button type="button" className="link-btn" onClick={() => onChange(null)}>Clear voice sample</button>}
-    </div>
-  )
-}
-
 export function Field({ input, value, onChange, setError = () => {} }) {
   const id = useId()
   const labelId = `${id}-label`
   const { type } = input
   const props = { input, value, onChange, labelId }
   let body
-  if (widgetTypes.includes(type) || (type === 'draw' && input.mode !== 'motion')) body = <InputWidget type={type === 'draw' ? 'mask' : type} {...props} setError={setError} />
-  else if (type === 'voice') body = <VoiceField {...props} setError={setError} />
+  if (type === 'voice' || input.voiceSample) body = <VoicePicker value={value} onChange={onChange} title={input.label} optional={!!input.optional} />
+  else if (widgetTypes.includes(type) || (type === 'draw' && input.mode !== 'motion')) body = <InputWidget type={type === 'draw' ? 'mask' : type} {...props} setError={setError} />
   else if (media[type]) body = <MediaField {...props} setError={setError} />
   else if (type === 'draw') body = <DrawField {...props} setError={setError} />
   else if (type === 'text') body = <input id={id} value={value ?? ''} onChange={(e) => onChange(e.target.value)} placeholder={input.placeholder} />

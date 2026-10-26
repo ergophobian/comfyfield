@@ -2,7 +2,6 @@
 // Provider logic lives in core.js so the CLI and MCP server share it.
 import fs from 'node:fs'
 import path from 'node:path'
-import crypto from 'node:crypto'
 import * as core from './core.js'
 import { POD_VOLUMES } from './pod.js'
 import { TIER_IDS, jobSecondsOf, tierPicks } from '../shared/gpuTiers.js'
@@ -11,6 +10,8 @@ import { upload } from './upload.js'
 import { serveMedia } from './serveMedia.js'
 import { agentRoutes } from './agent-routes.js'
 import { planStory } from './story.js'
+import { voiceRoutes } from './voices.js'
+import { libraryStore, libraryRoutes } from './library.js'
 import { createJobs } from './jobs.js'
 import { allowedApiRequest } from './local-access.js'
 import { userFormats } from './userFormats.js'
@@ -46,32 +47,9 @@ function send(res, status, data) {
   res.end(JSON.stringify(data))
 }
 
-const libFile = () => path.join(core.home(), 'library.json')
-const shape = {
-  characters: { name: 's', notes: 's', images: ['a', 6] },
-  products: { name: 's', description: 's', price: 's', url: 's', images: ['a', 8] },
-  brands: { name: 's', logo: 's', voice: 's', url: 's', colors: ['a', 8] },
-}
-
-function readLib() {
-  try { return JSON.parse(fs.readFileSync(libFile(), 'utf8')) } catch { return {} }
-}
-
-function writeLib(lib) {
-  fs.mkdirSync(core.home(), { recursive: true })
-  fs.writeFileSync(libFile(), JSON.stringify(lib, null, 2))
-}
-
-function clean(type, data) {
-  const out = {}
-  for (const [k, kind] of Object.entries(shape[type])) {
-    if (!(k in data)) continue
-    out[k] = Array.isArray(kind)
-      ? (Array.isArray(data[k]) ? data[k].filter((v) => typeof v === 'string').slice(0, kind[1]) : [])
-      : String(data[k] ?? '').slice(0, 2000)
-  }
-  return out
-}
+const library = libraryStore(core.home)
+const voiceRoute = voiceRoutes({ home: core.home, saveMedia: core.saveMedia, library })
+const libraryRoute = libraryRoutes({ library, body, send })
 
 const extOf = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif', 'image/svg+xml': 'svg', 'image/x-icon': 'ico', 'image/vnd.microsoft.icon': 'ico' }
 
@@ -79,33 +57,6 @@ function saveDataUrl(dataUrl) {
   const m = /^data:([\w.+/-]+);base64,(.+)$/s.exec(dataUrl || '')
   if (!m || !extOf[m[1]]) throw Object.assign(new Error('Upload a png, jpg, webp, gif or svg image.'), { status: 400 })
   return core.saveMedia(Buffer.from(m[2], "base64"), extOf[m[1]]).url
-}
-
-async function libraryRoute(req, res, url) {
-  const m = /^\/api\/library\/(characters|products|brands)(?:\/([\w-]+))?$/.exec(url.pathname)
-  if (!m) return false
-  const [, type, id] = m
-  const lib = readLib()
-  const list = lib[type] || []
-  if (req.method === 'GET' && !id) return send(res, 200, list), true
-  if (req.method === 'POST' && !id) {
-    const item = { id: crypto.randomUUID(), ...clean(type, await body(req)), created: Date.now() }
-    if (!item.name?.trim()) return send(res, 400, { error: 'Give it a name first.' }), true
-    writeLib({ ...lib, [type]: [item, ...list] })
-    return send(res, 200, item), true
-  }
-  const at = list.findIndex((x) => x.id === id)
-  if (at < 0) return send(res, 404, { error: 'Not found' }), true
-  if (req.method === 'PATCH') {
-    const item = { ...list[at], ...clean(type, await body(req)) }
-    writeLib({ ...lib, [type]: list.map((x, i) => (i === at ? item : x)) })
-    return send(res, 200, item), true
-  }
-  if (req.method === 'DELETE') {
-    writeLib({ ...lib, [type]: list.filter((x) => x.id !== id) })
-    return send(res, 200, { ok: true }), true
-  }
-  return false
 }
 
 const decode = (s = '') => s.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#0?39;|&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#x27;/g, "'").trim()
@@ -357,6 +308,7 @@ function mount(server, harness) {
         return send(res, 200, await upload(req, core.saveMedia))
       }
       if (url.pathname === '/api/library/import' && req.method === 'POST') return send(res, 200, await importUrl(await body(req)))
+      if (url.pathname.startsWith('/api/library/') && await voiceRoute(req, res, url)) return
       if (url.pathname === '/api/library/generations' && req.method === 'GET') return send(res, 200, core.libraryImports())
       if (url.pathname === '/api/library/generations' && req.method === 'DELETE') {
         core.dismissLibraryImport((await body(req)).id)

@@ -15,6 +15,7 @@ import { draftInstructions, parseDraft } from '../shared/flowDraft.js'
 import { renderBlender, blenderVersion } from './blender.js'
 import { renderThree } from './threejs.js'
 import { importBusinessPage as readBusinessPage } from './publicPage.js'
+import { validateWorkflowVoices } from './voiceConsent.js'
 import { archOf, minVramOf, notOnCloud, podNeedsOf, volumeFor, RUNTIMES } from '../shared/modelFiles.js'
 import { CLOUD_USD_PER_GPU_SEC, DEFAULT_TIER, TIER_IDS } from '../shared/gpuTiers.js'
 
@@ -1096,6 +1097,9 @@ async function submitAndWait(client, wf, { apiKey, timeoutMs, signal, split, whe
 export async function runComfy(workflow, vars = {}, opts = {}) {
   const { createClient = (key, baseUrl) => comfyClient(baseUrl, key), lease = (o) => pod().lease(o), podPhase = () => pod().phaseNow(), podVram = () => pod().vramGb(), podRoom = () => pod().room(), podArch = () => pod().arch(), run = runType(), signal, retried = 0, pause = (ms, s) => delay(ms, undefined, s ? { signal: s } : undefined), patchGraph = (g) => g, onSubmitted, onProgress, onComplete = () => {}, onStage, timeoutMs } = opts
   signal?.throwIfAborted()
+  // Library voice ids resolve to their consented samples before any graph is filled.
+  vars = { ...vars }
+  await validateWorkflowVoices(workflow, readWorkflow(workflow).template, vars, home)
   const original = workflowGraph(workflow, vars)
   let { file, template, graph } = original
   const unset = unsetInput(template, vars)
