@@ -1305,7 +1305,7 @@ export async function listModels({ kind, query, includeFal = true, limit = 25 } 
 }
 
 // One generation on any model. `image` is a URL or a local file path (sent to fal as a data URI).
-export async function generate({ model, prompt, aspect = '16:9', count = 1, duration, image, images, ...options }) {
+export async function generate({ model, prompt, aspect = '16:9', count = 1, duration, image, images, onProgress, ...options }) {
   if (!prompt) throw new Error('A prompt is required.')
   const m = resolveModel(model)
   const o = { ...options, images, prompt, aspect, count, duration, image: image && !/^(https?:|data:|\/media\/)/.test(image) ? fileDataUri(image) : image }
@@ -1316,7 +1316,7 @@ export async function generate({ model, prompt, aspect = '16:9', count = 1, dura
   }
   if (m.provider === 'comfy') {
     const vars = comfyVars(m.kind, { ...o, duration: duration || 5 }, m.sizes)
-    return runComfy(vars.image && m.imageWorkflow ? m.imageWorkflow : m.workflow, vars)
+    return runComfy(vars.image && m.imageWorkflow ? m.imageWorkflow : m.workflow, vars, { onProgress })
   }
   if (m.provider === 'fal') {
     const endpoint = await falEndpointFor(m, Boolean(o.images?.length || o.image), falSchema)
