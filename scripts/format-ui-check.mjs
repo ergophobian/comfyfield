@@ -10,6 +10,7 @@ const requests = []
 let generationImports = []
 const jobs = new Map()
 let connected = true
+let connectionTestOk = true
 const savedKeys = []
 // A Comfy render that reports live progress, as the Cloud SDK's events() stream does, until the check finishes it.
 let progressRender = false
@@ -47,7 +48,7 @@ const server = await preview({ configFile: false, envFile: false, plugins: [{
         }
         return res.end(JSON.stringify(generationImports))
       }
-      if (url.pathname === '/api/connections/test') { req.resume(); return res.end(JSON.stringify({ ok: true })) }
+      if (url.pathname === '/api/connections/test') { req.resume(); return res.end(JSON.stringify({ ok: connectionTestOk })) }
       if (url.pathname === '/api/connections' && req.method === 'POST') {
         let raw = ''
         for await (const chunk of req) raw += chunk
@@ -316,11 +317,19 @@ try {
     assert(await evaluate('document.documentElement.scrollWidth <= 390'), `${route} Connect Comfy prompt must fit 390px`)
   }
   await screenshot('mock-first-run-create-mobile')
+  connectionTestOk = false
+  await evaluate('document.querySelector(".connect-comfy input").focus()')
+  await cdp('Input.insertText', { text: 'fake-key-for-qa' })
+  await evaluate('document.querySelector(".connect-comfy .btn-blue").click()')
+  await wait('document.querySelector(".connect-comfy [role=alert]")')
+  assert.match(await evaluate('document.querySelector(".connect-comfy [role=alert]").textContent'), /test call failed.*Check the key/)
+  assert(await evaluate('Boolean(document.querySelector(".connect-comfy input"))'), 'A rejected key keeps the inline connection form available')
+  connectionTestOk = true
   await evaluate('document.querySelector(".connect-comfy input").focus()')
   await cdp('Input.insertText', { text: 'mock-comfy-key' })
   await evaluate('document.querySelector(".connect-comfy .btn-blue").click()')
   await wait('!document.querySelector(".connect-comfy")')
-  assert.deepEqual(savedKeys, [{ id: 'comfy', values: { key: 'mock-comfy-key' } }])
+  assert.deepEqual(savedKeys, [{ id: 'comfy', values: { key: 'fake-key-for-qa' } }, { id: 'comfy', values: { key: 'mock-comfy-key' } }])
   connected = true
   generationImports = [{ id: 'mock-proof-import', url: '/mock-proof.svg', kind: 'image', model: 'Mock proof import', aspect: '4:5', caption: 'Mock imported proof; no paid run', created: Date.now(), imported: true }]
   await evaluate('localStorage.removeItem("comfyfield.library")')

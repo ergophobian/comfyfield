@@ -1,10 +1,10 @@
 node_modules/
-.env
+.env*
+!.env.example
 .DS_Store
 outputs/
 __pycache__/
 dist/
 .comfyfield/
-.env
 research_notes/live-runs/*.lock
 research_notes/live-runs/*.tmp
