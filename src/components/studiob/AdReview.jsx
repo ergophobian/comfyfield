@@ -23,13 +23,13 @@ export default function AdReview({ studio, config }) {
           {config.recreate && <p className="sheet-note">Also confirm permission to use your product and presenter photos. The render uses up to 81 source frames and scales the long edge to at most 848 px; length depends on the source frame rate.</p>}
           {!fresh && <p className="sheet-note">Inputs changed. Draft concepts again to use the new values.</p>}
           <button type="button" className="btn-blue" disabled={studio.busy || studio.rendered || !fresh || !studio.rights || !studio.script.trim()} onClick={() => studio.approve(config)}>
-            {studio.busy ? 'Rendering ads…' : studio.rendered ? failed.some((item) => item.formatRunId === studio.session.formatRunId) ? 'Batch finished with errors' : 'Saved to Library' : 'Approve and render'}
+            {studio.busy ? 'Rendering ads…' : studio.rendered ? failed.some((item) => item.formatRunId === studio.session.formatRunId) ? 'Batch finished with errors' : 'Saved to Assets' : 'Approve and render'}
           </button>
         </div>
       )}
       {studio.items.length > 0 && (
         <div className="sb-section" aria-label="Ad batch board">
-          <div className="studio-sub"><h2>Your ad batch</h2><Link to="/assets">Open Library</Link></div>
+          <div className="studio-sub"><h2>Your ad batch</h2><Link to="/assets">Open Assets</Link></div>
           {failed.map((item) => <div key={item.id}>
             <p className="sheet-error" role="alert">{item.failed}</p>
             {item.formatRunId === studio.session?.formatRunId && <button type="button" className="btn-soft" disabled={studio.busy || !fresh || !studio.rights} onClick={() => studio.retry(item, config)}>Retry render {item.stepId}</button>}

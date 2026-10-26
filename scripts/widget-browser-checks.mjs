@@ -110,7 +110,7 @@ try {
   await button('face', 'Use this face')
   await wait(`JSON.parse(document.querySelector('[data-values]').textContent).face?.faceUrl`)
   assert.match((await values()).face.faceUrl, /^\/media\/.*\.png$/)
-  await button('face', 'Library character')
+  await button('face', 'Saved character')
   await wait(`document.querySelector('[data-widget=face] .pick')`)
   await click('[data-widget=face] .pick')
   assert.equal((await values()).face.characterId, 'test-character')

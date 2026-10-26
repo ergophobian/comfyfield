@@ -62,7 +62,7 @@ export default function MentionText({ value, onChange, onPick, types = ['charact
         onChange={(e) => { onChange(e.target.value); look(e.target) }}
         onClick={(e) => look(e.target)} onBlur={() => setTimeout(() => setFound(null), 150)} />
       {open && (
-        <div className="menu glass pop mention-menu" role="listbox" aria-label="Elements from Library">
+        <div className="menu glass pop mention-menu" role="listbox" aria-label="Elements from Assets">
           {options.map((o, i) => {
             const img = o.type === 'brand' ? o.item.logo : o.item.images?.[0]
             return (

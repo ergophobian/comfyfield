@@ -37,7 +37,7 @@ function SaveToElements({ it, onDone }) {
     return (
       <div className="viewer-save rise" role="status">
         <span>Saved {name.trim()} to {state === 'characters' ? 'Characters' : 'Products'}.</span>
-        <Link className="link-btn" to={`/assets?tab=${state}`}>Open Library</Link>
+        <Link className="link-btn" to={`/assets?tab=${state}`}>Open Assets</Link>
         <button type="button" className="btn-soft xs" onClick={onDone}>Done</button>
       </div>
     )

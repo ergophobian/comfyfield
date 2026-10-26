@@ -8,7 +8,7 @@ import Pop, { Stepper } from '../components/generate/Pop.jsx'
 import { LibraryPicks, RefTags, refOf } from '../components/generate/Library.jsx'
 import MentionText from '../components/generate/Mentions.jsx'
 import MediaPicker from '../components/generate/MediaPicker.jsx'
-import { Banner, Feed, GoButton, StatusNote, balanceText, canRun, costText, noun, useBatches, useView } from '../components/generate/parts.jsx'
+import { Feed, GoButton, StatusNote, balanceText, canRun, costText, noun, useBatches, useView } from '../components/generate/parts.jsx'
 import { useGenModel } from '../components/generate/useGenModel.js'
 import EnhanceChip, { enhancePrompt, useEnhance } from '../components/generate/Enhance.jsx'
 import { label, paramsFor, useModelInputs } from '../components/generate/useModelInputs.js'
@@ -151,6 +151,8 @@ export default function ImageStudio() {
     </div>
   )
 
+  // A failed tile already shows its own error with Retry and Dismiss.
+  const runError = gens.items.some((i) => i.failed === gens.error) ? null : gens.error
   return (
     <main className="gen gen-image">
       <div className="gen-top">
@@ -159,13 +161,12 @@ export default function ImageStudio() {
           <button type="button" className={view === 'large' ? 'on' : ''} onClick={() => setView('large')}>Large tiles<small>Bigger previews</small></button>
         </Pop>
       </div>
-      <Banner />
 
       <section className="gen-canvas" aria-label="Your images">
         <Feed kind="image" gens={gens} batches={batches} size={view} empty={hero} />
       </section>
 
-      {(referenceError || error || gens.error) && <div className="notice glass error gen-notice">{referenceError || error || gens.error}<CreditsLink message={referenceError || error || gens.error} />{!referenceError && !error && gens.retry && <button type="button" className="link-btn" onClick={gens.retry}>{gens.retry.label || 'Retry'}</button>}</div>}
+      {(referenceError || error || runError) && <div className="notice glass error gen-notice">{referenceError || error || runError}<CreditsLink message={referenceError || error || runError} />{!referenceError && !error && gens.retry && <button type="button" className="link-btn" onClick={gens.retry}>{gens.retry.label || 'Retry'}</button>}{!referenceError && !error && <button type="button" className="link-btn" onClick={gens.dismissError}>Dismiss</button>}</div>}
 
       <form className={`composer glass gen-bar${dragging ? ' dragging' : ''}`} onSubmit={(e) => { e.preventDefault(); go() }}
         onDragOver={(e) => { if (dropOk(e)) { e.preventDefault(); setDragging(true) } }}
@@ -201,7 +202,7 @@ export default function ImageStudio() {
                 <button type="button" aria-label="Add reference images" title={attachTitle} disabled={!canAttach || pictures.length + uploading >= maxRefs}
                   className={uploads.length ? 'lit' : ''} onClick={() => setPicking(true)}><IconPlus /></button>
               </div>
-              <Pop up keep className="gen-icon" icon={<IconAt />} title="Add from Library" lit={refs.length > 0}>
+              <Pop up keep className="gen-icon" icon={<IconAt />} title="Add from Assets" lit={refs.length > 0}>
                 <LibraryPicks refs={refs} setRefs={setRefs} maxImages={Math.max(0, maxRefs - uploads.length - uploading)} />
               </Pop>
               {!model.open && <EnhanceChip on={enhance} setOn={setEnhance} busy={enhancing} />}

@@ -134,7 +134,7 @@ function Explore({ onRecreate }) {
       <div className="inf-hero">
         <Fan items={fan} />
         <h2 className="rise">A face to build a following on</h2>
-        <p className="rise" style={{ '--d': 'calc(2 * var(--stagger))' }}>Design a fictional character with the menus, or use a saved Library presenter for a reference motion clip or a creator video.</p>
+        <p className="rise" style={{ '--d': 'calc(2 * var(--stagger))' }}>Design a fictional character with the menus, or use a saved presenter from Assets for a reference motion clip or a creator video.</p>
       </div>
       <div className="inf-feed-tabs">
         <Segmented value={feed} onChange={setFeed} options={[{ value: 'mine', label: 'Your influencers' }, { value: 'presets', label: 'Presets' }]} />
@@ -142,8 +142,8 @@ function Explore({ onRecreate }) {
       {feed === 'mine' && (
         lib.ready && !lib.characters.length ? (
           <div className="empty">
-            <p>No influencers yet. Save a generated fictional character in Library to use it in videos.</p>
-            <Link className="btn-blue" to="/library?tab=characters">Open character Library</Link>
+            <p>No influencers yet. Save a generated fictional character in Assets to use it in videos.</p>
+            <Link className="btn-blue" to="/library?tab=characters">Open characters in Assets</Link>
           </div>
         ) : (
           <div className="inf-grid">
@@ -290,10 +290,10 @@ export default function Influencer() {
         <div key={main} className="inf-main-body">
           {main === 'explore' ? <Explore onRecreate={recreate} /> : (
             history.length ? <>
-              <p className="sheet-note">Presenter stills and finished videos save to Library as each step finishes.</p>
+              <p className="sheet-note">Presenter stills and finished videos save to Assets as each step finishes.</p>
               {history.filter((item) => item.failed).map((item) => <p key={item.id} className="sheet-error" role="alert">{item.failed}</p>)}
               <Results items={history.filter((item) => !item.failed)} />
-            </> : <div className="empty"><p>Your presenter stills and motion clips will appear here and in Library.</p></div>
+            </> : <div className="empty"><p>Your presenter stills and motion clips will appear here and in Assets.</p></div>
           )}
         </div>
       </section>

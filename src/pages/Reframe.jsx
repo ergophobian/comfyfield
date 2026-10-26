@@ -55,7 +55,7 @@ export default function Reframe() {
               <p className="sheet-note">Qwen edit 2511. The source scales to fit, then the center is composited back with a blended seam. New workflow, untested live.</p>
               <button type="button" className="btn-blue" disabled={!image?.url || !!issue || running} onClick={run}>{running ? 'Reframing…' : 'Generate reframe'}</button>
               {issue && <p className="sheet-note" role="status">{issue}</p>}
-              <p className="sheet-note">Results save to the <Link to="/assets">Library</Link>.</p>
+              <p className="sheet-note">Results save to the <Link to="/assets">Assets</Link>.</p>
             </>
           ) : (
             <div className="sb-go">

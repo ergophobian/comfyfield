@@ -218,8 +218,8 @@ function LibraryPick({ input, value, onChange, labelId }) {
   const lib = useLibrary()
   const { list, noun } = picks[input.type]
   const items = lib[list] || []
-  if (!lib.ready) return <p className="sheet-note">Loading Library</p>
-  if (!items.length) return <p className="sheet-note">No {noun} yet. <Link to={`/library?tab=${list}`}>Add one in Library</Link></p>
+  if (!lib.ready) return <p className="sheet-note">Loading Assets</p>
+  if (!items.length) return <p className="sheet-note">No {noun} yet. <Link to={`/library?tab=${list}`}>Add one in Assets</Link></p>
   const brand = input.type === 'brand'
   return (
     <div className="picks" role="group" aria-labelledby={labelId}>

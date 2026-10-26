@@ -17,6 +17,7 @@ import { initialValues, missingInputs, visibleInputs } from '../../lib/recipes.j
 import { providerInfo } from '../../lib/catalog.js'
 import { estimate, money, useModelMeta } from '../../lib/cost.js'
 import CreditsLink from '../CreditsLink.jsx'
+import { plainError } from '../../lib/useGenerations.js'
 
 const calm = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 const icons = { image: IconImage, video: IconVideo, audio: IconAudio, '3d': IconCube }
@@ -78,7 +79,7 @@ export default function FormatWorkspace({ format, motion = false, showMore = tru
     setRunning(true)
     setError(null)
     setSession(null)
-    try { setSession(await gens.generateFormat(format, values, { onSession: setSession })) } catch (e) { if (e.session) setSession(e.session); setError(e.message) }
+    try { setSession(await gens.generateFormat(format, values, { onSession: setSession })) } catch (e) { if (e.session) setSession(e.session); if (!e.onTile) setError(plainError(e)) }
     finally { setRunning(false) }
   }
   const use = (id, initial) => {
@@ -144,9 +145,9 @@ export default function FormatWorkspace({ format, motion = false, showMore = tru
           <div className="apps-sec-head">
             <div>
               <h2>Your results</h2>
-              <p>Each one is saved to your Library as it finishes.</p>
+              <p>Each one is saved to Assets as it finishes.</p>
             </div>
-            <Link className="link-btn" to="/library">Open Library<IconChevron /></Link>
+            <Link className="link-btn" to="/library">Open Assets<IconChevron /></Link>
           </div>
           {failed.map((g) => (
             <p key={g.id} className="app-failed">

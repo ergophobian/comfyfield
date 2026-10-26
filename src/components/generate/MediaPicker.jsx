@@ -67,7 +67,7 @@ export default function MediaPicker({ type = 'image', title, accept, multiple, o
   const empty = {
     uploads: null,
     generations: 'Nothing made yet. Your generations show here.',
-    elements: <>No saved characters or products yet. <Link className="link-btn" to="/assets?tab=characters" onClick={onClose}>Add one in Library</Link></>,
+    elements: <>No saved characters or products yet. <Link className="link-btn" to="/assets?tab=characters" onClick={onClose}>Add one in Assets</Link></>,
   }[tab]
 
   // On the body, so a transformed panel around the tile cannot trap the fixed backdrop.

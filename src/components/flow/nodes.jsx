@@ -219,7 +219,7 @@ export function BlenderNode({ id, data, selected }) {
       {result && (result.kind === 'video'
         ? <video className="stitch-preview nodrag" src={result.url} controls playsInline preload="metadata" />
         : <img className="fp-img" src={result.url} alt="Blender render" />)}
-      <p className={`fstat${failed ? ' bad' : ''}`}>{st.running ? 'Rendering in Blender' : failed ? failed.error : result ? 'Saved to the Library' : ready ? 'Ready to render' : 'Select to write a script'}</p>
+      <p className={`fstat${failed ? ' bad' : ''}`}>{st.running ? 'Rendering in Blender' : failed ? failed.error : result ? 'Saved to Assets' : ready ? 'Ready to render' : 'Select to write a script'}</p>
       <button type="button" className="btn-soft xs nodrag" disabled={st.running > 0 || !ready} onClick={() => act.rerun(id)}>{result ? 'Render again' : 'Render'}</button>
     </Shell>
   )
@@ -234,7 +234,7 @@ export function ThreeNode({ id, data, selected }) {
   return (
     <Shell type="threejs" selected={selected} output tag={`${data.duration} s, ${data.fps} fps`}>
       {result && <video className="stitch-preview nodrag" src={result.url} controls playsInline loop preload="metadata" />}
-      <p className={`fstat${failed ? ' bad' : ''}`}>{st.running ? 'Rendering frames in Chrome' : failed ? failed.error : result ? 'Saved to the Library' : ready ? `Ready to render ${data.width} x ${data.height}` : 'Select to write a scene'}</p>
+      <p className={`fstat${failed ? ' bad' : ''}`}>{st.running ? 'Rendering frames in Chrome' : failed ? failed.error : result ? 'Saved to Assets' : ready ? `Ready to render ${data.width} x ${data.height}` : 'Select to write a scene'}</p>
       <button type="button" className="btn-soft xs nodrag" disabled={st.running > 0 || !ready} onClick={() => act.rerun(id)}>{result ? 'Render again' : 'Render'}</button>
     </Shell>
   )

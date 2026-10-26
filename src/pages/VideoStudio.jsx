@@ -12,7 +12,7 @@ import AutoUpscale, { useUpscalePrefs } from '../components/generate/AutoUpscale
 import { LibraryPicks, RefTags, refOf } from '../components/generate/Library.jsx'
 import MentionText from '../components/generate/Mentions.jsx'
 import { PresetCard, PresetPicker, PresetRow, cameraPresets, general, presetText } from '../components/generate/Presets.jsx'
-import { Banner, Feed, GoButton, PanelTabs, StatusNote, Steps, balanceText, canRun, costText, noun, useBatches, useSticky } from '../components/generate/parts.jsx'
+import { Feed, GoButton, PanelTabs, StatusNote, Steps, balanceText, canRun, costText, noun, useBatches, useSticky } from '../components/generate/parts.jsx'
 import { asOpen, useDurations, useGenModel } from '../components/generate/useGenModel.js'
 import EnhanceChip, { enhancePrompt, useEnhance } from '../components/generate/Enhance.jsx'
 import { label, paramsFor, useModelInputs } from '../components/generate/useModelInputs.js'
@@ -175,7 +175,7 @@ function CreateVideo({ preset, onPresets, setError, onRan, addBatch }) {
             onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), go())} />
         )}
         <div className="chips">
-          <Pop keep icon={<IconAt />} label={refs.length ? `${refs.length} ${refs.length === 1 ? 'element' : 'elements'}` : 'Elements'} lit={refs.length > 0} title="Elements from Library">
+          <Pop keep icon={<IconAt />} label={refs.length ? `${refs.length} ${refs.length === 1 ? 'element' : 'elements'}` : 'Elements'} lit={refs.length > 0} title="Elements from Assets">
             <LibraryPicks refs={refs} setRefs={setRefs} />
           </Pop>
           {!model.open && !multi && <EnhanceChip on={enhance} setOn={setEnhance} busy={enhancing} />}
@@ -352,6 +352,8 @@ export default function VideoStudio() {
     </div>
   )
 
+  // A failed tile already shows its own error with Retry and Dismiss.
+  const runError = gens.items.some((i) => i.failed === gens.error) ? null : gens.error
   return (
     <main className="gen gen-split">
       <aside className={`gen-panel glass${sticks ? ' stick' : ''}`} ref={panel} aria-label="Video settings">
@@ -367,9 +369,8 @@ export default function VideoStudio() {
         <div className="gen-main-head">
           <Segmented value={main} onChange={setMain} options={mainTabs} />
         </div>
-        <Banner />
         <Tip page="video" onLearn={() => setMain('how')} />
-        {gens.error && <div className="notice glass error gen-notice">{gens.error}<CreditsLink message={gens.error} />{gens.retry && <button type="button" className="link-btn" onClick={gens.retry}>{gens.retry.label || 'Retry'}</button>}</div>}
+        {runError && <div className="notice glass error gen-notice">{runError}<CreditsLink message={runError} />{gens.retry && <button type="button" className="link-btn" onClick={gens.retry}>{gens.retry.label || 'Retry'}</button>}<button type="button" className="link-btn" onClick={gens.dismissError}>Dismiss</button></div>}
         {main === 'how' ? explainer : <Feed kind="video" gens={gens} batches={batches} empty={explainer} />}
       </section>
 
