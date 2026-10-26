@@ -1,6 +1,6 @@
 // One-purpose apps that match Higgsfield's /apps catalogue, one format per app.
 // Each sets `hub`, so it lists on /apps under that hub and opens at /apps/:id.
-import { open, photo, clip, note, covers } from './parts.js'
+import { open, photo, clip, note, covers, sceneInputs, sceneWriter } from './parts.js'
 import { h3Sizes, ltx25Sizes } from '../catalog.js'
 
 const product = { id: 'image', type: 'image', label: 'Product photo' }
@@ -293,14 +293,24 @@ const enhanceAndStyle = [
 const faceAndIdentity = [
   open({
     id: 'video-character-swap', name: 'Video character swap', kind: 'video', category: 'video-edit', hub: 'face', layout: 'wide',
-    blurb: 'Replace the person in a video with your character, same moves and timing. Clips up to 40 seconds.',
+    blurb: 'Replace the person in a video with your character, same moves and timing. Review a short draft before the final. Use footage you own or have permission to use.',
     runsOn: 'SCAIL-2', workflow: 'scail2_character_swap',
-    steps: [{ id: 'generate', provider: 'comfy', workflow: 'scail2_character_swap', kind: 'video', targetInput: 'source', targets: {
-      photo: { bindings: { image: 'face.url' } },
-      character: { bindings: { image: 'character.images.0' } },
-    } }],
+    shape: 'pipeline',
+    steps: [
+      sceneWriter,
+      { id: 'draft', provider: 'comfy', workflow: 'scail2_character_swap', kind: 'video', trimToDuration: true, settings: { aspect: 'auto', duration: 1 }, targetInput: 'source', targets: {
+        photo: { bindings: { image: 'face.url' } },
+        character: { bindings: { image: 'character.images.0' } },
+      } },
+      { id: 'review', type: 'approve' },
+      { id: 'generate', provider: 'comfy', workflow: 'scail2_character_swap', kind: 'video', from: ['scene-writer', 'review'], targetInput: 'source', targets: {
+        photo: { bindings: { video: 'video.url', image: 'face.url' } },
+        character: { bindings: { video: 'video.url', image: 'character.images.0' } },
+      } },
+    ],
     inputs: [
       clip,
+      ...sceneInputs,
       { id: 'source', type: 'choice', label: 'New character', half: true, default: 'photo', options: [
         { id: 'photo', label: 'A photo' },
         { id: 'character', label: 'Saved character' },
@@ -308,7 +318,7 @@ const faceAndIdentity = [
       { id: 'face', type: 'image', label: 'Character photo', half: true, when: ['source', 'photo'] },
       { id: 'character', type: 'character', label: 'Saved character', half: true, when: ['source', 'character'] },
     ],
-    prompt: 'The character from the reference image, with their own face, hair, body and outfit, performing the movements of the original video in the original scene.',
+    prompt: 'The character from the reference image, with their own face, hair, body and outfit, performing the movements of the original video in the original scene. Preserve the original room and lighting. {scene}',
     settings: still,
     cover: covers.dusk,
   }),

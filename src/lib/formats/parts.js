@@ -61,3 +61,17 @@ export const wanLora = (name, strength = 1, low = name.replace('_high_noise', '_
   runsOn: 'Wan 2.2 with an effect LoRA', workflow: 'wan22_lora_i2v',
   params: { lora: name + '.safetensors', lora_strength: strength, lora_low: low + '.safetensors', lora_low_strength: lowStrength },
 })
+
+// Scene writing stays opt-in; the literal note remains runnable without a writer connection.
+export const sceneInputs = [
+  { id: 'scene', type: 'longtext', label: 'Original room and lighting', optional: true, placeholder: 'Describe the room, background and light in your footage' },
+  { id: 'sceneWriting', type: 'choice', label: 'Describe the scene', default: 'note', options: [
+    { id: 'note', label: 'Use my note' },
+    { id: 'write', label: 'Write and review when connected' },
+  ] },
+]
+export const sceneWriter = {
+  id: 'scene-writer', type: 'writer', optional: true, when: ['sceneWriting', 'write'],
+  review: 'Review the scene prompt',
+  instructions: 'Write a complete video character replacement prompt using the supplied base prompt and the user’s scene note. Keep the reference character’s own appearance. Describe only the setting, room, background and lighting the user provides; do not invent details or claim to have watched the video. Preserve the original room and lighting when described. Do not describe new movements. Return only the prompt, ready for the user to edit.',
+}

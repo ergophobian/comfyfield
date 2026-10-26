@@ -217,7 +217,17 @@ try {
   await click('Swap a characterA new character, same moves and timing')
   await click('Saved character', '.app-panel .pills button')
   await click('Mock character', '.app-panel .pick')
-  await generate('scail2_character_swap', (vars) => assert.equal(vars.image, '/mock-photo.svg'))
+  await generate('scail2_character_swap', (vars) => { assert.equal(vars.image, '/mock-photo.svg'); assert.equal(vars.duration, 1) })
+  await wait('document.querySelector(".format-review-media video")')
+  await pair('character-swap-draft')
+  const draftVideo = requests.at(-1).vars.video
+  await generate('scail2_character_swap', (vars) => {
+    assert.equal(vars.image, '/mock-photo.svg')
+    assert.equal(vars.video, draftVideo, 'Final keeps original uploaded footage')
+    assert.equal(vars.start, 0.25)
+    assert.equal(vars.duration, 3.75)
+  }, '.format-review .btn-blue')
+  await pair('character-swap-final')
   await click('New angleThe same take from another camera')
   await click('Orbit around')
   await generate('recammaster', (vars) => { assert.equal(vars.trajectory, 'arc_right'); assert.equal(vars.orbit, true) })

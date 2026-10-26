@@ -349,6 +349,16 @@ try {
   await goto('/assets')
   await wait('JSON.parse(localStorage.getItem("comfyfield.library") || "[]").length === 0')
   assert.equal(generationImports.length, 0, 'Delete persists to server imports')
+  for (const id of ['motion-transfer', 'video-character-swap']) {
+    await goto(`/apps/${id}`)
+    await wait('document.querySelector(".app-go button")')
+    await cdp('Emulation.setDeviceMetricsOverride', { width: 390, height: 1100, deviceScaleFactor: 1, mobile: true })
+    assert.match(await evaluate('document.body.innerText'), /Use footage you own or have permission to use\./)
+    assert.match(await evaluate('document.body.innerText'), /Original room and lighting/)
+    assert.match(await evaluate('document.body.innerText'), /Describe the scene/)
+    assert(await evaluate('document.documentElement.scrollWidth <= 390'), 'Motion swap form fits 390px')
+    await screenshot(`mock-${id}-mobile`)
+  }
   assert.deepEqual(errors, [], 'No browser runtime exceptions')
   console.log('UI mock checks ok: app runner, shared sheet, Library after reload, 390px layout, Create generation/feed/camera presets and hidden invalid route. Failed writer and render sessions recover through Retry failed without repeating completed steps, and insufficient credits links to Comfy; no provider calls. First-run Connections notice and link, Comfy first in Connections, and the inline Connect Comfy prompt on Create checked at 390px. Labeled mock proof import deduplicates on reload and deletes on the server. Live Comfy progress on the render tile. Eleven screenshots saved.')
 } finally {

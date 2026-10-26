@@ -93,6 +93,7 @@ export function validateFormat(format, schemas = savedSchemas) {
     if (step.takes != null && (!Number.isInteger(step.takes) || step.takes < 1)) bad(`Invalid takes for ${step.id}`)
     if (step.type === 'approve' || step.type === 'stitch') continue
     if (step.type === 'writer') {
+      if (step.when && (!step.optional || !slots.get(step.when[0])?.options?.some((o) => o.id === step.when[1]))) bad(`${step.id}: Invalid optional writer condition`)
       if (!(step.instructions || step.writer_instructions || format.writer)?.trim()) bad(`${step.id}: Missing writer instructions`)
       continue
     }
@@ -151,6 +152,9 @@ export function validateFormat(format, schemas = savedSchemas) {
       for (const source of upstream) {
         const kind = source.kind || format.kind
         if (kind === 'audio' && model.provider === 'comfy' && schema.includes('audio')) continue
+        // A reviewed video may gate a fresh render explicitly bound to the original uploaded clip.
+        if (kind === 'video' && model.provider === 'comfy' && schema.includes('video') &&
+          typeof step.bindings?.video === 'string' && slots.get(step.bindings.video.split('.')[0])?.type === 'video') continue
         if (kind !== 'image') bad(`${label} Only image outputs, and audio into a graph that takes it, can feed another model yet`)
       }
       const values = { ...sampleValues(format), ...selected }
