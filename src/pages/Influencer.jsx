@@ -6,16 +6,15 @@ import { Field } from '../components/formats/Fields.jsx'
 import { Section, UseMenu } from '../components/studio/Shell.jsx'
 import { TypeArt } from '../components/studio/Art.jsx'
 import { IconShuffle, IconCompass, IconHistory } from '../components/studio/icons.jsx'
-import { builder, influencerPresets } from '../components/studio/presets.js'
+import { builder, influencerPresets, personaText } from '../components/studio/presets.js'
 import { useApp } from '../lib/appContext.js'
 import { useLibrary, toRef } from '../lib/useLibrary.js'
-import { modelsFor } from '../lib/tools.js'
+import { formatById } from '../lib/formats/index.js'
 import { presenterFormats } from '../lib/formats/presenters.js'
 import { initialValues, missingInputs, visibleInputs } from '../lib/recipes.js'
 import FormatReview from '../components/formats/Review.jsx'
 import Results from '../components/Results.jsx'
 import { characterUses, trendIds } from '../lib/characterUses.js'
-import { personaText } from '../components/studio/presets.js'
 import { motionSeconds } from '../lib/formats/presenterSession.js'
 
 const pickOne = (list) => list[Math.floor(Math.random() * list.length)]
@@ -29,7 +28,7 @@ const shuffle = () => Object.fromEntries(builder.map((g) => {
   const n = Math.floor(Math.random() * 3)
   return [g.id, [...g.options].sort(() => Math.random() - 0.5).slice(0, n).map((o) => o.id)]
 }))
-const runsOnImage = modelsFor('image').find((m) => m.id === 'z-image-turbo')?.name || 'open weights'
+const runsOnImage = formatById('influencer-persona').runsOn
 const ugcFormats = presenterFormats.filter((format) => format.id.startsWith('ugc-'))
 const motionFormat = presenterFormats.find((format) => format.id === 'influencer-motion')
 
