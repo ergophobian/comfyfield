@@ -2,16 +2,19 @@
 // Provider logic lives in core.js so the CLI and MCP server share it.
 import fs from 'node:fs'
 import path from 'node:path'
-import crypto from 'node:crypto'
 import * as core from './core.js'
 import { POD_VOLUMES } from './pod.js'
 import { TIER_IDS, jobSecondsOf, tierPicks } from '../shared/gpuTiers.js'
-import { archOf } from '../shared/modelFiles.js'
+import { archOf, downloadSeconds } from '../shared/modelFiles.js'
 import { upload } from './upload.js'
 import { serveMedia } from './serveMedia.js'
 import { agentRoutes } from './agent-routes.js'
+import { planStory } from './story.js'
+import { voiceRoutes } from './voices.js'
+import { libraryStore, libraryRoutes } from './library.js'
 import { createJobs } from './jobs.js'
 import { allowedApiRequest } from './local-access.js'
+import { userFormats } from './userFormats.js'
 
 export { providers } from './core.js'
 
@@ -44,32 +47,9 @@ function send(res, status, data) {
   res.end(JSON.stringify(data))
 }
 
-const libFile = () => path.join(core.home(), 'library.json')
-const shape = {
-  characters: { name: 's', notes: 's', images: ['a', 6] },
-  products: { name: 's', description: 's', price: 's', url: 's', images: ['a', 8] },
-  brands: { name: 's', logo: 's', voice: 's', url: 's', colors: ['a', 8] },
-}
-
-function readLib() {
-  try { return JSON.parse(fs.readFileSync(libFile(), 'utf8')) } catch { return {} }
-}
-
-function writeLib(lib) {
-  fs.mkdirSync(core.home(), { recursive: true })
-  fs.writeFileSync(libFile(), JSON.stringify(lib, null, 2))
-}
-
-function clean(type, data) {
-  const out = {}
-  for (const [k, kind] of Object.entries(shape[type])) {
-    if (!(k in data)) continue
-    out[k] = Array.isArray(kind)
-      ? (Array.isArray(data[k]) ? data[k].filter((v) => typeof v === 'string').slice(0, kind[1]) : [])
-      : String(data[k] ?? '').slice(0, 2000)
-  }
-  return out
-}
+const library = libraryStore(core.home)
+const voiceRoute = voiceRoutes({ home: core.home, saveMedia: core.saveMedia, library })
+const libraryRoute = libraryRoutes({ library, body, send })
 
 const extOf = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif', 'image/svg+xml': 'svg', 'image/x-icon': 'ico', 'image/vnd.microsoft.icon': 'ico' }
 
@@ -77,33 +57,6 @@ function saveDataUrl(dataUrl) {
   const m = /^data:([\w.+/-]+);base64,(.+)$/s.exec(dataUrl || '')
   if (!m || !extOf[m[1]]) throw Object.assign(new Error('Upload a png, jpg, webp, gif or svg image.'), { status: 400 })
   return core.saveMedia(Buffer.from(m[2], "base64"), extOf[m[1]]).url
-}
-
-async function libraryRoute(req, res, url) {
-  const m = /^\/api\/library\/(characters|products|brands)(?:\/([\w-]+))?$/.exec(url.pathname)
-  if (!m) return false
-  const [, type, id] = m
-  const lib = readLib()
-  const list = lib[type] || []
-  if (req.method === 'GET' && !id) return send(res, 200, list), true
-  if (req.method === 'POST' && !id) {
-    const item = { id: crypto.randomUUID(), ...clean(type, await body(req)), created: Date.now() }
-    if (!item.name?.trim()) return send(res, 400, { error: 'Give it a name first.' }), true
-    writeLib({ ...lib, [type]: [item, ...list] })
-    return send(res, 200, item), true
-  }
-  const at = list.findIndex((x) => x.id === id)
-  if (at < 0) return send(res, 404, { error: 'Not found' }), true
-  if (req.method === 'PATCH') {
-    const item = { ...list[at], ...clean(type, await body(req)) }
-    writeLib({ ...lib, [type]: list.map((x, i) => (i === at ? item : x)) })
-    return send(res, 200, item), true
-  }
-  if (req.method === 'DELETE') {
-    writeLib({ ...lib, [type]: list.filter((x) => x.id !== id) })
-    return send(res, 200, { ok: true }), true
-  }
-  return false
 }
 
 const decode = (s = '') => s.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#0?39;|&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#x27;/g, "'").trim()
@@ -208,9 +161,16 @@ async function sessionQuote(workflow) {
 
 async function podQuote(workflow) {
   const { q, needs, refSeconds, tiers } = await sessionQuote(workflow)
+  // downloadSec: about how long the files take on a Pod, before it measures its own rate.
   return { ...q, tiers, tier: core.podTier(), refSeconds, files: needs.files.map((f) => ({ name: f.name, gb: f.gb })),
+    downloadSec: downloadSeconds(needs.files.reduce((n, f) => n + (f.bytes ?? f.gb * 1e9), 0)),
     runtimes: needs.runtimes.map((e) => ({ name: e.name, gb: e.gb, minutes: e.minutes })), volumeGb: needs.volumeGb }
 }
+
+// The start for a job on a Session tier: sized for it, on the tier's GPUs. The job's files start downloading
+// as soon as the Pod's status server answers, while ComfyUI boots; its runtimes install from the Pod's env.
+export const sessionStart = (needs, tiers, id) => ({ minVramGb: needs.minVramGb, volumeGb: needs.volumeGb, runtimes: needs.runtimes.map((e) => e.runtime),
+  order: tiers.find((t) => t.id === id)?.order, tier: id, prepare: { files: needs.files, runtimes: [] } })
 
 // A start names a workflow (sized for it, on a Session tier's GPUs), or comes from the Pods page: a size,
 // or a GPU picked by hand, a disk size, runtimes to install and services to get ready for. The Pod manager
@@ -224,8 +184,7 @@ export async function podAction(action, { workflow, now, minVramGb, gpu, volumeG
     if (tier != null && !TIER_IDS.includes(tier)) throw Object.assign(new Error(`The Session tier is ${TIER_IDS.join(', ')}.`), { status: 400 })
     const id = tier || core.podTier()
     const { needs, tiers } = await sessionQuote(workflow)
-    const out = await p.start({ minVramGb: needs.minVramGb, volumeGb: needs.volumeGb, runtimes: needs.runtimes.map((e) => e.runtime),
-      order: tiers.find((t) => t.id === id)?.order, tier: id })
+    const out = await p.start(sessionStart(needs, tiers, id))
     core.saveConnection('runpod', { tier: id })
     return session(out)
   }
@@ -285,7 +244,12 @@ function mount(server, harness) {
       if (url.pathname === '/api/pod/quote') return send(res, 200, await podQuote(url.searchParams.get('workflow')))
       if (url.pathname === '/api/pod/options' && req.method === 'GET') return send(res, 200, await core.podOptions())
       if (url.pathname.startsWith('/api/pod/') && req.method === 'POST') return send(res, 200, await podAction(url.pathname.slice('/api/pod/'.length), await body(req)))
+      if (url.pathname === '/api/story/plan' && req.method === 'POST') return send(res, 200, await planStory(await body(req)))
       if (await agents(req, res, url)) return
+      if (url.pathname === '/api/formats' && req.method === 'GET') return send(res, 200, { formats: userFormats.list() })
+      if (url.pathname === '/api/formats/import' && req.method === 'POST') return send(res, 200, await userFormats.import(await body(req)))
+      if (url.pathname === '/api/formats/share' && req.method === 'POST') return send(res, 200, await userFormats.share((await body(req)).format))
+      if (url.pathname.startsWith('/api/formats/') && req.method === 'DELETE') return send(res, 200, { formats: userFormats.remove(decodeURIComponent(url.pathname.slice('/api/formats/'.length))) })
       if (url.pathname === '/api/connections' && req.method === 'GET') return send(res, 200, core.connections())
       if (url.pathname === '/api/connections' && req.method === 'POST') {
         const { id, values } = await body(req)
@@ -294,12 +258,13 @@ function mount(server, harness) {
       }
       if (url.pathname === '/api/connections/test' && req.method === 'POST') {
         const { id } = await body(req)
-        return send(res, 200, { ok: await core.testConnection(id).catch(() => false) })
+        return send(res, 200, await core.testConnection(id).then((ok) => ({ ok }), (e) => ({ ok: false, error: e.message })))
       }
       if (url.pathname === '/api/fal' && req.method === 'POST') {
         return send(res, 200, { files: await core.runFal(await body(req)) })
       }
       if (url.pathname === '/api/fal/models') return send(res, 200, await core.falModels(url.searchParams.toString()))
+      if (url.pathname === '/api/comfy/models') return send(res, 200, await core.comfyModels())
       if (url.pathname === '/api/comfy/router/models') return send(res, 200, await core.listComfyRouterModels(Object.fromEntries(url.searchParams)))
       if (url.pathname === '/api/comfy/router' && req.method === 'POST') return send(res, 200, { files: await core.runComfyRouter(await body(req)) })
       if (url.pathname === '/api/comfy/run' && req.method === 'POST') {
@@ -324,11 +289,14 @@ function mount(server, harness) {
       if (url.pathname === '/api/fal/meta') return send(res, 200, await core.falMeta(url.searchParams.getAll('id')))
       if (url.pathname === '/api/balance') return send(res, 200, await core.balances())
       if (url.pathname === '/api/prompts' && req.method === 'POST') return send(res, 200, { prompts: await core.writePrompts(await body(req)) })
+      if (url.pathname === '/api/flow-draft' && req.method === 'POST') return send(res, 200, { draft: await core.draftFlow(await body(req)) })
+      if (url.pathname === '/api/ads/import' && req.method === 'POST') return send(res, 200, await core.importBusinessPage(await body(req)))
       if (url.pathname === '/api/prompt' && req.method === 'POST') return send(res, 200, { text: await core.writePrompt(await body(req)) })
       if (url.pathname === '/api/google' && req.method === 'POST') {
         return send(res, 200, { files: await core.runGoogle(await body(req)) })
       }
       if (url.pathname === '/api/upload' && req.method === 'POST') return send(res, 200, await upload(req, core.saveMedia))
+      if (url.pathname === '/api/stitch/status' && req.method === 'GET') return send(res, 200, await core.stitchStatus())
       if (url.pathname === '/api/stitch' && req.method === 'POST') return send(res, 200, await core.stitch(await body(req)))
       if (url.pathname === '/api/stitch/exports' && req.method === 'GET') return send(res, 200, core.stitchedExports())
       if (url.pathname === '/api/stitch/export' && req.method === 'POST') return send(res, 200, core.exportStitch((await body(req)).url))
@@ -340,6 +308,7 @@ function mount(server, harness) {
         return send(res, 200, await upload(req, core.saveMedia))
       }
       if (url.pathname === '/api/library/import' && req.method === 'POST') return send(res, 200, await importUrl(await body(req)))
+      if (url.pathname.startsWith('/api/library/') && await voiceRoute(req, res, url)) return
       if (url.pathname === '/api/library/generations' && req.method === 'GET') return send(res, 200, core.libraryImports())
       if (url.pathname === '/api/library/generations' && req.method === 'DELETE') {
         core.dismissLibraryImport((await body(req)).id)

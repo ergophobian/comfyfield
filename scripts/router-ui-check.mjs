@@ -206,10 +206,12 @@ try {
       }
       await evaluate(`[...document.querySelectorAll('.picker-pick')].find((button) => button.querySelector('.picker-name').textContent === ${JSON.stringify(model.name)}).click()`)
       await wait(`document.querySelector('.picker-btn').textContent.includes(${JSON.stringify(model.name)})`)
-      await fill(kind === 'audio' ? '#script' : 'textarea[aria-label=Prompt]', prompt)
-      await wait('!document.querySelector(".gen-go").disabled')
+      // Audio runs Router models through the provider panel on the Audio studio.
+      const go = kind === 'audio' ? '.app-panel .btn-blue' : '.gen-go'
+      await fill(kind === 'audio' ? '#provider-audio-prompt' : 'textarea[aria-label=Prompt]', prompt)
+      await wait(`!document.querySelector('${go}').disabled`)
       const before = requests.length
-      await evaluate('document.querySelector(".gen-go").click()')
+      await evaluate(`document.querySelector('${go}').click()`)
       for (const deadline = Date.now() + uiTimeout; requests.length === before && Date.now() < deadline;) await pause(100)
       assert.equal(requests.length, before + 1)
       const payload = requests.at(-1)

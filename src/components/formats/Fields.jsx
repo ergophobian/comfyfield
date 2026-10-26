@@ -6,6 +6,7 @@ import { IconUpload } from '../Icons.jsx'
 import MediaPicker from '../generate/MediaPicker.jsx'
 import { uploadFile, pastedFile } from '../../lib/uploads.js'
 import { useLibrary, toRef } from '../../lib/useLibrary.js'
+import VoicePicker from '../generate/Voices.jsx'
 
 const media = {
   image: { accept: 'image/png,image/jpeg,image/webp,image/gif', hint: 'Drop an image or click to choose', noun: 'an image' },
@@ -13,12 +14,11 @@ const media = {
   audio: { accept: 'audio/*', hint: 'Drop an audio file or click to choose', noun: 'an audio file' },
 }
 
-// Library list and tab behind each pick. There is no voices list yet, so voice picks stay empty.
+// Library list and tab behind each pick.
 const picks = {
   character: { list: 'characters', noun: 'characters' },
   product: { list: 'products', noun: 'products' },
   brand: { list: 'brands', noun: 'brand kits' },
-  voice: { list: 'voices', noun: 'voices' },
 }
 
 const textual = ['text', 'longtext']
@@ -181,6 +181,7 @@ function DrawField({ input, value, onChange, setError, labelId }) {
 }
 
 function Choice({ input, value, onChange, labelId }) {
+  if (input.confirmation) return <label className="presenter-confirmation"><input type="checkbox" checked={value === input.options[0].id} onChange={(event) => onChange(event.target.checked ? input.options[0].id : null)} />{input.options[0].note}</label>
   const cards = input.options.some((o) => o.note)
   return (
     <div className={cards ? 'opt-grid' : 'pills'} role="group" aria-labelledby={labelId}>
@@ -243,7 +244,8 @@ export function Field({ input, value, onChange, setError = () => {} }) {
   const { type } = input
   const props = { input, value, onChange, labelId }
   let body
-  if (widgetTypes.includes(type) || (type === 'draw' && input.mode !== 'motion')) body = <InputWidget type={type === 'draw' ? 'mask' : type} {...props} setError={setError} />
+  if (type === 'voice' || input.voiceSample) body = <VoicePicker value={value} onChange={onChange} title={input.label} optional={!!input.optional} />
+  else if (widgetTypes.includes(type) || (type === 'draw' && input.mode !== 'motion')) body = <InputWidget type={type === 'draw' ? 'mask' : type} {...props} setError={setError} />
   else if (media[type]) body = <MediaField {...props} setError={setError} />
   else if (type === 'draw') body = <DrawField {...props} setError={setError} />
   else if (type === 'text') body = <input id={id} value={value ?? ''} onChange={(e) => onChange(e.target.value)} placeholder={input.placeholder} />

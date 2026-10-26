@@ -22,6 +22,7 @@ import { estimate, useBalance, useModelMeta } from '../lib/cost.js'
 import { flowFromBatch, openFlow } from '../lib/flowStore.js'
 import { covers } from '../lib/formats/parts.js'
 import ConnectComfy from '../components/generate/ConnectComfy.jsx'
+import CreditsLink from '../components/CreditsLink.jsx'
 
 const MAX_REFS = 8
 const fan = [covers.peach, covers.dusk, covers.sky, covers.rose]
@@ -80,7 +81,9 @@ export default function ImageStudio() {
   const prompts = batchMode ? rows.map((r) => r.text.trim()).filter(Boolean) : prompt.trim() ? [prompt.trim()] : []
   const total = prompts.length * count
   const avgChars = prompts.reduce((n, p) => n + p.length, 0) / Math.max(1, prompts.length)
-  const each = estimate(model, metaOf(model), { aspect: ratio, count: perCall, duration: 5, takes: calls, chars: avgChars })
+  // A Pod bills by the hour, not per run, so a Pod run shows no per-run estimate.
+  const onPod = model.provider === 'comfy' && (pod?.phase === 'ready' || model.pod)
+  const each = onPod ? null : estimate(model, metaOf(model), { aspect: ratio, count: perCall, duration: 5, takes: calls, chars: avgChars })
   const cost = each && prompts.length ? { usd: each.usd * prompts.length, approx: each.approx } : null
   const bal = !model.open && balanceText(balance, model.provider)
 
@@ -164,7 +167,7 @@ export default function ImageStudio() {
       </section>
 
       {noKeys(connections) && <ConnectComfy />}
-      {(referenceError || error || gens.error) && <div className="notice glass error gen-notice">{referenceError || error || gens.error}{!referenceError && !error && gens.retry && <button type="button" className="link-btn" onClick={gens.retry}>{gens.retry.label || 'Retry'}</button>}</div>}
+      {(referenceError || error || gens.error) && <div className="notice glass error gen-notice">{referenceError || error || gens.error}<CreditsLink message={referenceError || error || gens.error} />{!referenceError && !error && gens.retry && <button type="button" className="link-btn" onClick={gens.retry}>{gens.retry.label || 'Retry'}</button>}</div>}
 
       <form className={`composer glass gen-bar${dragging ? ' dragging' : ''}`} onSubmit={(e) => { e.preventDefault(); go() }}
         onDragOver={(e) => { if (dropOk(e)) { e.preventDefault(); setDragging(true) } }}

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { createEngine, topoOrder, csvPrompts } from '../src/lib/flowEngine.js'
+import { connectionProblem, nodeDefaults } from '../shared/flowRules.js'
 
 const img = { kind: 'image', provider: 'x', name: 'Img' }
 const vid = { kind: 'video', provider: 'x', name: 'Vid' }
@@ -419,6 +420,75 @@ check('manual Cinema stitch and replacement invalidation across approval gates',
   assert(!eng.state.s.items[0].stale, 'Explicit re-stitch clears stale even when the signature matches')
   await eng.rerunGate(f, 'a')
   assert.equal(eng.state.s.items[0].stale, true, 'Rerunning through an approval gate invalidates Stitch too')
+})
+
+check('Blender renders once through the injected renderer and feeds Stitch, models and outputs', async () => {
+  const m = mock()
+  const renders = []
+  const stitches = []
+  const eng = createEngine({
+    run: m.run,
+    render: async (type, opts) => { renders.push({ type, ...opts }); return { url: `mock://blender-${opts.output}-${renders.length}`, kind: opts.output } },
+    stitch: async (opts) => { stitches.push(opts); return { url: 'mock://stitched', kind: 'video' } },
+  })
+  const f = {
+    nodes: [n('bv', 'blender', { script: 'video()', output: 'video' }), n('s', 'stitch'), n('bi', 'blender', { script: 'still()' }), n('v', 'model', { model: vid, prompt: 'orbit' }), n('o', 'output')],
+    edges: [e('bv', 's'), e('bi', 'v'), e('s', 'o'), e('v', 'o')],
+  }
+  await eng.runNew(f)
+  assert.deepEqual(renders.map((r) => [r.type, r.script, r.output]), [['blender', 'video()', 'video'], ['blender', 'still()', 'image']])
+  assert.deepEqual(stitches[0].clips.map((c) => c.url), ['mock://blender-video-1'], 'A Blender video is a Stitch clip')
+  assert.equal(m.calls[0].image, 'mock://blender-image-2', 'A Blender image is a model start image')
+  assert.equal(m.calls[0].prompt, 'orbit')
+  assert.equal(eng.itemsOf(f, 'bi')[0].kind, 'image')
+  assert.equal(eng.reviewItems(f, 'o').length, 2)
+  await eng.runNew(f)
+  assert.equal(renders.length, 2, 'Run never re-renders a Blender node with output')
+  await eng.rerun(f, 'bi')
+  assert.equal(renders.length, 3, 'Rerun renders again')
+  assert.equal(m.calls.length, 1, 'Rerun does not cascade into the model')
+
+  const empty = { nodes: [n('b', 'blender', { script: '  ' })], edges: [] }
+  assert.equal(eng.plan(empty, 'b').blocked, true, 'An empty script blocks the node')
+  const bare = createEngine()
+  await bare.runNew({ nodes: [n('b', 'blender', { script: 'x' })], edges: [] })
+  assert.match(bare.state.b.items[0].error, /Local renders are not connected/)
+  assert.match(connectionProblem({ name: 'F', nodes: [n('p', 'prompt'), n('b', 'blender')], edges: [] }, 'p', 'b'), /has no input/)
+  assert.equal(nodeDefaults('blender').output, 'image')
+  assert.match(nodeDefaults('blender').script, /--output/)
+})
+
+check('Three.js renders a video once through the injected renderer and feeds Stitch and video models', async () => {
+  const m = mock()
+  const renders = []
+  const stitches = []
+  const eng = createEngine({
+    run: m.run,
+    render: async (type, opts) => { renders.push({ type, ...opts }); return { url: `mock://three-${renders.length}`, kind: 'video' } },
+    stitch: async (opts) => { stitches.push(opts); return { url: 'mock://stitched', kind: 'video' } },
+  })
+  const f = {
+    nodes: [n('t', 'threejs', { script: 'export default () => ({})', duration: 1, width: 320, height: 180, fps: 10 }), n('s', 'stitch'), n('v', 'model', { model: vid, prompt: 'Restyle', takes: 2 }), n('o', 'output')],
+    edges: [e('t', 's'), e('t', 'v'), e('s', 'o'), e('v', 'o')],
+  }
+  await eng.runNew(f)
+  assert.deepEqual(renders, [{ type: 'threejs', script: 'export default () => ({})', duration: 1, width: 320, height: 180, fps: 10 }])
+  assert.equal(eng.itemsOf(f, 't')[0].kind, 'video', 'A Three.js render is a video')
+  assert.deepEqual(stitches[0].clips.map((c) => c.url), ['mock://three-1'], 'A Three.js video is a Stitch clip')
+  assert.deepEqual(m.calls.map((c) => [c.video, c.prompt]), [['mock://three-1', 'Restyle'], ['mock://three-1', 'Restyle']], 'A Three.js video is a model video input; takes stay takes')
+  await eng.runNew(f)
+  assert.equal(renders.length, 1, 'Run never re-renders a Three.js node with output')
+  await eng.rerun(f, 't')
+  assert.equal(renders.length, 2, 'Rerun renders again')
+  assert.equal(m.calls.length, 2, 'Rerun does not cascade into the model')
+  const widget = { nodes: [n('t', 'threejs', { script: 'x' }), n('w', 'video', { value: { url: 'mock://upload', duration: 4, trim: { start: 0, end: 4 } } }), n('v', 'model', { model: vid, prompt: 'p' })], edges: [e('t', 'v'), e('w', 'v')] }
+  eng.load({ t: { items: [{ id: 't:threejs', unit: 'threejs', kind: 'video', url: 'mock://three', status: 'done' }] } })
+  assert.equal(eng.plan(widget, 'v').units[0].opts.video, 'mock://upload', 'A Video input node wins over an upstream render')
+
+  assert.equal(eng.plan({ nodes: [n('t', 'threejs', { script: ' ' })], edges: [] }, 't').blocked, true, 'Empty scene code blocks the node')
+  assert.match(connectionProblem({ name: 'F', nodes: [n('p', 'prompt'), n('t', 'threejs')], edges: [] }, 'p', 't'), /has no input/)
+  assert.deepEqual(Object.keys(nodeDefaults('threejs')).sort(), ['duration', 'fps', 'height', 'script', 'width'])
+  assert.match(nodeDefaults('threejs').script, /export default function/)
 })
 
 check('partial failures block downstream; scoped retries preserve successful units and closed gates', async () => {

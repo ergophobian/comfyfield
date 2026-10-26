@@ -11,6 +11,7 @@ import { WriterReview } from './nodes.jsx'
 import { widgetTypes } from '../../../shared/widgetInputs.js'
 import { Field } from '../formats/Fields.jsx'
 import StitchPanel from './StitchPanel.jsx'
+import { blenderScript, blenderVideoScript, threeLimits } from '../../../shared/flowRules.js'
 
 const blurbs = {
   approve: 'Nothing passes this gate until you approve takes and press Send. Send only starts nodes after it that have no results yet.',
@@ -109,6 +110,52 @@ function ImagePanel({ node, patch, upload, uploading = {} }) {
   )
 }
 
+function BlenderPanel({ node, patch }) {
+  const { id, data } = node
+  // An untouched starter script follows the output, so Video starts with a script that writes an MP4.
+  const setOutput = (output) => {
+    const starter = [blenderScript, blenderVideoScript].includes(data.script)
+    patch(id, { output, ...(starter && { script: output === 'video' ? blenderVideoScript : blenderScript }) })
+  }
+  return (
+    <>
+      <Segmented className="seg-sm" value={data.output === 'video' ? 'video' : 'image'} onChange={setOutput}
+        options={[{ value: 'image', label: 'Image' }, { value: 'video', label: 'Video' }]} />
+      <div className="fp-field"><label htmlFor="blender-script">Python script</label>
+        <textarea id="blender-script" className="fp-text fp-code" rows={12} spellCheck={false} value={data.script || ''} onChange={(e) => patch(id, { script: e.target.value })} />
+      </div>
+      <p className="muted fp-blurb">Runs <code>blender -b -P script.py -- --output file</code> where Connections says. Save the render to the path after <code>--output</code>: a PNG for an image, an MP4 for a video. The result goes to the Library and to the next node.</p>
+    </>
+  )
+}
+
+const threeSizes = [{ value: '1280x720', label: '16:9' }, { value: '720x1280', label: '9:16' }, { value: '1080x1080', label: '1:1' }]
+
+function ThreePanel({ node, patch }) {
+  const { id, data } = node
+  const size = `${data.width}x${data.height}`
+  const frames = Math.round((Number(data.duration) || 0) * (Number(data.fps) || 0))
+  const setSize = (value) => { const [width, height] = value.split('x').map(Number); patch(id, { width, height }) }
+  return (
+    <>
+      <div className="fp-field"><label>Size</label>
+        <Segmented className="seg-sm" value={threeSizes.some((s) => s.value === size) ? size : null} onChange={setSize} options={threeSizes} />
+      </div>
+      <div className="fp-field"><label>Frame rate</label>
+        <Segmented className="seg-sm" value={Number(data.fps)} onChange={(fps) => patch(id, { fps })} options={[24, 30, 60].map((fps) => ({ value: fps, label: `${fps} fps` }))} />
+      </div>
+      <div className="fp-field"><label htmlFor="three-duration">Duration in seconds</label>
+        <input id="three-duration" className="fp-text" type="number" min="0.1" max={threeLimits.seconds} step="0.5" value={data.duration ?? ''} onChange={(e) => patch(id, { duration: e.target.value === '' ? '' : Number(e.target.value) })} />
+      </div>
+      <div className="fp-field"><label htmlFor="three-script">Scene code</label>
+        <textarea id="three-script" className="fp-text fp-code" rows={14} spellCheck={false} value={data.script || ''} onChange={(e) => patch(id, { script: e.target.value })} />
+      </div>
+      <p className={`muted fp-blurb${frames > threeLimits.frames ? ' bad' : ''}`}>{data.width} x {data.height}, {frames} frames{frames > threeLimits.frames ? `. The limit is ${threeLimits.frames}: shorten it or lower the frame rate` : ''}.</p>
+      <p className="muted fp-blurb">An ES module. Its default export gets <code>{'{ THREE, renderer, width, height, fps, duration }'}</code> and returns <code>{'{ scene, camera, update(time) }'}</code>. Run draws each frame in headless Chrome on a fixed clock and saves an MP4 to the Library and the next node. The page cannot reach the network.</p>
+    </>
+  )
+}
+
 function WriterPanel({ node, patch }) {
   const { id, data } = node
   return (
@@ -128,7 +175,7 @@ function WriterPanel({ node, patch }) {
   )
 }
 
-export default function Panel({ node, patch, picker, connections, upload, uploading, remove }) {
+export default function Panel({ node, patch, picker, connections, upload, uploading, remove, agents = [], assign }) {
   const [error, setError] = useState(null)
   useEffect(() => setError(null), [node.id])
   return (
@@ -141,7 +188,15 @@ export default function Panel({ node, patch, picker, connections, upload, upload
       {node.type === 'writer' && <WriterPanel node={node} patch={patch} />}
       {node.type === 'model' && <ModelPanel node={node} patch={patch} picker={picker} connections={connections} />}
       {node.type === 'stitch' && <StitchPanel node={node} patch={patch} />}
+      {node.type === 'blender' && <BlenderPanel node={node} patch={patch} />}
+      {node.type === 'threejs' && <ThreePanel node={node} patch={patch} />}
       {blurbs[node.type] && <p className="muted fp-blurb">{blurbs[node.type]}</p>}
+      {assign && <label className="fp-row fp-agent">Agent
+        <select aria-label="Assign this node to an agent" value={node.assignee || ''} onChange={(e) => assign(node.id, e.target.value || null)}>
+          <option value="">Nobody</option>
+          {agents.map((a) => <option key={a.name} value={a.name}>{a.name}{a.live ? '' : ' (not connected)'}</option>)}
+        </select>
+      </label>}
       <button type="button" className="btn-soft sm fp-del" onClick={() => remove(node.id)}>Delete node</button>
     </aside>
   )

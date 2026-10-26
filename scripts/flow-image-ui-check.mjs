@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { createServer } from 'vite'
 import react from '@vitejs/plugin-react'
-import { startBrowser, chromeExecutable, uiTimeout } from './browser.mjs'
+import { freePort, startBrowser, chromeExecutable, uiTimeout, browserTimeout } from './browser.mjs'
 import api from '../server/plugin.js'
 
 const dir = path.resolve('outputs/flow-image-ui')
@@ -33,7 +33,7 @@ const mock = {
     })
   },
 }
-const vite = await createServer({ configFile: false, envFile: false, cacheDir: 'node_modules/.cache/flow-image-vite', plugins: [mock, react(), api()], server: { host: '127.0.0.1', port: 0, strictPort: true, watch: { ignored: ['**/outputs/**'] } } })
+const vite = await createServer({ configFile: false, envFile: false, cacheDir: 'node_modules/.cache/flow-image-vite', plugins: [mock, react(), api()], server: { host: '127.0.0.1', port: await freePort(), strictPort: true, watch: { ignored: ['**/outputs/**'] } } })
 await vite.listen()
 const base = `http://127.0.0.1:${vite.httpServer.address().port}`
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -53,8 +53,8 @@ try {
     if (result.exceptionDetails) throw new Error(result.exceptionDetails.exception.description)
     return result.result.value
   }
-  const wait = async (expression) => {
-    for (const deadline = Date.now() + uiTimeout; Date.now() < deadline;) { if (await js(`Boolean(${expression})`)) return; await delay(100) }
+  const wait = async (expression, timeout = uiTimeout) => {
+    for (const deadline = Date.now() + timeout; Date.now() < deadline;) { if (await js(`Boolean(${expression})`)) return; await delay(100) }
     throw new Error(`Timed out: ${expression}`)
   }
   const nodeSel = (id) => `.react-flow__node[data-id="${id}"]`
@@ -69,7 +69,8 @@ try {
   await cdp('Page.navigate', { url: `${base}/flows` })
 
   // The legacy data URL renders, then moves to /media through a JSON upload.
-  await wait(`document.querySelector('${nodeSel('image-old')} img')`)
+  // The first load compiles the whole app in Vite, which is slow on a busy machine.
+  await wait(`document.querySelector('${nodeSel('image-old')} img')`, browserTimeout * 3)
   await wait(`document.querySelector('${nodeSel('image-old')} img')?.getAttribute('src').startsWith('/mock-media/')`)
   assert.equal(uploads[0].type, 'application/json')
   for (let i = 0; i < 40 && (await stored())[0].data.url.startsWith('data:'); i++) await delay(100)

@@ -28,6 +28,7 @@ import { flowFromBatch, openFlow } from '../lib/flowStore.js'
 import { covers } from '../lib/formats/parts.js'
 import { measureVideo, planUpscale, sourcesFor, upscaleJob, upscalerModel } from '../lib/upscale.js'
 import ConnectComfy from '../components/generate/ConnectComfy.jsx'
+import CreditsLink from '../components/CreditsLink.jsx'
 
 const panelTabs = [
   { value: 'create', label: 'Create video' },
@@ -98,8 +99,11 @@ function CreateVideo({ preset, onPresets, setError, onRan, addBatch }) {
   const prompts = multi ? [shotsPrompt(shots)].filter(Boolean) : batching ? rows.map((r) => r.text.trim()).filter(Boolean) : prompt.trim() ? [prompt.trim()] : []
   const perPrompt = batching ? takes : 1
   const total = prompts.length * perPrompt
-  const each = estimate(model, metaOf(model), { aspect: ratio, count: 1, duration: dur, takes: perPrompt })
-  const cost = each && prompts.length ? { usd: each.usd * prompts.length, approx: each.approx } : null
+  // A Pod bills by the hour, not per run, so a Pod run shows no per-run estimate. The Upscale run is part of each take's.
+  const onPod = model.provider === 'comfy' && (pod?.phase === 'ready' || model.pod)
+  const each = onPod ? null : estimate(model, metaOf(model), { aspect: ratio, count: 1, duration: dur, takes: perPrompt })
+  const upEach = upscaling && each && pod?.phase !== 'ready' ? estimate(upscalerModel(up.upscaler), {}, { duration: dur, takes: perPrompt }) : null
+  const cost = each && prompts.length ? { usd: (each.usd + (upEach?.usd || 0)) * prompts.length, approx: each.approx || Boolean(upEach) } : null
   const bal = !model.open && balanceText(balance, model.provider)
 
   const go = async (e) => {
@@ -126,7 +130,7 @@ function CreateVideo({ preset, onPresets, setError, onRan, addBatch }) {
     const upscale = (caption, meta) => async (files) => {
       for (const f of files.filter((x) => x.url && (!x.kind || x.kind === 'video'))) {
         const job = upscaleJob(target, await measureVideo(f.url), { short: plan.source?.short, seconds: dur })
-        if (job) gens.generate(upscaler, { prompt: '', caption, aspect: ratio, count: 1, video: f.url, duration: job.duration, params: { upscale_factor: job.factor } }, { ...meta, upscaled: target.label })
+        if (job) gens.generate(upscaler, { prompt: '', caption, aspect: ratio, count: 1, video: f.url, duration: job.duration, params: { upscale_factor: job.factor } }, { ...meta, upscaled: target.label, spendCounted: true })
       }
     }
     ready.forEach((p, r) => {
@@ -137,7 +141,7 @@ function CreateVideo({ preset, onPresets, setError, onRan, addBatch }) {
         gens.generate(model, {
           prompt: full, caption, aspect: ratio, count: 1, duration: dur, images, ...(scale && { scale }),
           ...(Object.keys(params).length && { params }), ...(refs.length && { refs }),
-        }, meta, upscaling ? upscale(caption, meta) : undefined)
+        }, { ...meta, ...(upEach && { spendExtra: upEach.usd / perPrompt }) }, upscaling ? upscale(caption, meta) : undefined)
       }
     })
     onRan()
@@ -366,7 +370,7 @@ export default function VideoStudio() {
         </div>
         <Banner />
         <Tip page="video" onLearn={() => setMain('how')} />
-        {gens.error && <div className="notice glass error gen-notice">{gens.error}{gens.retry && <button type="button" className="link-btn" onClick={gens.retry}>{gens.retry.label || 'Retry'}</button>}</div>}
+        {gens.error && <div className="notice glass error gen-notice">{gens.error}<CreditsLink message={gens.error} />{gens.retry && <button type="button" className="link-btn" onClick={gens.retry}>{gens.retry.label || 'Retry'}</button>}</div>}
         {main === 'how' ? explainer : <Feed kind="video" gens={gens} batches={batches} empty={explainer} />}
       </section>
 

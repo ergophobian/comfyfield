@@ -43,7 +43,7 @@ export default function ConnectComfy() {
         <button type="button" className="btn-blue" disabled={!key.trim() || saving} onClick={connect}>{saving ? 'Checking' : 'Connect'}</button>
       </div>
       <p className="connect-comfy-links">
-        <a href={providerInfo.comfy.link} target="_blank" rel="noreferrer">{providerInfo.comfy.keyLink} ›</a>
+        <a href={providerInfo.comfy.link} target="_blank" rel="noreferrer">{providerInfo.comfy.linkLabel} ›</a>
         <Link to="/connections">Other providers</Link>
       </p>
       {msg && <p className="connect-comfy-msg" role="alert">{msg}</p>}

@@ -5,7 +5,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { randomBytes } from 'node:crypto'
 import { POD_IMAGE, PROXY_PORT, STATUS_PORT, podEnv, podStartCmd, proxyUrl, statusUrl } from './podBoot.js'
-import { RUNTIMES, volumeFor } from '../shared/modelFiles.js'
+import { RUNTIMES, downloadsLeft, volumeFor } from '../shared/modelFiles.js'
 
 const REST = 'https://rest.runpod.io/v1'
 const GQL = 'https://api.runpod.io/graphql'
@@ -88,7 +88,9 @@ function envToken(pod) {
 
 // One manager per process. The app, CLI and MCP each make the default one; checks and the sandbox inject fakes.
 // `owner` marks the process that writes the spend ledger; the app's server becomes it when its monitor starts.
-export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now = Date.now, keys, dir, ladder = GPU_LADDER, extra = GPU_EXTRA, sandbox = false, wait = sleep, owner = false } = {}) {
+export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now = Date.now, keys, dir, ladder = GPU_LADDER, extra = GPU_EXTRA, sandbox = false, wait = sleep, owner = false, adoptPrefix = PREFIX } = {}) {
+  // A live proof adopts only its own Pods, never a Pod another checkout of the app is using.
+  if (!adoptPrefix.startsWith(PREFIX)) throw fail('Pods to adopt must be ComfyField Pods.', 400)
   // Every GPU a start may use: the ladder, then the cards only a Session tier picks.
   const all = [...ladder, ...extra]
   const file = (name) => path.join(dir(), name)
@@ -196,7 +198,7 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
     m.listedAt = now()
     const r = await rest('/pods')
     const rows = Array.isArray(r.data) ? r.data : r.data?.data || []
-    const pod = rows.find((p) => p.name?.startsWith(PREFIX) && p.desiredStatus !== 'TERMINATED' && envToken(p))
+    const pod = rows.find((p) => p.name?.startsWith(adoptPrefix) && p.desiredStatus !== 'TERMINATED' && envToken(p))
     if (!pod) return null
     const rung = all.find((x) => x.gpuTypeId === pod.machine?.gpuTypeId) || {}
     save({
@@ -339,7 +341,9 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
     const out = { ...base, rungs: rungs.map((r, i) => {
       const lp = data[`r${i}`]?.[0]?.lowestPrice || {}
       const counts = Array.isArray(lp.availableGpuCounts) ? lp.availableGpuCounts.filter((n) => n > 0) : null
-      return { ...r, usdPerHr: lp.uninterruptablePrice ?? null, inStock: counts ? counts.length > 0 : null }
+      // RunPod's listing (checked 2026-10-25) leaves the counts null and gives a stock level instead.
+      const level = ['high', 'medium', 'low'].includes(String(lp.stockStatus).toLowerCase())
+      return { ...r, usdPerHr: lp.uninterruptablePrice ?? null, inStock: counts ? counts.length > 0 : level || null }
     }) }
     m.quote = { at: now(), min: tag, data: out }
     return out
@@ -594,7 +598,7 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
         const rec = m.placing ? null : await refresh().catch(() => record())
         alive(rec)
         if (rec && m.status) break
-        onStage('waiting')
+        onStage('waiting', {})
         await wait(pollMs)
       }
       const { missing, pending } = await ask(record(), files, need, l)
@@ -608,7 +612,11 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
         if (broke) throw fail(`${runtimeName(broke)} could not install on the Pod: ${en[broke].error || 'unknown error'}`, 502)
         const placed = missing.every((f) => d[`${f.dir}/${f.name}`]?.state === 'done') && pending.every((e) => en[e]?.state === 'ready')
         if (m.status?.ready && placed) break
-        onStage(!m.status?.ready && placed ? 'waiting' : pending.some((e) => en[e]?.state !== 'ready') ? 'installing' : missing.length ? 'downloading' : 'waiting')
+        // The files this run still waits on, and about how long they take, so the run can say so.
+        const waitOn = missing.filter((f) => d[`${f.dir}/${f.name}`]?.state !== 'done')
+        const left = downloadsLeft(waitOn.map((f) => ({ want: f.bytes ?? (f.gb ? Math.round(f.gb * 1e9) : 0), state: 'queued', ...d[`${f.dir}/${f.name}`] })))
+        const stage = !m.status?.ready && placed ? 'waiting' : pending.some((e) => en[e]?.state !== 'ready') ? 'installing' : waitOn.length ? 'downloading' : 'waiting'
+        onStage(stage, stage === 'downloading' ? { files: waitOn.map((f) => f.name), leftSec: left } : {})
         await wait(pollMs)
         await refresh().catch(() => null)
         check()
@@ -616,7 +624,7 @@ export function podManager({ fetch: net = (...a) => globalThis.fetch(...a), now 
       }
       check()
       const rec = record()
-      onStage('running')
+      onStage('running', {})
       return { baseUrl: proxyUrl(rec.id), token: rec.token, sandbox, signal: l.signal, reason: () => l.reason, release }
     } catch (e) {
       release()

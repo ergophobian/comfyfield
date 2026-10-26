@@ -9,18 +9,17 @@ const strength = { id: 'strength', type: 'choice', label: 'Strength', half: true
 ] }
 
 // Fewer frames per second reads as hand-made animation.
-const frameRate = { id: 'fps', type: 'choice', label: 'Frame rate', half: true, default: '12', options: [
-  { id: '8', label: '8 fps', note: 'Choppy, hand-made feel', params: { fps: 8 } },
-  { id: '12', label: '12 fps', note: 'Animated feel', params: { fps: 12 } },
-  { id: '24', label: '24 fps', note: 'Smooth', params: { fps: 24 } },
+const frameRate = { id: 'fps', type: 'choice', label: 'Frame sampling', half: true, default: '12', options: [
+  { id: '8', label: 'Every third frame', note: 'Source rate ÷ 3, e.g. 10 fps from 30 fps', params: { stride: 3 } },
+  { id: '12', label: 'Every second frame', note: 'Source rate ÷ 2, e.g. 15 fps from 30 fps', params: { stride: 2 } },
+  { id: '24', label: 'Every frame', note: 'Source rate, e.g. 30 fps from 30 fps', params: { stride: 1 } },
 ] }
 
 const look = (slug, name, blurb, style, cover) => open({
   id: `mm-${slug}`, name, kind: 'video', category: 'mixed', group: 'Mixed media', blurb,
-  // Their own graph: it drops frames for 8 and 12 fps with core nodes, and blends the look over the
-  // footage by Strength. At 24 fps it makes the first 3.4 s of the clip, at 8 fps up to 10 s.
+  // Core nodes sample every first, second or third source frame and preserve its timing.
   runsOn: 'Bernini-R', workflow: 'bernini_mixed',
-  inputs: [{ ...clip, label: 'Your video, 1 to 10 seconds' }, strength, frameRate],
+  inputs: [{ ...clip, label: 'Your video' }, strength, frameRate],
   prompt: `Restyle the whole video in this look: ${style} Apply it {strength}, frame by frame, with the subject rotoscoped so the look tracks every movement, and keep the original motion, timing and framing.`,
   settings: { aspect: 'auto' },
   cover,

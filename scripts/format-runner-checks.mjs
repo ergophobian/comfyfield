@@ -288,7 +288,8 @@ for (const [format, values, options, code] of planningCases) {
 const details = await preflight(cloudMissing, { subject: 'A meadow' }, { requirements: offlineRequirements, runType: 'instant' })
 assert(details.steps[1].notOnCloud.length > 0)
 assert(details.steps[1].minVramGb > 0)
-assert.equal(details.cost.total, null, 'Unknown GPU prices stay unknown')
+assert.equal(details.cost.total.approx, true, 'Comfy Cloud steps are priced from GPU seconds, marked approximate')
+assert(details.cost.total.usd > 0)
 const alternate = { ...comfy, steps: [{ ...comfy.steps[0], workflow: 'flux3_klein_t2i' }] }
 const alternateCalls = []
 const cloudAlternate = await runFormat(alternate, { subject: 'A meadow' }, { runType: 'instant', run: async (model) => { alternateCalls.push(model.workflow); return [{ url: 'https://example.test/alternate.png' }] } })
@@ -354,8 +355,10 @@ for (const unit of ['gpu-second', 'GPU seconds', 'gpu_second']) {
   assert.deepEqual(estimate({}, meta, { executionSeconds: 12 }), { usd: 0.24, approx: false })
 }
 const gpuQuote = await preflight(routerFormat, { subject: 'A meadow' }, { requirements: offlineRequirements })
-assert.equal(gpuQuote.cost.steps[0].usd, null)
-assert.equal(gpuQuote.cost.total, null)
+// A GPU-second Router price with a typical run time gives an approximate quote.
+assert(gpuQuote.cost.steps[0].usd > 0)
+assert.equal(gpuQuote.cost.total.approx, true)
+assert.deepEqual(estimate({}, { price: { amount: 0.02, unit: 'gpu-second', seconds: 10 } }, { count: 2 }), { usd: 0.4, approx: true })
 
 const invalidSession = await failedRun(imageRecipe, {}, { run: async () => assert.fail('Invalid input cannot spend') })
 assert.equal(invalidSession.reason.code, 'invalid_format')
@@ -364,6 +367,7 @@ assert.equal(invalidSession.busy, false)
 console.log('Runner resilience checks ok: exact retry counts, retained outputs and run id, approval and writer recovery, busy exclusion, input snapshots, whole-pipeline preflight, Cloud alternates and derived costs.')
 assert.equal(formats.length, allFormats.filter((format) => !validateFormat(format).length).length)
 assert.equal(new Set(allFormats.map((format) => format.id)).size, allFormats.length)
+for (const id of ['ugc-product-review', 'ugc-unboxing', 'ugc-tutorial', 'ugc-talking-head', 'influencer-motion']) assert(formats.some((format) => format.id === id), `${id} is runnable`)
 
 // Edits and upscales carry the picture they started from, for the before and after slider.
 const sourceOf = async (f, extra) => {
@@ -374,8 +378,8 @@ const sourceOf = async (f, extra) => {
 assert.equal(await sourceOf(allFormats.find((f) => f.id === 'image-upscale')), photo.url)
 assert.equal(await sourceOf(allFormats.find((f) => f.id === 'erase'), { target: 'The sign' }), photo.url)
 assert.equal(await sourceOf(imageRecipe), undefined, 'Only edits and upscales carry a source')
-assert.equal(formats.length, 450)
-assert.equal(allFormats.length, 479, 'Do not delete planned formats')
+assert.equal(formats.length, 459)
+assert.equal(allFormats.length, 488, 'Do not delete planned formats')
 assert.equal(allFormats.filter((f) => f.category === 'camera').length > 0, true, 'Keep Create prompt presets')
 assert(allFormats.filter((f) => !formats.includes(f)).every((f) => formatProblems.get(f.id).length))
 
@@ -496,3 +500,40 @@ const once = await failedRun(routerFormat, { subject: 'A meadow' }, { run: async
 await Promise.all([once.retry('generate'), once.retry('generate')])
 assert.equal(onceCalls, 2)
 console.log('Runner review regressions ok: edited options, terminal key rotation, Pod warnings and queued Library retries.')
+
+// Retrying one failed render keeps sibling output and its Library identity.
+const retryFormat = { ...imageRecipe, id: 'test-targeted-retry', shape: 'pipeline',
+  steps: [{ id: 'concept', type: 'writer', instructions: 'Draft a concept' }, { id: 'approval', type: 'approve' },
+    ...['success', 'failure'].map((id) => ({ ...imageRecipe.steps[0], id, from: ['approval'] }))],
+  outputs: ['success', 'failure'].map((step) => ({ step, kind: 'image' })),
+}
+const attempts = []
+let failRender = true
+const targetedSession = await runFormat(retryFormat, valuesFor(retryFormat), {
+  writePrompt: async () => 'Reviewed concept',
+  run: async (_, opts, meta) => {
+    attempts.push(meta.stepId)
+    if (meta.stepId === 'failure' && failRender) throw new Error('One render failed')
+    return [{ url: `https://example.test/${meta.stepId}.png`, prompt: opts.prompt }]
+  },
+})
+await targetedSession.sendWriter('concept')
+await assert.rejects(targetedSession.send('approval'), /One render failed/)
+const preserved = targetedSession.results()[0]
+targetedSession.engine.editWriter(targetedSession.flow, 'concept', 'Reviewed concept')
+// The stored render failure stays reported until it is retried, but review still reopens.
+await assert.rejects(targetedSession.sendWriter('concept'), /One render failed/)
+assert.equal(targetedSession.engine.gate('approval').status, 'reviewing', 'Stored render failure does not prevent reopening review')
+failRender = false
+await targetedSession.send('approval')
+assert.deepEqual(attempts, ['success', 'failure', 'failure'])
+failRender = true
+await targetedSession.engine.rerun(targetedSession.flow, 'failure')
+await assert.rejects(targetedSession.retry('failure'), /One render failed/)
+failRender = false
+await targetedSession.retry('failure')
+assert.equal(attempts.filter((id) => id === 'success').length, 1)
+assert.equal(targetedSession.results()[0], preserved)
+await targetedSession.retry('success')
+assert.equal(attempts.filter((id) => id === 'success').length, 1, 'Retrying a step without failures pays for nothing')
+console.log('Targeted format retry checks ok: stored failures, reopened gates, repeated failures and preserved sibling outputs')

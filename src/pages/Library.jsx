@@ -24,7 +24,7 @@ export default function Library({ gens }) {
   const raw = params.get('tab')
   const tab = tabs.some((t) => t.value === raw) ? raw : 'generations'
   return (
-    <main className="page">
+    <main className="page library-page">
       <div className="page-head">
         <h1>Assets</h1>
         <p>{lines[tab]}</p>

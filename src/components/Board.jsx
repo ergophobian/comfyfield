@@ -1,4 +1,7 @@
 import { takeLabel, usePod } from '../lib/usePod.js'
+import CreditsLink from './CreditsLink.jsx'
+import { progressText } from '../lib/jobs.js'
+import ProgressBar from './ProgressBar.jsx'
 
 const ratio = (a) => (/^\d+:\d+$/.test(a) ? a.replace(':', ' / ') : '1 / 1')
 
@@ -11,12 +14,13 @@ function Take({ it, onApprove, onDismiss }) {
           Failed
           {typeof it.failed === 'string' && <small title={it.failed}>{it.failed}</small>}
           <span className="take-acts">
+            <CreditsLink message={it.failed} />
             {it.retry && <button type="button" onClick={it.retry}>{it.retry.label || 'Retry'}</button>}
             <button type="button" onClick={() => onDismiss(it.id)}>Dismiss</button>
           </span>
         </span>
       )
-        : it.pending ? <span className="take-msg">{takeLabel(it, status) || (it.started ? 'Rendering' : 'Queued')}</span>
+        : it.pending ? <span className="take-msg">{takeLabel(it, status) || progressText(it.progress) || (it.started ? 'Rendering' : 'Queued')}{!takeLabel(it, status) && <ProgressBar progress={it.progress} />}</span>
         : it.kind === 'video' ? <video src={it.url} autoPlay loop muted playsInline />
         : it.kind === 'audio' ? <audio src={it.url} controls />
         : <img src={it.url} alt={it.caption} />}

@@ -1,0 +1,25 @@
+{
+  "baseCommit": "738dfc26ebcaf27f5a7e5242480f6cd7d01f9c94",
+  "originMain": "7ee3b1c9c84ba1c5e59b9b4b3069f8af6ecef0c1",
+  "files": {
+    "public/workflows/wan_animate2.json": "32a2c3559cf62564bd0d6c340c7e5fa83d6bab067913036592dfe69b5dbead1e",
+    "scripts/format-runner-checks.mjs": "8134c54db8e4f3c7e5a07b5d56354939b77c90446180ec0ebf357549bb7e7cfa",
+    "scripts/integration-checks.mjs": "88d118aa2e424880829f78dd58f5ae821f1a0832204e49731f1d02fe6b3cd08d",
+    "scripts/pod-checks.mjs": "ee8b3eeda2fc21b32b48c54e0ee6586e1f5e8277cc27661e15498374c562a290",
+    "scripts/presenter-checks.mjs": "51b0845bffb6d489ad28ea1187a64ef2c9e6c777b8a2ffa6eaebc92742daae4f",
+    "scripts/presenter-ui-check.mjs": "a7871b3296500ee4ce0c5d1f99bf63a6bac029f5aa104fae4699e8d4f93321c2",
+    "server/core.js": "4a23d7e74ca55fc8f34955dd6ca49437c77232336f3834233c07be380c97ec55",
+    "shared/mapping.js": "82aadd0b4c2d0468c27364e52cd69238649642aba650d5bae2c6ee4e57a7411a",
+    "shared/modelFiles.js": "aa0292742401692f8c02c7871fac2fcfd330520f75f7d882612da0a89941609b",
+    "src/components/formats/Fields.jsx": "8ece7de47e3796468f33a18b927e572d1ac51a582ac48495f6ce26c9b270dd63",
+    "src/components/formats/Review.jsx": "e494fdca36452fc02270e4ee8f865a139a39bc982ba9a10d2df1d5a095a32cd1",
+    "src/lib/formats/presenterSession.js": "348debff6d99f14cf4f91c49834d1b5bec7098190e9538201ba7b4d75dfffce1",
+    "src/lib/formats/presenters.js": "9492913de38e5afded40b443de2b22b9ccdbbc310e7ad55a763258638a2ba7be",
+    "src/lib/formats/schemas.js": "d11f01e6541ee5a473e243c65df0059c29ab2f97683a25bb7490036a4266b14b",
+    "src/lib/formats/validate.js": "666d0b2c0b8cbf007bcacd4995d79b11e656f21dbf3a01da33278bda8767e763",
+    "src/lib/recipes.js": "d66c02242e515f5633e6d2c3cd908a4888ba4505ade7f4c50e5bb41b0b838a53",
+    "src/lib/useGenerations.js": "1d6345d9cdab116fdc75f3c7e5df50b79b0e58d3be2c97e84cd6827f5e4f2cf4",
+    "src/pages/Influencer.jsx": "7e11cef3ebc20c1e05f9d39ebfc7e1611ae6030fc26ce1ad808ebb73a1cc6d73",
+    "src/styles.css": "a025c7e2f8d87a8bfcbd1f1feab59761ad6768e3e19759a802035f5692d91d05"
+  }
+}

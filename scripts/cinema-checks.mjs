@@ -3,12 +3,13 @@ import { mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { cinemaPlan } from './fixtures/cinema-plan.mjs'
-import { cinemaCost, cinemaExamplePlan, cinemaFlow, cinemaInstructions, cinemaPrompt, validateCinemaPlan } from '../src/lib/cinema.js'
+import { cinemaCost, cinemaModel, cinemaExamplePlan, cinemaFlow, cinemaInstructions, cinemaPrompt, validateCinemaPlan } from '../src/lib/cinema.js'
 import { createFlows } from '../server/flows.js'
 import { comfyVars } from '../shared/mapping.js'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
-import { writeKeys, writePrompt } from '../server/core.js'
+import { writeKeys, writePrompt, formatRequirements } from '../server/core.js'
+import { formatById } from '../src/lib/formats/index.js'
 
 // No saved keys or provider environment variables can reach the mocked writer checks.
 if (!process.argv.includes('--isolated')) {
@@ -126,5 +127,19 @@ try {
   const model = imageFlow.nodes.find((node) => node.id === 'shot-1').data.model
   assert.equal(model.imageWorkflow, 'ltx25_i2v')
   assert.equal(comfyVars(model.kind, input, model.sizes).image, input.image)
-  console.log('Cinema checks ok: planner validation, edited durations/cost, catalog models, t2v/i2v inputs, disk persistence, independent gates, one-shot replacement and explicit re-stitch. No provider calls.')
+  // LTX-2.5 is the Cinema engine: the scene flow and the Cinema shot format both default to it, and it runs on
+  // Comfy Cloud with a Comfy key and no Pod. Session alone moves it to a Pod.
+  const shotFormat = formatById('cinema-shot')
+  const modelInput = shotFormat.inputs.find((input) => input.id === 'model')
+  assert.equal(modelInput.default, 'ltx', 'Cinema shot defaults to LTX-2.5')
+  assert.equal(modelInput.options[0].id, 'ltx', 'LTX-2.5 is listed first')
+  assert.match(shotFormat.runsOn, /^LTX-2\.5 on Comfy Cloud/)
+  const target = shotFormat.steps[0].targets.ltx
+  assert.deepEqual([target.workflow, target.imageWorkflow], [cinemaModel.workflow, cinemaModel.imageWorkflow], 'The format and the scene run the same LTX graphs')
+  writeKeys({ comfy: { key: 'mock-comfy' } })
+  for (const run of [null, 'instant']) {
+    const routes = (await formatRequirements([{ workflow: 'ltx25_t2v' }, { workflow: 'ltx25_i2v' }], { run, phase: 'none', vramGb: null, arch: null, local: false })).requirements
+    assert.deepEqual(routes.map((route) => [route.target, route.selectedWorkflow]), [['cloud', 'ltx25_t2v'], ['cloud', 'ltx25_i2v']], `LTX-2.5 runs on Comfy Cloud (run type ${run})`)
+  }
+  console.log('Cinema checks ok: planner validation, edited durations/cost, catalog models, t2v/i2v inputs, disk persistence, independent gates, one-shot replacement and explicit re-stitch. LTX-2.5 is the default and routes to Comfy Cloud. No provider calls.')
 } finally { global.fetch = network }

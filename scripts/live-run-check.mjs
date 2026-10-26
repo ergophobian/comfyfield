@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { test } from 'node:test'
 import { spawnSync } from 'node:child_process'
-import { acquireLock, checkCap, dryRun, execute, guardPod, ledgerTotal, paidCall, plans, readLedger, root, savedKeysOnly } from './live-run.mjs'
+import { acquireLock, assertAccountEmpty, checkCap, dryRun, execute, guardPod, ledgerTotal, LIVE_PREFIX, paidCall, plans, readLedger, root, savedKeysOnly } from './live-run.mjs'
 
 fs.mkdirSync('outputs', { recursive: true })
 const tmp = fs.mkdtempSync(path.resolve('outputs/live-run-check-'))
@@ -102,6 +102,14 @@ await test('shell key fallbacks are discarded without reading them', () => {
   assert.equal(process.env.RUNPOD_API_KEY, undefined)
   assert.equal(process.env.COMFY_MODE, undefined)
   assert.equal(process.env.COMFY_BASE_URL, undefined)
+})
+
+await test('the proof only counts live-proof Pods, so an app Pod on the account is left alone', async () => {
+  assert.equal(process.env.COMFYFIELD_POD_ADOPT_PREFIX, LIVE_PREFIX, 'the core adopts only live-proof Pods')
+  const prefixes = []
+  await assertAccountEmpty({ sweep: async ({ dryRun, prefix }) => { assert(dryRun); prefixes.push(prefix); return [] } })
+  assert.deepEqual(prefixes, ['comfyfield-live-'])
+  await assert.rejects(assertAccountEmpty({ sweep: async () => [{ id: 'p', name: 'comfyfield-live-x' }] }), /Live-proof Pods already exist/)
 })
 
 process.env.COMFYFIELD_HOME = tmp
@@ -252,6 +260,34 @@ await test('Pod lifecycle reserves the whole session before creation and cleans 
   await assert.rejects(podProof(fake, { file, id: 'fixture', maximum: 1.5, launchCleanup: async () => { order.push('guard-ready'); return () => order.push('guard-disarmed') } }), /pause failed/)
   assert.deepEqual(order, ['list', 'guard-ready', 'start', 'generate', 'generate', 'pause', 'cleanup', 'list', 'guard-disarmed'])
   assert.equal(ledgerTotal(readLedger(file)), 1.5)
+})
+
+await test('self-termination proof only reads the Pod and records when it ended itself', async () => {
+  const { podSelfProof } = await import('./live-run.mjs')
+  const file = ledger()
+  const clock = { t: Date.parse('2026-10-25T12:00:00Z') }
+  const order = []
+  let phase = 'starting'
+  let terminateAt
+  const manager = {
+    sweep: async ({ dryRun, prefix }) => { order.push(dryRun ? 'list' : `cleanup ${prefix.startsWith('comfyfield-live-') && prefix.length > 16}`); return [] },
+    quote: async () => ({ rungs: [{ name: 'Mock gpu', inStock: true, usdPerHr: 0.5 }] }),
+    start: async ({ proof }) => { terminateAt = proof.terminateAt; order.push('start') },
+    refresh: async () => { if (clock.t >= t0 + 7 * 60_000) phase = 'ready'; if (clock.t >= terminateAt + 20_000) phase = 'none' },
+    tick: () => { throw new Error('tick would heartbeat and run the app guard') },
+    status: () => ({ phase, event: phase === 'none' ? { text: 'The Pod is gone. It may have terminated itself.' } : null, pod: { id: 'pod-self', costPerHr: 0.5 }, safety: { selfTerminateReady: true, proofDeadline: Math.floor(terminateAt / 1000) } }),
+    stopMonitor: () => {},
+  }
+  const t0 = clock.t
+  let guardAt
+  const ev = await podSelfProof({ pod: () => manager }, { file, id: 'fixture', maximum: 0.4, now: () => clock.t, wait: async () => { clock.t += 5000 }, launchCleanup: async (_, at) => { guardAt = at; order.push('guard-ready'); return () => order.push('guard-disarmed') } })
+  assert.equal(guardAt - terminateAt, 5 * 60_000, 'the outside guard waits past the deadline of the Pod')
+  assert.equal(ev.startToReadySeconds, 420)
+  assert(ev.goneAfterDeadlineSeconds >= 20 && ev.goneAfterDeadlineSeconds < 30)
+  assert.deepEqual(order, ['list', 'guard-ready', 'start', 'cleanup true', 'list', 'guard-disarmed'])
+  assert.equal(readLedger(file)[0].outcome, 'succeeded')
+  phase = 'starting'
+  await assert.rejects(podSelfProof({ pod: () => ({ ...manager, refresh: async () => {} }) }, { file: ledger(), id: 'fixture', maximum: 0.4, now: () => clock.t, wait: async () => { clock.t += 60_000 }, launchCleanup: async () => () => {} }), /did not terminate itself/)
 })
 
 await test('Pod proof start pins ten-minute idle and the absolute deadline without forwarding account keys', async () => {

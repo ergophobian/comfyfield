@@ -1,17 +1,22 @@
+import { mergeStores, cleanFlow, STALE } from '../../shared/flowMerge.js'
+
 const listeners = new Set()
 let snapshot = { store: null, ready: false, error: '' }
 let initialized
 let revision = 0
+// The last store this page got from the server. Local edits are what changed since then.
+let base = null
 let dirty = false
 let saving
 let timer
 let events
 let refreshing
+let again = false
 
 export async function api(url, method = 'GET', data) {
   const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: data === undefined ? undefined : JSON.stringify(data) })
   const result = await res.json()
-  if (!res.ok) throw new Error(result.error || 'Could not reach the local server')
+  if (!res.ok) throw Object.assign(new Error(result.error || 'Could not reach the local server'), { status: res.status })
   return result
 }
 
@@ -22,15 +27,28 @@ const markMigrated = () => { try { localStorage.setItem(MIGRATED, '1') } catch {
 const emit = (next) => { snapshot = { ...snapshot, ...next }; listeners.forEach((fn) => fn()) }
 export const flowSnapshot = () => snapshot
 export const subscribeFlows = (fn) => { listeners.add(fn); return () => listeners.delete(fn) }
-const accept = (store) => { revision = store.revision; emit({ store, ready: true, error: '' }) }
+const accept = (store) => { base = store; revision = store.revision; emit({ store, ready: true, error: '' }) }
+// A remote change lands at once. Edits made here since `base` go on top, node by node.
+const rebase = (remote) => {
+  const store = mergeStores(base, snapshot.store, remote)
+  base = remote
+  revision = remote.revision
+  emit({ store, ready: true, error: '' })
+}
 
 export async function refreshFlows() {
-  if (dirty || saving || refreshing) return
+  if (saving || refreshing) { again = true; return refreshing }
   refreshing = api('/api/flows')
   try {
-    const store = await refreshing
-    if (!dirty && !saving) accept(store)
-  } catch (e) { emit({ error: e.message }) } finally { refreshing = null }
+    const remote = await refreshing
+    // A save in flight decides what the server has; look again when it ends.
+    if (saving) again = true
+    else if (dirty) rebase(remote)
+    else accept(remote)
+  } catch (e) { emit({ error: e.message }) } finally {
+    refreshing = null
+    if (again && !saving) { again = false; refreshFlows() }
+  }
 }
 
 export function initFlows(seed) {
@@ -68,22 +86,32 @@ export function changeFlows(fn) {
 
 export async function flushFlows() {
   clearTimeout(timer)
-  if (saving) { await saving; return flushFlows() }
+  if (saving) { await saving.catch(() => {}); return flushFlows() }
   if (!dirty) return
   if (!snapshot.ready) throw new Error(snapshot.error || 'Flows are still loading')
-  const store = snapshot.store
   dirty = false
-  saving = api('/api/flows', 'PUT', { ...store, revision })
+  let store = snapshot.store
+  saving = (async () => {
+    for (let attempt = 0; ; attempt++) {
+      try { return await api('/api/flows', 'PUT', { ...store, flows: store.flows.map(cleanFlow), revision }) } catch (e) {
+        // Someone else saved first: take their store, put these edits on top and save again.
+        if (e.status !== 409 || e.message !== STALE || attempt >= 4) throw e
+        rebase(await api('/api/flows'))
+        store = snapshot.store
+      }
+    }
+  })()
   try {
     const saved = await saving
-    revision = saved.revision
     if (store === snapshot.store) accept(saved)
+    else { base = saved; revision = saved.revision; dirty = true }
   } catch (e) {
     dirty = true
     emit({ ready: false, error: `${e.message} Your unsaved flow is available to export.` })
     throw e
   } finally { saving = null }
   if (dirty) await flushFlows()
+  if (again) { again = false; refreshFlows() }
 }
 
 export async function reloadFlows() {

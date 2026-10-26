@@ -208,4 +208,36 @@ export function StitchNode({ id, data, selected }) {
   )
 }
 
-export const nodeTypes = { mask: WidgetNode, face: WidgetNode, video: WidgetNode, crop: WidgetNode, writer: WriterNode, prompt: PromptNode, image: ImageNode, model: ModelNode, stitch: StitchNode, approve: ApproveNode, output: OutputNode, note: NoteNode }
+export function BlenderNode({ id, data, selected }) {
+  const { state, act } = useFlow()
+  const st = state[id] || {}
+  const result = st.items?.find((item) => item.status === 'done')
+  const failed = st.items?.find((item) => item.status === 'failed')
+  const ready = Boolean(data.script?.trim())
+  return (
+    <Shell type="blender" selected={selected} output tag={data.output === 'video' ? 'Video' : 'Image'}>
+      {result && (result.kind === 'video'
+        ? <video className="stitch-preview nodrag" src={result.url} controls playsInline preload="metadata" />
+        : <img className="fp-img" src={result.url} alt="Blender render" />)}
+      <p className={`fstat${failed ? ' bad' : ''}`}>{st.running ? 'Rendering in Blender' : failed ? failed.error : result ? 'Saved to the Library' : ready ? 'Ready to render' : 'Select to write a script'}</p>
+      <button type="button" className="btn-soft xs nodrag" disabled={st.running > 0 || !ready} onClick={() => act.rerun(id)}>{result ? 'Render again' : 'Render'}</button>
+    </Shell>
+  )
+}
+
+export function ThreeNode({ id, data, selected }) {
+  const { state, act } = useFlow()
+  const st = state[id] || {}
+  const result = st.items?.find((item) => item.status === 'done')
+  const failed = st.items?.find((item) => item.status === 'failed')
+  const ready = Boolean(data.script?.trim())
+  return (
+    <Shell type="threejs" selected={selected} output tag={`${data.duration} s, ${data.fps} fps`}>
+      {result && <video className="stitch-preview nodrag" src={result.url} controls playsInline loop preload="metadata" />}
+      <p className={`fstat${failed ? ' bad' : ''}`}>{st.running ? 'Rendering frames in Chrome' : failed ? failed.error : result ? 'Saved to the Library' : ready ? `Ready to render ${data.width} x ${data.height}` : 'Select to write a scene'}</p>
+      <button type="button" className="btn-soft xs nodrag" disabled={st.running > 0 || !ready} onClick={() => act.rerun(id)}>{result ? 'Render again' : 'Render'}</button>
+    </Shell>
+  )
+}
+
+export const nodeTypes = { mask: WidgetNode, face: WidgetNode, video: WidgetNode, crop: WidgetNode, writer: WriterNode, prompt: PromptNode, image: ImageNode, model: ModelNode, stitch: StitchNode, blender: BlenderNode, threejs: ThreeNode, approve: ApproveNode, output: OutputNode, note: NoteNode }

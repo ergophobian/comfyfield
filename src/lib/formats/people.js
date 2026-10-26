@@ -250,11 +250,38 @@ const voice = [
     cover: covers.sky,
   }),
   open({
+    id: 'drama3-tts', name: 'Drama 3 speech', kind: 'audio', category: 'voice',
+    blurb: 'Read a script, optionally guided by a voice sample.',
+    runsOn: 'Fish Audio Drama 3', workflow: 'drama3_tts',
+    info: {
+      attribution: 'Built with Fish Audio',
+      text: 'Limited commercial use is available below $500,000 in annual revenue, subject to the license. Hosted speech-generation services require a separate written license regardless of revenue. Imitating an identifiable voice requires prior consent or another legal right.',
+      url: 'https://huggingface.co/fishaudio/drama-3/blob/main/LICENSE',
+    },
+    inputs: [
+      { id: 'script', type: 'longtext', label: 'Script', placeholder: 'Write exactly what the voice should say.' },
+      { id: 'voice', type: 'voice', label: 'Voice sample', optional: true },
+    ],
+    prompt: '{script}',
+    cover: covers.lilac,
+  }),
+  open({
+    id: 'qwen3-tts', name: 'Qwen3-TTS speech', kind: 'audio', category: 'voice',
+    blurb: 'Read a script in the voice of an uploaded sample.',
+    runsOn: 'Qwen3-TTS', workflow: 'qwen3_tts',
+    inputs: [
+      { id: 'script', type: 'longtext', label: 'Script', placeholder: 'Write exactly what the voice should say.' },
+      { id: 'voice', type: 'voice', label: 'Voice sample' },
+    ],
+    prompt: '{script}',
+    cover: covers.mint,
+  }),
+  open({
     id: 'voice-clone', name: 'Voice clone', kind: 'audio', category: 'voice', featured: true,
     blurb: 'Turn a short sample of your voice into a reusable voice.',
     runsOn: 'Chatterbox', workflow: 'chatterbox_clone',
     inputs: [
-      { id: 'audio', type: 'audio', label: 'Sample, 10 to 30 seconds' },
+      { id: 'audio', type: 'audio', voiceSample: true, label: 'Voice sample, 6 to 60 seconds' },
       { id: 'name', type: 'text', label: 'Voice name', placeholder: 'My narrator voice' },
     ],
     // Chatterbox clones from the sample itself (its first 10 seconds count), so the run reads a short
