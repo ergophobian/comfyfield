@@ -641,7 +641,7 @@ for (const id of ['motion-transfer', 'video-character-swap']) {
   const format = formats.find((f) => f.id === id)
   assert(format, `${id} remains runnable`)
   assert.match(format.blurb, /Use footage you own or have permission to use\./)
-  const values = { ...initialValues(format), video: { url: 'https://example.test/owned.mp4', trim: { start: 3, end: 7 } }, image: photo, face: photo, scene: 'A small kitchen with warm window light' }
+  const values = { ...initialValues(format), video: { url: 'https://example.test/owned.mp4', duration: 8, trim: { start: 3, end: 7 } }, image: photo, face: photo, scene: 'A small kitchen with warm window light' }
   for (const source of id === 'video-character-swap' ? ['photo', 'character'] : ['photo']) {
     for (const mode of ['note', 'write', 'disconnected']) {
       const calls = []
