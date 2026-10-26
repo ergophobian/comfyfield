@@ -102,7 +102,12 @@ adapterOptions.emit({ type: 'message', text: 'I will prepare a flow.' })
 const added = await harness.call(session.id, 'add_node', { flow_id: flow.id, type: 'note', data: { text: 'Draft' }, position: { x: 32, y: 40 } })
 await harness.call(session.id, 'update_node', { flow_id: flow.id, node_id: added.id, data: { text: 'Updated' } })
 assert.equal(harness.flows.get(flow.id).nodes.at(-1).data.text, 'Updated')
-assert.ok(events.some((e) => e.type === 'presence' && e.nodeId === added.id))
+const [me] = harness.presence.list().agents
+assert.deepEqual([me.name, me.color, me.kind, me.flowId, me.nodeId, me.until], [session.name, 'agent-1', 'assistant', flow.id, added.id, null], 'the session is on the node it edits until its turn ends')
+assert.ok(events.some((e) => e.type === 'agents'))
+harness.flows.assign(flow.id, added.id, session.name)
+const tasks = await harness.call(session.id, 'my_tasks', {})
+assert.deepEqual([tasks.agent, tasks.tasks[0].flow_id, tasks.tasks[0].nodes.map((n) => n.id)], [session.name, flow.id, [added.id]], 'my_tasks answers for the Assistant session that calls it')
 assert.ok(events.some((e) => e.type === 'message' && e.text.includes('prepare')))
 console.log('ok    adapter session, message events, MCP attachment and canvas presence')
 

@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import SettingsMenu from '../SettingsMenu.jsx'
 import PodChip from '../pod/PodChip.jsx'
+import RunChip from './RunChip.jsx'
 import MegaMenu, { Badge } from './MegaMenu.jsx'
 import MobileNav from './MobileNav.jsx'
 import { Glyph } from './ToolIcon.jsx'
@@ -180,6 +181,7 @@ export default function TopBar() {
         </ul>
       </nav>
       <div className="nav-right">
+        <RunChip />
         <PodChip />
         <SettingsMenu />
         <a className="btn-soft" href="https://github.com/ergophobian/comfyfield" target="_blank" rel="noreferrer">GitHub ›</a>

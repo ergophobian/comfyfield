@@ -10,8 +10,10 @@ export const wanSizes = { '16:9': [1280, 720], '9:16': [720, 1280], '1:1': [960,
 // provider 'comfy' runs public/workflows/<workflow>.json; 'fal' fills inputs from the model's schema.
 export const models = [
   // Router prices: docs.comfy.org/development/comfy-router/pricing, checked 2026-10-19.
-  { id: 'comfy-router-flux', kind: 'image', provider: 'comfyRouter', name: 'Flux 2 Pro', note: 'Images and edits with up to nine references. Uses Comfy credits.', model: 'bfl/flux-2-pro', maxImages: 9, price: { amount: 0.266 / 211, unit: 'gpu-second' } },
-  { id: 'comfy-router-flux-max', kind: 'image', provider: 'comfyRouter', name: 'Flux 2 max', note: 'Detailed images and edits with up to nine references.', model: 'bfl/flux-2-max', maxImages: 9, price: { amount: 0.266 / 211, unit: 'gpu-second' } },
+  // Flux 2 bills GPU seconds. `seconds` is a typical image, for the estimate before a run: fal lists Flux 2
+  // Pro at $0.03 and max at $0.07 per megapixel, about 24 and 56 seconds at this rate.
+  { id: 'comfy-router-flux', kind: 'image', provider: 'comfyRouter', name: 'Flux 2 Pro', note: 'Images and edits with up to nine references. Uses Comfy credits.', model: 'bfl/flux-2-pro', maxImages: 9, price: { amount: 0.266 / 211, unit: 'gpu-second', seconds: 24 } },
+  { id: 'comfy-router-flux-max', kind: 'image', provider: 'comfyRouter', name: 'Flux 2 max', note: 'Detailed images and edits with up to nine references.', model: 'bfl/flux-2-max', maxImages: 9, price: { amount: 0.266 / 211, unit: 'gpu-second', seconds: 56 } },
   { id: 'comfy-router-kontext', kind: 'image', provider: 'comfyRouter', name: 'Flux Kontext pro', note: 'Prompted edits with up to four references.', model: 'bfl/flux-kontext-pro', maxImages: 4, aspects: ['1:1', '16:9', '9:16', '4:5'], price: { amount: 0.04, unit: 'image' } },
   { id: 'comfy-router-photon', kind: 'image', provider: 'comfyRouter', name: 'Photon flash', note: 'Low cost images from a text prompt.', model: 'luma/photon-flash-1', aspects: ['1:1', '16:9', '9:16', '4:3', '3:4', '21:9'], price: { amount: 0.5733 / 211, unit: 'image' } },
   { id: 'comfy-router-seedream', kind: 'image', provider: 'comfyRouter', name: 'Seedream 5.0 flash', note: 'Low cost images and edits with up to ten references.', model: 'byteplus/seedream-5-0-flash-260915', maxImages: 10, price: { amount: 5.4311 / 211, unit: 'image' } },
@@ -59,6 +61,7 @@ export const models = [
   { id: 'g-veo-fast', kind: 'video', provider: 'google', name: 'Veo 3.1 Fast', note: 'Cheaper and quicker', model: 'veo-3.1-fast-generate-preview', mode: 'video', durations: [4, 6, 8], price: { amount: 0.15, unit: 'second', estimate: true } },
   { id: 'g-veo-lite', kind: 'video', provider: 'google', name: 'Veo 3.1 Lite', note: 'Lowest cost Veo', model: 'veo-3.1-lite-generate-preview', mode: 'video', durations: [4, 6, 8], price: { amount: 0.05, unit: 'second', estimate: true } },
 
+  { id: 'comfy-drama3-tts', kind: 'audio', provider: 'comfy', name: 'Drama 3', note: 'Read a script. Use the Audio studio to attach a voice sample. Runs on a Pod.', workflow: 'drama3_tts', pod: true },
   { id: 'g-tts', kind: 'audio', provider: 'google', name: 'Gemini voice', note: 'Text to speech, your Google key', model: 'gemini-3.8-flash-tts', mode: 'speech' },
   { id: 'el-speech', kind: 'audio', provider: 'elevenlabs', name: 'ElevenLabs voice', note: 'Text to speech with your key', mode: 'speech' },
   { id: 'el-sfx', kind: 'audio', provider: 'elevenlabs', name: 'ElevenLabs sound effects', note: 'Describe a sound', mode: 'sfx' },
@@ -122,8 +125,13 @@ export const falCategories = [
   { id: 'text-to-audio', label: 'Sound and music', kind: 'audio' },
 ]
 
+// Where a Comfy workspace adds credits. Router and Cloud runs refuse with insufficient_credits when it is empty.
+export const COMFY_CREDITS_URL = 'https://platform.comfy.org'
+export const needsComfyCredits = (message) => /insufficient credits/i.test(String(message || ''))
+
 export const providerInfo = {
-  comfy: { name: 'ComfyUI', blurb: 'Your Comfy API key runs open models on Comfy Cloud in seconds, on a paid Comfy plan. For a long session, add your RunPod key on the RunPod card and start a Pod from the top bar: while it runs, ComfyUI runs use it. The key also unlocks hosted models through Comfy Router.', fields: [
+  // linkLabel and lead: Comfy is the default path, so its card names its key and says why it comes first.
+  comfy: { name: 'ComfyUI', linkLabel: 'Get a Comfy key', lead: 'Start here. One Comfy key runs open models on Comfy Cloud and partner models through Comfy Router.', blurb: 'Your Comfy API key runs open models on Comfy Cloud in seconds, on a paid Comfy plan. For a long session, add your RunPod key on the RunPod card and start a Pod from the top bar: while it runs, ComfyUI runs use it. The key also unlocks hosted models through Comfy Router.', fields: [
     { id: 'key', label: 'Comfy API key', placeholder: 'From platform.comfy.org', secret: true },
   ], link: 'https://platform.comfy.org/profile/api-keys' },
   // page: where the rest of this service's settings live.
@@ -139,6 +147,14 @@ export const providerInfo = {
   elevenlabs: { name: 'ElevenLabs', blurb: 'Your ElevenLabs key for voices and sound effects.', fields: [
     { id: 'key', label: 'API key', placeholder: 'xi-api-key', secret: true },
   ], link: 'https://elevenlabs.io/app/settings/api-keys' },
+  github: { name: 'GitHub', blurb: 'A GitHub token with the gist scope shares flows and formats as secret gists: anyone with the link can open them. Importing a gist needs no token.', fields: [
+    { id: 'key', label: 'Token', placeholder: 'Classic token with the gist scope', secret: true },
+  ], link: 'https://github.com/settings/tokens/new?scopes=gist&description=ComfyField' },
+  // Not a key: where Blender nodes in Flows run. Empty fields use blender on this machine's PATH.
+  blender: { name: 'Blender', blurb: 'Blender nodes in Flows run your Python script with blender -b on this machine, or on another one over SSH. Leave both empty to use blender on PATH. With an SSH host, the path is Blender on that host; key login must work without a password.', fields: [
+    { id: 'path', label: 'Blender path', placeholder: 'blender, or the full path to the Blender program' },
+    { id: 'host', label: 'SSH host', placeholder: 'user@host, optional' },
+  ], link: 'https://www.blender.org/download/', linkLabel: 'Get Blender', on: 'Saved', off: 'Uses PATH' },
 }
 
 // Account sign-ins for later. These need each site's own login, not an API key.

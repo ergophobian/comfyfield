@@ -12,6 +12,7 @@ import { schemas } from '../src/lib/formats/schemas.js'
 import { validateFormat, routerInputErrors } from '../src/lib/formats/validate.js'
 import { runFormat } from '../src/lib/formats/runner.js'
 import { expectedInputs, prompt } from './fixtures/router-payloads.mjs'
+import { offlineRequirements } from './fixtures/format-planning.mjs'
 import { comfyRouterInput } from '../shared/mapping.js'
 
 // No inherited provider configuration can reach these mocked checks.
@@ -91,7 +92,7 @@ await test('Router chains reject unsupported upstream images before any generati
   const product = { ...base, inputs: [{ id: 'product', type: 'product', label: 'Product' }], steps: [{ id: 'last', model: 'comfy-router-flux' }] }
   assert.deepEqual(validateFormat(product), [])
   let mapped = false
-  await runFormat(product, { product: { name: 'Cup', images: ['https://example.test/cup.png'] } }, { run: async (model, opts) => {
+  await runFormat(product, { product: { name: 'Cup', images: ['https://example.test/cup.png'] } }, { requirements: offlineRequirements, run: async (model, opts) => {
     mapped = true
     assert.equal(comfyRouterInput(model.model, opts).input_image, 'https://example.test/cup.png')
     return [{ url: 'https://example.test/output.png', kind: 'image' }]
@@ -160,7 +161,10 @@ await test('Router references keep their order, unsupported inputs fail, and pri
   const multi = comfyRouterInput('byteplus/dreamina-seedance-2-5-260628', { prompt: 'Blend', aspect: '16:9', images })
   assert.deepEqual(multi.content.slice(1).map((item) => [item.image_url.url, item.role]), images.map((url) => [url, 'reference_image']))
   assert.equal(multi.ratio, '16:9')
-  assert.equal(await core.estimateCost({ model: 'comfy-router-flux-max' }), null)
+  // GPU-second prices use a typical run time and say so.
+  const fluxMax = await core.estimateCost({ model: 'comfy-router-flux-max' })
+  assert.equal(fluxMax.approx, true)
+  assert(Math.abs(fluxMax.usd - 56 * 0.266 / 211) < 1e-10)
   assert.equal((await core.estimateCost({ model: 'comfy-router-kontext', count: 3 })).usd, 0.12)
   assert(Math.abs((await core.estimateCost({ model: 'comfy-router-ltx', duration: 10 })).usd - 1.287) < 1e-10)
   assert.equal((await core.estimateCost({ model: 'comfy-router-speech', prompt: 'a'.repeat(1000) })).usd, 0.0572)
@@ -253,11 +257,48 @@ await test('Comfy Router rate limits and a result that is still pending', async 
 
 await test('Comfy Router explains credits and completed failures; never collects failed jobs', async () => {
   globalThis.fetch = async () => json({ error_type: 'insufficient_credits' }, 402)
-  await assert.rejects(core.runComfyRouter({ model: 'bfl/flux-2-pro', input: {} }, noWait), /insufficient credits/)
+  await assert.rejects(core.runComfyRouter({ model: 'bfl/flux-2-pro', input: {} }, noWait), /insufficient credits\. Add credits at platform\.comfy\.org/)
   const replies = [json(job, 201), json({ status: 'COMPLETED', error_type: 'provider_error', message: 'Provider unavailable' })]
   globalThis.fetch = async () => { assert(replies.length); return replies.shift() }
   await assert.rejects(core.runComfyRouter({ model: 'bfl/flux-2-pro', input: {} }, noWait), /provider_error/)
   assert.equal(replies.length, 0)
+})
+
+await test('Router terminal answers and uncertain responses carry retry classification', async () => {
+  setup('cloud')
+  for (const [reply, retryable, code] of [
+    [json({ error_type: 'insufficient_credits', request_id: 'credits' }, 402), false, 'insufficient_credits'],
+    [json({ error_type: 'validation_error' }, 422), false, 'validation_error'],
+    [json({ error_type: 'rate_limited' }, 429), true, 'rate_limited'],
+    [json({ error_type: 'unavailable' }, 503), true, 'unavailable'],
+  ]) {
+    globalThis.fetch = async () => reply
+    await assert.rejects(core.runComfyRouter({ model: 'bfl/flux-2-pro', input: {} }, noWait), (e) => e.retryable === retryable && e.code === code)
+  }
+  for (const failed of [{ status: 'FAILED' }, { status: 'COMPLETED', error_type: 'provider_error' }]) {
+    const replies = [json(job, 201), json(failed)]
+    globalThis.fetch = async () => { assert(replies.length); return replies.shift() }
+    await assert.rejects(core.runComfyRouter({ model: 'bfl/flux-2-pro', input: {} }, noWait), (e) => e.retryable === false && e.requestId === job.request_id)
+  }
+  const replies = [json(job, 201), json({})]
+  globalThis.fetch = async () => replies.shift()
+  await assert.rejects(core.runComfyRouter({ model: 'bfl/flux-2-pro', input: {} }, noWait), (e) => e.retryable === true && e.code === 'invalid_response')
+})
+
+await test('A cancelled Router job aborts polling and keeps its request identity', async () => {
+  setup('cloud')
+  const controller = new AbortController()
+  let calls = 0
+  globalThis.fetch = async (url, options) => {
+    assert.equal(options.signal, controller.signal)
+    calls++
+    return json(job, 201)
+  }
+  await assert.rejects(core.runComfyRouter({ model: 'bfl/flux-2-pro', input: {}, idempotencyKey: 'cancel-key' }, {
+    signal: controller.signal,
+    pause: async () => controller.abort(),
+  }), (error) => error.name === 'AbortError' && error.idempotencyKey === 'cancel-key' && error.requestId === job.request_id)
+  assert.equal(calls, 1, 'No status or result requests follow cancellation')
 })
 
 await test('Router discovery preserves pagination and encodes the cursor', async () => {
@@ -340,6 +381,50 @@ await test('Cloud uses the SDK workflow and asset interfaces and saves downloade
   assert.equal(fs.readFileSync(files[0].path, 'utf8'), 'mock video')
   await assert.rejects(core.runComfy('../private', {}), /Invalid workflow/)
   await assert.rejects(core.runComfy('h3_open_i2v', { prompt: 'Missing image', width: 1344, height: 768, frames: 121, seed: 1 }), /requires image/)
+})
+
+await test('Cloud progress: SDK events reach onProgress while the poll decides completion', async () => {
+  setup('cloud')
+  const seen = []
+  let streamSignal
+  const createClient = () => {
+    const client = new Comfy({ apiKey: key })
+    client.assets.fromBytes = () => ({ mockAsset: true })
+    client.run = async () => { throw new Error('A run with progress must submit, not run') }
+    client.submit = async () => {
+      let finish
+      const done = new Promise((resolve) => { finish = resolve })
+      const job = {
+        id: 'cloud-progress', status: 'queued', queuePosition: 2,
+        outputs: [{ type: 'video', contentType: 'video/mp4', name: 'ltx.mp4', toBytes: async () => Buffer.from('mock clip') }],
+        async *events(signal) {
+          streamSignal = signal
+          yield { kind: 'statusChange', status: 'running', queuePosition: null }
+          yield { kind: 'log', level: 'info', message: 'ignored' }
+          yield { kind: 'progress', value: 0.25, step: 5, steps: 20, nodesDone: 3, nodesTotal: 9, currentNodeClass: 'KSampler' }
+          yield { kind: 'progress', value: 1.4, step: null, steps: null, nodesDone: 9, nodesTotal: 9, currentNodeClass: null }
+          job.status = 'succeeded'
+          finish()
+          await new Promise((resolve) => signal.addEventListener('abort', resolve, { once: true }))
+          throw new Error('Stream closed')
+        },
+        wait: async () => { await done; return job },
+        cancel: async () => job,
+      }
+      return job
+    }
+    return client
+  }
+  globalThis.fetch = async () => { throw new Error('Unexpected network call') }
+  const files = await core.runComfy('h3_open_i2v', { image: 'data:image/png;base64,aGVsbG8=', prompt: 'Orbit', width: 1344, height: 768, frames: 121, seed: 1 }, { createClient, onProgress: (p) => seen.push(p) })
+  assert.equal(files[0].kind, 'video')
+  assert.deepEqual(seen, [
+    { where: 'Comfy Cloud', status: 'queued', queuePosition: 2 },
+    { where: 'Comfy Cloud', status: 'running', queuePosition: null },
+    { where: 'Comfy Cloud', status: 'running', value: 0.25, step: 5, steps: 20, nodesDone: 3, nodesTotal: 9, node: 'KSampler' },
+    { where: 'Comfy Cloud', status: 'running', value: 1, step: null, steps: null, nodesDone: 9, nodesTotal: 9, node: null },
+  ])
+  assert.equal(streamSignal.aborted, true, 'The event stream stops once the job is done')
 })
 
 await test('Connection checks are read-only for Local and Cloud', async () => {

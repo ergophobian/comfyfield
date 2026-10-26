@@ -294,7 +294,7 @@ const ENVS = {
 // packages its requirements leave out; `skip` drops requirements it must not install.
 export const NODE_PACKS = {
   vhs: { name: 'VideoHelperSuite', repo: 'Kosinkadink/ComfyUI-VideoHelperSuite', commit: '4d907bee61e92c2e65af3bd6383a4e4d356126d1', date: '2026-09-02',
-    folder: 'ComfyUI-VideoHelperSuite', classes: ['VHS_SelectEveryNthImage', 'VHS_DuplicateImages', 'VHS_GetImageCount', 'VHS_VideoCombine'], cloud: true },
+    folder: 'ComfyUI-VideoHelperSuite', classes: ['VHS_SelectEveryNthImage', 'VHS_LoadVideo', 'VHS_DuplicateImages', 'VHS_GetImageCount', 'VHS_VideoCombine'], cloud: true },
   kjnodes: { name: 'KJNodes', repo: 'kijai/ComfyUI-KJNodes', commit: '17195fcfa8a05f601b766a0f09c9733284f47416', date: '2026-10-15',
     folder: 'ComfyUI-KJNodes', classes: ['ColorMatch'], cloud: true },
   // ReCamMaster and InfiniteTalk's loop run only in this wrapper. Newest commit on main (no tags), five
@@ -462,3 +462,16 @@ export const minVramOf = (files) => Math.max(0, ...files.map((f) => f.vramGb || 
 // The GPU architecture a run needs, or null when any will do.
 export const archOf = (files) => files.find((f) => f.arch)?.arch || null
 export const volumeFor = (files) => Math.ceil(files.reduce((n, f) => n + f.gb, 0) + HEADROOM_GB)
+
+// How fast a Pod downloads model files before it reports its own rate: PatchWork measured 831 MB/s with
+// a parallel downloader (issue #106). A first estimate only; the Pod's measured rate replaces it.
+export const POD_DOWNLOAD_BPS = 800e6
+export const downloadSeconds = (bytes, bps = POD_DOWNLOAD_BPS) => (bytes > 0 ? Math.max(1, Math.ceil(bytes / bps)) : 0)
+// Seconds left for the downloads in a Pod's status that are still queued or downloading, at the rate
+// the Pod reports for them, or at the first estimate before it has one.
+export function downloadsLeft(list) {
+  const live = list.filter((d) => d.state === 'queued' || d.state === 'downloading')
+  const left = live.reduce((n, d) => n + Math.max(0, (d.total || d.want || 0) - (d.bytes || 0)), 0)
+  const rate = live.reduce((n, d) => n + (d.state === 'downloading' && d.bps > 0 ? d.bps : 0), 0)
+  return downloadSeconds(left, rate || POD_DOWNLOAD_BPS)
+}

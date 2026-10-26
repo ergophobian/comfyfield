@@ -31,7 +31,7 @@ const mock = {
     })
   },
 }
-const vite = await createServer({ configFile: false, envFile: false, cacheDir: 'node_modules/.cache/widget-vite', plugins: [mock, react(), api()], server: { host: '127.0.0.1', port: 0, watch: { ignored: ['**/outputs/**'] } } })
+const vite = await createServer({ configFile: false, envFile: false, cacheDir: 'node_modules/.cache/widget-vite', plugins: [mock, react(), api()], server: { host: '127.0.0.1', port: 0, strictPort: false, watch: { ignored: ['**/outputs/**'] } } })
 await vite.listen()
 const base = `http://127.0.0.1:${vite.httpServer.address().port}`
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -110,7 +110,7 @@ try {
   await button('face', 'Use this face')
   await wait(`JSON.parse(document.querySelector('[data-values]').textContent).face?.faceUrl`)
   assert.match((await values()).face.faceUrl, /^\/media\/.*\.png$/)
-  await button('face', 'Library character')
+  await button('face', 'Saved character')
   await wait(`document.querySelector('[data-widget=face] .pick')`)
   await click('[data-widget=face] .pick')
   assert.equal((await values()).face.characterId, 'test-character')

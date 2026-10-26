@@ -47,6 +47,7 @@ export async function startFixture(setupOnly = false, port = 0) {
     ], edges: [{ id: 'p-m', source: 'prompt', target: 'model' }, { id: 'm-o', source: 'model', target: 'output' }],
   }] })
   const server = await preview({ configFile: false, envFile: false, plugins: [comfyfieldApi({ harness })], preview: { host: '127.0.0.1', port, strictPort: true } })
+  server.harness = harness
   console.log(`Agent UI fixture: http://127.0.0.1:${server.httpServer.address().port}/assistant`)
 
   return server

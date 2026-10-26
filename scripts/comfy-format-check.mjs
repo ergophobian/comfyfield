@@ -43,6 +43,26 @@ for (const name of ['ltx_i2v', 'h3_open_i2v']) {
   console.log(`${name}: API graph, placeholders and links valid`)
 }
 
+for (const name of ['qwen2511_photodump', 'qwen2511_reframe']) {
+  const template = JSON.parse(readFileSync(new URL(`../public/workflows/${name}.json`, import.meta.url)))
+  const vars = comfyVars('image', { prompt: 'Continue the same scene', aspect: '9:16', image: 'reference.png', images: ['reference.png', 'second.png', 'third.png'] })
+  const graph = fill(template, vars)
+  assert(!JSON.stringify(graph).includes('{{'), `${name}: unresolved graph variable`)
+  assert.equal(graph['7'].inputs.image, 'reference.png')
+  assert.equal(graph['9'].inputs.width, vars.width)
+  assert.equal(graph['9'].inputs.height, vars.height)
+  assert.equal(graph['14'].inputs.prompt, vars.prompt)
+  assert.equal(graph['18'].class_type, 'SaveImage')
+  if (name === 'qwen2511_photodump') {
+    assert.equal(graph['10'].inputs.image, 'second.png')
+    assert.equal(graph['11'].inputs.image, 'third.png')
+  } else {
+    assert.equal(graph['25'].class_type, 'ImagePadForOutpaint')
+    assert.deepEqual(graph['18'].inputs.images, ['27', 0])
+    assert.equal(graph['27'].class_type, 'ImageCompositeMasked')
+  }
+  console.log(`${name}: references, canvas, prompt and saved output valid; untested live`)
+}
 // Instant workflow variant contracts (independent of format inventory checks).
 const nodeSchema = JSON.parse(readFileSync('scripts/fixtures/comfy-nodes.json', 'utf8')).nodes
 const graphOf = (name) => JSON.parse(readFileSync(`public/workflows/${name}.json`, 'utf8'))

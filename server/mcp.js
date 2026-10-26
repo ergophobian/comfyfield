@@ -5,17 +5,21 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod'
 import * as core from './core.js'
 import { flows } from './flows.js'
+import { createPresence } from './presence.js'
 import { nodeTypes, sourceTypes, targetTypes } from '../shared/flowRules.js'
+import { tasksFor, rosterOf } from '../shared/agentRoster.js'
 
 const text = (data) => ({ content: [{ type: 'text', text: typeof data === 'string' ? data : JSON.stringify(data, null, 2) }] })
 const fail = (e) => ({ isError: true, content: [{ type: 'text', text: e.message || String(e) }] })
-const tool = (fn) => async (args) => { try { return text(await fn(args)) } catch (e) { return fail(e) } }
+const tool = (fn) => async (args, context) => { try { return text(await fn(args, context)) } catch (e) { return fail(e) } }
 
-export function createServer({ invoke, handlers = new Map(), flowService = flows } = {}) {
+// `agent` is who calls the tools: the terminal session itself, or, in the Assistant, the session the
+// harness passes in as `{ agent }` with each call. Flow tools move that agent's cursor to the node.
+export function createServer({ invoke, handlers = new Map(), flowService = flows, presence = null, agent = null } = {}) {
   const server = new McpServer({ name: 'comfyfield', version: '0.1.0' })
   const register = (name, definition, handler) => {
     const schema = z.object(definition.inputSchema)
-    const checked = (args) => handler(schema.parse(args))
+    const checked = (args, context) => handler(schema.parse(args), context?.agent ? context : { agent })
     handlers.set(name, checked)
     server.registerTool(name, definition, invoke ? tool((args) => invoke(name, args)) : checked)
   }
@@ -84,11 +88,19 @@ export function createServer({ invoke, handlers = new Map(), flowService = flows
   // Flow tools share flows.json with the app (see docs/flows-mcp.md). Errors say what to fix.
   const flow = { flow_id: z.string().describe('Flow id from list_flows or create_flow') }
   const position = z.object({ x: z.number(), y: z.number() }).describe('Canvas position in pixels. Default: right of the last node')
-  const data = z.record(z.string(), z.unknown()).describe('Node settings, merged over the defaults. prompt: { text, mode: "single"|"rows" }. model: { model: "<model id>", aspect, duration, takes, count, prompt }. image: { url }. writer: { instructions, note, target }. note: { text }')
+  const data = z.record(z.string(), z.unknown()).describe('Node settings, merged over the defaults. prompt: { text, mode: "single"|"rows" }. model: { model: "<model id>", aspect, duration, takes, count, prompt }. image: { url }. writer: { instructions, note, target }. blender: { script: "<Blender Python that saves its render to the path after --output in sys.argv>", output: "image"|"video" }. threejs: { script: "<ES module: import * as THREE from "three"; export default function ({ THREE, renderer, width, height, fps, duration }) returns { scene, camera, update(time, frame) }>", duration: seconds (max 30), width, height: even pixels 64 to 1920, fps: 1 to 60 }; renders to an MP4 in headless Chrome. note: { text }')
   const nodeType = z.enum(nodeTypes).describe(`Node type. Outputs: ${sourceTypes.join(', ')}. Inputs: ${targetTypes.join(', ')}. A prompt only feeds model or writer`)
   const newNode = z.object({ id: z.string().optional().describe('Optional id to refer to the node in edges, such as "p" or "video"'), type: nodeType, position: position.optional(), data: data.optional() })
   const edge = z.object({ source: z.string().describe('Node id that sends its output'), target: z.string().describe('Node id that receives it') })
   const summary = (f) => ({ id: f.id, name: f.name, nodes: f.nodes.length, updated: f.updated })
+  // Point the calling agent's cursor at the node it just worked on.
+  const at = (context, flowId, nodeId) => {
+    if (!presence || !context?.agent?.id || !flowId) return
+    try {
+      const node = flowService.get(flowId).nodes.find((n) => n.id === nodeId)
+      presence.touch(context.agent.id, { flowId, nodeId: node?.id ?? null, position: node?.position ?? null })
+    } catch {}
+  }
 
   register('list_flows', {
     description: 'List flows saved in this ComfyField folder. The app shows the same flows in Flows.',
@@ -101,30 +113,58 @@ export function createServer({ invoke, handlers = new Map(), flowService = flows
   register('create_flow', {
     description: 'Create a flow. Optionally pass nodes and edges to build it in one call; edges refer to the node ids you set. Does not run anything.',
     inputSchema: { name: z.string(), nodes: z.array(newNode).max(100).optional(), edges: z.array(edge).max(200).optional() },
-  }, tool((args) => flowService.create(args)))
+  }, tool((args, context) => { const made = flowService.create(args); at(context, made.id, made.nodes[0]?.id); return made }))
   register('add_node', {
     description: 'Add one node to a flow. For a model node set data.model to a model id from list_models. Returns the node with its id.',
     inputSchema: { ...flow, ...newNode.shape },
-  }, tool(({ flow_id, ...args }) => flowService.add(flow_id, args)))
+  }, tool(({ flow_id, ...args }, context) => { const node = flowService.add(flow_id, args); at(context, flow_id, node.id); return node }))
   register('connect_nodes', {
     description: 'Connect the output of source to the input of target. Each node has one input and one output. Loops are refused.',
     inputSchema: { ...flow, ...edge.shape },
-  }, tool(({ flow_id, ...args }) => flowService.connect(flow_id, args)))
+  }, tool(({ flow_id, ...args }, context) => { const edge = flowService.connect(flow_id, args); at(context, flow_id, edge.target); return edge }))
   register('update_node', {
     description: 'Change a node\'s data (merged over what it has) or its position.',
     inputSchema: { ...flow, node_id: z.string(), data: data.optional(), position: position.optional() },
-  }, tool(({ flow_id, node_id, ...args }) => flowService.update(flow_id, node_id, args)))
+  }, tool(({ flow_id, node_id, ...args }, context) => { at(context, flow_id, node_id); const node = flowService.update(flow_id, node_id, args); at(context, flow_id, node_id); return node }))
   register('remove_node', {
     description: 'Remove a node, its connections and its results.',
     inputSchema: { ...flow, node_id: z.string() },
-  }, tool(({ flow_id, node_id }) => flowService.remove(flow_id, node_id)))
+  }, tool(({ flow_id, node_id }, context) => { at(context, flow_id, node_id); return flowService.remove(flow_id, node_id) }))
+  register('my_tasks', {
+    description: 'What the user assigned to you in Flows: whole flows and single nodes, with node ids to pass to get_flow and update_node. Call it first when you start work on flows.',
+    inputSchema: {},
+  }, tool((args, context) => {
+    const name = context?.agent?.name
+    if (!name) throw new Error('This MCP session has no agent name. Start it with npx comfyfield mcp or the Assistant.')
+    const tasks = tasksFor(name, flowService.read().flows)
+    return { agent: name, tasks, ...(!tasks.length && { next: 'Nothing is assigned to you yet. Ask the user to assign a flow or node to you in Flows.' }) }
+  }))
+  register('assign_agent', {
+    description: 'Assign a whole flow, or one node with node_id, to an agent by name such as "Agent 2". Send agent null to clear it. Agents see their work with my_tasks.',
+    inputSchema: { ...flow, node_id: z.string().optional().describe('Leave out to assign the whole flow'), agent: z.string().min(1).max(60).nullable() },
+  }, tool(({ flow_id, node_id, agent }, context) => { const result = flowService.assign(flow_id, node_id, agent); at(context, flow_id, node_id); return result }))
+  register('list_agents', {
+    description: 'Agents connected to this ComfyField folder (the Assistant and terminal MCP sessions) with their colors, plus names that have assigned work.',
+    inputSchema: {},
+  }, tool((args, context) => ({ you: context?.agent?.name ?? null, agents: rosterOf(presence?.list().agents || [], flowService.read().flows).filter((a) => !a.spare) })))
   register('run_flow', {
     description: 'Run fills gaps: it runs only nodes that have no output yet and spends provider credits. It stops at Approve gates and Writer review; the user must press Send in Flows to continue. Returns outputs and what waits for the user.',
     inputSchema: flow,
-  }, tool(async ({ flow_id }) => flowService.report(flow_id, await flowService.perform(flow_id, 'runNew'))))
+  }, tool(async ({ flow_id }, context) => {
+    at(context, flow_id, flowService.get(flow_id).nodes.find((n) => n.type === 'model')?.id)
+    return flowService.report(flow_id, await flowService.perform(flow_id, 'runNew'))
+  }))
   return server
 }
 
+// A terminal session joins the shared roster with a name and a color, and leaves when it ends.
 export async function startMcp() {
-  await createServer().connect(new StdioServerTransport())
+  const presence = createPresence()
+  const agent = presence.join({ kind: 'terminal', name: process.env.COMFYFIELD_AGENT_NAME })
+  let left = false
+  const leave = () => { if (!left) { left = true; try { presence.leave(agent.id) } catch {} } }
+  process.on('exit', leave)
+  for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.on(signal, () => { leave(); process.exit(0) })
+  process.stdin.on('end', leave)
+  await createServer({ presence, agent }).connect(new StdioServerTransport())
 }

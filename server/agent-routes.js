@@ -1,7 +1,9 @@
 import { createHarness } from './agent-harness.js'
 import { problem } from './flows.js'
+import { importFlow, shareFlowGist } from './share.js'
 
 export function agentRoutes({ harness = createHarness(), body, send }) {
+  const unwatch = [harness.flows.watch(), harness.presence.watch()]
   const route = async (req, res, url) => {
     if (!/^\/api\/(agents|flows)(\/|$)/.test(url.pathname)) return false
     const host = req.headers.host
@@ -19,6 +21,7 @@ export function agentRoutes({ harness = createHarness(), body, send }) {
       return true
     }
     if (url.pathname === '/api/agents/setup' && req.method === 'GET') return json(harness.setup())
+    if (url.pathname === '/api/agents/presence' && req.method === 'GET') return json(harness.presence.list())
     if (url.pathname === '/api/agents' && req.method === 'GET') return json(harness.list())
     if (url.pathname === '/api/agents' && req.method === 'POST') return json(await harness.start((await body(req)).adapter, origin))
     const match = /^\/api\/agents\/([\w-]+)(?:\/(message|approve|stop|tool))?$/.exec(url.pathname)
@@ -38,6 +41,8 @@ export function agentRoutes({ harness = createHarness(), body, send }) {
     }
     if (url.pathname === '/api/flows' && req.method === 'GET') return json(harness.flows.read())
     if (url.pathname === '/api/flows' && req.method === 'PUT') return json(harness.flows.save(await body(req)))
+    if (url.pathname === '/api/flows/import' && req.method === 'POST') return json(await importFlow(harness.flows, await body(req)))
+    if (url.pathname === '/api/flows/share' && req.method === 'POST') return json(await shareFlowGist(harness.flows, (await body(req)).id))
     const run = /^\/api\/flows\/([\w-]+)\/action$/.exec(url.pathname)
     if (run && req.method === 'POST') {
       const { action, node, item } = await body(req)
@@ -45,6 +50,6 @@ export function agentRoutes({ harness = createHarness(), body, send }) {
     }
     throw problem('Not found', 404)
   }
-  route.close = () => harness.close()
+  route.close = () => { unwatch.forEach((stop) => stop()); return harness.close() }
   return route
 }

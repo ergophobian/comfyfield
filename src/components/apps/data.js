@@ -1,5 +1,5 @@
 // Grouping and lookup helpers for the Apps, Effects, Motion and Mixed media pages. Everything reads the format data.
-import { appsIn, categories, formats, hubs } from '../../lib/formats/index.js'
+import { appsIn, categories, formats, hubs, userFormats, yoursHub } from '../../lib/formats/index.js'
 
 const media = ['image', 'video', 'audio', 'draw', 'mask', 'face', 'crop']
 export const mainInput = (format) => format.inputs.find((i) => media.includes(i.type))
@@ -7,10 +7,12 @@ export const mainInput = (format) => format.inputs.find((i) => media.includes(i.
 export const matches = (f, q) => !q || `${f.name} ${f.blurb} ${f.runsOn || ''}`.toLowerCase().includes(q)
 
 // Higgsfield's hubs that have apps. Until formats name a hub, the categories stand in so the page is never blank.
+// Imported formats come first, as "Yours".
 export function appGroups() {
+  const yours = userFormats().length ? [{ ...yoursHub, list: userFormats() }] : []
   const fromHubs = hubs.map((h) => ({ ...h, list: appsIn(h.id) })).filter((g) => g.list.length)
-  if (fromHubs.length) return fromHubs
-  return categories.map((c) => ({ ...c, list: formats.filter((f) => f.category === c.id) })).filter((g) => g.list.length)
+  if (fromHubs.length) return [...yours, ...fromHubs]
+  return [...yours, ...categories.map((c) => ({ ...c, list: formats.filter((f) => f.category === c.id) })).filter((g) => g.list.length)]
 }
 
 const badgeOf = (f) => String(f.badge || '').toLowerCase()

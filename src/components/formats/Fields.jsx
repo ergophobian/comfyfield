@@ -3,8 +3,10 @@ import InputWidget from '../widgets/index.jsx'
 import { widgetTypes } from '../../../shared/widgetInputs.js'
 import { Link } from 'react-router-dom'
 import { IconUpload } from '../Icons.jsx'
-import { uploadImage } from '../../lib/providers.js'
+import MediaPicker from '../generate/MediaPicker.jsx'
+import { uploadFile, pastedFile } from '../../lib/uploads.js'
 import { useLibrary, toRef } from '../../lib/useLibrary.js'
+import VoicePicker from '../generate/Voices.jsx'
 
 const media = {
   image: { accept: 'image/png,image/jpeg,image/webp,image/gif', hint: 'Drop an image or click to choose', noun: 'an image' },
@@ -12,57 +14,45 @@ const media = {
   audio: { accept: 'audio/*', hint: 'Drop an audio file or click to choose', noun: 'an audio file' },
 }
 
-// Library list and tab behind each pick. There is no voices list yet, so voice picks stay empty.
+// Library list and tab behind each pick.
 const picks = {
   character: { list: 'characters', noun: 'characters' },
   product: { list: 'products', noun: 'products' },
   brand: { list: 'brands', noun: 'brand kits' },
-  voice: { list: 'voices', noun: 'voices' },
 }
 
 const textual = ['text', 'longtext']
 const calm = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
-// Audio stays local until the backend supports audio uploads.
-const readLocal = (file, type) => new Promise((resolve) => {
-  const url = URL.createObjectURL(file)
-  const done = (ratio) => resolve({ url, name: file.name, local: true, ratio })
-  if (type !== 'video') return done()
-  const v = document.createElement('video')
-  v.preload = 'metadata'
-  v.onloadedmetadata = () => done(v.videoWidth ? `${v.videoWidth}:${v.videoHeight}` : undefined)
-  v.onerror = () => done()
-  v.src = url
-})
-
+// Click opens the media picker; a file dropped or pasted on the field uploads straight away. Every kind goes to the
+// server, so a model can read it, and images and videos carry their pixel ratio.
 function MediaField({ input, value, onChange, setError, labelId }) {
   const { type } = input
   const m = media[type]
   const [busy, setBusy] = useState(false)
   const [over, setOver] = useState(false)
+  const [picking, setPicking] = useState(false)
   const ref = useRef(null)
-  const choose = () => ref.current.click()
+  const choose = () => setPicking(true)
+  const put = (next) => {
+    if (value?.local) URL.revokeObjectURL(value.url)
+    onChange(next)
+  }
 
   const take = async (file) => {
     if (!file) return
     if (file.type && !file.type.startsWith(`${type}/`)) { setError(`That is not ${m.noun}.`); return }
     setBusy(true)
     setError(null)
-    try {
-      if (type === 'image') onChange(await uploadImage(file))
-      else {
-        const next = await readLocal(file, type)
-        if (value?.local) URL.revokeObjectURL(value.url)
-        onChange(next)
-      }
-    } catch (e) { setError(e.message) }
+    try { put(await uploadFile(file)) } catch (e) { setError(e.message) }
     setBusy(false)
   }
 
   return (
     <div className={`drop${over ? ' over' : ''}${value ? ' has' : ''}${type === 'audio' ? ' sound' : ''}`}
       role="button" tabIndex={0} aria-labelledby={labelId}
-      onClick={choose}
+      onClick={(e) => !e.target.closest('.mp') && choose()}
+      onPaste={(e) => { const f = pastedFile(e); if (f) { e.preventDefault(); take(f) } }}
       onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); choose() } }}
       onDragOver={(e) => { e.preventDefault(); setOver(true) }}
       onDragLeave={() => setOver(false)}
@@ -79,6 +69,10 @@ function MediaField({ input, value, onChange, setError, labelId }) {
       {value && <small>{busy ? 'Uploading' : 'Replace'}</small>}
       <input ref={ref} type="file" accept={m.accept} hidden
         onChange={(e) => { take(e.target.files[0]); e.target.value = '' }} />
+      {picking && (
+        <MediaPicker type={type} title={input.label || `Choose ${m.noun}`} accept={m.accept} setError={setError}
+          onClose={() => setPicking(false)} onPick={(it) => { setPicking(false); put(it) }} />
+      )}
     </div>
   )
 }
@@ -187,6 +181,7 @@ function DrawField({ input, value, onChange, setError, labelId }) {
 }
 
 function Choice({ input, value, onChange, labelId }) {
+  if (input.confirmation) return <label className="presenter-confirmation"><input type="checkbox" checked={value === input.options[0].id} onChange={(event) => onChange(event.target.checked ? input.options[0].id : null)} />{input.options[0].note}</label>
   const cards = input.options.some((o) => o.note)
   return (
     <div className={cards ? 'opt-grid' : 'pills'} role="group" aria-labelledby={labelId}>
@@ -223,8 +218,8 @@ function LibraryPick({ input, value, onChange, labelId }) {
   const lib = useLibrary()
   const { list, noun } = picks[input.type]
   const items = lib[list] || []
-  if (!lib.ready) return <p className="sheet-note">Loading Library</p>
-  if (!items.length) return <p className="sheet-note">No {noun} yet. <Link to={`/library?tab=${list}`}>Add one in Library</Link></p>
+  if (!lib.ready) return <p className="sheet-note">Loading Assets</p>
+  if (!items.length) return <p className="sheet-note">No {noun} yet. <Link to={`/library?tab=${list}`}>Add one in Assets</Link></p>
   const brand = input.type === 'brand'
   return (
     <div className="picks" role="group" aria-labelledby={labelId}>
@@ -249,7 +244,8 @@ export function Field({ input, value, onChange, setError = () => {} }) {
   const { type } = input
   const props = { input, value, onChange, labelId }
   let body
-  if (widgetTypes.includes(type) || (type === 'draw' && input.mode !== 'motion')) body = <InputWidget type={type === 'draw' ? 'mask' : type} {...props} setError={setError} />
+  if (type === 'voice' || input.voiceSample) body = <VoicePicker value={value} onChange={onChange} title={input.label} optional={!!input.optional} />
+  else if (widgetTypes.includes(type) || (type === 'draw' && input.mode !== 'motion')) body = <InputWidget type={type === 'draw' ? 'mask' : type} {...props} setError={setError} />
   else if (media[type]) body = <MediaField {...props} setError={setError} />
   else if (type === 'draw') body = <DrawField {...props} setError={setError} />
   else if (type === 'text') body = <input id={id} value={value ?? ''} onChange={(e) => onChange(e.target.value)} placeholder={input.placeholder} />

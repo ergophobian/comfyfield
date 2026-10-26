@@ -4,6 +4,7 @@ import { IconClose, IconChevron } from '../Icons.jsx'
 import { MenuItem, menuColumns } from './MegaMenu.jsx'
 import { ToolIcon, KindIcon, Glyph } from './ToolIcon.jsx'
 import { barItems, menuOf, moreTools, sectionOf, currentIn } from './navModel.js'
+import { backdrops, setBackdrop, useBackdrop } from '../../lib/backdrop.js'
 
 const settings = [
   { id: 'models', to: '/models', name: 'Models', line: 'Browse and add more models', icon: <Glyph name="bars" /> },
@@ -15,6 +16,7 @@ const settings = [
 export default function MobileNav({ id, onClose }) {
   const { pathname, search } = useLocation()
   const section = sectionOf(pathname, search)
+  const backdrop = useBackdrop()
   const [expanded, setExpanded] = useState(() => (barItems.some((b) => b.menu && b.id === section) ? section : null))
   const ref = useRef(null)
 
@@ -92,6 +94,17 @@ export default function MobileNav({ id, onClose }) {
             <span className="mega-icon"><Glyph name="code" /></span>
             <span className="mega-text"><strong>GitHub</strong><small>Source code and issues</small></span>
           </a>
+        </div>
+        <div className="mnav-group">
+          <h2 id={`${id}-backdrop`}>Background</h2>
+          <div className="menu-pick" role="radiogroup" aria-labelledby={`${id}-backdrop`}>
+            {backdrops.map((b) => (
+              <button key={b.id} type="button" role="radio" aria-checked={backdrop === b.id}
+                className={backdrop === b.id ? 'on' : ''} onClick={() => setBackdrop(b.id)}>
+                {b.label}
+              </button>
+            ))}
+          </div>
         </div>
       </nav>
     </div>

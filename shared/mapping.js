@@ -1,5 +1,7 @@
 // Pure input mapping shared by the browser and the Node core (server, CLI, MCP).
-import { aspectSize, defaultDurations } from '../src/lib/catalog.js'
+import { aspectSize, defaultDurations, cloudWorkflows } from '../src/lib/catalog.js'
+import { cloudSeconds } from './cloudSeconds.js'
+import { CLOUD_USD_PER_GPU_SEC } from './gpuTiers.js'
 
 // LTX wants dimensions divisible by 32 and frame counts of 8n + 1.
 export const videoSize = (a) => aspectSize[a].map((n) => Math.round((n * 0.6) / 32) * 32)
@@ -56,10 +58,13 @@ export function comfyVars(kind, o, sizes) {
   const pictures = o.slots?.pictures || [o.images?.[0] || o.image || o.refs?.find((r) => (r.type === 'character' || r.type === 'product') && r.images?.length)?.images[0], ...(o.images || []).slice(1)]
   return {
     prompt: o.prompt, width, height, count: o.count || 1, frames: (o.duration || 5) * 24 + 1,
+    motion_frames: Math.max(1, Math.min(81, 4 * Math.floor((((trim ? trim.end - trim.start : o.duration || 5) * 16) - 1) / 4) + 1)),
+    motion_start: Math.round((trim?.start || 0) * 16),
     duration: trim ? seconds(trim.end - trim.start) : o.duration || 5, start: trim ? seconds(trim.start) : 0,
     ...Object.fromEntries(PICTURE_SLOTS.map((key, i) => [key, pictures[i] || undefined])),
     mask: o.mask || motionStrokes(o) || undefined, video: o.video || o.media?.video, audio: o.slots?.audio || o.media?.audio || o.audio || undefined, voice: o.slots?.voice || undefined,
     seed: Math.floor(Math.random() * 2 ** 31), ...o.params, ...o.fields,
+    ...(o.voiceConsent === true && { voiceConsent: true }),
   }
 }
 
@@ -176,19 +181,43 @@ export function falInput(props, o) {
   return { ...input, ...o.params }
 }
 
+// The graph a Comfy model runs on Comfy Cloud: its Instant alternate, and the image graph with a picture attached.
+export function cloudWorkflowOf(model, o = {}) {
+  const image = Boolean(o.image || o.images?.length || o.video)
+  const own = (image && (model.cloudImageWorkflow || model.imageWorkflow)) || model.cloudWorkflow || model.workflow
+  return own && (cloudWorkflows[own] || own)
+}
+
+// A Comfy Cloud run, from its graph's typical GPU seconds (shared/cloudSeconds.js) at the Cloud rate.
+// Always approximate: a video's time follows its length against a five second clip, an image's its count.
+export function cloudEstimate(model, o) {
+  const seconds = cloudSeconds[cloudWorkflowOf(model, o)]
+  if (!seconds) return null
+  const scale = model.kind === 'video' ? (o.duration || 5) / 5 : o.count || 1
+  return { usd: seconds * scale * CLOUD_USD_PER_GPU_SEC * (o.takes || 1), approx: true }
+}
+
 // Price per run in USD, or null when the unit can't be estimated from the settings.
 export function estimate(model, meta, o) {
   const price = meta?.price
+  if (!price && model.provider === 'comfy' && !model.open) return cloudEstimate(model, o)
   if (!price) return null
   const unit = price.unit.toLowerCase()
   const [w, h] = aspectSize[o.aspect] || [1024, 1024]
   const takes = o.takes || 1
   let usd = null
   let approx = Boolean(price.estimate)
-  if (unit.includes('gpu-second')) return null
-  if (unit.includes('megapixel')) usd = price.amount * (w * h) / 1e6 * (o.count || 1)
+  if (/gpu[- _]?seconds?/.test(unit)) {
+    const measured = Number.isFinite(o.executionSeconds) && o.executionSeconds > 0
+    if (!measured && !price.seconds) return null
+    usd = price.amount * (measured ? o.executionSeconds : price.seconds * (o.count || 1))
+    if (!measured) approx = true
+  } else if (unit.includes('megapixel')) usd = price.amount * (w * h) / 1e6 * (o.count || 1)
   else if (unit.includes('image')) usd = price.amount * (o.count || 1)
-  else if (unit.includes('second')) usd = price.amount * (o.duration || 5)
+  else if (unit.includes('second')) {
+    usd = price.amount * (o.duration || 5)
+    if (!o.duration) approx = true
+  }
   else if (unit.includes('video') || unit.includes('request') || unit.includes('generation')) usd = price.amount
   else if (unit.includes('token') && model.kind === 'video') {
     const [vw, vh] = w >= h ? [1280, 720] : [720, 1280]

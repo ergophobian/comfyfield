@@ -32,13 +32,13 @@ const SHOWN = 48
 
 // The results feed: this session's batch boards, then every single generation of this kind, newest first.
 export function Feed({ kind, gens, batches, size, empty }) {
-  const singles = gens.items.filter((i) => i.kind === kind && !i.batch && !i.failed)
+  const singles = gens.items.filter((i) => i.kind === kind && !i.batch)
   if (!batches.length && !singles.length) return empty || null
   return (
     <div className="gen-feed">
       {batches.map((b) => <Board key={b.id} batch={b} items={gens.items} onApprove={gens.toggleApprove} onDismiss={gens.dismiss} />)}
       {singles.length > 0 && <Results items={singles.slice(0, SHOWN)} size={size} />}
-      {singles.length > SHOWN && <Link className="link-btn gen-more" to="/assets">See all {singles.length} in Library</Link>}
+      {singles.length > SHOWN && <Link className="link-btn gen-more" to="/assets">See all {singles.length} in Assets</Link>}
     </div>
   )
 }
@@ -79,7 +79,7 @@ export function PanelTabs({ tabs, value, onChange, label }) {
 
 const BANNER = 'comfyfield.banner.influencer'
 
-// The promo strip above the feed. Dismissed once per browser.
+// The promo strip above the feed. Dismissed once per browser. Not shown until /influencer runs.
 export function Banner() {
   const [shown, setShown] = useState(() => {
     try { return localStorage.getItem(BANNER) !== 'off' } catch { return true }

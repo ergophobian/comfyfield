@@ -5,7 +5,7 @@ import { stitchInputs, stitchRequest, uploadStitchFile } from '../../lib/stitch.
 
 const storedClip = ({ id, url, name, upstream, start, end, caption }) => ({ id, url: upstream ? undefined : url, name, upstream, start, end, caption })
 
-export default function StitchPanel({ node, patch }) {
+export default function StitchPanel({ node, patch, disabled = false }) {
   const { flow, engine, state, act } = useContext(FlowCtx)
   const { gens } = useApp()
   const input = stitchInputs(flow, node.id, engine.itemsOf, (id) => state[id]?.running > 0)
@@ -18,8 +18,8 @@ export default function StitchPanel({ node, patch }) {
   const [saved, setSaved] = useState('')
   const upload = useRef(null)
   const musicUpload = useRef(null)
-  const busy = working || st.running > 0
-  const current = result && result.signature === input.signature && !input.blocked
+  const busy = disabled || working || st.running > 0
+  const current = result && !result.stale && result.signature === input.signature && !input.blocked
   const exported = result && (result.exported || saved === result.url || gens.items.some((item) => item.url === result.url))
   const change = (data) => { setError(''); patch(node.id, data) }
   const setClips = (list) => change({ clips: list.map(storedClip) })
@@ -55,14 +55,14 @@ export default function StitchPanel({ node, patch }) {
   const music = node.data.music
   return (
     <>
-      <p className="muted fp-blurb">Connect video results or add clips. Run makes a preview; export saves it to your Library.</p>
+      <p className="muted fp-blurb">Connect video results or add clips. Run makes a preview; export saves it to Assets.</p>
       <fieldset className="stitch-fields" disabled={busy}>
         <input ref={upload} type="file" accept="video/mp4,video/webm,video/quicktime" multiple hidden onChange={(e) => { addFiles([...e.target.files]); e.target.value = '' }} />
         <button type="button" className="btn-soft sm" onClick={() => upload.current.click()}>Add clips</button>
-        <label className="fp-field">From Library
-          <select className="fp-text" aria-label="Add a Library clip" value="" onChange={(e) => {
+        <label className="fp-field">From Assets
+          <select className="fp-text" aria-label="Add a clip from Assets" value="" onChange={(e) => {
             const item = gens.items.find((item) => item.id === e.target.value)
-            if (item) setClips([...clips, { id: crypto.randomUUID(), url: item.url, name: item.caption || 'Library clip' }])
+            if (item) setClips([...clips, { id: crypto.randomUUID(), url: item.url, name: item.caption || 'Clip from Assets' }])
           }}>
             <option value="">Choose a video</option>
             {gens.items.filter((item) => item.kind === 'video' && item.url).map((item) => <option key={item.id} value={item.id}>{item.caption || item.model || 'Video'}</option>)}
@@ -101,13 +101,13 @@ export default function StitchPanel({ node, patch }) {
         </>}
       </fieldset>
       {input.blocked && <p className="muted fp-blurb">{clips.length ? 'Waiting for connected video results or approval.' : 'Add clips or connect a video node to start.'}</p>}
-      <button type="button" className="btn-blue sm" disabled={busy || input.blocked} onClick={() => act.rerun(node.id)}>{busy ? 'Working' : result ? 'Render again' : 'Preview'}</button>
+      <button type="button" className="btn-blue sm" disabled={busy || input.blocked} onClick={() => act.rerun(node.id)}>{working || st.running > 0 ? 'Working' : node.data.manual ? result ? 'Re-stitch' : 'Stitch scene' : result ? 'Render again' : 'Preview'}</button>
       {(error || failed) && <p className="stitch-error" role="alert">{error || failed.error}</p>}
       {result && <>
         <video className="stitch-preview" aria-label="Stitch preview" src={result.url} controls playsInline preload="metadata" />
         {!current && <p className="muted fp-blurb">Settings changed. Render again before exporting.</p>}
-        <button type="button" className="btn-blue sm" disabled={busy || !current || exported} onClick={save}>{exported ? 'Saved to Library' : 'Export to Library'}</button>
-        {current && exported && <a className="btn-soft sm" href={result.url} download>Download video</a>}
+        <button type="button" className="btn-blue sm" disabled={busy || !current || exported} onClick={save}>{exported ? 'Saved to Assets' : 'Export to Assets'}</button>
+        {current && exported && !busy && <a className="btn-soft sm" href={result.url} download>Download video</a>}
       </>}
     </>
   )

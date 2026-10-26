@@ -5,12 +5,19 @@ import { dataDirectory } from './startup-paths.js'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { randomUUID } from 'node:crypto'
-import { Comfy } from '@comfyorg/sdk'
+import { setTimeout as delay } from 'node:timers/promises'
+import { Comfy, JobFailed } from '@comfyorg/sdk'
 import { models as pinned, falCategories, podWorkflows, routerWriterModel } from '../src/lib/catalog.js'
 import { comfyVars, comfyRouterInput, falInput, estimate, fill, falEndpointFor, dropOptional } from '../shared/mapping.js'
-import { renderStitch } from './stitch.js'
+import { routerEntry } from '../shared/routerModels.js'
+import { renderStitch, findFfmpeg } from './stitch.js'
+import { draftInstructions, parseDraft } from '../shared/flowDraft.js'
+import { renderBlender, blenderVersion } from './blender.js'
+import { renderThree } from './threejs.js'
+import { importBusinessPage as readBusinessPage } from './publicPage.js'
+import { validateWorkflowVoices } from './voiceConsent.js'
 import { archOf, minVramOf, notOnCloud, podNeedsOf, volumeFor, RUNTIMES } from '../shared/modelFiles.js'
-import { DEFAULT_TIER, TIER_IDS } from '../shared/gpuTiers.js'
+import { CLOUD_USD_PER_GPU_SEC, DEFAULT_TIER, TIER_IDS } from '../shared/gpuTiers.js'
 
 import { podManager, GPU_LADDER, IDLE_CHOICES, POD_VOLUMES, STOPPED_DISK_USD_GB_MONTH, idleMinutes } from './pod.js'
 import { sandboxFetch } from './podSandbox.js'
@@ -29,6 +36,10 @@ export const providers = {
   google: { env: ['GEMINI_API_KEY'], fields: ['key'] },
   elevenlabs: { env: ['ELEVENLABS_API_KEY'], fields: ['key'] },
   runpod: { env: ['RUNPOD_API_KEY', 'RUNPOD_DAILY_CAP', 'RUNPOD_AUTO_START', 'RUNPOD_IDLE_MIN', 'RUNPOD_TIER'], fields: ['key', 'cap', 'auto', 'idle', 'tier'] },
+  // Shares flows and formats as gists. Not GITHUB_TOKEN: a developer's shell token must not post gists unasked.
+  github: { env: ['COMFYFIELD_GITHUB_TOKEN'], fields: ['key'] },
+  // Not a key: where Blender runs. With a host, path is the Blender binary on that host.
+  blender: { env: ['BLENDER_PATH', 'BLENDER_SSH_HOST'], fields: ['path', 'host'] },
 }
 
 export const home = () => dataDirectory()
@@ -63,9 +74,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 // The one Pod manager for this process. COMFYFIELD_POD_SANDBOX swaps RunPod and the Pod for fakes.
 let podOne
 const sandboxed = () => Boolean(process.env.COMFYFIELD_POD_SANDBOX)
+export { CLOUD_USD_PER_GPU_SEC }
 // Comfy Cloud runs of the last day, so the app can say when a session would cost less on a Pod.
-// About $4.54 per GPU hour: Comfy's published RTX PRO 6000 rate, which matches the Cloud workflow rate.
-export const CLOUD_USD_PER_GPU_SEC = 4.54 / 3600
 const HOUR = 3_600_000
 const cloudRunsFile = () => path.join(home(), 'cloud-runs.json')
 function readCloudRuns() {
@@ -110,7 +120,7 @@ export function pod() {
   if (!podOne) {
     const sandbox = sandboxed()
     podOne = podManager({
-      dir: home, sandbox,
+      dir: home, sandbox, adoptPrefix: process.env.COMFYFIELD_POD_ADOPT_PREFIX || undefined,
       keys: () => (sandbox ? { ...config('runpod'), key: 'sandbox' } : config('runpod')),
       ...(sandbox ? { fetch: sandboxFetch({ file: () => path.join(home(), 'pod-sandbox.json') }) } : {}),
     })
@@ -165,7 +175,8 @@ async function withFalFiles(value, key, cache = new Map()) {
 }
 
 // fal queue API: submit, poll status, then fetch the result.
-export async function runFal({ model, input }) {
+// ctx comes from a server job: a cancel asks fal to drop the request, which only works while it is still queued.
+export async function runFal({ model, input }, ctx = {}) {
   const { key } = config('fal')
   if (!key) throw Object.assign(new Error('Connect fal in Connections first.'), { status: 400 })
   const headers = { Authorization: `Key ${key}`, 'Content-Type': 'application/json' }
@@ -173,7 +184,9 @@ export async function runFal({ model, input }) {
   const submit = await fetch(`https://queue.fal.run/${model}`, { method: 'POST', headers, body: JSON.stringify(ready) })
   if (!submit.ok) throw new Error(`fal rejected the request (${submit.status}): ${(await submit.text()).slice(0, 300)}`)
   const job = await submit.json()
+  if (job.cancel_url) ctx.onCancel?.(() => fetch(job.cancel_url, { method: 'PUT', headers }))
   for (let i = 0; i < 600; i++) {
+    if (ctx.cancelled) throw new Error('Cancelled.')
     const s = await (await fetch(job.status_url, { headers })).json()
     if (s.status === 'COMPLETED') break
     if (s.status === 'FAILED' || s.error) throw new Error(`fal job failed: ${s.error || 'unknown error'}`)
@@ -240,6 +253,32 @@ export function saveMedia(buf, ext) {
   return { url: `/media/${name}`, path: file }
 }
 
+// CLI proofs use the same local media URLs and item shape as browser generations.
+const importsFile = () => path.join(home(), 'generation-imports.json')
+export function libraryImports() {
+  if (!fs.existsSync(importsFile())) return []
+  return JSON.parse(fs.readFileSync(importsFile(), 'utf8'))
+}
+export function dismissLibraryImport(id) {
+  fs.writeFileSync(importsFile(), JSON.stringify(libraryImports().filter((item) => item.id !== id)))
+}
+export async function saveToLibrary(files, metadata = {}) {
+  const items = []
+  for (const f of files) {
+    let local = f
+    if (!f.url?.startsWith('/media/')) {
+      const r = await fetch(f.url)
+      if (!r.ok) throw new Error(`Library download failed (${r.status}).`)
+      local = { ...f, ...saveMedia(Buffer.from(await r.arrayBuffer()), mimeExt(r.headers.get('content-type') || (f.kind === 'video' ? 'video/mp4' : 'image/png'))) }
+    }
+    const { path: localPath, ...file } = local
+    items.push({ ...metadata, ...file, id: randomUUID(), created: Date.now(), imported: true })
+  }
+  fs.mkdirSync(home(), { recursive: true })
+  fs.writeFileSync(importsFile(), JSON.stringify([...items, ...libraryImports()], null, 2))
+  return items
+}
+
 // Gemini TTS returns raw 16-bit PCM at 24 kHz; wrap it in a WAV header so browsers can play it.
 function pcmToWav(pcm, rate = 24000) {
   const h = Buffer.alloc(44)
@@ -252,7 +291,7 @@ function pcmToWav(pcm, rate = 24000) {
 
 const GEMINI = 'https://generativelanguage.googleapis.com/v1beta'
 
-export async function writePromptWithRouter({ instructions, note = '', images = [], target = '', idempotencyKey = randomUUID() }) {
+export async function writePromptWithRouter({ instructions, note = '', images = [], target = '', promptOnly = true, idempotencyKey = randomUUID() }) {
   const content = images.map((url) => {
     const { buf, mime } = readLocal(url)
     if (!/^image\/(png|jpeg|webp|gif)$/.test(mime)) {
@@ -260,7 +299,7 @@ export async function writePromptWithRouter({ instructions, note = '', images = 
     }
     return { type: 'input_image', image_url: dataUri(buf, mime) }
   })
-  content.push({ type: 'input_text', text: [target && `Target model or medium: ${target}`, note && `User note: ${note}`, 'Write only the finished generation prompt.'].filter(Boolean).join('\n\n') })
+  content.push({ type: 'input_text', text: [target && `Target model or medium: ${target}`, note && `User note: ${note}`, promptOnly && 'Write only the finished generation prompt.'].filter(Boolean).join('\n\n') })
   const response = await fetch(`${ROUTER}/${routerWriterModel}`, {
     method: 'POST', headers: { 'X-API-Key': comfyKey(), 'Content-Type': 'application/json', 'Idempotency-Key': idempotencyKey },
     body: JSON.stringify({ instructions, input: [{ role: 'user', content }], max_output_tokens: 2048, store: false }),
@@ -268,20 +307,20 @@ export async function writePromptWithRouter({ instructions, note = '', images = 
   const data = await routerJson(response)
   const fail = (detail) => Object.assign(comfyError(response, detail), { idempotencyKey })
   if (!response.ok || data.error || data.error_type) throw fail(data)
-  if (data.status !== 'completed') throw fail({ message: 'Comfy Router did not finish the prompt. Retry with the same request key.' })
+  if (data.status !== 'completed') throw fail({ ...data, error_type: data.status ? 'prompt_failed' : 'invalid_response', retryable: !data.status, message: 'Comfy Router did not finish the prompt.' })
   const text = (data.output || []).filter((item) => item.type === 'message' && item.role === 'assistant').flatMap((item) => item.content || []).filter((part) => part.type === 'output_text').map((part) => part.text || '').join('').trim()
-  if (!text) throw fail({ message: 'Comfy Router returned no prompt. The request may have been filtered.' })
+  if (!text) throw fail({ ...data, error_type: 'prompt_filtered', retryable: false, message: 'Comfy Router returned no prompt. The request may have been filtered.' })
   return text
 }
 
-export async function writePrompt({ instructions, note = '', images = [], target = '', idempotencyKey }) {
+export async function writePrompt({ instructions, note = '', images = [], target = '', promptOnly = true, idempotencyKey }) {
   if (typeof instructions !== 'string' || !instructions.trim()) {
     throw Object.assign(new Error('Add writer instructions first.'), { status: 400 })
   }
-  if (typeof note !== 'string' || typeof target !== 'string' || !Array.isArray(images) || images.some((u) => typeof u !== 'string' || !/^(data:image\/|\/media\/)/.test(u))) {
+  if (typeof promptOnly !== 'boolean' || typeof note !== 'string' || typeof target !== 'string' || !Array.isArray(images) || images.some((u) => typeof u !== 'string' || !/^(data:image\/|\/media\/)/.test(u))) {
     throw Object.assign(new Error('Writer needs a note, a target and local or inline images.'), { status: 400 })
   }
-  const request = { instructions, note, images, target, idempotencyKey }
+  const request = { instructions, note, images, target, promptOnly, idempotencyKey }
   const { key } = config('google')
   if (!key) return writePromptWithRouter(request)
   const parts = images.map((url) => {
@@ -291,7 +330,7 @@ export async function writePrompt({ instructions, note = '', images = [], target
     }
     return { inlineData: { mimeType: mime, data: buf.toString('base64') } }
   })
-  parts.push({ text: [target && `Target model or medium: ${target}`, note && `User note: ${note}`, 'Write only the finished generation prompt.'].filter(Boolean).join('\n\n') })
+  parts.push({ text: [target && `Target model or medium: ${target}`, note && `User note: ${note}`, promptOnly && 'Write only the finished generation prompt.'].filter(Boolean).join('\n\n') })
   const r = await fetch(`${GEMINI}/models/gemini-flash-latest:generateContent`, {
     method: 'POST', headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' },
     body: JSON.stringify({ systemInstruction: { parts: [{ text: instructions }] }, contents: [{ role: 'user', parts }] }),
@@ -303,6 +342,15 @@ export async function writePrompt({ instructions, note = '', images = [], target
   const text = (candidate?.content?.parts || []).filter((p) => !p.thought).map((p) => p.text || '').join('').trim()
   if (!text) throw new Error('Google returned no prompt. The request may have been filtered.')
   return text
+}
+
+// Describe a flow, get a draft: the prompt writer (Google key first, then Comfy Router) returns flow JSON,
+// and parseDraft keeps only nodes and connections the flow rules allow.
+export async function draftFlow({ description } = {}, { write = writePrompt } = {}) {
+  if (typeof description !== 'string' || !description.trim()) throw Object.assign(new Error('Describe the flow you want first.'), { status: 400 })
+  if (write === writePrompt && !config('google').key && !config('comfy').key) throw Object.assign(new Error('Add a Google or Comfy key in Connections to draft a flow.'), { status: 400 })
+  const text = await write({ instructions: draftInstructions(), note: description.trim().slice(0, 2000), target: 'ComfyField flow JSON', promptOnly: false })
+  return parseDraft(text, { makeId: (type) => `${type}-${randomUUID().slice(0, 8)}` })
 }
 
 // Google AI (Gemini API key): image and speech via generateContent, Veo via a long-running operation.
@@ -432,8 +480,13 @@ export async function testConnection(id) {
     const r = await fetch('https://api.elevenlabs.io/v1/models', { headers: { 'xi-api-key': c.key } })
     return r.ok
   }
+  if (id === 'github') {
+    const r = await fetch('https://api.github.com/user', { headers: { Authorization: `Bearer ${c.key}`, Accept: 'application/vnd.github+json', 'User-Agent': 'ComfyField' } })
+    return r.ok
+  }
   if (id === 'fal') return Boolean(c.key) // fal has no free auth-check endpoint
   if (id === 'runpod') return pod().test()
+  if (id === 'blender') return Boolean(await blenderVersion({ config: c }))
   return false
 }
 
@@ -470,10 +523,40 @@ export async function stitch({ preview = false, ...options } = {}) {
   return item
 }
 
+// A Blender node's render: run the script where Connections says, keep the file in media and the Library.
+export async function blender(options, { render = renderBlender } = {}) {
+  const file = await render(options, {
+    config: config('blender'),
+    keep: (from, output) => {
+      const saved = saveMedia(fs.readFileSync(from), output === 'video' ? 'mp4' : 'png')
+      return { ...saved, kind: output === 'video' ? 'video' : 'image' }
+    },
+  })
+  const [item] = await saveToLibrary([file], { model: 'Blender', caption: 'Blender render' })
+  return item
+}
+
+// A Three.js node's render: headless Chrome draws the scene, ffmpeg makes an MP4 for media and the Library.
+export async function threejs(options, { render = renderThree } = {}) {
+  const file = await render(options, {
+    keep: (from) => ({ ...saveMedia(fs.readFileSync(from), 'mp4'), kind: 'video' }),
+  })
+  const [item] = await saveToLibrary([file], { model: 'Three.js', caption: 'Three.js render' })
+  return item
+}
+
+// Flow nodes that render on this machine (or a host it reaches) instead of a provider.
+export const render = (type, options) => {
+  if (type === 'blender') return blender(options)
+  if (type === 'threejs') return threejs(options)
+  throw Object.assign(new Error(`No local renderer for ${type} nodes.`), { status: 400 })
+}
+
 export function connections() {
   const out = Object.fromEntries(Object.keys(providers).map((id) => {
     const c = config(id)
     // Comfy Cloud + Pod can run with a Comfy key, or with a RunPod key through a Pod.
+    if (id === 'blender') return [id, { connected: Boolean(c.path || c.host), path: c.path, host: c.host }]
     const on = id !== 'comfy' ? c.key : c.mode === 'cloud' ? c.key || config('runpod').key || sandboxed() : c.url || c.key
     return [id, { connected: Boolean(on), key: mask(c.key), ...(id === 'comfy' ? { mode: c.mode } : {}) }]
   }))
@@ -491,6 +574,7 @@ export function saveConnection(id, values) {
   if (id === 'runpod' && values.auto != null && !['on', 'off'].includes(values.auto)) throw Object.assign(new Error('Start Pods automatically is on or off.'), { status: 400 })
   if (id === 'runpod' && values.cap != null && !(parseFloat(values.cap) > 0)) throw Object.assign(new Error('The daily cap is a dollar amount above 0.'), { status: 400 })
   if (id === 'runpod' && values.idle != null && !IDLE_CHOICES.includes(Number(values.idle))) throw Object.assign(new Error(`Idle shutdown is ${IDLE_CHOICES.join(', ')} minutes.`), { status: 400 })
+  if (id === 'blender' && Object.entries(values).some(([k, v]) => !['path', 'host'].includes(k) || typeof v !== 'string' || /[\r\n]/.test(v))) throw Object.assign(new Error('Blender takes a path and an SSH host, each on one line.'), { status: 400 })
   if (id === 'runpod' && values.cap != null) values = { ...values, cap: String(Math.round(parseFloat(values.cap) * 100) / 100) }
   const keys = readKeys()
   keys[id] = { ...keys[id], ...values }
@@ -516,9 +600,10 @@ function comfyError(response, data) {
   const code = response.headers?.get('X-Comfy-Error-Type') || data.error_type || data.error?.code
   const requestId = response.headers?.get('X-Comfy-Request-Id') || data.request_id
   const message = response.status === 402 || code === 'insufficient_credits'
-    ? 'Comfy has insufficient credits. Add credits to your Comfy workspace billing, then try again.'
+    ? 'Comfy has insufficient credits. Add credits at platform.comfy.org (profile menu, Manage plan, Add credits), then try again.'
     : `Comfy request failed (${code || response.status}): ${data.message || data.error?.message || (typeof data.detail === 'string' ? data.detail : '') || 'Check the request and your connection.'}`
-  return Object.assign(new Error(`${message}${requestId ? ` Request ${requestId}.` : ''}`), { status: response.status >= 400 ? response.status : 502, requestId })
+  return Object.assign(new Error(`${message}${requestId ? ` Request ${requestId}.` : ''}`), { status: response.status >= 400 ? response.status : 502, requestId, code,
+    retryable: data.retryable ?? (response.status === 408 || response.status === 429 || response.status >= 500) })
 }
 
 function retryAfter(response) {
@@ -535,6 +620,27 @@ export async function listComfyRouterModels({ limit = 50, cursor } = {}) {
   const data = await response.json()
   if (!response.ok) throw comfyError(response, data)
   return data
+}
+
+// The whole Router catalog, shaped for the picker, cached for ten minutes per key.
+// Without a key it answers `connected: false` so the app can ask for one.
+export const ROUTER_MODELS_TTL = 10 * 60 * 1000
+let routerCatalog = null
+export async function comfyModels({ now = Date.now() } = {}) {
+  const { key } = config('comfy')
+  if (!key) return { connected: false, models: [] }
+  if (routerCatalog?.key === key && now - routerCatalog.at < ROUTER_MODELS_TTL) return { connected: true, models: routerCatalog.models, at: routerCatalog.at, cached: true }
+  const models = []
+  let cursor
+  for (let page = 0; page < 40; page++) {
+    const data = await listComfyRouterModels({ limit: 100, cursor })
+    models.push(...(Array.isArray(data.data) ? data.data : []).map(routerEntry).filter(Boolean))
+    if (!data.has_more) break
+    if (!data.next_cursor || data.next_cursor === cursor) throw new Error('The Comfy Router catalog stopped paging.')
+    cursor = data.next_cursor
+  }
+  routerCatalog = { key, at: now, models }
+  return { connected: true, models, at: now, cached: false }
 }
 
 // Router returns each partner's native JSON; normalize media for the shared generation callers.
@@ -570,41 +676,53 @@ async function withRouterFiles(value) {
   return value
 }
 
-export async function runComfyRouter({ model, input, idempotencyKey = randomUUID() }, { pause = sleep } = {}) {
-  if (!/^[\w.-]+\/[\w./-]+$/.test(model) || model.split('/').includes('..')) throw new Error('Use a Comfy Router provider/model id.')
-  const headers = { 'X-API-Key': comfyKey(), 'Content-Type': 'application/json' }
-  const base = `${ROUTER}/${model}/requests`
-  const response = await fetch(base, { method: 'POST', headers: { ...headers, 'Idempotency-Key': idempotencyKey }, body: JSON.stringify(await withRouterFiles(input)) })
-  const job = await routerJson(response)
-  if (!response.ok || job.error_type) throw Object.assign(comfyError(response, job), { idempotencyKey })
-  if (!job.request_id) throw new Error('Comfy Router did not return a request id.')
-  // Derive URLs from the documented route so credentials never follow an arbitrary response URL.
-  const resultUrl = `${base}/${encodeURIComponent(job.request_id)}`
-  let previous = response
-  for (let i = 0; i < 1200; i++) {
-    await pause(retryAfter(previous))
-    const status = await fetch(`${resultUrl}/status`, { headers })
-    previous = status
-    if (status.status === 429 || status.status === 503) continue
-    const update = await routerJson(status)
-    if (status.ok && !update.status && !update.error_type) throw comfyError(status, { request_id: job.request_id, message: 'Router returned an invalid status response. Retry with the same request key.' })
-    if (!status.ok || update.error_type) throw comfyError(status, { request_id: job.request_id, ...update })
-    if (update.status !== 'COMPLETED') continue
-    const result = await fetch(resultUrl, { headers })
-    previous = result
-    if (result.status === 202 || result.status === 429 || result.status === 503) continue
-    const mime = (result.headers.get('Content-Type') || '').split(';')[0]
-    if (result.ok && (/^audio\//.test(mime) || (mime === 'application/octet-stream' && model.startsWith('elevenlabs/')))) {
-      const buf = Buffer.from(await result.arrayBuffer())
-      if (!buf.length) throw new Error('Comfy Router returned empty audio.')
-      return [{ ...saveMedia(buf, mime === 'application/octet-stream' || mime.includes('mpeg') ? 'mp3' : mimeExt(mime)), kind: 'audio' }]
+export async function runComfyRouter({ model, input, idempotencyKey = randomUUID() }, { pause = sleep, signal, onSubmitted = () => {}, onComplete = () => {} } = {}) {
+  let requestId
+  try {
+    if (!/^[\w.-]+\/[\w./-]+$/.test(model) || model.split('/').includes('..')) throw new Error('Use a Comfy Router provider/model id.')
+    const headers = { 'X-API-Key': comfyKey(), 'Content-Type': 'application/json' }
+    const base = `${ROUTER}/${model}/requests`
+    const response = await fetch(base, { signal, method: 'POST', headers: { ...headers, 'Idempotency-Key': idempotencyKey }, body: JSON.stringify(await withRouterFiles(input)) })
+    const job = await routerJson(response)
+    if (!response.ok || job.error_type) throw Object.assign(comfyError(response, job), { idempotencyKey })
+    if (!job.request_id) throw Object.assign(new Error('Comfy Router did not return a request id.'), { code: 'invalid_response', retryable: true })
+    requestId = job.request_id
+    await onSubmitted({ id: job.request_id })
+    // Derive URLs from the documented route so credentials never follow an arbitrary response URL.
+    const resultUrl = `${base}/${encodeURIComponent(job.request_id)}`
+    let previous = response
+    for (let i = 0; i < 1200; i++) {
+      signal?.throwIfAborted()
+      await pause(retryAfter(previous))
+      signal?.throwIfAborted()
+      const status = await fetch(`${resultUrl}/status`, { headers, signal })
+      previous = status
+      if (status.status === 429 || status.status === 503) continue
+      const update = await routerJson(status)
+      if (status.ok && !update.status && !update.error_type) throw comfyError(status, { request_id: job.request_id, error_type: 'invalid_response', retryable: true, message: 'Router returned an invalid status response. Retry with the same request key.' })
+      if (['FAILED', 'CANCELLED', 'CANCELED'].includes(update.status)) throw comfyError(status, { request_id: job.request_id, ...update, error_type: update.error_type || 'job_failed', retryable: false })
+      if (!status.ok || update.error_type) throw comfyError(status, { request_id: job.request_id, ...update, ...(update.status === 'COMPLETED' && update.error_type ? { retryable: false } : {}) })
+      if (update.status !== 'COMPLETED') continue
+      const result = await fetch(resultUrl, { headers, signal })
+      previous = result
+      if (result.status === 202 || result.status === 429 || result.status === 503) continue
+      const mime = (result.headers.get('Content-Type') || '').split(';')[0]
+      if (result.ok && (/^audio\//.test(mime) || (mime === 'application/octet-stream' && model.startsWith('elevenlabs/')))) {
+        const buf = Buffer.from(await result.arrayBuffer())
+        if (!buf.length) throw new Error('Comfy Router returned empty audio.')
+        await onComplete({ id: job.request_id, actualCost: null })
+        return [{ ...saveMedia(buf, mime === 'application/octet-stream' || mime.includes('mpeg') ? 'mp3' : mimeExt(mime)), kind: 'audio' }]
+      }
+      const data = await routerJson(result)
+      if (!result.ok || data.error_type) throw comfyError(result, { request_id: job.request_id, ...data })
+      if (!Object.keys(data).length) throw comfyError(result, { request_id: job.request_id, error_type: 'invalid_response', retryable: true, message: 'Router returned an invalid result response. Retry with the same request key.' })
+      await onComplete({ id: job.request_id, actualCost: data.cost_usd ?? null })
+      return routerFiles(data, model)
     }
-    const data = await routerJson(result)
-    if (!result.ok || data.error_type) throw comfyError(result, { request_id: job.request_id, ...data })
-    if (!Object.keys(data).length) throw comfyError(result, { request_id: job.request_id, message: 'Router returned an invalid result response. Retry with the same request key.' })
-    return routerFiles(data, model)
+    throw new Error(`Comfy Router took too long. Request ${job.request_id} may still be running; do not submit again without checking it.`)
+  } catch (error) {
+    throw Object.assign(error, { idempotencyKey, ...(requestId && !error.requestId && { requestId }) })
   }
-  throw new Error(`Comfy Router took too long. Request ${job.request_id} may still be running; do not submit again without checking it.`)
 }
 
 async function comfyMedia(source) {
@@ -618,12 +736,36 @@ async function comfyMedia(source) {
 
 // The SDK reads COMFY_BASE_URL only when a client is made, so scope it to one `new Comfy()`.
 // Always pass apiKey: a key left in the environment would otherwise go to whatever URL is set.
+// The Pod's comfy-api-proxy answers with job links on the Pod's private address (urls.self, events,
+// cancel), which only RunPod's network reaches, and the SDK follows them. Pod runs send those links to
+// the public proxy instead, with the Pod token the SDK holds back from a link to another host. An
+// injected fetch loses the SDK's own long-call limits, so this one sets undici's inactivity timers past
+// the 30 minute run deadline, as the SDK does.
+const privateHost = (h) => /^(10\.|127\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.)/.test(h)
+const LONG_CALL_MS = 35 * 60 * 1000
+export function podFetch(baseUrl, token, net = (...a) => globalThis.fetch(...a)) {
+  const pub = new URL(baseUrl)
+  return (input, init = {}) => {
+    const url = new URL(typeof input === 'string' || input instanceof URL ? input : input.url)
+    if (url.host !== pub.host && privateHost(url.hostname)) {
+      url.protocol = pub.protocol; url.hostname = pub.hostname; url.port = pub.port
+      const headers = new Headers(init.headers)
+      if (token && !headers.has('Authorization')) headers.set('Authorization', `Bearer ${token}`)
+      init = { ...init, headers }
+    }
+    // Node installs its dispatcher on the first read of the global fetch.
+    const inner = init.dispatcher || (globalThis.fetch && globalThis[Symbol.for('undici.globalDispatcher.1')])
+    const limits = inner?.dispatch ? { dispatcher: { dispatch: (o, h) => inner.dispatch({ ...o, headersTimeout: LONG_CALL_MS, bodyTimeout: LONG_CALL_MS }, h) } } : {}
+    return net(url.href, { ...init, ...limits })
+  }
+}
+
 export function comfyClient(baseUrl, apiKey, options = {}) {
   const saved = process.env.COMFY_BASE_URL
   if (baseUrl) process.env.COMFY_BASE_URL = baseUrl
   else delete process.env.COMFY_BASE_URL
   try {
-    return new Comfy({ apiKey: apiKey || undefined, clientInfo: 'comfyfield', ...options })
+    return new Comfy({ apiKey: apiKey || undefined, clientInfo: 'comfyfield', ...(baseUrl && { fetch: podFetch(baseUrl, apiKey) }), ...options })
   } finally {
     if (saved === undefined) delete process.env.COMFY_BASE_URL
     else process.env.COMFY_BASE_URL = saved
@@ -641,6 +783,70 @@ function readWorkflow(workflow) {
 export function workflowNeeds(workflow) {
   const needs = podNeedsOf(readWorkflow(workflow).template)
   return { files: needs.filter((n) => !n.runtime), runtimes: needs.filter((n) => n.runtime), minVramGb: minVramOf(needs), volumeGb: volumeFor(needs) }
+}
+
+const invalidRequirements = () => Object.assign(new Error('Supply up to 200 workflow objects with object vars.'), { status: 400 })
+const workflowMetadata = ({ workflow, needs }) => ({ workflow, notOnCloud: notOnCloud(needs), minVramGb: minVramOf(needs), arch: archOf(needs) })
+
+function workflowGraph(workflow, vars) {
+  const { file, template: source } = readWorkflow(workflow)
+  const template = dropOptional(source, vars)
+  const graph = fill(template, vars)
+  return { workflow, file, template, graph, needs: podNeedsOf(graph) }
+}
+
+// Both execution and preflight resolve alternates from the selected workflow, including image variants.
+function cloudGraphOf(workflow, vars) {
+  const name = cloudWorkflowOf(workflow)
+  if (!name) return null
+  const graph = workflowGraph(name, vars)
+  return !unsetInput(graph.template, vars) && !notOnCloud(graph.needs).length ? graph : null
+}
+
+// Read-only pipeline planning. No clients, uploads, leases or downloads are created.
+export function comfyRequirements(workflows = []) {
+  if (!Array.isArray(workflows) || workflows.length > 200) throw invalidRequirements()
+  return workflows.map((entry) => {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry) || typeof entry.workflow !== 'string' ||
+      ('vars' in entry && (!entry.vars || typeof entry.vars !== 'object' || Array.isArray(entry.vars)))) throw invalidRequirements()
+    const { workflow, vars = {} } = entry
+    return workflowMetadata(workflowGraph(workflow, vars))
+  })
+}
+
+export async function formatRequirements(workflows = [], { run = runType(), phase, vramGb, arch, local = comfyMode() === 'local' } = {}) {
+  phase ??= await pod().phaseNow()
+  vramGb ??= pod().vramGb()
+  arch ??= pod().arch()
+  const requirements = comfyRequirements(workflows)
+  const connected = connections()
+  for (const [index, entry] of workflows.entries()) {
+    const requirement = requirements[index]
+    const vars = entry.vars || {}
+    const original = workflowGraph(entry.workflow, vars)
+    const cloud = cloudGraphOf(entry.workflow, vars)
+    requirement.cloud = workflowMetadata(cloud || original)
+    try {
+      const route = local ? { ...original, target: 'local' } : await resolveComfyRoute(original, vars, {
+        run, podPhase: () => phase, podVram: () => vramGb, podArch: () => arch,
+      })
+      requirement.target = route.target
+      requirement.selectedWorkflow = route.workflow
+    } catch (error) {
+      if (!['needs_pod', 'pod_too_small'].includes(error.code)) throw error
+      requirement.target = null
+      requirement.reason = { code: error.code, message: error.message, detail: error.reason }
+    }
+  }
+  return {
+    requirements,
+    connections: Object.fromEntries(Object.entries(connected).map(([id, c]) => [id, { connected: c.connected }])),
+    writerProviders: ['google', ...(config('comfy').key ? ['comfyRouter'] : [])],
+    runType: run,
+    pod: { phase, vramGb, arch, auto: podAutoStart() },
+    cloudConnected: Boolean(config('comfy').key),
+    local,
+  }
 }
 
 // The catalog model a workflow belongs to, and the graph a big enough Pod runs for it instead.
@@ -776,6 +982,7 @@ const unsetInput = (template, vars) => [...JSON.stringify(template).matchAll(/\{
 export const UPLOAD_KEYS = {
   LoadImage: ['image', ['image', 'image2', 'image3', 'image4', 'image5', 'mask']],
   LoadVideo: ['file', ['video']],
+  VHS_LoadVideo: ['video', ['video']],
   LoadAudio: ['audio', ['audio', 'voice']],
 }
 export const uploadsOf = (template) => Object.entries(template).flatMap(([id, node]) => {
@@ -820,47 +1027,91 @@ async function comfyTarget(files, podPhase, podVram, label, run = null, podArch 
   throw needs(why ? `${why}, so this run needs a Pod. Start one in ComfyField from the Pod chip in the top bar.` : 'You picked Session, so this run needs a Pod. Start one from the run type in the top bar.', 'needs_pod')
 }
 
-// Runs a bundled workflow on Comfy Cloud or the Pod, or in development on a local ComfyUI, and returns file URLs.
-export async function runComfy(workflow, vars = {}, { createClient = (key, baseUrl) => comfyClient(baseUrl, key), lease = (o) => pod().lease(o), podPhase = () => pod().phaseNow(), podVram = () => pod().vramGb(), podRoom = () => pod().room(), podArch = () => pod().arch(), run = runType() } = {}) {
-  let { file, template } = readWorkflow(workflow)
-  // Nodes for a file the run did not attach (a second garment, an optional reference) drop out first.
-  template = dropOptional(template, vars)
-  const unset = unsetInput(template, vars)
-  if (unset) throw new Error(`Workflow ${workflow} requires ${unset}.`)
-  let graph = fill(template, vars)
-  if (comfyMode() === 'cloud') {
-    let needs = podNeedsOf(graph)
-    // Instant workflow variants: resolve compatible files before the existing target policy.
-    // Session and a ready Pod that fits the original keep its graph and model files.
-    let targetPhase = podPhase
-    let targetRun = run
-    const cloudWorkflow = run !== 'session' && cloudWorkflowOf(workflow)
-    if (cloudWorkflow && config('comfy').key) {
-      const phase = await podPhase()
-      targetPhase = () => phase
-      const vram = podVram()
-      const arch = podArch()
-      const readyPod = phase === 'ready' && (vram == null || vram >= minVramOf(needs)) && (!archOf(needs) || !arch || arch === archOf(needs))
-      if (run === 'instant' || !readyPod) {
-        const alternate = readWorkflow(cloudWorkflow)
-        alternate.template = dropOptional(alternate.template, vars)
-        if (!unsetInput(alternate.template, vars)) {
-          const alternateGraph = fill(alternate.template, vars)
-          const alternateNeeds = podNeedsOf(alternateGraph)
-          if (!notOnCloud(alternateNeeds).length) {
-            ({ file, template } = alternate)
-            graph = alternateGraph
-            needs = alternateNeeds
-            // An original that cannot use this Pod must not send its smaller alternate there.
-            targetRun = 'instant'
-          }
-        }
+// Resolve graphs and target policy without uploads or generation, shared with pipeline planning.
+async function resolveComfyRoute(original, vars, { run, podPhase, podVram, podArch }) {
+  let selected = original
+  let targetPhase = podPhase
+  let targetRun = run
+  if (run !== 'session' && cloudWorkflowOf(original.workflow) && config('comfy').key) {
+    const phase = await podPhase()
+    targetPhase = () => phase
+    const vram = podVram()
+    const arch = podArch()
+    const readyPod = phase === 'ready' && (vram == null || vram >= minVramOf(original.needs)) &&
+      (!archOf(original.needs) || !arch || arch === archOf(original.needs))
+    if (run === 'instant' || !readyPod) {
+      const alternate = cloudGraphOf(original.workflow, vars)
+      if (alternate) {
+        selected = alternate
+        // An original that cannot use this Pod must not send its smaller alternate there.
+        targetRun = 'instant'
       }
     }
-    // End Instant workflow variants.
-    // Errors name the model as the picker shows it.
-    const label = modelOf(workflow)?.name
-    const target = await comfyTarget(needs, targetPhase, podVram, label, targetRun, podArch)
+  }
+  const target = await comfyTarget(selected.needs, targetPhase, podVram, modelOf(original.workflow)?.name, targetRun, podArch)
+  return { ...selected, target }
+}
+
+// Submits and then waits when the caller must know whether the job was accepted: a Pod retry, or the spend ledger.
+// The SDK's live event stream, reduced to what a generation tile shows. The poll in job.wait stays the
+// source of truth for completion, so a stream that drops or is not offered only loses the progress.
+export function progressOf(event, where) {
+  if (event.kind === 'statusChange') return { where, status: event.status, queuePosition: event.queuePosition ?? null }
+  if (event.kind !== 'progress') return null
+  const value = Number.isFinite(event.value) ? Math.min(1, Math.max(0, event.value)) : null
+  return { where, status: 'running', value, step: event.step ?? null, steps: event.steps ?? null, nodesDone: event.nodesDone ?? null, nodesTotal: event.nodesTotal ?? null, node: event.currentNodeClass ?? null }
+}
+
+async function watchProgress(job, where, onProgress, signal) {
+  try {
+    for await (const event of job.events(signal)) {
+      const progress = progressOf(event, where)
+      if (progress) onProgress(progress)
+    }
+  } catch {}
+}
+
+async function submitAndWait(client, wf, { apiKey, timeoutMs, signal, split, where, onProgress }, onSubmitted) {
+  if (!split || !client.submit) return client.run(wf, { apiKey, timeoutMs, ...(signal ? { signal } : {}) })
+  const job = await client.submit(wf, { apiKey, ...(signal ? { signal } : {}) })
+  const stopWatching = new AbortController()
+  try {
+    await onSubmitted({ id: job.id })
+    if (onProgress && job.events) {
+      onProgress({ where, status: job.status || 'queued', queuePosition: job.queuePosition ?? null })
+      watchProgress(job, where, onProgress, signal ? AbortSignal.any([signal, stopWatching.signal]) : stopWatching.signal)
+    }
+    await job.wait(timeoutMs, signal)
+  } catch (e) {
+    // A job nobody is waiting on would keep spending, so a cancel that fails is reported, not swallowed.
+    const stopped = job.cancel ? await job.cancel().then(() => true, () => false) : true
+    throw stopped ? e : Object.assign(e, { uncancelled: job.id })
+  } finally {
+    stopWatching.abort()
+  }
+  if (job.status !== 'succeeded') throw new JobFailed(`job ${job.id} ended ${job.status}`, { error: job.error })
+  return job
+}
+
+// Runs a bundled workflow on Comfy Cloud or the Pod, or in development on a local ComfyUI, and returns file URLs.
+export async function runComfy(workflow, vars = {}, opts = {}) {
+  const { createClient = (key, baseUrl) => comfyClient(baseUrl, key), lease = (o) => pod().lease(o), podPhase = () => pod().phaseNow(), podVram = () => pod().vramGb(), podRoom = () => pod().room(), podArch = () => pod().arch(), run = runType(), signal, retried = 0, pause = (ms, s) => delay(ms, undefined, s ? { signal: s } : undefined), patchGraph = (g) => g, onSubmitted, onProgress, onComplete = () => {}, onStage, timeoutMs } = opts
+  signal?.throwIfAborted()
+  // Library voice ids resolve to their consented samples before any graph is filled.
+  vars = { ...vars }
+  await validateWorkflowVoices(workflow, readWorkflow(workflow).template, vars, home)
+  const original = workflowGraph(workflow, vars)
+  let { file, template, graph } = original
+  const unset = unsetInput(template, vars)
+  if (unset) throw new Error(`Workflow ${workflow} requires ${unset}.`)
+  if (comfyMode() === 'cloud') {
+    const route = await resolveComfyRoute(original, vars, { run, podPhase, podVram, podArch })
+    signal?.throwIfAborted()
+    file = route.file
+    template = route.template
+    graph = route.graph
+    let needs = route.needs
+    const target = route.target
     // A run that goes to a Pod big enough for the model's Pod graph runs that graph: H3 on FreeVideo.
     const alt = target === 'pod' && podWorkflowOf(workflow)
     if (alt) {
@@ -876,12 +1127,14 @@ export async function runComfy(workflow, vars = {}, { createClient = (key, baseU
     }
     const uploads = uploadsOf(template)
     const media = await readUploads(uploads, vars)
+    signal?.throwIfAborted()
     // On the Pod the proxy token is the server credential; the Comfy key, when set, only pays partner nodes.
     let held = null
     let client
     let partner
     if (target === 'pod') {
-      held = await lease({ files: needs.filter((n) => !n.runtime), runtimes: needs.filter((n) => n.runtime).map((n) => n.runtime) })
+      // onStage tells the run's job what it waits on: the Pod, a runtime install, or which files to download.
+      held = await lease({ files: needs.filter((n) => !n.runtime), runtimes: needs.filter((n) => n.runtime).map((n) => n.runtime), ...(signal ? { signal } : {}), ...(onStage ? { onStage } : {}) })
       if (held.sandbox) {
         held.release()
         throw new Error('This is the sandbox Pod, so nothing renders. Unset COMFYFIELD_POD_SANDBOX to run on a real Pod.')
@@ -893,12 +1146,19 @@ export async function runComfy(workflow, vars = {}, { createClient = (key, baseU
       client = createClient(partner)
     }
     const where = target === 'pod' ? 'The Pod' : 'Comfy Cloud'
+    let submitted = false
     try {
+      signal?.throwIfAborted()
       const wf = await client.workflows.fromFile(file)
-      wf.json = graph
+      wf.json = patchGraph(graph)
       for (const { id, field, key } of uploads) wf.setInput(id, field, client.assets.fromBytes(media[key].buf, { filename: `input.${mimeExt(media[key].mime)}`, contentType: media[key].mime }))
       const t0 = Date.now()
-      const job = await client.run(wf, { apiKey: partner, timeoutMs: 30 * 60 * 1000, ...(held ? { signal: held.signal } : {}) })
+      signal?.throwIfAborted()
+      const runSignal = signal && held?.signal ? AbortSignal.any([signal, held.signal]) : signal || held?.signal
+      // A Pod is paid by the hour and runs one job at a time, so its runs may take longer: a talking head of
+      // 10 to 20 seconds on InfiniteTalk renders for more than 30 minutes.
+      const job = await submitAndWait(client, wf, { apiKey: partner, timeoutMs: timeoutMs ?? (target === 'pod' ? 90 : 30) * 60 * 1000, signal: runSignal, split: Boolean(held || onSubmitted || onProgress), where, onProgress }, async (j) => { submitted = true; await onSubmitted?.(j) })
+      await onComplete({ id: job.id, actualCost: null, seconds: gpuSeconds(job, t0) })
       if (target === 'cloud') {
         try { logCloudRun({ seconds: gpuSeconds(job, t0), minVramGb: minVramOf(needs) }) } catch {}
       }
@@ -919,6 +1179,17 @@ export async function runComfy(workflow, vars = {}, { createClient = (key, baseU
       // A Pod paused or terminated mid-run says why, instead of an abort error.
       if (held?.reason()) throw Object.assign(new Error(held.reason()), { status: 409 })
       if (e.httpStatus === 402 || e.code === 'insufficient_credits') throw comfyError({ status: 402 }, {})
+      // The Pod's proxy answers 405, 502 or 503 while ComfyUI restarts to load a node pack the run just
+      // installed, and a second pack can restart it again. Each retry waits, then takes a fresh lease.
+      // Only a job the Pod never accepted is sent again: a failed poll would otherwise queue and pay for a copy.
+      if (held && !submitted && retried < 2 && [405, 502, 503].includes(e.httpStatus)) {
+        held.release()
+        held = null
+        signal?.throwIfAborted()
+        await pause(20_000, signal)
+        signal?.throwIfAborted()
+        return runComfy(workflow, vars, { ...opts, retried: retried + 1 })
+      }
       throw e
     } finally {
       held?.release()
@@ -927,12 +1198,13 @@ export async function runComfy(workflow, vars = {}, { createClient = (key, baseU
   const base = comfyBase()
   const uploads = uploadsOf(template)
   const media = await readUploads(uploads, vars)
+  signal?.throwIfAborted()
   // ComfyUI's upload route takes any input file, a video too.
   const names = {}
   for (const [key, file] of Object.entries(media)) {
     const form = new FormData()
     form.append('image', new Blob([file.buf], { type: file.mime }), `comfyfield-${randomUUID()}.${mimeExt(file.mime)}`)
-    const upload = await fetch(`${base}/upload/image`, { method: 'POST', headers: comfyHeaders(), body: form })
+    const upload = await fetch(`${base}/upload/image`, { method: 'POST', headers: comfyHeaders(), body: form, signal })
     if (!upload.ok) throw new Error(`ComfyUI upload failed (${upload.status}).`)
     const uploaded = await upload.json()
     names[key] = [uploaded.subfolder, uploaded.name].filter(Boolean).join('/')
@@ -941,20 +1213,23 @@ export async function runComfy(workflow, vars = {}, { createClient = (key, baseU
   const headers = { 'Content-Type': 'application/json', ...comfyHeaders() }
   let res
   try {
-    res = await fetch(`${base}/prompt`, { method: 'POST', headers, body: JSON.stringify({ prompt: graph, client_id: 'comfyfield', ...(config('comfy').key ? { extra_data: { api_key_comfy_org: config('comfy').key } } : {}) }) })
+    signal?.throwIfAborted()
+    res = await fetch(`${base}/prompt`, { method: 'POST', headers, signal, body: JSON.stringify({ prompt: graph, client_id: 'comfyfield', ...(config('comfy').key ? { extra_data: { api_key_comfy_org: config('comfy').key } } : {}) }) })
   } catch {
+    signal?.throwIfAborted()
     throw new Error('Could not reach ComfyUI. Check the URL in Connections.')
   }
   if (!res.ok) throw new Error(`ComfyUI rejected the workflow (${res.status}). ${(await res.text().catch(() => '')).slice(0, 200)}`)
   const id = (await res.json()).prompt_id
   for (let i = 0; i < 1200; i++) {
-    const h = await fetch(`${base}/history/${id}`, { headers: comfyHeaders() })
+    signal?.throwIfAborted()
+    const h = await fetch(`${base}/history/${id}`, { headers: comfyHeaders(), signal })
     if (h.ok) {
       const entry = (await h.json())[id]
       if (entry?.status?.status_str === 'error') throw new Error('Generation failed in ComfyUI')
       if (entry?.outputs && Object.keys(entry.outputs).length) return collectComfy(base, entry.outputs)
     }
-    await sleep(1500)
+    await delay(1500, undefined, { signal })
   }
   throw new Error('ComfyUI took too long.')
 }
@@ -1080,4 +1355,13 @@ export async function saveFiles(files, dir) {
     saved.push(dest)
   }
   return saved
+}
+
+// Business-page import stays isolated from provider execution.
+export const importBusinessPage = (options, deps = {}) => readBusinessPage(options, { save: saveMedia, ...deps })
+export async function stitchStatus() {
+  try {
+    await findFfmpeg()
+    return { available: true }
+  } catch (e) { return { available: false, error: e.message } }
 }

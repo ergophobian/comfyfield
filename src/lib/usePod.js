@@ -1,4 +1,5 @@
 import { useEffect, useSyncExternalStore } from 'react'
+import { downloadsLeft } from '../../shared/modelFiles.js'
 
 // The Pod as the app sees it: the server's status, and the one place a run asks before a Pod starts.
 // A run never starts or resumes a Pod by itself; the start sheet answers the question.
@@ -51,9 +52,14 @@ export async function setRunType(run) {
 
 export const downloading = (s) => (s?.downloads || []).filter((d) => d.state === 'queued' || d.state === 'downloading')
 export const installing = (s) => (s?.runtimes || []).filter((e) => e.state === 'installing')
+// "40 s" or "3 min", for how long downloads take.
+export const etaText = (sec) => (sec < 90 ? `${Math.max(1, Math.round(sec))} s` : `${Math.round(sec / 60)} min`)
+// About how long the Pod's downloads in flight take, at the rate it reports.
+export const downloadEta = (s) => etaText(downloadsLeft(s?.downloads || []))
+const fileName = (name) => name.replace(/\.(safetensors|ckpt|pth|pt|bin|gguf)$/, '')
 
-// What the chip says. `short` drops the spend for narrow screens.
-export function podLabel(s, now = Date.now()) {
+// What the chip says. Without `eta` it leaves out how long the downloads take, which the chip shows on its own.
+export function podLabel(s, now = Date.now(), { eta = true } = {}) {
   if (!s) return 'Pod'
   const up = s.pod ? minutes(now - s.pod.startedAt) : 0
   if (s.phase === 'starting') {
@@ -62,7 +68,7 @@ export function podLabel(s, now = Date.now()) {
   }
   if (s.phase === 'ready') {
     const runtime = installing(s)[0]
-    return runtime ? `Installing ${runtime.name}` : downloading(s).length ? 'Downloading models' : s.runs ? `${s.runs} running` : 'Ready'
+    return runtime ? `Installing ${runtime.name}` : downloading(s).length ? `Downloading models${eta ? ` · about ${downloadEta(s)}` : ''}` : s.runs ? `${s.runs} running` : 'Ready'
   }
   return { none: 'Off', ending: 'Ending after the queue', pausing: 'Pausing', paused: 'Paused', resuming: 'Resuming', terminating: 'Terminating' }[s.phase] || 'Pod'
 }
@@ -70,9 +76,15 @@ export function podLabel(s, now = Date.now()) {
 export const spendText = (s) => (s ? `${money(s.spend?.today)} of ${money(s.spend?.cap)} today` : '')
 
 // What a waiting take says while its run is held by the Pod. Only runs sent to a starting Pod carry `pod`;
-// a ready Pod takes every ComfyUI run.
+// a ready Pod takes every ComfyUI run. `podStage` is what the run's own job says it waits on.
 export function takeLabel(it, s) {
   if (it.provider !== 'comfy' || !s || s.mode !== 'cloud') return null
+  const st = it.podStage
+  if (st?.stage === 'downloading' && st.files?.length) {
+    const more = st.files.length - 1
+    return `Waiting on ${fileName(st.files[0])}${more ? ` and ${more} more ${more === 1 ? 'file' : 'files'}` : ''} · about ${etaText(st.leftSec || 1)}`
+  }
+  if (st?.stage === 'running') return null
   if (it.pod && s.phase !== 'ready') return 'Waiting for the Pod'
   if (s.phase === 'ready' && installing(s).length) return `Installing ${installing(s)[0].name} on the Pod`
   if (s.phase === 'ready' && downloading(s).length) return 'Downloading models on the Pod'
@@ -99,13 +111,17 @@ export function askPod(workflow, reason, replace = null) {
 // With auto-start on, a run Comfy Cloud cannot take starts, resumes or keeps the Pod itself, sized for
 // its workflow. The Generate click is the consent. Several runs at once share one start.
 let starting = null
-export function autoPod(workflow) {
+const startWaiters = new Set()
+export function autoPod(workflow, isCancelled = () => false) {
+  startWaiters.add(isCancelled)
   if (!starting) {
     starting = (async () => {
       const s = await refreshPod()
+      // Skip the start only when every run waiting on it was cancelled.
+      if ([...startWaiters].every((cancelled) => cancelled())) return
       const action = s?.phase === 'paused' ? 'resume' : s?.phase === 'ending' ? 'keep' : s?.phase === 'none' ? 'start' : null
       if (action) await podAction(action, action === 'start' ? { workflow } : {})
-    })().finally(() => { starting = null })
+    })().finally(() => { starting = null; startWaiters.clear() })
   }
   return starting
 }

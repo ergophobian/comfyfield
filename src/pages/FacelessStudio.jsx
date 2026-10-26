@@ -1,7 +1,10 @@
+import VoiceSample from '../components/story/VoiceSample.jsx'
+import { readStoryChannels, readStoryDocuments } from '../lib/storyStudios.js'
+import StoryPipeline from '../components/story/StoryPipeline.jsx'
 import { useRef, useState } from 'react'
 import { Field } from '../components/formats/Fields.jsx'
 import { IconClose, IconLink, IconUpload } from '../components/Icons.jsx'
-import { Hero, Box, Cards, Pills, Tiles, Toggle, NotWired, Empty, IconRefresh, coverAt, stagger } from '../components/studiob/Kit.jsx'
+import { Hero, Box, Cards, Pills, Tiles, Toggle, IconRefresh, coverAt, stagger } from '../components/studiob/Kit.jsx'
 import { formatById } from '../lib/formats/index.js'
 
 const faceless = formatById('faceless')
@@ -38,6 +41,10 @@ const formats = optionsOf('format').map((o) => ({ id: o.id, label: o.label, note
 const steps = ['Channel', 'Episode topic', 'Episode']
 
 export default function FacelessStudio() {
+  const [locked, setLocked] = useState(false)
+  const [importing, setImporting] = useState(false)
+  const [fileError, setFileError] = useState('')
+  const [channels, setChannels] = useState(readStoryChannels)
   const [step, setStep] = useState(0)
   const [category, setCategory] = useState('education')
   const [about, setAbout] = useState('')
@@ -59,15 +66,19 @@ export default function FacelessStudio() {
 
   const cat = categories.find((c) => c.id === category)
   const ideas = Array.from({ length: 4 }, (_, i) => cat.ideas[(page * 4 + i) % cat.ideas.length])
-  const readScript = (file) => {
-    if (!file) return
-    const r = new FileReader()
-    r.onload = () => setScript({ name: file.name, text: String(r.result) })
-    r.readAsText(file)
+  const readScript = async (files) => {
+    if (!files.length) return
+    setImporting(true)
+    setFileError('')
+    try {
+      if (files.length > 1) throw new Error('Upload one script file at a time.')
+      const result = await readStoryDocuments(files)
+      setScript(result.documents[0])
+    } catch (e) { setFileError(e.message) }
+    finally { setImporting(false) }
   }
   const canNext = step === 0 ? about.trim() || script : step === 1 ? topic.trim() : true
   const styleName = styles.find((s) => s.id === style)?.label
-  const ratio = formats.find((f) => f.id === format)?.label
 
   return (
     <main className="sb-page">
@@ -75,106 +86,140 @@ export default function FacelessStudio() {
         sub="Describe the channel once. Every episode gets a script, narration, animation, music and captions in the same style." />
 
       <div className="sb-narrow">
-        <ol className="sb-progress" aria-label="Steps">
-          {steps.map((s, i) => (
-            <li key={s} className={i === step ? 'on' : i < step ? 'done' : ''} aria-current={i === step ? 'step' : undefined}>
-              <button type="button" disabled={i > step} onClick={() => setStep(i)}><b>{i + 1}</b>{s}</button>
-            </li>
-          ))}
-        </ol>
+        <fieldset disabled={locked || importing} className="story-settings">
+          <ol className="sb-progress" aria-label="Steps">
+            {steps.map((s, i) => (
+              <li key={s} className={i === step ? 'on' : i < step ? 'done' : ''} aria-current={i === step ? 'step' : undefined}>
+                <button type="button" disabled={i > step} onClick={() => setStep(i)}><b>{i + 1}</b>{s}</button>
+              </li>
+            ))}
+          </ol>
+        </fieldset>
 
         {step === 0 && (
           <div className="sb-step-body rise">
-            <Tiles items={categories} value={category} onChange={(id) => { setCategory(id); setPage(0) }} label="Category" />
-            <form className="composer glass sb-compose" onSubmit={(e) => { e.preventDefault(); if (canNext) setStep(1) }}>
-              <div className="composer-inner">
-                <textarea rows={3} value={about} onChange={(e) => setAbout(e.target.value)} aria-label="Channel about"
-                  placeholder={`What is the channel about? For example, ${cat.ideas[0].toLowerCase()} and other ${cat.label.toLowerCase()} questions`} />
-                {showRef && (
-                  <div className="import">
-                    <IconLink />
-                    <input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="A video link to match the feel of" aria-label="Reference video link" />
+            <fieldset disabled={locked || importing} className="story-settings">
+              <Tiles items={categories} value={category} onChange={(id) => { setCategory(id); setPage(0) }} label="Category" />
+              <form className="composer glass sb-compose" onSubmit={(e) => { e.preventDefault(); if (canNext) setStep(1) }}>
+                <div className="composer-inner">
+                  <textarea rows={3} value={about} onChange={(e) => setAbout(e.target.value)} aria-label="Channel about"
+                    placeholder={`What is the channel about? For example, ${cat.ideas[0].toLowerCase()} and other ${cat.label.toLowerCase()} questions`} />
+                  {showRef && (
+                    <div className="import">
+                      <IconLink />
+                      <input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="A video link to match the feel of" aria-label="Reference video link" />
+                    </div>
+                  )}
+                  {script && (
+                    <span className="ref">{script.name}
+                      <button type="button" onClick={() => setScript(null)} aria-label="Remove script"><IconClose /></button>
+                    </span>
+                  )}
+                  <div className="composer-foot">
+                    <div className="chips">
+                      <div className="chip"><button type="button" className={showRef ? 'lit' : ''} aria-pressed={showRef} onClick={() => setShowRef((s) => !s)}><IconLink />Reference</button></div>
+                      <div className="chip"><button type="button" className={script ? 'lit' : ''} onClick={() => fileRef.current.click()}><IconUpload />Upload script</button></div>
+                      <input ref={fileRef} type="file" accept=".txt,.md,text/plain" hidden onChange={(e) => { readScript([...e.target.files]); e.target.value = '' }} />
+                    </div>
+                    <button className="btn-blue" disabled={!canNext}>Next</button>
                   </div>
-                )}
-                {script && (
-                  <span className="ref">{script.name}
-                    <button type="button" onClick={() => setScript(null)} aria-label="Remove script"><IconClose /></button>
-                  </span>
-                )}
-                <div className="composer-foot">
-                  <div className="chips">
-                    <div className="chip"><button type="button" className={showRef ? 'lit' : ''} aria-pressed={showRef} onClick={() => setShowRef((s) => !s)}><IconLink />Reference</button></div>
-                    <div className="chip"><button type="button" className={script ? 'lit' : ''} onClick={() => fileRef.current.click()}><IconUpload />Upload script</button></div>
-                    <input ref={fileRef} type="file" accept=".txt,.md,text/plain" hidden onChange={(e) => { readScript(e.target.files[0]); e.target.value = '' }} />
-                  </div>
-                  <button className="btn-blue" disabled={!canNext}>Next</button>
                 </div>
-              </div>
-            </form>
+              </form>
+            </fieldset>
           </div>
         )}
 
         {step === 1 && (
           <div className="sb-step-body rise">
-            <Box label={`Ideas for a ${cat.label.toLowerCase()} channel`}
-              aside={<button type="button" className="link-btn sb-icon-link" onClick={() => setPage((n) => n + 1)}><IconRefresh />More ideas</button>}>
-              <p className="sheet-note">Starter ideas for this category. Ideas written from your channel description come once the engine is connected.</p>
-              <div className="opt-grid sb-ideas" role="group" aria-label="Episode ideas">
-                {ideas.map((idea, i) => (
-                  <button key={`${page}-${idea}`} type="button" aria-pressed={topic === idea} className={`opt rise${topic === idea ? ' on' : ''}`} style={stagger(i)} onClick={() => setTopic(idea)}>
-                    <strong>{idea}</strong>
-                    <small>Episode idea {page * 4 + i + 1}</small>
-                  </button>
-                ))}
+            <fieldset disabled={locked || importing} className="story-settings">
+              <Box label={`Ideas for a ${cat.label.toLowerCase()} channel`}
+                aside={<button type="button" className="link-btn sb-icon-link" onClick={() => setPage((n) => n + 1)}><IconRefresh />More ideas</button>}>
+                <p className="sheet-note">Starter ideas for this category. Choose a starter or type a topic. The script uses your channel description.</p>
+                <div className="opt-grid sb-ideas" role="group" aria-label="Episode ideas">
+                  {ideas.map((idea, i) => (
+                    <button key={`${page}-${idea}`} type="button" aria-pressed={topic === idea} className={`opt rise${topic === idea ? ' on' : ''}`} style={stagger(i)} onClick={() => setTopic(idea)}>
+                      <strong>{idea}</strong>
+                      <small>Episode idea {page * 4 + i + 1}</small>
+                    </button>
+                  ))}
+                </div>
+                <Field input={{ id: 'topic', type: 'text', label: 'Or type your own', placeholder: 'What should this episode be about' }} value={topic} onChange={setTopic} />
+              </Box>
+              <div className="sb-nav">
+                <button type="button" className="btn-soft" onClick={() => setStep(0)}>Back</button>
+                <button type="button" className="btn-blue sm" disabled={!canNext} onClick={() => setStep(2)}>Next</button>
               </div>
-              <Field input={{ id: 'topic', type: 'text', label: 'Or type your own', placeholder: 'What should this episode be about' }} value={topic} onChange={setTopic} />
-            </Box>
-            <div className="sb-nav">
-              <button type="button" className="btn-soft" onClick={() => setStep(0)}>Back</button>
-              <button type="button" className="btn-blue sm" disabled={!canNext} onClick={() => setStep(2)}>Next</button>
-            </div>
+            </fieldset>
           </div>
         )}
 
         {step === 2 && (
           <div className="sb-step-body rise">
-            <Box label="Episode">
-              <p className="sb-topic"><strong>{topic}</strong><span className="muted">{about.trim() || script?.name}</span></p>
-              <div className="field"><label>Format</label><Cards options={formats} value={format} onChange={setFormat} label="Format" /></div>
-              <div className="field"><label>Length</label><Pills options={[1, 2, 3, 4, 5].map((m) => ({ id: m, label: `${m} min` }))} value={minutes} onChange={setMinutes} label="Length" /></div>
-              <div className="field"><label>Animation</label>
-                <Cards options={[{ id: 'full', label: 'Fully animated', note: 'Motion in every scene' }, { id: 'frames', label: 'Frame by frame', note: 'Still frames with gentle moves' }]} value={animation} onChange={setAnimation} label="Animation" />
-              </div>
-              <Toggle on={captions} onChange={setCaptions}>Burn in captions</Toggle>
-            </Box>
-            <Box label="Style">
-              <Tiles items={styles} value={style} onChange={setStyle} label="Style" />
-            </Box>
-            <Box label="Narrator">
-              <Cards options={narrators} value={narrator} onChange={(v) => { setNarrator(v); setVoice(null) }} label="Narrator" />
-              <Field input={{ id: 'voice', type: 'voice', label: 'Or use your own voice', optional: true }} value={voice} onChange={setVoice} />
-            </Box>
-            <Box label="Series">
-              <div className="sb-grid2">
-                <div className="field"><label>Episodes</label><Pills options={[1, 4, 8, 12].map((n) => ({ id: n, label: `${n} ${n === 1 ? 'episode' : 'episodes'}` }))} value={episodes} onChange={setEpisodes} label="Episodes" /></div>
-                <div className="field"><label>New episode</label>
-                  <Pills options={[['daily', 'Daily'], ['twice', 'Twice a week'], ['weekly', 'Weekly']].map(([id, label]) => ({ id, label }))} value={cadence} onChange={setCadence} label="New episode" />
+            <fieldset disabled={locked || importing} className="story-settings">
+              <Box label="Episode">
+                <p className="sb-topic"><strong>{topic}</strong><span className="muted">{about.trim() || script?.name}</span></p>
+                <div className="field"><label>Format</label><Cards options={formats} value={format} onChange={setFormat} label="Format" /></div>
+                <div className="field"><label>Length</label><Pills options={[1, 2, 3, 4, 5].map((m) => ({ id: m, label: `${m} min` }))} value={minutes} onChange={setMinutes} label="Length" /></div>
+                <div className="field"><label>Animation</label>
+                  <Cards options={[{ id: 'full', label: 'Fully animated', note: 'Motion in every scene' }, { id: 'frames', label: 'Frame by frame', note: 'Still images held for each scene' }]} value={animation} onChange={setAnimation} label="Animation" />
                 </div>
+                <Toggle on={captions} onChange={setCaptions}>Burn in captions</Toggle>
+              </Box>
+              <Box label="Style">
+                <Tiles items={styles} value={style} onChange={setStyle} label="Style" />
+              </Box>
+              <Box label="Narrator">
+                <Cards options={narrators} value={narrator} onChange={(v) => { setNarrator(v); setVoice(null) }} label="Narrator" />
+                <VoiceSample value={voice} onChange={setVoice} onBusyChange={setImporting} />
+              </Box>
+              <Box label="Series">
+                <div className="sb-grid2">
+                  <div className="field"><label>Episodes</label><Pills options={[1, 4, 8, 12].map((n) => ({ id: n, label: `${n} ${n === 1 ? 'episode' : 'episodes'}` }))} value={episodes} onChange={setEpisodes} label="Episodes" /></div>
+                  <div className="field"><label>New episode</label>
+                    <Pills options={[['daily', 'Daily'], ['twice', 'Twice a week'], ['weekly', 'Weekly']].map(([id, label]) => ({ id, label }))} value={cadence} onChange={setCadence} label="New episode" />
+                  </div>
+                </div>
+                <p className="sheet-note">Channel settings are saved after rendering. Character continuity is prompt based.</p>
+              </Box>
+              <div className="sb-nav">
+                <button type="button" className="btn-soft" onClick={() => setStep(1)}>Back</button>
               </div>
-              <p className="sheet-note">Later episodes reuse this channel's style, narrator and characters.</p>
-            </Box>
-            <div className="sb-nav">
-              <button type="button" className="btn-soft" onClick={() => setStep(1)}>Back</button>
-            </div>
-            <NotWired label="Generate episode" runsOn={faceless?.runsOn}
-              summary={`${minutes} min, ${ratio?.toLowerCase()}, ${styleName}, ${voice?.name || narrators.find((n) => n.id === narrator)?.label}${captions ? ', captions on' : ''}. Series of ${episodes}${episodes > 1 ? `, ${cadence === 'twice' ? 'twice a week' : cadence}` : ''}.`} />
+            </fieldset>
+            <StoryPipeline onLockChange={setLocked} disabled={importing} values={{ studio: 'Faceless studio', topic, channel: about, category: cat.label, reference, script: script?.text, ratio: format === 'vertical' ? '9:16' : '16:9', duration: minutes * 60, animation, style: styleName, narrator, emotion: narrator === 'bright' ? 'excited' : narrator === 'storyteller' ? 'warm' : 'calm', voice, captions, episodes, cadence }} onComplete={(file, settings) => {
+              const key = 'comfyfield.story-channels'
+              const saved = [{ ...settings, id: file.id, url: file.url }, ...readStoryChannels()].slice(0, 30)
+              setChannels(saved)
+              localStorage.setItem(key, JSON.stringify(saved))
+            }} />
+            <p className="sheet-note">One episode renders at a time. Series size and cadence are saved as planning notes; automatic scheduling is not available. Narrator cards guide script tone and delivery. Upload a voice sample to supply the actual speech identity.</p>
           </div>
         )}
 
-        <section className="sb-section">
-          <div className="studio-sub"><h2>My channels</h2></div>
-          <Empty title="No channels yet">A channel shows up here after its first episode is made.</Empty>
-        </section>
+        <p className="sheet-note">Upload one .txt or .md script, at most 100 KB. The writer receives at most 50,000 characters.</p>
+        {script?.truncated && <p role="status">The script was truncated to 50,000 characters.</p>}
+        {fileError && <p role="alert" className="error">{fileError}</p>}
+        <fieldset disabled={locked} className="story-settings">
+          <section className="sb-section">
+            <div className="studio-sub"><h2>My channels</h2></div>
+            <p className="sheet-note">Select a saved channel to reuse its settings.</p>
+            {channels.map((channel) => <button type="button" className="btn-soft" key={channel.id} onClick={() => {
+              setAbout(channel.channel || '')
+              setCategory(channel.category?.toLowerCase() || 'education')
+              setFormat(channel.ratio === '9:16' ? 'vertical' : 'horizontal')
+              setMinutes(channel.duration / 60)
+              setAnimation(channel.animation)
+              setStyle(styles.find((s) => s.label === channel.style)?.id || styles[0].id)
+              setNarrator(channel.narrator)
+              setVoice(channel.voice)
+              setCaptions(channel.captions)
+              setReference(channel.reference || '')
+              setEpisodes(channel.episodes || 1)
+              setCadence(channel.cadence || 'weekly')
+              setTopic('')
+              setStep(1)
+            }}>{channel.channel || channel.topic}</button>)}
+          </section>
+        </fieldset>
       </div>
     </main>
   )

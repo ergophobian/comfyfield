@@ -139,6 +139,7 @@ const textual = ['text', 'longtext']
 const libraryPicks = ['character', 'product', 'brand', 'voice']
 
 const startValue = (i) => {
+  if (i.confirmation) return null
   if (i.type === 'choice') return i.default ?? i.options[0].id
   if (i.type === 'count') return i.default ?? i.options[0]
   return textual.includes(i.type) ? '' : null
@@ -149,10 +150,13 @@ export const initialValues = (recipe) => Object.fromEntries(recipe.inputs.map((i
 // Inputs with `when: [choiceId, optionId]` only show, and only count, while that option is picked.
 export const visibleInputs = (recipe, values) => recipe.inputs.filter((i) => !i.when || values[i.when[0]] === i.when[1])
 
+// A motion drawing needs its arrows too: the graph reads them as its mask.
 export const missingInputs = (recipe, values) => visibleInputs(recipe, values)
   .filter((i) => !i.optional && (widgetTypes.includes(i.type) || (i.type === 'draw' && i.mode !== 'motion')
     ? !widgetReady(i.type === 'draw' ? 'mask' : i.type, values[i.id])
-    : textual.includes(i.type) ? !values[i.id]?.trim() : values[i.id] == null || values[i.id] === ''))
+    : i.type === 'voice' ? !values[i.id]?.sample
+    : i.type === 'draw' ? !values[i.id]?.url || !values[i.id]?.strokes
+      : textual.includes(i.type) ? !values[i.id]?.trim() : values[i.id] == null || values[i.id] === ''))
 
 // Picture-like inputs, in the order a ComfyUI graph's image, image2, ... slots take them.
 export const pictureTypes = ['image', 'draw', 'mask', 'face', 'crop', 'character', 'product']
@@ -188,10 +192,12 @@ export function recipeOptions(recipe, values) {
   const refs = []
   const inputs = {}
   let widgets = {}
+  let voiceConsent = false
   let params = { ...recipe.params }
   const fill = {}
   for (const input of visibleInputs(recipe, values)) {
     const v = values[input.id]
+    if ((input.type === 'voice' || input.voiceSample) && v?.consent === true) voiceConsent = true
     if (widgetTypes.includes(input.type) || (input.type === 'draw' && input.mode !== 'motion')) {
       const type = input.type === 'draw' ? 'mask' : input.type
       if (!widgetReady(type, v)) continue
@@ -230,6 +236,7 @@ export function recipeOptions(recipe, values) {
   return {
     ...widgets, prompt, caption: recipe.name, images, fields, params: rest, count: 1,
     ...(slots && { slots }),
+    ...(voiceConsent && { voiceConsent: true }),
     ...(Object.keys(inputs).length && { inputs }),
     ...(Object.keys(media).length && { media }), ...(refs.length && { refs }),
     aspect: shaped || recipe.settings.aspect, duration: timed || recipe.settings.duration, ...(scale && { scale }), shape: first ? values[first.id]?.ratio : undefined,

@@ -187,7 +187,7 @@ const effects = grouped([
 const cinemaShot = open({
   id: 'cinema-shot', name: 'Cinema shot', kind: 'video', category: 'cinema', layout: 'wide', featured: true,
   blurb: 'Pick the camera, lens and move, then describe the scene.',
-  runsOn: 'MiniMax H3, LTX-2.5 or Wan 2.2',
+  runsOn: 'LTX-2.5 on Comfy Cloud, or MiniMax H3 or Wan 2.2',
   inputs: [
     { id: 'image', type: 'image', label: 'Start frame', optional: true },
     { id: 'scene', type: 'longtext', label: 'Scene', placeholder: 'A lighthouse keeper climbs the spiral stairs at dusk while rain streaks the windows' },
@@ -248,9 +248,10 @@ const cinemaShot = open({
       { id: 'music-video', label: 'Music video', text: 'music video look, bold saturated colored light, stylized and energetic' },
       { id: 'commercial', label: 'Commercial', text: 'polished commercial look, bright clean lighting, glossy highlights, crisp color' },
     ] },
-    { id: 'model', type: 'choice', label: 'Model', half: true, default: 'minimax', options: [
+    // LTX-2.5 is the Cinema engine: it runs on Comfy Cloud with no Pod, and Cinema studio's scenes use it too.
+    { id: 'model', type: 'choice', label: 'Model', half: true, default: 'ltx', options: [
+      { id: 'ltx', label: 'LTX-2.5', note: 'Default. Comfy Cloud, with sound' },
       { id: 'minimax', label: 'MiniMax H3', note: 'Highest quality, with sound' },
-      { id: 'ltx', label: 'LTX-2.5', note: 'Fastest drafts' },
       { id: 'wan', label: 'Wan 2.2', note: 'Runs on smaller GPUs' },
     ] },
     { id: 'quality', type: 'choice', label: 'Quality', half: true, default: 'draft', options: [
@@ -262,8 +263,8 @@ const cinemaShot = open({
   settings: { aspect: '16:9', duration: 5 },
   // The model choice picks the graph, and each model draws on its own canvas. A start frame runs the image graph.
   steps: [{ id: 'generate', provider: 'comfy', kind: 'video', targetInput: 'model', settings: { aspect: '16:9', duration: 5 }, targets: {
-    minimax: { workflow: 'h3_open_t2v', imageWorkflow: 'cinema_shot', sizes: h3Sizes },
     ltx: { workflow: 'ltx25_t2v', imageWorkflow: 'ltx25_i2v', sizes: ltx25Sizes },
+    minimax: { workflow: 'h3_open_t2v', imageWorkflow: 'cinema_shot', sizes: h3Sizes },
     wan: { workflow: 'wan22_t2v', imageWorkflow: 'wan22_i2v', sizes: wanSizes },
   } }],
   cover: covers.night,
