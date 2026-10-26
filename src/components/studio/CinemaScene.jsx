@@ -6,6 +6,8 @@ import { reloadFlows } from '../../lib/remoteFlows.js'
 import { keepRequestKey } from '../../lib/routerBatch.js'
 import { writePrompt } from '../../lib/providers.js'
 import { money } from '../../lib/cost.js'
+import { progressText } from '../../lib/jobs.js'
+import ProgressBar from '../ProgressBar.jsx'
 import { FlowCtx } from '../flow/nodes.jsx'
 import StitchPanel from '../flow/StitchPanel.jsx'
 import { Field } from '../formats/Fields.jsx'
@@ -69,11 +71,13 @@ function RenderedScene({ flow, setStore, storageError, ready }) {
           const shot = drafts[node.id] || node.data.cinemaShot
           const item = state[node.id]?.items?.find((value) => value.status === 'done')
           const failed = state[node.id]?.items?.find((value) => value.status === 'failed')
+          const progress = state[node.id]?.items?.find((value) => value.status === 'pending')?.progress
           const gate = engine.gate(`${node.id}-approve`)
           const dirty = JSON.stringify(shot) !== JSON.stringify(node.data.cinemaShot)
           return (
             <article className="cinema-shot glass" key={node.id}>
-              <div className="cinema-scene-heading"><h3>Shot {index + 1}</h3><span className="muted">{state[node.id]?.running ? 'Rendering' : failed ? 'Render failed' : gate.status === 'sent' ? 'Approved and sent' : item ? 'Ready for review' : 'Not rendered'}</span></div>
+              <div className="cinema-scene-heading"><h3>Shot {index + 1}</h3><span className="muted">{state[node.id]?.running ? progressText(progress) || 'Rendering' : failed ? 'Render failed' : gate.status === 'sent' ? 'Approved and sent' : item ? 'Ready for review' : 'Not rendered'}</span></div>
+              {state[node.id]?.running > 0 && <ProgressBar progress={progress} />}
               {item && <video aria-label={`Shot ${index + 1} preview`} src={item.url} controls playsInline preload="metadata" />}
               <fieldset disabled={busy} className="cinema-fields">
                 <ShotFields shot={shot} index={index} edit={(data) => setDrafts((values) => ({ ...values, [node.id]: { ...shot, ...data } }))} />
