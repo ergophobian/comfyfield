@@ -3,85 +3,189 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="ComfyField is a local-first, open-source creative studio for images, video and audio. Start with Comfy Cloud and Comfy Router, using your own keys.">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' file:; style-src 'self' file:; base-uri 'none'; form-action 'none'">
-  <title>ComfyField — Your own creative studio</title>
+  <meta name="description" content="ComfyField is an open-source creative studio for images, video and audio. Turn one idea into a multi-shot scene with LTX-2.5 on Comfy Cloud, on your own keys.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; media-src 'self'; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'none'">
+  <meta name="theme-color" content="#f7f8ff">
+  <title>ComfyField: one idea, a finished scene</title>
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
   <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
-  <header class="wrap">
-    <a class="brand" href="#main">ComfyField</a>
-    <nav aria-label="Main navigation"><a href="#features">Features</a><a href="#install">Install</a><a href="https://github.com/ergophobian/comfyfield">GitHub</a></nav>
+
+  <header class="top wrap">
+    <a class="brand" href="#main"><img src="assets/logo.svg" width="28" height="28" alt="">ComfyField</a>
+    <nav aria-label="Main">
+      <a href="#cinema">Cinema</a>
+      <a href="#studio">Studio</a>
+      <a href="#start">Quick start</a>
+      <a class="pill" href="https://github.com/ergophobian/comfyfield">GitHub</a>
+    </nav>
   </header>
-  <main id="main" class="wrap">
-    <div class="hero">
-      <span class="kicker">Open source. Your own keys.</span>
-      <h1>Your ideas.<br>Your creative studio.</h1>
-      <p>Make images, video and audio in one local-first studio. Start with Comfy Cloud and Comfy Router. Connect your own keys and keep your work on your machine.</p>
-      <div class="actions"><a class="btn-blue" href="https://github.com/ergophobian/comfyfield">Get ComfyField on GitHub</a><a href="#install">Run it locally</a></div>
-      <p class="small">The studio runs locally. Generation runs at your connected providers and uses their credits.</p>
-    </div>
-    <figure class="hero-shot glass">
-      <img src="assets/create.webp" width="1440" height="900" alt="ComfyField image composer with a paper boat prompt and no provider keys connected">
-      <figcaption>Real app capture: editing a prompt before generation. No keys or generated results. Captured for the launch README; some controls have since changed.</figcaption>
-    </figure>
-    <section id="demo" aria-labelledby="demo-title">
-      <h2 id="demo-title">See the studio in action</h2>
-      <div class="demo" role="note"><span class="kicker">Demo video</span><h3>Recording coming here</h3><p>TODO: Add the demo video link before submission.</p></div>
-    </section>
-    <section id="features" aria-labelledby="features-title">
-      <h2 id="features-title">One composer. Connected steps.</h2>
-      <p class="section-intro">Generate through connected models, organize results in the Library, and build repeatable work in Flows. Features depend on the selected provider and model. Some tools remain marked “Not wired yet.”</p>
-      <div class="grid">
-        <article class="card glass"><h3>Start with a batch</h3><p>Write several prompts in the composer. Run them together or open them as a flow.</p><figure><img loading="lazy" src="assets/batch.webp" width="1440" height="900" alt="Real batch composer containing three prompts before generation"><figcaption>Batch editing, without a generation run.</figcaption></figure></article>
-        <article class="card glass"><h3>Review before the next step</h3><p>Connect prompts, models and Approve gates. Run fills gaps; Send continues past a review gate.</p><figure><img loading="lazy" src="assets/flows.webp" width="1440" height="900" alt="Real Flows canvas showing an image model, an Approve gate and a video model"><figcaption>Image then animate starter flow, before execution.</figcaption></figure></article>
-        <article class="card glass"><h3>Keep your work together</h3><p>The Library holds generations and reusable characters, products, brand kits and voices.</p><figure><img loading="lazy" src="assets/library.webp" width="1440" height="900" alt="Real Library interface showing its empty state and asset tabs"><figcaption>Empty Library. This capture contains no generated media.</figcaption></figure></article>
-        <article class="card glass"><h3>Connect your agent</h3><p>The command line and MCP server share the studio's provider code and saved connections. Agents can build and run flows, stopping at review gates.</p><figure><img loading="lazy" src="assets/skills.webp" width="1440" height="900" alt="Real Skills page showing agent setup instructions"><figcaption>Agent setup interface. Use the source checkout configuration in the project README.</figcaption></figure></article>
+
+  <main id="main">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="wrap hero-head">
+        <h1 id="hero-title">One idea.<br>A finished scene.</h1>
+        <div class="hero-side">
+          <p>ComfyField is an open-source creative studio for images, video and audio. It runs on your computer, with your own keys, on the Comfy Developer Platform.</p>
+          <div class="actions">
+            <a class="btn-blue" href="https://github.com/ergophobian/comfyfield">View on GitHub</a>
+            <a class="btn-glass" href="#start">Run it locally</a>
+          </div>
+        </div>
       </div>
-      <p class="small">All five images are existing real app captures from docs/screenshots/readme in the project. They show the interface without keys, not proof of paid generation. No mock screenshots are used.</p>
+
+      <figure class="wrap film">
+        <div class="screen">
+          <video id="film" data-autoplay muted loop playsinline preload="metadata" poster="assets/scene.jpg" aria-label="The folded alley: a courier in a silver raincoat watches a violet portal fold an alley open onto a sunlit ocean, in three shots">
+            <source src="assets/scene.mp4" type="video/mp4">
+          </video>
+          <button class="toggle" type="button" data-video="film" aria-label="Play the scene">Play</button>
+        </div>
+        <ol class="reel" aria-label="Shots in this scene">
+          <li><span class="track"><span class="fill"></span></span><strong>Shot 1</strong><span>Slow dolly toward the ring</span></li>
+          <li><span class="track"><span class="fill"></span></span><strong>Shot 2</strong><span>Low orbit around the portal</span></li>
+          <li><span class="track"><span class="fill"></span></span><strong>Shot 3</strong><span>Track right behind the courier</span></li>
+        </ol>
+        <figcaption>The folded alley. Rendered with LTX-2.5 on Comfy Cloud.</figcaption>
+      </figure>
     </section>
-    <section id="install" aria-labelledby="install-title">
-      <h2 id="install-title">Run it on your computer</h2>
-      <div class="glass card">
-        <ol class="steps">
-          <li>Install Node.js 22 or newer and Git.</li>
-          <li>Clone and start the studio:
-<pre><code>git clone https://github.com/ergophobian/comfyfield.git
+
+    <section id="cinema" class="night" aria-labelledby="cinema-title">
+      <div class="wrap">
+        <div class="cinema-head">
+          <h2 id="cinema-title">Cinema turns one idea into a scene you can edit</h2>
+          <figure class="idea">
+            <blockquote><p>A courier in a silver raincoat finds a glowing portal in a rain-soaked alley. The ring materialises from sparks, folds the street upward, and opens onto a sunlit ocean.</p></blockquote>
+            <figcaption>The idea behind the scene above, as typed into Cinema</figcaption>
+          </figure>
+        </div>
+
+        <div class="strip">
+          <figure class="shot">
+            <video data-autoplay muted loop playsinline preload="none" poster="assets/shot1.jpg" aria-label="Shot 1: the courier stops as a violet ring of sparks traces itself on the wet street">
+              <source src="assets/shot1.mp4" type="video/mp4">
+            </video>
+            <figcaption><strong>Shot 1</strong><span class="cam">Slow dolly toward the ring</span><span>A courier in a silver raincoat stops in a rain-soaked alley. Violet sparks trace a ring in the wet air.</span></figcaption>
+          </figure>
+          <figure class="shot">
+            <video data-autoplay muted loop playsinline preload="none" poster="assets/shot2.jpg" aria-label="Shot 2: the portal glows in a brick wall while the alley bends upward around the courier">
+              <source src="assets/shot2.mp4" type="video/mp4">
+            </video>
+            <figcaption><strong>Shot 2</strong><span class="cam">Low orbit around the forming portal</span><span>A glowing violet portal unfolds beside the courier. The street bends upward like a sheet.</span></figcaption>
+          </figure>
+          <figure class="shot">
+            <video data-autoplay muted loop playsinline preload="none" poster="assets/shot3.jpg" aria-label="Shot 3: the courier walks toward a round portal that opens onto a bright ocean">
+              <source src="assets/shot3.mp4" type="video/mp4">
+            </video>
+            <figcaption><strong>Shot 3</strong><span class="cam">Track right behind the courier</span><span>The courier steps through the portal. A sunlit ocean appears inside the ring.</span></figcaption>
+          </figure>
+        </div>
+        <p class="credit">Rendered with LTX-2.5 on Comfy Cloud</p>
+
+        <ol class="flow">
+          <li><strong>Plan</strong><span>Shape each shot's prompt, camera move and length before anything renders.</span></li>
+          <li><strong>Render</strong><span>Every shot runs with LTX-2.5 on Comfy Cloud, sound included.</span></li>
+          <li><strong>Review</strong><span>Approve a shot to send it to the scene, or rerun only that one.</span></li>
+          <li><strong>Stitch</strong><span>Join the approved clips on your machine and export the MP4.</span></li>
+        </ol>
+
+        <figure class="app-shot dark">
+          <img decoding="async" src="assets/ui-cinema.webp" width="945" height="640" alt="Cinema studio in ComfyField with the courier idea typed into the cinematic idea field, next to the Plan shots button">
+        </figure>
+      </div>
+    </section>
+
+    <section id="demo" class="demo wrap" aria-labelledby="demo-title">
+      <h2 id="demo-title">Watch the walkthrough</h2>
+      <!--
+        Demo video slot. Replace the contents of #demo-video with:
+          <video controls playsinline preload="metadata" poster="assets/demo.jpg"><source src="assets/demo.mp4" type="video/mp4"></video>
+        For a YouTube embed, use an <iframe> and add "frame-src https://www.youtube-nocookie.com" to the Content-Security-Policy above.
+        Then remove the data-empty attribute.
+      -->
+      <div id="demo-video" class="demo-frame" data-empty>
+        <p>Walkthrough video coming soon</p>
+      </div>
+    </section>
+
+    <section id="studio" class="studio wrap" aria-labelledby="studio-title">
+      <h2 id="studio-title">The rest of the studio works the same way</h2>
+
+      <article class="feature">
+        <div class="feature-text">
+          <h3>One composer</h3>
+          <p>Image, video and audio start from the same prompt bar. Pick any connected model, add references, and run one prompt or a whole batch.</p>
+        </div>
+        <img decoding="async" src="assets/ui-composer.webp" width="960" height="560" alt="The ComfyField composer with a prompt about a paper boat on a rainy street, the FLUX model selected and a Generate button">
+      </article>
+
+      <article class="feature wide">
+        <div class="feature-text">
+          <h3>Flows, with agents in the loop</h3>
+          <p>Every Cinema scene is saved as a Flow you can open on the canvas. Approve gates hold each step until you press Send. Agents build and edit the same flows through the MCP server, and stop at the same gates.</p>
+        </div>
+        <img decoding="async" src="assets/ui-flows.webp" width="1180" height="200" alt="A flow built by an agent through MCP: prompt, FLUX image model, Approve gate, LTX image to video, and output">
+        <p class="note">This flow was built by an agent through MCP.</p>
+      </article>
+
+      <article class="feature flip">
+        <div class="feature-text">
+          <h3>A Library for every take</h3>
+          <p>Generations land in the Library, next to the characters, products, brand kits and voices you reuse across tools.</p>
+        </div>
+        <img decoding="async" src="assets/ui-library.webp" width="1140" height="440" alt="The ComfyField Library with tabs for generations, characters, products, brand kits and voices">
+      </article>
+    </section>
+
+    <section id="start" class="start" aria-labelledby="start-title">
+      <div class="wrap start-grid">
+        <div>
+          <h2 id="start-title">Run it locally</h2>
+          <ol class="steps">
+            <li><strong>Clone the repository</strong><span>You need Git and Node.js 22 or newer.</span></li>
+            <li><strong>Install</strong><span>One npm install pulls everything the studio needs.</span></li>
+            <li><strong>Start the studio</strong><span>Open <code>localhost:5173</code> in your browser.</span></li>
+            <li><strong>Add a Comfy key</strong><span>In Connections, paste a key from <a href="https://platform.comfy.org/profile/api-keys">platform.comfy.org</a> and choose Save and test.</span></li>
+          </ol>
+          <p class="cost">Generation uses your own provider credits.</p>
+        </div>
+        <div class="terminal">
+          <div class="terminal-bar"><span>Terminal</span><button type="button" data-copy="commands">Copy</button></div>
+<pre id="commands"><code>git clone https://github.com/ergophobian/comfyfield.git
 cd comfyfield
 npm install
-npm run dev</code></pre></li>
-          <li>Open the local address printed in your terminal.</li>
-          <li>Get a key from <a href="https://platform.comfy.org/profile/api-keys">Comfy Platform</a>. In Connections, add it to the ComfyUI card and choose Save and test.</li>
-          <li>Open Image, choose an available Comfy model, enter a prompt and generate. The selected model needs the appropriate account access and credits.</li>
-        </ol>
-        <p>No local GPU is needed for cloud generation. For a container, use <code>docker compose up -d</code> from the clone. <a href="https://github.com/ergophobian/comfyfield/blob/main/docs/docker.md">Read Docker setup</a>.</p>
-        <p class="small">Browse without a key. Generation uses provider credits. The optional session cap asks before estimates exceed your cap in this tab. Unknown prices pass without counting; it is not a provider billing limit. Pods have a separate daily cap and idle shutdown.</p>
+npm run dev</code></pre>
+        </div>
       </div>
     </section>
-    <section id="providers" aria-labelledby="providers-title">
-      <h2 id="providers-title">Choose your connections</h2>
-      <dl class="provider-list">
-        <dt>Comfy Cloud and Router</dt><dd>Start with one Comfy key. Run bundled workflows on Cloud or hosted models through Router.</dd>
-        <dt>fal</dt><dd>Optional hosted image, video and audio models with your fal key.</dd>
-        <dt>Google AI</dt><dd>Optional media generation and prompt writing with your Google key.</dd>
-        <dt>ElevenLabs</dt><dd>Optional speech and sound effects with your ElevenLabs key.</dd>
-        <dt>RunPod</dt><dd>Optional rented ComfyUI sessions. Compute, storage and partner-node costs can be separate.</dd>
-      </dl>
-    </section>
-    <section id="comfy" aria-labelledby="comfy-title">
+
+    <section id="comfy" class="comfy wrap" aria-labelledby="comfy-title">
       <h2 id="comfy-title">Built on the Comfy Developer Platform</h2>
-      <div class="grid">
-        <article class="card glass"><h3>Comfy Router</h3><p>The server discovers models through API v2, submits requests with an idempotency key, polls status and downloads results. Hosted image, video and audio paths share the app's model mapping.</p><p><code>api.comfy.org/v2/models</code></p></article>
-        <article class="card glass"><h3>Comfy SDK</h3><p>Bundled API-format workflows load through <code>@comfyorg/sdk</code>. The runner binds media uploads, submits jobs, waits for completion and downloads outputs. It targets Cloud or a rented Pod.</p><p>Instant and Session can use different model variants. Check the model notes.</p></article>
-      </div>
-      <p class="small">Built for Open Source Higgsfield. These paths are implemented in the project; this launch page does not claim every workflow has passed a live render.</p>
-    </section>
-    <section aria-labelledby="license-title">
-      <h2 id="license-title">Open source, with room to contribute</h2>
-      <p>ComfyField is <a href="https://github.com/ergophobian/comfyfield/blob/main/LICENSE">MIT licensed</a>. Providers, model weights, ffmpeg and the caption font have separate terms. Read the <a href="https://github.com/ergophobian/comfyfield/blob/main/NOTICE.md">third-party notices</a> and <a href="https://github.com/ergophobian/comfyfield/blob/main/AGENTS.md">contribution rules</a>.</p>
+      <dl>
+        <div><dt>Comfy Router API v2</dt><dd>Hosted image, video and audio models from one Comfy key, mapped onto the composer's settings.</dd></div>
+        <div><dt>Comfy SDK</dt><dd>Runs the bundled ComfyUI workflows on Comfy Cloud, including the LTX-2.5 graph behind Cinema.</dd></div>
+      </dl>
+      <p class="also">Bring more keys when you want them: fal, Google AI, ElevenLabs and RunPod.</p>
     </section>
   </main>
-  <footer class="wrap"><p>ComfyField · Local-first creative tools</p><a href="https://github.com/ergophobian/comfyfield">Source on GitHub</a></footer>
+
+  <footer class="foot">
+    <div class="wrap foot-grid">
+      <div>
+        <p class="foot-title">Open source, MIT licensed.</p>
+        <p>Built for Open Source Higgsfield. Fork it, change it, ship your own studio.</p>
+      </div>
+      <div class="foot-links">
+        <a class="btn-blue" href="https://github.com/ergophobian/comfyfield">View on GitHub</a>
+        <a href="https://github.com/ergophobian/comfyfield/blob/main/LICENSE">License</a>
+        <a href="https://github.com/ergophobian/comfyfield/blob/main/docs/setup.md">Setup guide</a>
+        <a href="https://github.com/ergophobian/comfyfield/blob/main/AGENTS.md">Contributing</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="assets/site.js"></script>
 </body>
 </html>
