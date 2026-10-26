@@ -235,7 +235,7 @@ const videoEdits = [
     shape: 'pipeline',
     steps: [
       sceneWriter,
-      { id: 'draft', provider: 'comfy', workflow: 'wan_animate2', kind: 'video', settings: { aspect: 'auto', duration: 1 } },
+      { id: 'draft', provider: 'comfy', workflow: 'wan_animate2', kind: 'video', trimToDuration: true, settings: { aspect: 'auto', duration: 1 } },
       { id: 'review', type: 'approve' },
       { id: 'generate', provider: 'comfy', workflow: 'wan_animate2', kind: 'video', from: ['scene-writer', 'review'], bindings: { video: 'video.url' } },
     ],

@@ -643,6 +643,8 @@ for (const id of ['motion-transfer', 'video-character-swap']) {
   assert(format, `${id} remains runnable`)
   assert.match(format.blurb, /Use footage you own or have permission to use\./)
   const values = { ...initialValues(format), video: { url: 'https://example.test/owned.mp4', duration: 8, trim: { start: 3, end: 7 } }, image: photo, face: photo, scene: 'A small kitchen with warm window light' }
+  const unchangedTrim = stepOptions(format, { ...format.steps.find((step) => step.id === 'draft'), trimToDuration: false }, values)
+  assert.equal(comfyVars('video', unchangedTrim).duration, 4, 'Existing steps retain their trim semantics')
   const short = stepOptions(format, format.steps.find((step) => step.id === 'draft'), { ...values, video: { ...values.video, trim: { start: 3, end: 3.5 } } })
   assert.equal(comfyVars('video', short).duration, 0.5, 'Draft cannot extend a short selection')
   for (const source of id === 'video-character-swap' ? ['photo', 'character'] : ['photo']) {

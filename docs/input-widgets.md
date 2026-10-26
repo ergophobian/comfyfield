@@ -56,7 +56,7 @@ output uses the normal editable Writer review and Send gate.
 
 Motion transfer and Video character swap render a one-second draft through the
 existing duration variables (including `motion_frames` for Wan Animate 2).
-A step's explicit `settings.duration` caps its input trim at that duration without
+A step with `trimToDuration: true` caps its input trim at `settings.duration` without
 extending a shorter selection or moving the start.
 Approval unlocks the final render from the original uploaded video and trim;
 the draft is a preview, not replacement source footage. Resolution is unchanged.
