@@ -21,12 +21,13 @@ import { IconAspect, IconClock, IconImage, IconSpark, IconStack, IconVideo } fro
 import { useApp } from '../lib/appContext.js'
 import { chooseModel, useHandoff } from '../lib/handoff.js'
 import { usePod } from '../lib/usePod.js'
-import { acceptsImage } from '../lib/providers.js'
+import { acceptsImage, noKeys } from '../lib/providers.js'
 import { openModels } from '../lib/tools.js'
 import { estimate, useBalance, useModelMeta } from '../lib/cost.js'
 import { flowFromBatch, openFlow } from '../lib/flowStore.js'
 import { covers } from '../lib/formats/parts.js'
 import { measureVideo, planUpscale, sourcesFor, upscaleJob, upscalerModel } from '../lib/upscale.js'
+import ConnectComfy from '../components/generate/ConnectComfy.jsx'
 import CreditsLink from '../components/CreditsLink.jsx'
 
 const panelTabs = [
@@ -228,7 +229,7 @@ function CreateVideo({ preset, onPresets, setError, onRan, addBatch }) {
           {shots.length} {shots.length === 1 ? 'shot' : 'shots'} · {shotTotal}s{durations.length > 0 && dur !== shotTotal ? `, renders as ${dur}s` : ''}
         </p>
       )}
-      <StatusNote model={model} connected={connected} />
+      {noKeys(connections) ? <ConnectComfy /> : <StatusNote model={model} connected={connected} />}
       <div className="gen-go-row">
         {batching && prompts.length > 0 && !model.open && <button type="button" className="btn-soft" onClick={openAsFlow}>Open as flow</button>}
         <GoButton total={total} cost={costText(cost)} disabled={!total || !connected || (needsFrame && !start) || enhancing} />

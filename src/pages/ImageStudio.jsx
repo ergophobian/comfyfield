@@ -17,10 +17,11 @@ import { IconAspect, IconClose, IconImage, IconPlus, IconSpark } from '../compon
 import { useApp } from '../lib/appContext.js'
 import { chooseModel, useHandoff } from '../lib/handoff.js'
 import { usePod } from '../lib/usePod.js'
-import { acceptsImage, uploadImage } from '../lib/providers.js'
+import { acceptsImage, noKeys, uploadImage } from '../lib/providers.js'
 import { estimate, useBalance, useModelMeta } from '../lib/cost.js'
 import { flowFromBatch, openFlow } from '../lib/flowStore.js'
 import { covers } from '../lib/formats/parts.js'
+import ConnectComfy from '../components/generate/ConnectComfy.jsx'
 import CreditsLink from '../components/CreditsLink.jsx'
 
 const MAX_REFS = 8
@@ -166,6 +167,7 @@ export default function ImageStudio() {
         <Feed kind="image" gens={gens} batches={batches} size={view} empty={hero} />
       </section>
 
+      {noKeys(connections) && <ConnectComfy />}
       {(referenceError || error || runError) && <div className="notice glass error gen-notice">{referenceError || error || runError}<CreditsLink message={referenceError || error || runError} />{!referenceError && !error && gens.retry && <button type="button" className="link-btn" onClick={gens.retry}>{gens.retry.label || 'Retry'}</button>}{!referenceError && !error && <button type="button" className="link-btn" onClick={gens.dismissError}>Dismiss</button>}</div>}
 
       <form className={`composer glass gen-bar${dragging ? ' dragging' : ''}`} onSubmit={(e) => { e.preventDefault(); go() }}
@@ -229,7 +231,7 @@ export default function ImageStudio() {
             </div>
           </div>
           <div className="gen-bar-note">
-            <StatusNote model={model} connected={connected} />
+            {!noKeys(connections) && <StatusNote model={model} connected={connected} />}
             {connected && (total > 0 ? (
               <span>
                 <strong>{batchMode ? `${prompts.length} ${prompts.length === 1 ? 'prompt' : 'prompts'} × ${count} = ` : ''}{total} {noun.image[total === 1 ? 0 : 1]}</strong>

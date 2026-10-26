@@ -36,6 +36,7 @@ function Provider({ id, info, state, onSaved }) {
         <h3>{info.name}</h3>
         <span className={`status${state?.connected ? ' ok' : ''}`}>{state?.connected ? info.on || 'Connected' : info.off || 'Not connected'}</span>
       </div>
+      {info.lead && <p className="conn-lead">{info.lead}</p>}
       <p>{info.blurb}</p>
       {info.page && <Link className="link-btn" to={info.page.to}>{info.page.label}</Link>}
       {info.fields.map((f) => (
