@@ -73,7 +73,7 @@ The resolution Upscale delivers: 1080p, 1440p or 4K. Auto picks 1080p, or 4K whe
 _Avoid_: output size, final resolution
 
 **Segment**:
-One run of a graph inside a longer video. A clip longer than one segment of SCAIL-2 or Wan Animate 2, or an H3 run longer than 10 seconds, renders segment by segment, each continuing the one before, and the generation engine joins them into one video.
+One run of a graph inside a longer video. The planned long-video path continues one segment from the one before and joins their outputs. Multi-segment runs are currently unavailable until completed segments can be resumed safely.
 _Avoid_: chunk (in copy), part, window
 
 ## Flows
