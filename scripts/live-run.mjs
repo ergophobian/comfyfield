@@ -94,7 +94,7 @@ export function dryRun(backend, { keys = {}, file = ledgerFile, cap = 15, maximu
   if (maximum < plan.estimate) throw new Error('Per-run maximum is below the planned estimate.')
   checkCap(readLedger(file), maximum, cap)
   return {
-    backend, dryRun: true, keyFile: '.comfyfield/keys.json',
+    backend, dryRun: true, keysChecked: false, keyFile: '.comfyfield/keys.json',
     keys: Object.fromEntries(plan.keys.map((id) => [`${id}.key`, Boolean(keys[id]?.key?.trim())])),
     estimate: plan.estimate, maximum, ledgerTotal: ledgerTotal(readLedger(file)), cap,
     calls: plan.calls,
@@ -294,7 +294,7 @@ export async function podSelfProof(core, { file, id, maximum, launchCleanup = la
   }
 }
 
-export async function execute(backend, { file = ledgerFile, cap = 15, maximum = plans[backend]?.maximum, core, allowPaid = false, print = console.log, dry = false, keys = core?.readKeys() || {}, signal } = {}) {
+export async function execute(backend, { file = ledgerFile, cap = 15, maximum = plans[backend]?.maximum, core, allowPaid = false, print = console.log, dry = false, keys = dry ? {} : core?.readKeys() || {}, signal } = {}) {
   const release = acquireLock(`${file}.lock`)
   try {
     const preview = dryRun(backend, { file, cap, maximum, keys })
@@ -341,14 +341,6 @@ export async function execute(backend, { file = ledgerFile, cap = 15, maximum = 
   } finally { release() }
 }
 
-function readSavedKeys() {
-  const file = path.join(root, '.comfyfield/keys.json')
-  if (!fs.existsSync(file)) return {}
-  try { return JSON.parse(fs.readFileSync(file, 'utf8')) } catch {
-    throw new Error('Cannot read the Connections file. Repair it before running.')
-  }
-}
-
 export async function main(args = process.argv.slice(2)) {
   const [backend, ...options] = args
   if (backend === 'guard') {
@@ -375,12 +367,11 @@ export async function main(args = process.argv.slice(2)) {
     else throw new Error('Unknown live-run option.')
   }
   if (dry && backend !== 'sweep') {
-    const keys = readSavedKeys()
-    return execute(backend, { cap, maximum, keys, dry: true })
+    // Planning must work without opening Connections or importing provider code.
+    return execute(backend, { cap, maximum, keys: {}, dry: true })
   }
   if (dry && backend === 'sweep') {
-    const keys = readSavedKeys()
-    return console.log(JSON.stringify({ dryRun: true, keys: { 'runpod.key': Boolean(keys.runpod?.key) }, calls: ['List account Pods via server/pod.js', `Terminate every ${all ? 'comfyfield-' : LIVE_PREFIX}* Pod, including paused Pods`, 'List again and fail if any live-proof Pod remains'] }, null, 2))
+    return console.log(JSON.stringify({ dryRun: true, keysChecked: false, calls: ['List account Pods via server/pod.js', `Terminate every ${all ? 'comfyfield-' : LIVE_PREFIX}* Pod, including paused Pods`, 'List again and fail if any live-proof Pod remains'] }, null, 2))
   }
   const core = await loadCore()
   if (backend === 'sweep') {
