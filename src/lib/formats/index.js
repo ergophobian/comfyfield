@@ -14,6 +14,7 @@ import { jobs } from './jobsx.js'
 import { validateFormat } from './validate.js'
 import { effects } from './effects.js'
 import { photodumpReframe } from './photodumpReframe.js'
+import { presenterFormats } from './presenters.js'
 
 export const categories = [
   { id: 'camera', name: 'Camera moves', blurb: 'One photo, one camera move.' },
@@ -72,7 +73,7 @@ const widenMix = (f) => ({
   }),
 })
 
-export const allFormats = [...motion, ...presets, ...looks, ...edits, ...people, ...ads, ...fun, ...apps2, ...mixedLooks, ...jobs, ...three, ...fromFal, ...effects, ...photodumpReframe]
+export const allFormats = [...motion, ...presets, ...looks, ...edits, ...people, ...ads, ...fun, ...apps2, ...mixedLooks, ...jobs, ...three, ...fromFal, ...effects, ...photodumpReframe, ...presenterFormats]
   .map((f) => (f.id === 'cam-mix' ? widenMix(f) : f))
 
 export const formatProblems = new Map(allFormats.map((f) => [f.id, validateFormat(f)]))

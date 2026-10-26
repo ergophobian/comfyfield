@@ -3,6 +3,8 @@ import { run, writePrompt } from './providers.js'
 import { modelPrices, runCost } from './cost.js'
 import { checkSpend } from './spendCap.js'
 import { runFormat } from './formats/runner.js'
+import { createPresenterSession, isPresenterFormat, presenterBlock, presenterRequirements } from './formats/presenterSession.js'
+import { askPod, refreshPod, runTypeOf, setRunType } from './usePod.js'
 import { preflightFlow } from './formats/preflight.js'
 import { waitJob, cancelJob, Cancelled } from './jobs.js'
 import { createRouterBatch } from './routerBatch.js'
@@ -196,7 +198,26 @@ export function useGenerations() {
   }
 
   const generate = (model, opts, meta, after) => { execute(model, opts, meta, after).catch(() => {}) }
+  // UGC and influencer motion keep their own presenter session: script limits, stale-script Rerun and a Session guard.
+  const generatePresenter = async (format, values, { onSession } = {}) => {
+    const adapters = { run: execute, writePrompt: ({ instructions, note, images, target }) => writePrompt({ instructions, note, images, target }) }
+    const guard = async (flow) => {
+      const requirements = await presenterRequirements(flow, async (workflow) => {
+        const response = await fetch(`/workflows/${workflow}.json`)
+        if (!response.ok) throw new Error('Could not check this format’s Session requirements. Try again.')
+        return response.json()
+      })
+      const status = await refreshPod()
+      const block = presenterBlock(requirements, status, runTypeOf(status))
+      if (block) throw Object.assign(new Error(block.message), { runAsSession: async () => { await setRunType('session'); await askPod(block.workflow, block.message) } })
+    }
+    const session = createPresenterSession(format, values, { ...adapters, guard })
+    onSession?.(session)
+    await session.resume()
+    return session
+  }
   const generateFormat = (format, values, options = {}) => {
+    if (isPresenterFormat(format)) return generatePresenter(format, values, options)
     let session
     return runFormat(format, values, {
       prices: modelPrices,

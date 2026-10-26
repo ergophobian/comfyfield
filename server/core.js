@@ -981,6 +981,7 @@ const unsetInput = (template, vars) => [...JSON.stringify(template).matchAll(/\{
 export const UPLOAD_KEYS = {
   LoadImage: ['image', ['image', 'image2', 'image3', 'image4', 'image5', 'mask']],
   LoadVideo: ['file', ['video']],
+  VHS_LoadVideo: ['video', ['video']],
   LoadAudio: ['audio', ['audio', 'voice']],
 }
 export const uploadsOf = (template) => Object.entries(template).flatMap(([id, node]) => {

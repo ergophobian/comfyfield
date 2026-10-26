@@ -2968,6 +2968,15 @@ a.skill-chip:active { transform: scale(.96); }
 .story-settings { border: none; padding: 0; margin: 0; min-width: 0; }
 .story-estimate { padding: var(--widget-space); border-radius: var(--r-md); background: var(--surface); }
 .story-voice audio { max-width: 100%; }
+/* The presenter controls inherit the influencer panel's token spacing. */
+.inf-inputs { border: 0; padding: 0; margin: 0; min-width: 0; }
+.inf-panel select { width: 100%; min-height: var(--widget-touch); padding: var(--widget-gap) var(--widget-space); border: var(--widget-border) solid var(--line); border-radius: var(--r-md); font: inherit; color: var(--ink); background: var(--glass-strong); }
+.page:has(.lib-body) .page-head .seg, .lib-filters .seg { max-width: 100%; overflow-x: auto; scrollbar-width: thin; }
+
+/* Presenter consent and script freshness */
+.presenter-confirmation { display: flex; align-items: start; gap: var(--agent-small-gap); font-size: var(--text-sm); }
+.presenter-confirmation input { width: auto; flex-shrink: 0; }
+.presenter-stale { padding: var(--agent-small-gap); border: var(--agent-border) solid var(--line); border-radius: var(--r-sm); }
 /* Art stays inside existing glass layouts and never stands in for saved results. */
 .art-image { display: block; width: 100%; height: 100%; object-fit: cover; }
 .art-media { position: relative; aspect-ratio: var(--art-card-ratio); overflow: hidden; }

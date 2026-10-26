@@ -58,6 +58,8 @@ export function comfyVars(kind, o, sizes) {
   const pictures = o.slots?.pictures || [o.images?.[0] || o.image || o.refs?.find((r) => (r.type === 'character' || r.type === 'product') && r.images?.length)?.images[0], ...(o.images || []).slice(1)]
   return {
     prompt: o.prompt, width, height, count: o.count || 1, frames: (o.duration || 5) * 24 + 1,
+    motion_frames: Math.max(1, Math.min(81, 4 * Math.floor((((trim ? trim.end - trim.start : o.duration || 5) * 16) - 1) / 4) + 1)),
+    motion_start: Math.round((trim?.start || 0) * 16),
     duration: trim ? seconds(trim.end - trim.start) : o.duration || 5, start: trim ? seconds(trim.start) : 0,
     ...Object.fromEntries(PICTURE_SLOTS.map((key, i) => [key, pictures[i] || undefined])),
     mask: o.mask || motionStrokes(o) || undefined, video: o.video || o.media?.video, audio: o.slots?.audio || o.media?.audio || o.audio || undefined, voice: o.slots?.voice || undefined,

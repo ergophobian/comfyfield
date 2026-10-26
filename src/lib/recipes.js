@@ -139,6 +139,7 @@ const textual = ['text', 'longtext']
 const libraryPicks = ['character', 'product', 'brand', 'voice']
 
 const startValue = (i) => {
+  if (i.confirmation) return null
   if (i.type === 'choice') return i.default ?? i.options[0].id
   if (i.type === 'count') return i.default ?? i.options[0]
   return textual.includes(i.type) ? '' : null

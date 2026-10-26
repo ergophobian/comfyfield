@@ -294,7 +294,7 @@ const ENVS = {
 // packages its requirements leave out; `skip` drops requirements it must not install.
 export const NODE_PACKS = {
   vhs: { name: 'VideoHelperSuite', repo: 'Kosinkadink/ComfyUI-VideoHelperSuite', commit: '4d907bee61e92c2e65af3bd6383a4e4d356126d1', date: '2026-09-02',
-    folder: 'ComfyUI-VideoHelperSuite', classes: ['VHS_SelectEveryNthImage', 'VHS_DuplicateImages', 'VHS_GetImageCount', 'VHS_VideoCombine'], cloud: true },
+    folder: 'ComfyUI-VideoHelperSuite', classes: ['VHS_SelectEveryNthImage', 'VHS_LoadVideo', 'VHS_DuplicateImages', 'VHS_GetImageCount', 'VHS_VideoCombine'], cloud: true },
   kjnodes: { name: 'KJNodes', repo: 'kijai/ComfyUI-KJNodes', commit: '17195fcfa8a05f601b766a0f09c9733284f47416', date: '2026-10-15',
     folder: 'ComfyUI-KJNodes', classes: ['ColorMatch'], cloud: true },
   // ReCamMaster and InfiniteTalk's loop run only in this wrapper. Newest commit on main (no tags), five

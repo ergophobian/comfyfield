@@ -367,6 +367,7 @@ assert.equal(invalidSession.busy, false)
 console.log('Runner resilience checks ok: exact retry counts, retained outputs and run id, approval and writer recovery, busy exclusion, input snapshots, whole-pipeline preflight, Cloud alternates and derived costs.')
 assert.equal(formats.length, allFormats.filter((format) => !validateFormat(format).length).length)
 assert.equal(new Set(allFormats.map((format) => format.id)).size, allFormats.length)
+for (const id of ['ugc-product-review', 'ugc-unboxing', 'ugc-tutorial', 'ugc-talking-head', 'influencer-motion']) assert(formats.some((format) => format.id === id), `${id} is runnable`)
 
 // Edits and upscales carry the picture they started from, for the before and after slider.
 const sourceOf = async (f, extra) => {
