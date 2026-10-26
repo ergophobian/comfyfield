@@ -94,7 +94,7 @@ export function dryRun(backend, { keys = {}, file = ledgerFile, cap = 15, maximu
   if (maximum < plan.estimate) throw new Error('Per-run maximum is below the planned estimate.')
   checkCap(readLedger(file), maximum, cap)
   return {
-    backend, dryRun: true, keysChecked: false, keyFile: '.comfyfield/keys.json',
+    backend, dryRun: true, keysChecked: Object.keys(keys).length > 0, keyFile: '.comfyfield/keys.json',
     keys: Object.fromEntries(plan.keys.map((id) => [`${id}.key`, Boolean(keys[id]?.key?.trim())])),
     estimate: plan.estimate, maximum, ledgerTotal: ledgerTotal(readLedger(file)), cap,
     calls: plan.calls,

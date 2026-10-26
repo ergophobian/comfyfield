@@ -221,6 +221,7 @@ try {
     await click('Generate scene')
     await wait('document.querySelector(".cinema-shot [role=progressbar]")?.getAttribute("aria-valuenow") === "42"')
     assert(await evaluate('document.querySelector(".cinema-shot").textContent.includes("Rendering 42%, step 4 of 10")'), 'Cinema shows actual provider progress during the run')
+    await screenshot(`mock-progress-${label}`)
     await wait('document.querySelectorAll(".cinema-scene .cinema-shot").length === 3 && !document.querySelector(".cinema-scene > button").disabled')
     const id = flows.read().current
     assert.equal(flows.get(id).nodes.filter((node) => node.type === 'model').length, 3)
@@ -291,7 +292,7 @@ try {
   }
   assert.equal(plannerCalls, 14, 'Desktop planner retry checks only; the mobile example makes no writer call')
   assert.deepEqual(errors, [], 'No browser runtime exceptions')
-  console.log('Cinema browser journey ok at 1440px and 390px: plan, invalid plan, edit, Generate, t2v/i2v, per-shot Send, isolated replacement, explicit re-stitch, export, byte-verified download, Library, saved Flow reload and MCP visibility. Shot and Stitch retry paths checked. Ten refreshed labelled mock screenshots; terminal and ambiguous planner retries, built-in example and scene reset checked; no paid calls or keys.')
+  console.log('Cinema browser journey ok at 1440px and 390px: plan, invalid plan, edit, Generate, t2v/i2v, per-shot Send, isolated replacement, explicit re-stitch, export, byte-verified download, Library, saved Flow reload and MCP visibility. Shot and Stitch retry paths checked. Twelve refreshed labelled mock screenshots; terminal and ambiguous planner retries, built-in example and scene reset checked; no paid calls or keys.')
 } finally {
   global.fetch = network
   await browser?.close()
