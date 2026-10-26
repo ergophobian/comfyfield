@@ -38,7 +38,7 @@ Research references: [image/video lineup](research_notes/Open%20weight%20model%2
 | `Comfy-Org/vae-text-encorder-for-flux-klein-4b` | license not stated upstream | No separate VAE license name recorded |
 | `Comfy-Org/Qwen-Image-2.1` | Qwen Research License Agreement; Qwen3-VL text encoder: Apache-2.0 | im; model/VAE and encoder distinguished |
 | `Comfy-Org/Bernini-R`, `Comfy-Org/Wan_2.1_ComfyUI_repackaged`, `Comfy-Org/Wan-Animate-2`, `Comfy-Org/Wan_2.2_ComfyUI_Repackaged`, `Kijai/WanVideo_comfy_fp8_scaled` | Apache-2.0 | ge, iv, at |
-| `Kijai/WanVideo_comfy` (ReCamMaster and lightx2v files) | license not stated upstream; originals: Apache-2.0 | ve, ge; no license tag on the repack repository |
+| `Kijai/WanVideo_comfy` (ReCamMaster, lightx2v, InfiniteTalk and encoder files) | license not stated upstream; originals: Apache-2.0 | ve, ge, at; no license tag on the repack repository; exact encoder terms not separately recorded |
 | `Alissonerdx/BFS-Best-Face-Swap-Video` | LTX-2 Community License Agreement (repository tag) | ge explicitly flags the tag on Wan/Bernini files as unresolved |
 | `artificialguybr/Explosion-Redmond-WAN2-I2V-14B`, `artificialguybr/Spontaneous-Combustion-Redmond-WAN2-I2V-14B`, `artificialguybr/Disintegration-Redmond-WAN2-I2V-14B`, `artificialguybr/Metalcification-Redmond-WAN2-I2V-14B`, `artificialguybr/ThunderHero-Redmond-WAN2-I2V-14B`, `artificialguybr/SkinMorph-Redmond-WAN2-I2V-14B`, `artificialguybr/Disappearing-Redmond-WAN2-I2V-14B`; `p4ss3r2/wan22_Pupil_Transition_LoRa` | license not stated upstream | No license names for these exact files recorded in the reviewed notes |
 | `Comfy-Org/sam3.1` | SAM License | ve, en |
@@ -49,7 +49,8 @@ Research references: [image/video lineup](research_notes/Open%20weight%20model%2
 | `Comfy-Org/frame_interpolation` | MIT (repository tag: mit-and-apache-2.0) | en |
 | `Comfy-Org/Krea-2` | Krea 2 Community License; `qwen_image_vae.safetensors`: Apache-2.0 | ti |
 | `Comfy-Org/z_image_turbo` | Apache-2.0 | ti |
-| `Comfy-Org/Qwen3.5`, `Comfy-Org/gemma-4` | license not stated upstream | al names newer Qwen3.8/Gemma 4 families; exact pinned encoder/repack terms not established |
+| `Comfy-Org/Qwen3.5` | license not stated upstream | Exact pinned 2B encoder/repack terms not recorded |
+| `Comfy-Org/gemma-4` | Apache-2.0 | [video generation research](research_notes/engine/video-gen/README.md), exact E2B encoder |
 | `Comfy-Org/MiniMax-Music-3` | MiniMax-Music3 Community License | at notes a conflicting Apache-2.0 repack tag |
 | `Comfy-Org/stable-audio-3` | Stability AI Community License (metadata: stable-audio-community) | at |
 | `tencent/HunyuanVideo-Foley` | Tencent Hunyuan Community License | at, including pack-owned synchformer weights |
