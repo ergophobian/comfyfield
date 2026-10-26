@@ -114,7 +114,8 @@ export async function renderBlender(options, { config = {}, command, ssh = ['ssh
       : await local(opts, { command: command || [configured || 'blender'], configured, timeout, env, dir })
     return keep(file, opts.output)
   } finally {
-    fs.rmSync(dir, { recursive: true, force: true })
+    // Windows can still hold the folder for a moment after ssh exits; a failed cleanup must not hide the real error.
+    try { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }) } catch {}
   }
 }
 
