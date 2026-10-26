@@ -256,6 +256,7 @@ try {
   assert(await evaluate('document.querySelector(".app-go button").disabled'), 'Dub waits for a source video')
   assert.equal(requests.length, beforeTranslate)
   await upload('.app-main input[type=file]', 'video/webm')
+  await click('Spanish')
   await generate('dub', (vars) => { assert.equal(vars.video, '/mock-clip.webm'); assert.equal(vars.language, 'Spanish (es)') })
   await pair('audio-translate')
 
