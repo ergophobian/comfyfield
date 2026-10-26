@@ -304,8 +304,8 @@ const faceAndIdentity = [
       } },
       { id: 'review', type: 'approve' },
       { id: 'generate', provider: 'comfy', workflow: 'scail2_character_swap', kind: 'video', from: ['scene-writer', 'review'], targetInput: 'source', targets: {
-        photo: { bindings: { image: 'face.url' } },
-        character: { bindings: { image: 'character.images.0' } },
+        photo: { bindings: { video: 'video.url', image: 'face.url' } },
+        character: { bindings: { video: 'video.url', image: 'character.images.0' } },
       } },
     ],
     inputs: [

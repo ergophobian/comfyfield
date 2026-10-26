@@ -152,6 +152,9 @@ export function validateFormat(format, schemas = savedSchemas) {
       for (const source of upstream) {
         const kind = source.kind || format.kind
         if (kind === 'audio' && model.provider === 'comfy' && schema.includes('audio')) continue
+        // A reviewed video may gate a fresh render explicitly bound to the original uploaded clip.
+        if (kind === 'video' && model.provider === 'comfy' && schema.includes('video') &&
+          typeof step.bindings?.video === 'string' && slots.get(step.bindings.video.split('.')[0])?.type === 'video') continue
         if (kind !== 'image') bad(`${label} Only image outputs, and audio into a graph that takes it, can feed another model yet`)
       }
       const values = { ...sampleValues(format), ...selected }
