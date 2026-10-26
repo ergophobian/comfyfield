@@ -152,9 +152,10 @@ check('SSH failures say which part failed', async () => {
   await assert.rejects(renderBlender({ script: 'x' }, { config: { host: 'artist@render-box', path: 'missing-blender' }, ssh, scp, env, keep }), /Blender was not found at missing-blender on artist@render-box/)
   await assert.rejects(renderBlender({ script: 'x' }, { config: { host: 'a b; rm -rf /' }, ssh, scp, env, keep }), /looks like user@host/)
   await assert.rejects(renderBlender({ script: 'x' }, { config: { host: 'artist@render-box' }, ssh: [path.join(dir, 'no-ssh')], scp, env, keep }), /ssh and scp are not on PATH/)
+  // A slow resolver (some VPN DNS setups) times out instead of refusing; both messages say what failed.
   const real = spawnSync('ssh', ['-V'], { windowsHide: true })
   if (real.error) return console.log('      (no system ssh: real SSH failure not checked)')
-  await assert.rejects(renderBlender({ script: 'x' }, { config: { host: 'nobody@comfyfield-check.invalid' }, env: process.env, keep, timeout: 30000 }), /Could not reach nobody@comfyfield-check\.invalid over SSH/)
+  await assert.rejects(renderBlender({ script: 'x' }, { config: { host: 'nobody@comfyfield-check.invalid' }, env: process.env, keep, timeout: 30000 }), /Could not reach nobody@comfyfield-check\.invalid over SSH|SSH took longer than 30 seconds/)
 })
 
 check('Connections saves the Blender path and host, and Save and test reports why Blender cannot run', async () => {
