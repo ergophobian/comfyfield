@@ -24,10 +24,13 @@ export default function ConnectComfy() {
       setSaving(false)
       return
     }
-    const ok = await testConnection('comfy').catch(() => false)
+    const test = await testConnection('comfy').catch(() => ({ ok: false }))
     setSaving(false)
     setKey('')
-    if (!ok) setMsg('Saved, but the test call failed. Check the key in Connections.')
+    if (!test.ok) {
+      setMsg(test.error ? `Saved, but the test failed. ${test.error}` : 'Saved, but the test call failed. Check the key in Connections.')
+      return
+    }
     refreshConnections()
     refreshPod()
   }
