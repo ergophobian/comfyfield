@@ -1853,9 +1853,9 @@ export const schemas = {
     ],
     "wan_animate2": [
       "image",
-      "previous",
       "motion_frames",
       "motion_start",
+      "previous",
       "prompt",
       "seed",
       "video"
