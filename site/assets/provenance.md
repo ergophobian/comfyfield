@@ -1,23 +1,20 @@
 # Launch assets
 
-All five WebP images were copied unchanged from `docs/screenshots/readme/` in the ComfyField launch README branch, originally from draft PR #133. That PR records real app captures at 1440px, started with an empty data folder and no keys. No mock fixtures or paid-generation results are presented here.
+## Footage
 
-- `create.webp`: image composer, prompt editing before generation; hero.
-- `batch.webp`: batch prompt editing before generation.
-- `flows.webp`: Image then animate starter flow, before execution.
-- `library.webp`: empty Assets page.
-- `skills.webp`: agent setup interface; source MCP configuration in the project README supersedes the package install example in the capture.
+Real LTX-2.5 renders on Comfy Cloud of the Cinema example scene "The folded alley" (prompts in `docs/demo.md`), made on 2026-10-26. Re-encoded with ffmpeg to H.264, CRF 27, no audio, for the web.
 
-Colors, surfaces, type scale, radii and shadows come from `src/styles.css` at main commit a6a64b1d9812eb204da14b2c780b954900203f94. Layout tokens are local to this site.
+- `shot1.mp4`, `shot2.mp4`, `shot3.mp4` (960 wide) and their posters: shots 1, 2 and 3. Sources: `shot1.mp4` and `shot2.mp4` from the proof run, and `.comfyfield/media/1793046546265-urc2t1.mp4` for shot 3.
+- `scene.mp4` (1280 × 704) and `scene.jpg`: the same three shots joined in order with ffmpeg.
 
-## Remaining work
+The "shot 2 regenerate" render from that run (`1793046644127-ipg3s6.mp4`) is not used: it shows a different scene.
 
-- TODO: replace the visible demo video slot with the owner's recorded demo link.
-- Capture updated interface and real outputs when separately authorized; existing captures predate some controls.
-- Owner decides whether to publish. This repository has no remote and has not been deployed.
+## Screenshots
 
-## Validation
+- `ui-cinema.webp`: fresh capture of `/cinema` with the built-in example idea, no generation.
+- `ui-composer.webp`, `ui-library.webp`: crops of the launch README captures from draft PR #133 (no keys, empty data folder).
+- `ui-flows.webp`: crop of `docs/screenshots/issue-21-flow-built-by-mcp.png`, a flow built through the MCP server.
 
-Local paths and fragment links resolve. All five copies match the source SHA-256 hashes. The page has no scripts, forms, embeds, remote assets or CSS imports. It declares a responsive viewport and switches to a single column at 720px.
+## Demo video
 
-A rendered desktop and 390px check remains pending. T3 preview rejected the file URL with `unsupported-protocol: file:`. Chrome computer use rejected it because its allowed protocols are only `http:` and `https:` and explicitly prohibited workarounds. No local server was started. No install, app build, generation, deployment or publication was run.
+Fill `#demo-video` in `index.html`; the comment above it shows how.
