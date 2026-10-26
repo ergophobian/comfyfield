@@ -93,6 +93,7 @@ export function validateFormat(format, schemas = savedSchemas) {
     if (step.takes != null && (!Number.isInteger(step.takes) || step.takes < 1)) bad(`Invalid takes for ${step.id}`)
     if (step.type === 'approve' || step.type === 'stitch') continue
     if (step.type === 'writer') {
+      if (step.when && (!step.optional || !slots.get(step.when[0])?.options?.some((o) => o.id === step.when[1]))) bad(`${step.id}: Invalid optional writer condition`)
       if (!(step.instructions || step.writer_instructions || format.writer)?.trim()) bad(`${step.id}: Missing writer instructions`)
       continue
     }

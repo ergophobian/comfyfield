@@ -635,3 +635,66 @@ assert.equal(targetedSession.results()[0], preserved)
 await targetedSession.retry('success')
 assert.equal(attempts.filter((id) => id === 'success').length, 1, 'Retrying a step without failures pays for nothing')
 console.log('Targeted format retry checks ok: stored failures, reopened gates, repeated failures and preserved sibling outputs')
+
+// Motion swaps keep original footage through draft approval, with opt-in scene writing.
+for (const id of ['motion-transfer', 'video-character-swap']) {
+  const format = formats.find((f) => f.id === id)
+  assert(format, `${id} remains runnable`)
+  assert.match(format.blurb, /Use footage you own or have permission to use\./)
+  const values = { ...initialValues(format), video: { url: 'https://example.test/owned.mp4', trim: { start: 3, end: 7 } }, image: photo, face: photo, scene: 'A small kitchen with warm window light' }
+  for (const source of id === 'video-character-swap' ? ['photo', 'character'] : ['photo']) {
+    for (const mode of ['note', 'write', 'disconnected']) {
+      const calls = []
+      let writes = 0
+      const requirements = (workflows, options) => {
+        const context = offlineRequirements(workflows, options)
+        if (mode === 'disconnected') for (const provider of ['google', 'comfyRouter']) context.connections[provider].connected = false
+        return context
+      }
+      const session = await runFormat(format, { ...values, source, character: { images: [photo.url] }, sceneWriting: mode === 'note' ? 'note' : 'write' }, {
+        requirements,
+        writePrompt: async ({ note, instructions }) => {
+          writes++
+          assert.match(note, /small kitchen/)
+          assert.match(note, /Base prompt:.*(?:Character appearance|character from the reference)/)
+          assert.match(instructions, /do not invent details/)
+          return 'A reference character in a warm kitchen'
+        },
+        run: async (model, opts) => {
+          calls.push({ model, opts, vars: comfyVars('video', opts) })
+          return [{ url: `https://example.test/${model.formatStep?.id || calls.length}.mp4`, kind: 'video' }]
+        },
+      })
+      if (mode === 'write') {
+        assert.equal(writes, 1)
+        assert.equal(calls.length, 0, 'Scene writer holds the draft for editing')
+        session.engine.editWriter(session.flow, 'scene-writer', 'Edited kitchen and lighting')
+        await session.sendWriter('scene-writer')
+      } else {
+        assert.equal(writes, 0, 'Literal note works without a writer call or key')
+        assert(!session.flow.nodes.some((node) => node.type === 'writer'))
+      }
+      assert.equal(calls.length, 1, 'Only the draft renders before approval')
+      assert.equal(calls[0].vars.duration, 1)
+      if (id === 'motion-transfer') assert.equal(calls[0].vars.motion_frames, 17)
+      assert.equal(session.engine.gate('review').status, 'reviewing')
+      assert.equal(session.results().length, 0)
+      await session.engine.runNew(session.flow)
+      assert.equal(calls.length, 1, 'Run cannot bypass approval')
+      await session.send('review')
+      assert.equal(calls.length, 2)
+      for (const { opts, vars } of calls) {
+        assert.equal(vars.video, values.video.url, 'Both renders use original footage, never the draft')
+        assert.equal(vars.start, 3)
+        assert.equal(vars.image, photo.url, 'Both targets keep the selected character')
+        assert.match(opts.prompt, mode === 'write' ? /Edited kitchen and lighting/ : /small kitchen/)
+      }
+      assert.equal(calls[1].vars.duration, 4, 'Final preserves selected trim duration')
+      if (id === 'motion-transfer') assert.equal(calls[1].vars.motion_frames, 61)
+      assert.equal(session.results().length, 1)
+      await session.send('review')
+      assert.equal(calls.length, 2, 'Repeated Send preserves paid outputs')
+    }
+  }
+}
+console.log('Motion swap checks ok: optional scene writer, disconnected fallback, photo and saved character, draft approval, original footage and final trim. No network calls.')

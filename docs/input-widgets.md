@@ -42,3 +42,19 @@ Provider-specific mask, crop, trim, and identity mappings belong to the format r
 - `node scripts/theme-check.mjs` and `npx vite build`.
 
 The browser check uses Node's built-in WebSocket and an installed Chrome. On Windows it defaults to `C:/Program Files/Google/Chrome/Application/chrome.exe`; set `WIDGET_CHROME` for another installation. It uses free local ports and a separate headless profile under ignored outputs. No provider keys are loaded or used. Test media and screenshots are synthetic, with no generated provider output. Physical mobile devices, assistive technology and mov codec playback have not been tested.
+
+
+### Optional scene writing
+
+A native Writer step can set `optional: true` and `when: [choiceId, optionId]`.
+The format compiler bypasses it when that option is not selected. Before a fresh
+run, missing Writer credentials also bypass optional Writers, retaining the
+format's literal prompt and input note. Required Writers still fail preflight.
+Optional Writers receive the base generation prompt with the text inputs so
+scene descriptions retain the character and background instructions. Their
+output uses the normal editable Writer review and Send gate.
+
+Motion transfer and Video character swap render a one-second draft through the
+existing `duration` placeholder (`motion_frames: 17` as well for Wan Animate 2).
+Approval unlocks the final render from the original uploaded video and trim;
+the draft is a preview, not replacement source footage. Resolution is unchanged.

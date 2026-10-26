@@ -14,7 +14,7 @@ export function nearestAspect(shape) {
   return Object.keys(aspectSize).reduce((best, a) => (gap(a) < gap(best) ? a : best), '1:1')
 }
 
-export function compileFormat(format, userInputs = {}) {
+export function compileFormat(format, userInputs = {}, { writerAvailable = true } = {}) {
   const problems = validateFormat(format)
   if (problems.length) throw new Error(`${format.name}: ${problems.join('; ')}`)
   const values = { ...initialValues(format), ...structuredClone(userInputs) }
@@ -28,9 +28,14 @@ export function compileFormat(format, userInputs = {}) {
   }
   const nodes = []
   const edges = []
-  const steps = format.writer && !format.steps.some((s) => s.type === 'writer')
+  const declaredSteps = format.writer && !format.steps.some((s) => s.type === 'writer')
     ? [{ id: 'writer', type: 'writer', instructions: format.writer }, ...format.steps]
     : format.steps
+  const omitted = new Set(declaredSteps.filter((step) => step.type === 'writer' && step.optional &&
+    (!writerAvailable || (step.when && values[step.when[0]] !== step.when[1]))).map((step) => step.id))
+  const sourcesOf = (step) => step.from ?? (declaredSteps.indexOf(step) ? [declaredSteps[declaredSteps.indexOf(step) - 1].id] : [])
+  const bypass = (ids) => [...new Set(ids.flatMap((id) => omitted.has(id) ? bypass(sourcesOf(declaredSteps.find((step) => step.id === id))) : [id]))]
+  const steps = declaredSteps.filter((step) => !omitted.has(step.id)).map((step) => ({ ...step, from: bypass(sourcesOf(step)) }))
   const receivesWriter = (from) => from.some((id) => {
     const index = steps.findIndex((s) => s.id === id)
     const source = steps[index]
@@ -43,8 +48,9 @@ export function compileFormat(format, userInputs = {}) {
         const value = values[input.id]
         return value?.url ? [value.faceUrl || value.url] : value?.images || []
       })
-      const note = visibleInputs(format, values).filter((i) => ['text', 'longtext'].includes(i.type)).map((i) => values[i.id]).filter(Boolean).join('\n\n')
-      nodes.push({ id: step.id, type: 'writer', data: { instructions: step.instructions || step.writer_instructions || format.writer, note, images: media, target: step.target || format.runsOn || format.kind, ...(step.review && { review: step.review }) } })
+      let note = visibleInputs(format, values).filter((i) => ['text', 'longtext'].includes(i.type)).map((i) => values[i.id]).filter(Boolean).join('\n\n')
+      if (step.optional) note = `${note}\n\nBase prompt: ${stepOptions(format, format.steps.find((s) => !s.type), values).prompt}`
+      nodes.push({ id: step.id, type: 'writer', data: { optional: step.optional, instructions: step.instructions || step.writer_instructions || format.writer, note, images: media, target: step.target || format.runsOn || format.kind, ...(step.review && { review: step.review }) } })
     } else if (step.type === 'stitch') {
       // Joins the upstream clips in the order `from` lists them, each with its own sound.
       nodes.push({ id: step.id, type: 'stitch', data: { clips: [], aspect: stepOptions(format, step, values).aspect } })
@@ -72,8 +78,17 @@ export function compileFormat(format, userInputs = {}) {
 }
 
 // Planning is read-only; requirements can be injected for offline adapters and checks.
+async function planFormat(format, flow, options, allowFallback = true) {
+  let plan = await preflightFlow(flow, options)
+  if (allowFallback && plan.reasons.some((reason) => reason.code === 'missing_key' && flow.nodes.some((node) => node.id === reason.stepId && node.type === 'writer' && node.data.optional))) {
+    Object.assign(flow, compileFormat(format, flow.values, { writerAvailable: false }))
+    plan = await preflightFlow(flow, options)
+  }
+  return plan
+}
+
 export async function preflight(format, values, options) {
-  return preflightFlow(compileFormat(format, values), options)
+  return planFormat(format, compileFormat(format, values), options)
 }
 
 // run(model, options, metadata) must resolve to files and persist them to the caller's Library.
@@ -165,7 +180,7 @@ export async function runFormat(format, inputs, { run, writePrompt, onChange = (
     operationError = null
     notify()
     try {
-      plan = await preflightFlow(flow, { ...planning, ...overrides })
+      plan = await planFormat(format, flow, { ...planning, ...overrides }, !Object.keys(engine.state).length)
       // A resumed run does not need the credentials or target of an already paid step.
       const completed = new Set(Object.entries(engine.state).filter(([, s]) => s.items?.length && s.items.every((i) => i.status === 'done')).map(([id]) => id))
       const reasons = plan.reasons.filter((r) => !completed.has(r.stepId) && (!only || only.has(r.stepId)))

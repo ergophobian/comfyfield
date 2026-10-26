@@ -1,5 +1,5 @@
 // Image edits, video edits and enhance.
-import { open, photo, clip, note, covers } from './parts.js'
+import { open, photo, clip, note, covers, sceneInputs, sceneWriter } from './parts.js'
 
 const imageEdits = [
   open({
@@ -230,12 +230,20 @@ const videoEdits = [
   }),
   open({
     id: 'motion-transfer', name: 'Motion transfer', kind: 'video', category: 'video-edit',
-    blurb: 'Make the character in a photo copy the moves in a video. Clips up to 40 seconds.',
+    blurb: 'Make the character in a photo copy the moves in a video. Review a one-second draft before the final. Use footage you own or have permission to use.',
     runsOn: 'Wan Animate 2', workflow: 'wan_animate2',
+    shape: 'pipeline',
+    steps: [
+      sceneWriter,
+      { id: 'draft', provider: 'comfy', workflow: 'wan_animate2', kind: 'video', params: { duration: 1, motion_frames: 17 } },
+      { id: 'review', type: 'approve' },
+      { id: 'generate', provider: 'comfy', workflow: 'wan_animate2', kind: 'video', from: ['scene-writer', 'review'] },
+    ],
     inputs: [
       { id: 'video', type: 'video', label: 'Motion video' },
       { id: 'image', type: 'image', label: 'Who performs it' },
-      { id: 'background', type: 'choice', label: 'Background', default: 'studio', options: [
+      { id: 'background', type: 'choice', label: 'Background', default: 'original', options: [
+        { id: 'original', label: 'Original scene', text: 'the original room and lighting described in the scene note' },
         { id: 'studio', label: 'Studio', text: 'a clean, softly lit studio backdrop' },
         { id: 'street', label: 'City street', text: 'a busy city street in daylight' },
         { id: 'beach', label: 'Beach', text: 'a sunny beach with gentle waves behind' },
@@ -243,11 +251,12 @@ const videoEdits = [
         { id: 'park', label: 'Park', text: 'a green park on a calm afternoon' },
         { id: 'rooftop', label: 'Rooftop', text: 'a city rooftop at sunset' },
       ] },
+      ...sceneInputs,
       note,
     ],
     // Wan Animate 2 takes the motion from the video and the look from the prompt, which must not
     // describe motion. The background comes from the prompt too, not from either input.
-    prompt: 'Character appearance: the person from the image, with their own face, hair, outfit and look. Background: {background}. {note}',
+    prompt: 'Character appearance: the person from the image, with their own face, hair, outfit and look. Background: {background}. Scene note: {scene}. {note}',
     settings: { aspect: 'auto' },
     cover: covers.rose,
   }),
