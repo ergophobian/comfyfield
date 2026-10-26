@@ -120,6 +120,10 @@ export async function run(model, opts, hooks = {}) {
   throw new Error(`${model.provider} is not wired up yet.`)
 }
 
+// The connection list has loaded and no provider is connected: a first visit.
+// GitHub and Blender are not generation keys, so they do not count.
+export const noKeys = (connections = {}) => Object.keys(connections).length > 0 && !Object.entries(connections).some(([id, c]) => !['github', 'blender'].includes(id) && c.connected)
+
 export async function getConnections() {
   const res = await fetch('/api/connections')
   return res.ok ? res.json() : {}

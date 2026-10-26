@@ -411,6 +411,7 @@ input, textarea { font: inherit; color: inherit; }
 .conn-top { display: flex; justify-content: space-between; align-items: center; }
 .conn h3 { margin: 0; font-size: var(--text-lg); font-weight: 600; }
 .conn p { margin: 0; color: var(--ink-2); font-size: var(--text-md); }
+.conn .conn-lead { color: var(--ink); font-weight: 600; }
 .status { display: inline-flex; align-items: center; gap: 6px; font-size: var(--text-xs); font-weight: 600; padding: 4px 10px; border-radius: var(--r-pill); background: var(--ink-fill); color: var(--muted); }
 .status::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 .status.ok { color: var(--success); background: var(--success-wash); }
@@ -1626,6 +1627,17 @@ code { font-size: .92em; }
 .gen-status a { color: var(--blue); font-weight: 600; }
 .gen-status.todo { color: var(--todo); background: var(--todo-wash); }
 .gen-status.error { color: var(--danger); background: var(--danger-wash); }
+.connect-comfy { display: grid; gap: 8px; padding: 16px; border-radius: var(--r-lg); }
+.gen-image > .connect-comfy { width: min(var(--w-composer), 100%); margin: 0 auto 10px; }
+.connect-comfy h2 { margin: 0; font-size: var(--text-base); font-weight: 600; color: var(--ink); }
+.connect-comfy p { margin: 0; font-size: var(--text-sm); line-height: 1.4; color: var(--ink-2); }
+.connect-comfy-row { display: flex; gap: 8px; }
+.connect-comfy-row input { flex: 1; min-width: 0; height: 40px; padding: 0 14px; border-radius: var(--r-pill); border: 1px solid var(--line); background: var(--glass-strong); outline: 0; transition: border-color var(--dur-fast), box-shadow var(--dur-fast); }
+.connect-comfy-row input:focus { border-color: var(--blue); }
+.connect-comfy-row .btn-blue { height: 40px; padding: 0 18px; font-size: var(--text-md); }
+.connect-comfy-links { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.connect-comfy-links a { color: var(--blue); font-weight: 600; }
+.connect-comfy .connect-comfy-msg { color: var(--danger); }
 .gen-go-row { display: flex; gap: 8px; }
 .gen-go-row .gen-go { flex: 1; }
 .gen-sum { display: flex; flex-direction: column; margin: -2px 4px 0; font-size: var(--text-xs); color: var(--muted); }

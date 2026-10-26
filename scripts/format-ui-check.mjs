@@ -10,6 +10,7 @@ const requests = []
 let generationImports = []
 const jobs = new Map()
 let connected = true
+const savedKeys = []
 // A Comfy render that reports live progress, as the Cloud SDK's events() stream does, until the check finishes it.
 let progressRender = false
 let progressJob = null
@@ -45,6 +46,14 @@ const server = await preview({ configFile: false, envFile: false, plugins: [{
           return res.end('{}')
         }
         return res.end(JSON.stringify(generationImports))
+      }
+      if (url.pathname === '/api/connections/test') { req.resume(); return res.end(JSON.stringify({ ok: true })) }
+      if (url.pathname === '/api/connections' && req.method === 'POST') {
+        let raw = ''
+        for await (const chunk of req) raw += chunk
+        savedKeys.push(JSON.parse(raw))
+        connected = true
+        return res.end('{}')
       }
       if (url.pathname === '/api/connections') return res.end(JSON.stringify({ fal: { connected }, google: { connected } }))
       if (url.pathname === '/api/fal/schema') return res.end(JSON.stringify(schemas.fal[url.searchParams.get('id')] || { properties: { prompt: { type: 'string' } } }))
@@ -291,6 +300,27 @@ try {
   await screenshot('mock-startup-mobile')
   await evaluate('document.querySelector(".notice[role=status] a").click()')
   await wait('location.pathname === "/connections" && !document.querySelector(".notice[role=status]")')
+  // Comfy comes first in Connections, named as the key to get.
+  assert.equal(await evaluate('document.querySelector(".conn h3").textContent'), 'ComfyUI')
+  assert.match(await evaluate('document.querySelector(".conn .conn-lead").textContent'), /^Start here\. One Comfy key/)
+  assert.equal(await evaluate('document.querySelector(".conn .conn-actions a").textContent'), 'Get a Comfy key ›')
+  await screenshot('mock-connections-comfy-first-mobile')
+  // Create shows one inline Connect Comfy prompt instead of the app-wide notice, and connects in place.
+  // A first visit has no saved results or picks.
+  await evaluate('localStorage.removeItem("comfyfield.library"); localStorage.removeItem("comfyfield.picker")')
+  for (const route of ['/video', '/image']) {
+    await goto(route)
+    await wait('document.querySelector(".connect-comfy")')
+    assert.equal(await evaluate('document.querySelectorAll(".connect-comfy").length'), 1, `${route} shows one Connect Comfy prompt`)
+    assert(!(await evaluate('document.querySelector(".notice[role=status]")')), `${route} hides the app-wide notice`)
+    assert(await evaluate('document.documentElement.scrollWidth <= 390'), `${route} Connect Comfy prompt must fit 390px`)
+  }
+  await screenshot('mock-first-run-create-mobile')
+  await evaluate('document.querySelector(".connect-comfy input").focus()')
+  await cdp('Input.insertText', { text: 'mock-comfy-key' })
+  await evaluate('document.querySelector(".connect-comfy .btn-blue").click()')
+  await wait('!document.querySelector(".connect-comfy")')
+  assert.deepEqual(savedKeys, [{ id: 'comfy', values: { key: 'mock-comfy-key' } }])
   connected = true
   generationImports = [{ id: 'mock-proof-import', url: '/mock-proof.svg', kind: 'image', model: 'Mock proof import', aspect: '4:5', caption: 'Mock imported proof; no paid run', created: Date.now(), imported: true }]
   await evaluate('localStorage.removeItem("comfyfield.library")')
@@ -311,7 +341,7 @@ try {
   await wait('JSON.parse(localStorage.getItem("comfyfield.library") || "[]").length === 0')
   assert.equal(generationImports.length, 0, 'Delete persists to server imports')
   assert.deepEqual(errors, [], 'No browser runtime exceptions')
-  console.log('UI mock checks ok: app runner, shared sheet, Library after reload, 390px layout, Create generation/feed/camera presets and hidden invalid route. Failed writer and render sessions recover through Retry failed without repeating completed steps, and insufficient credits links to Comfy; no provider calls. First-run Connections notice and link checked at 390px. Labeled mock proof import deduplicates on reload and deletes on the server. Live Comfy progress on the render tile. Ten screenshots saved.')
+  console.log('UI mock checks ok: app runner, shared sheet, Library after reload, 390px layout, Create generation/feed/camera presets and hidden invalid route. Failed writer and render sessions recover through Retry failed without repeating completed steps, and insufficient credits links to Comfy; no provider calls. First-run Connections notice and link, Comfy first in Connections, and the inline Connect Comfy prompt on Create checked at 390px. Labeled mock proof import deduplicates on reload and deletes on the server. Live Comfy progress on the render tile. Eleven screenshots saved.')
 } finally {
   await browser?.close()
   await server.close()

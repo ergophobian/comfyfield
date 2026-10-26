@@ -130,7 +130,8 @@ export const COMFY_CREDITS_URL = 'https://platform.comfy.org'
 export const needsComfyCredits = (message) => /insufficient credits/i.test(String(message || ''))
 
 export const providerInfo = {
-  comfy: { name: 'ComfyUI', blurb: 'Your Comfy API key runs open models on Comfy Cloud in seconds, on a paid Comfy plan. For a long session, add your RunPod key on the RunPod card and start a Pod from the top bar: while it runs, ComfyUI runs use it. The key also unlocks hosted models through Comfy Router.', fields: [
+  // linkLabel and lead: Comfy is the default path, so its card names its key and says why it comes first.
+  comfy: { name: 'ComfyUI', linkLabel: 'Get a Comfy key', lead: 'Start here. One Comfy key runs open models on Comfy Cloud and partner models through Comfy Router.', blurb: 'Your Comfy API key runs open models on Comfy Cloud in seconds, on a paid Comfy plan. For a long session, add your RunPod key on the RunPod card and start a Pod from the top bar: while it runs, ComfyUI runs use it. The key also unlocks hosted models through Comfy Router.', fields: [
     { id: 'key', label: 'Comfy API key', placeholder: 'From platform.comfy.org', secret: true },
   ], link: 'https://platform.comfy.org/profile/api-keys' },
   // page: where the rest of this service's settings live.
