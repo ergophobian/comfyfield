@@ -1,111 +1,106 @@
 # ComfyField
 
-An open-source creative studio you run on your own machine. Make images, video and audio with any model, using your own keys.
+One idea. A finished scene.
 
-- **ComfyUI**: the open workflows in `public/workflows/` run on Comfy Cloud with your Comfy key, or on your own RunPod Pod for long sessions. No GPU of your own is needed.
-- **fal**: browse fal's catalog in the app and use any text-to-image, video, speech or music model with one key.
-- **ElevenLabs**: voices and sound effects with your own key.
+ComfyField is an open-source creative studio for images, video and audio. It runs on your computer, with your own keys, on the Comfy Developer Platform. Built for [Open Source Higgsfield](https://comfy.org/open-source-higgsfield).
 
-Entry for the [Open Source Higgsfield](https://comfy.org/open-source-higgsfield) competition.
+**Site:** https://comfyfield.com
 
-## Run it
+[![The folded alley: a courier in a silver raincoat watches a violet portal fold an alley open onto a sunlit ocean](site/assets/scene.jpg)](https://comfyfield.com)
 
-Install [Node.js 22 or newer](https://nodejs.org/en/download): use the macOS `.pkg`, Windows `.msi`, or the Linux instructions on that page. Reopen your terminal after installation.
+<!-- DEMO VIDEO -->
+Demo video: link coming with the submission.
 
-```bash
-npm start
+## Cinema
+
+Cinema turns one idea into a short scene you can edit.
+
+1. **Idea.** Open **Cinema studio** and write an idea, or press **Try the portal effect** to load the built-in example for free.
+2. **Plan.** **Plan shots** returns 2 to 6 shots. Each has a prompt, a camera move, a length of 5, 8 or 10 seconds, and continuity notes. Edit any field, add a start frame to any shot, and see the cost of the whole scene before anything renders.
+3. **Render.** **Generate scene** renders every shot with LTX-2.5 on Comfy Cloud, sound included.
+4. **Review.** **Approve and Send** passes a shot to the scene. **Rerun shot** replaces only that shot; the others keep their approval.
+5. **Stitch.** The approved clips join on your machine with ffmpeg. Order, trim and caption them, add music, preview, then export the MP4.
+
+Every scene is saved as a Flow, so you can open it on the canvas and agents can edit it through MCP. Details: [Cinema on LTX-2.5](docs/cinema-ltx.md).
+
+The scene above, shot by shot. Real LTX-2.5 renders on Comfy Cloud:
+
+| Shot 1 | Shot 2 | Shot 3 |
+| --- | --- | --- |
+| [![Shot 1: the courier stops as a violet ring of sparks traces itself on the wet street](site/assets/shot1.jpg)](site/assets/shot1.mp4) | [![Shot 2: the portal glows while the alley bends upward around the courier](site/assets/shot2.jpg)](site/assets/shot2.mp4) | [![Shot 3: the courier walks toward a portal that opens onto a bright ocean](site/assets/shot3.jpg)](site/assets/shot3.mp4) |
+| Slow dolly toward the ring | Low orbit around the forming portal | Track right behind the courier |
+
+## What it does
+
+- **Create** images, video and audio from one composer. Pick any connected model, add references, run one prompt or a batch.
+- **Flows** chain prompts, models, Writer nodes and Stitch on a canvas. Approve gates hold each step until you press Send. Agents build and edit the same flows through MCP, and you watch their cursor move node to node.
+- **Library** (Assets) keeps every generation next to the characters, products, brand kits and voices you reuse across tools.
+- **Studios and formats.** Apps, effects and presets are plain data that run through the same engine and land in the same Library.
+- **Motion transfer** (Wan Animate 2) and **character swap** (SCAIL-2) render a short draft first. Approve it and the final runs.
+- **Stitch** joins clips locally with trims, captions and music, at no cost. See [Stitch](docs/stitch.md).
+
+Multi-part runs, such as long speech or long video, show "not available yet". Use one segment or a short script per run.
+
+## Quick start
+
+You need Git and [Node.js 22 or newer](https://nodejs.org/en/download).
+
+```sh
+git clone https://github.com/ergophobian/comfyfield.git
+cd comfyfield
+npm install
+npm run dev
 ```
 
-The first start installs dependencies, builds the app and opens your browser. Open **Connections** to add keys when ready. See the [macOS, Windows and Linux setup guide](docs/setup.md) for Node.js installation, the post-publication `npx comfyfield` path, data locations and troubleshooting. Data defaults to `~/.comfyfield` on macOS/Linux or `%APPDATA%\comfyfield` on Windows; `COMFYFIELD_HOME` keeps the existing `<folder>/.comfyfield` override. Only the local server reads saved keys.
+Open the address the terminal prints (usually http://localhost:5173). Get a Comfy key from [platform.comfy.org](https://platform.comfy.org/profile/api-keys), then open **Connections**, paste it into the **ComfyUI** card and choose **Save and test**.
 
-### Docker
+Windows commands, data folders and fixes: [setup guide](docs/setup.md).
 
-On a home server or a VPS, run `docker compose up -d` and open http://localhost:5173. Data stays in a named volume. See [docs/docker.md](docs/docker.md) for data, keys and remote access.
+## How it uses Comfy
 
-### ComfyUI models for the bundled workflows
+One Comfy key covers both paths. The app, CLI and MCP server share them through [server/core.js](server/core.js).
 
-Comfy Cloud already has the files most workflows load. A Pod downloads what a run needs on its first run, from `shared/modelFiles.js`, and checks each file against its sha256.
+- **Comfy Router API v2.** `GET https://api.comfy.org/v2/models` lists hosted models. A run posts to `/v2/models/{provider}/{model}/requests` with `X-API-Key` and an `Idempotency-Key`, polls `/requests/{id}/status`, then fetches `/requests/{id}` for the result. [shared/mapping.js](shared/mapping.js) maps the composer's settings onto each model's inputs.
+- **Comfy SDK on Comfy Cloud.** `@comfyorg/sdk` loads a bundled API-format workflow from [public/workflows](public/workflows) with `client.workflows.fromFile`, attaches uploads with `client.assets.fromBytes`, waits for the job and saves its outputs to the Library. The LTX-2.5 graphs behind Cinema run this way. The same runner can target your own RunPod Pod for long sessions.
 
-## Use from your agent
+Optional keys add fal, Google AI, ElevenLabs and RunPod.
 
-ComfyField ships an MCP server and a CLI that run on your own keys from Connections, so any agent can generate through it. Nothing is billed by ComfyField; you pay your providers directly.
+## Agents and CLI
 
-```bash
-claude mcp add comfyfield -- npx comfyfield mcp
+The MCP server and CLI use the keys saved in Connections. Point your agent at your clone:
+
+```sh
+claude mcp add comfyfield -- node /absolute/path/to/comfyfield/bin/comfyfield.js mcp
 ```
 
-Codex (`~/.codex/config.toml`):
+Other clients take the same command, `node /absolute/path/to/comfyfield/bin/comfyfield.js mcp`, in their MCP config.
 
-```toml
-[mcp_servers.comfyfield]
-command = "npx"
-args = ["comfyfield", "mcp"]
-env = { COMFYFIELD_HOME = "/path/to/your/comfyfield" }
+- Generation: `list_models`, `get_model_schema`, `generate`, `write_prompts`, `balance`
+- Stitch: `stitch`, `export_stitch`
+- Flows: `list_flows`, `get_flow`, `create_flow`, `add_node`, `connect_nodes`, `update_node`, `remove_node`, `run_flow`
+- Teamwork: `list_agents`, `assign_agent`, `my_tasks`
+
+`run_flow` fills gaps and stops at every Approve gate; only you can press Send. See [Flows through MCP](docs/flows-mcp.md).
+
+```sh
+node bin/comfyfield.js models --kind video
+node bin/comfyfield.js generate "a fox in fresh snow, dolly in" --model <id> --ratio 16:9 --out ./renders
+node bin/comfyfield.js stitch first.mp4 second.mp4 --ratio 9:16 --out ./renders
+node bin/comfyfield.js --help
 ```
 
-Cursor and ChatGPT desktop take the same command: `npx comfyfield mcp`. Keys are read from the per-user data folder (or `.comfyfield/keys.json` under `COMFYFIELD_HOME`), then from `FAL_KEY`, `GEMINI_API_KEY`, `ELEVENLABS_API_KEY`, `COMFY_API_KEY` and `RUNPOD_API_KEY`.
+## Costs
 
-Tools: `list_models`, `generate`, `get_model_schema`, `balance`, `write_prompts`, `stitch`, `export_stitch`. Any fal endpoint works as `fal:<endpoint>`.
+Every run uses your own provider credits; ComfyField bills nothing. Prices in the app are estimates, and Cinema shows the cost of a whole scene before it renders. Connections has an optional spend cap that asks before a run takes this session past it. Pods have their own daily cap and idle shutdown on the Pods page.
 
-Flow tools: `list_flows`, `get_flow`, `create_flow`, `add_node`, `connect_nodes`, `update_node`, `remove_node`, `run_flow`. Flows are saved in `.comfyfield/flows.json`, so the app shows what an agent builds (switch back to the tab to reload). `run_flow` fills gaps and stops at Approve gates; only you can press Send in Flows. See [docs/flows-mcp.md](docs/flows-mcp.md).
+## Docker
 
-The Skills page (`/skills`) lists ready-made jobs to run from your agent, each with a prompt to copy. Their slash commands are not wired into the MCP server yet.
+On a home server, `docker compose up -d` serves the studio at http://localhost:5173 with data in a named volume. See [Docker](docs/docker.md).
 
-Recipes are not wired into the MCP server yet. TODO: add `list_recipes` and `run_recipe`.
+## Contributing
 
-CLI:
-
-```bash
-npx comfyfield models --kind video
-npx comfyfield connect fal --key $FAL_KEY
-npx comfyfield generate "a fox in fresh snow, dolly in" --model fal:fal-ai/kling-video/v3/pro/text-to-video --ratio 16:9 --duration 5 --out ./renders
-npx comfyfield balance
-npx comfyfield dev
-```
-
-`generate` spends your credits and prints an estimated cost first. Run `comfyfield --help` for every option.
-
-Cinema studio plans a multi-shot scene and renders it with LTX-2.5 on Comfy Cloud: see [Cinema on LTX-2.5](docs/cinema-ltx.md).
-
-## Stitch clips locally
-
-In **Flows**, add a **Stitch** node. Connect video results (through an Approve node if you want to choose takes), upload clips, or select videos from the Library. Select Stitch to change clip order, trim start/end in seconds, and add text to burn into each clip. Music loops to fill the joined video; volume and fade apply to the music while clip audio stays intact.
-
-Choose 16:9, 9:16, 1:1 or 4:5. **Preview** renders a playable video. **Export to Library** saves that exact preview and enables download. After changing settings, render again before exporting. Run fills gaps; use Render again to replace an existing preview. All processing is local and makes no paid calls.
-
-The same operation works through `core.stitch()`, the `stitch` MCP tool, and the CLI:
-
-```bash
-node bin/comfyfield.js stitch first.mp4 second.mp4 --ratio 9:16 --music music.wav --volume 0.25 --fade 1 --out ./renders
-node bin/comfyfield.js stitch --spec stitch.json --preview --json
-```
-
-`stitch.json` uses this shape (end is an absolute time within the source clip):
-
-```json
-{
-  "clips": [
-    { "url": "first.mp4", "start": 0.5, "end": 3, "caption": "The first shot" },
-    { "url": "second.mp4", "caption": "The next shot" }
-  ],
-  "aspect": "16:9",
-  "music": { "url": "music.wav", "volume": 0.25, "fade": 1 }
-}
-```
-
-Core, CLI and MCP accept local paths, saved `/media/` URLs, or downloadable HTTP(S) media. CLI relative paths resolve from the current working directory. By default CLI/MCP export to the Library; `preview: true` (`--preview` in CLI) keeps the render as a preview. The MCP `export_stitch` tool promotes a preview by its returned URL without rendering again. Exported videos load into the app's Library on reload.
-
-System ffmpeg is preferred; `ffmpeg-static` supplies the fallback for macOS, Windows and Linux. Captions use libass and a bundled Noto Sans font under the SIL Open Font License. Output is H.264/AAC at 30 fps with letterboxing to preserve framing. Uploads allow 40 MB per file and a stitch accepts up to 50 clips. Volume ranges from 0 to 2 (1 is the original music level). Fades are clamped to half the output duration. Caption brace and backslash characters use full-width equivalents to keep them literal rather than subtitle commands.
-
-Media, previews and the export index live under `.comfyfield/`. Intermediate render folders are retained under `.comfyfield/stitch/` for inspection; this version does not automatically clean them up. Validate offline with `node scripts/stitch-checks.mjs`, which generates synthetic clips and tests the core, CLI, MCP and HTTP paths. CI runs it on all three operating systems.
-
-## How it works
-
-- `server/core.js` holds all provider logic: key storage, the fal queue, the fal catalog and schemas, Google, ElevenLabs and ComfyUI. `server/plugin.js` is thin HTTP wiring for the Vite dev server; `server/mcp.js` and `bin/comfyfield.js` reuse the same core.
-- `shared/mapping.js` is the input mapping used by both the browser and the core.
-- `shared/mapping.js` maps the composer's settings (aspect, count, duration) onto each fal model's own input schema, so new fal models work without code changes.
-- `src/lib/catalog.js` lists pinned models, styles and providers. To add a ComfyUI tool, export a workflow with "Save (API)", swap in `{{prompt}}`, `{{seed}}`, `{{width}}` and `{{height}}`, and add an entry.
+Read [AGENTS.md](AGENTS.md) and [CONTRIBUTING.md](CONTRIBUTING.md) before you pick up an issue.
 
 ## License
 
-MIT
+[MIT](LICENSE). Third-party licenses for ffmpeg, model weights, node packs and provider logos are in [NOTICE.md](NOTICE.md).
