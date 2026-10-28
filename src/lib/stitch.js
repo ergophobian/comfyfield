@@ -1,5 +1,7 @@
 export function stitchInputs(flow, id, itemsOf, isRunning = () => false) {
   const node = flow.nodes.find((n) => n.id === id)
+  // While Flows switches flows, a Stitch node from the previous flow can render once against the new one.
+  if (!node) return { clips: [], options: { clips: [], aspect: '16:9' }, signature: '', blocked: true }
   const incoming = []
   let blocked = false
   for (const edge of flow.edges.filter((e) => e.target === id)) {

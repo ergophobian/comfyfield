@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { createEngine, topoOrder, csvPrompts } from '../src/lib/flowEngine.js'
 import { connectionProblem, nodeDefaults } from '../shared/flowRules.js'
+import { stitchInputs } from '../src/lib/stitch.js'
 
 const img = { kind: 'image', provider: 'x', name: 'Img' }
 const vid = { kind: 'video', provider: 'x', name: 'Vid' }
@@ -581,6 +582,12 @@ check('A reviewed song and video both reach the same downstream shot', async () 
 })
 
 let bad = 0
+check('a Stitch node id from another flow reads as empty and blocked, not a crash', async () => {
+  const input = stitchInputs({ nodes: [], edges: [] }, 'stitch-from-old-flow', () => [])
+  assert.deepEqual(input.clips, [])
+  assert.equal(input.blocked, true)
+})
+
 for (const [name, fn] of checks) {
   try { await fn(); console.log('ok   ', name) } catch (err) { bad++; console.log('FAIL ', name, '\n     ', err.message) }
 }
