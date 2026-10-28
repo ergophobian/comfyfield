@@ -24,7 +24,7 @@ const npmCli = [process.env.npm_execpath, path.join(path.dirname(process.execPat
 const packArgs = ['pack', '--json', '--ignore-scripts', '--pack-destination', scratch]
 const packed = npmCli
   ? spawnSync(process.execPath, [npmCli, ...packArgs], { cwd: root, encoding: 'utf8', windowsHide: true })
-  : spawnSync(win ? 'npm.cmd' : 'npm', packArgs.map((a) => JSON.stringify(a)), { cwd: root, encoding: 'utf8', shell: win, windowsHide: true })
+  : spawnSync(win ? 'npm.cmd' : 'npm', win ? packArgs.map((a) => JSON.stringify(a)) : packArgs, { cwd: root, encoding: 'utf8', shell: win, windowsHide: true })
 assert.equal(packed.status, 0, `npm pack failed:\n${packed.stderr}`)
 const [info] = JSON.parse(packed.stdout.slice(packed.stdout.indexOf('[')))
 const files = info.files.map((f) => f.path)
