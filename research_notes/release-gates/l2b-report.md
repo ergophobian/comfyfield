@@ -25,8 +25,8 @@ The initial audit reproduced six package findings: two high and four moderate. A
 
 ## Windows evidence
 
-- Host: `pi-windows`, Windows x64, Node 24.11.1, npm 11.6.2. Before execution: about 220 GB free on D: and 11 GB available memory.
-- A unique `/tmp/comfyfield-l2b-20261025-verify.bundle` was transferred to `D:\comfyfield-lanes\l2b\`; the verification checkout was cloned from that bundle on branch `release-deps` at `f48f917`.
+- Host: `<windows-host>`, Windows x64, Node 24.11.1, npm 11.6.2. Before execution: about 220 GB free on D: and 11 GB available memory.
+- A unique `/tmp/comfyfield-l2b-20261025-verify.bundle` was transferred to `<lane-root>\l2b\`; the verification checkout was cloned from that bundle on branch `release-deps` at `f48f917`.
 - Installs, build, verification scripts and browser fixtures ran sequentially on Windows. No Mac npm install or build ran. No integration checkout or other lane was modified. An initial partial verification was stopped to move temporary test storage from the Windows default temp directory into lane-owned `scratch`; only the restarted completed run counts below. The initial npm operations used npm's default cache; the final run sets its cache under the lane as well.
 - Final launcher sets `PATH=C:\Program Files\Git\bin;%PATH%`, `TEMP`, `TMP`, `COMFYFIELD_HOME` and npm cache to lane-owned paths, and clears provider key variables by name without reading values. Fresh clones contain no environment files or saved keys.
 - Committed runtime inputs tested (LF blobs): `package.json` SHA-256 `851c01c2eea412a690e5700707398fc254faeb12b93f11c3a5773007df159a2a`; `package-lock.json` SHA-256 `3fce75ccbe830a5b0f04fa28ff5aeff924214ded322fbd6f092282b15ab7b0d3`. Subsequent changes are notice/report documentation only.
@@ -41,5 +41,5 @@ The initial audit reproduced six package findings: two high and four moderate. A
 - Failures verbatim: none.
 - `npm audit`: exit 0. Exact summary: `found 0 vulnerabilities`. JSON totals: 0 info, 0 low, 0 moderate, 0 high, 0 critical, 0 total.
 - No major upgrade was retained without the successful build and full verification. These are offline/mock functional fixtures and audit evidence, not live-provider proof.
-- Completed logs: `D:\comfyfield-lanes\l2b\ci.log`, `build.log`, `verify-final.log`, `verify-final-exit.txt`, `audit.log`, `audit.json`, `tested-sha.txt`. Small copies remain in ignored `outputs/release-gates/l2b/` locally. Final process inspection found no remaining Node, Chrome or ffmpeg process whose command line referenced this lane; unrelated processes were left alone.
+- Completed logs: `<lane-root>\l2b\ci.log`, `build.log`, `verify-final.log`, `verify-final-exit.txt`, `audit.log`, `audit.json`, `tested-sha.txt`. Small copies remain in ignored `outputs/release-gates/l2b/` locally. Final process inspection found no remaining Node, Chrome or ffmpeg process whose command line referenced this lane; unrelated processes were left alone.
 - Tested implementation commit: `f48f917`. The final report/notice correction commit changes documentation only; the runtime manifests remain the tested inputs above. Use `git rev-parse release-deps` for the final handoff commit.

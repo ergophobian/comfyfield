@@ -4,7 +4,7 @@ Captured on Windows using headless Chrome and the production build, at 1440px an
 
 Each studio has an editable shot-list approval capture (`mock-<studio>-review-desktop.png`) and finished output captures (`mock-<studio>-desktop.png`, `mock-<studio>-390.png`). The selected controls are exercised in the requests: Explainer uses clay motion and square output with an attached text file and music; Shorts uses clay world, Spanish speech and clean captions; Faceless uses full animation, uploads a voice sample and saves its channel settings. Review captures show locked settings, writer billing disclosure and total/per-shot render estimates.
 
-Validation ran in `C:\comfyfield-story-fixes-2d16` on `pi-windows`, with system and bundled ffmpeg exercised by the Stitch checks. The full verifier uses Git Bash on the test process path for the existing Pod fixtures. No Pod implementation files changed.
+Validation ran in `C:\comfyfield-story-fixes-2d16` on `<windows-host>`, with system and bundled ffmpeg exercised by the Stitch checks. The full verifier uses Git Bash on the test process path for the existing Pod fixtures. No Pod implementation files changed.
 
 Check output:
 

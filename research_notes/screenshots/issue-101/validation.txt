@@ -1,7 +1,7 @@
 Validated source: eeb9534737f68bea754c1ba849076ddf6db90b91
 Rebased main: 7ee3b1c
-Host: pi-windows
-Scratch clone: D:/comfyfield-lanes/issue101-review-20261019
+Host: <windows-host>
+Scratch clone: <lane-root>/issue101-review-20261019
 Git Bash precedes the WSL bash launcher in the validation process path.
 Build and verification both exited with status 0. Commands ran sequentially.
 No real keys, provider calls or paid generations. Screenshots use synthetic mock media.
@@ -224,7 +224,7 @@ check synthetic fixtures with ffmpeg on win32/x64
 check input validation and system ffmpeg preview
 check decoded frame pixels and audio samples
 ok    trims, mixed formats, ordering, captions, clip audio, preview and Library export
-check bundled preview with D:\comfyfield-lanes\issue101-review-20261019\node_modules\ffmpeg-static\ffmpeg.exe
+check bundled preview with <lane-root>\issue101-review-20261019\node_modules\ffmpeg-static\ffmpeg.exe
 Encode clip 1
 Join clips and mix audio
 ok    bundled ffmpeg, portrait aspect, music looping, volume and fades
@@ -234,7 +234,7 @@ check MCP tools
 ok    MCP stitch and export_stitch tools
 check HTTP routes
 ok    HTTP upload, preview, media playback and Library export
-All Stitch checks passed. Synthetic fixtures retained at D:\comfyfield-lanes\issue101-review-20261019\.comfyfield\stitch-checks\clips with spaces ' FwjdbA
+All Stitch checks passed. Synthetic fixtures retained at <lane-root>\issue101-review-20261019\.comfyfield\stitch-checks\clips with spaces ' FwjdbA
 Running studio-checks.mjs
 Studio checks ok: 436 runner cases; upscale modes/scale/size, all six video edits and trim, speech language/delivery/voice, Drama 3/Qwen3-TTS, photo/video lipsync and 33/33 mixed media looks. No provider calls.
 Running theme-check.mjs
@@ -252,15 +252,15 @@ all 6 writer checks passed (mocked network only)
 Running agent-ui-checks.mjs
 Agent UI fixture: http://127.0.0.1:49450/assistant
 Agent UI fixture: http://127.0.0.1:49451/assistant
-agent-ui: Chrome pid 24292, DevTools port 49452, profile D:\comfyfield-lanes\issue101-review-20261019\outputs\browser-profiles\agent-ui-7Ofdyp
+agent-ui: Chrome pid 24292, DevTools port 49452, profile <lane-root>\issue101-review-20261019\outputs\browser-profiles\agent-ui-7Ofdyp
 ok    desktop/mobile chat, approval, canvas presence, stop, conflicting edits and missing-agent setup; screenshots saved
 Running format-ui-check.mjs
-format-ui: Chrome pid 12508, DevTools port 59713, profile D:\comfyfield-lanes\issue101-review-20261019\outputs\browser-profiles\format-ui-PMJw1E
+format-ui: Chrome pid 12508, DevTools port 59713, profile <lane-root>\issue101-review-20261019\outputs\browser-profiles\format-ui-PMJw1E
 UI mock checks ok: app runner, shared sheet, Library after reload, 390px layout, Create generation/feed/camera presets and hidden invalid route. Four mocked generations and one reviewed writer request; no provider calls. Six screenshots saved.
 Running studio-ui-check.mjs
-studio-ui: Chrome pid 9060, DevTools port 64955, profile D:\comfyfield-lanes\issue101-review-20261019\outputs\browser-profiles\studio-ui-LAAA71
+studio-ui: Chrome pid 9060, DevTools port 64955, profile <lane-root>\issue101-review-20261019\outputs\browser-profiles\studio-ui-LAAA71
 Studio UI mock checks ok: 23 mocked generation requests, five studios, all six video edits, real upload URLs, language/delivery/voice/trim vars, Library persistence, disabled unavailable paths and 390px layouts. 25 labeled mock screenshots saved to research_notes/screenshots/issue-101. No provider calls.
 Running widget-browser-checks.mjs
-widget-browser: Chrome pid 12660, DevTools port 65245, profile D:\comfyfield-lanes\issue101-review-20261019\outputs\browser-profiles\widget-browser-7q91My
+widget-browser: Chrome pid 12660, DevTools port 65245, profile <lane-root>\issue101-review-20261019\outputs\browser-profiles\widget-browser-7q91My
 Browser checks passed: PNG mask pixels, face crop and Library pick, aspect ratio, keyboard, touch, video trim/poster, four Flow nodes, 390px layout
 18/18 check scripts passed

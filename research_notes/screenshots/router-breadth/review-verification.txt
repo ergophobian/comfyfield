@@ -1,7 +1,7 @@
 Router review verification
 
-Host: pi-windows
-Scratch clone: C:/Users/User/cf-router-review-32a4422e
+Host: <windows-host>
+Scratch clone: C:~/cf-router-review-32a4422e
 Commands: npx vite build, then node scripts/verify.mjs (sequential)
 Environment: operating-system allowlist only; Git Bash selected; no provider configuration
 All provider calls mocked; no keys, paid runs or protected provider requests
@@ -243,7 +243,7 @@ check synthetic fixtures with ffmpeg on win32/x64
 check input validation and system ffmpeg preview
 check decoded frame pixels and audio samples
 ok    trims, mixed formats, ordering, captions, clip audio, preview and Library export
-check bundled preview with C:\Users\User\cf-router-review-32a4422e\node_modules\ffmpeg-static\ffmpeg.exe
+check bundled preview with C:\Users\<user>\cf-router-review-32a4422e\node_modules\ffmpeg-static\ffmpeg.exe
 Encode clip 1
 Join clips and mix audio
 ok    bundled ffmpeg, portrait aspect, music looping, volume and fades
@@ -253,7 +253,7 @@ check MCP tools
 ok    MCP stitch and export_stitch tools
 check HTTP routes
 ok    HTTP upload, preview, media playback and Library export
-All Stitch checks passed. Synthetic fixtures retained at C:\Users\User\cf-router-review-32a4422e\.comfyfield\stitch-checks\clips with spaces ' QMtaL9
+All Stitch checks passed. Synthetic fixtures retained at C:\Users\<user>\cf-router-review-32a4422e\.comfyfield\stitch-checks\clips with spaces ' QMtaL9
 Running theme-check.mjs
 theme ok
 Running widget-checks.mjs
@@ -272,15 +272,15 @@ all 9 writer checks passed (mocked network only)
 Running agent-ui-checks.mjs
 Agent UI fixture: http://127.0.0.1:63840/assistant
 Agent UI fixture: http://127.0.0.1:63841/assistant
-agent-ui: Chrome pid 29888, DevTools port 63845, profile C:\Users\User\cf-router-review-32a4422e\outputs\browser-profiles\agent-ui-5v4Tdx
+agent-ui: Chrome pid 29888, DevTools port 63845, profile C:\Users\<user>\cf-router-review-32a4422e\outputs\browser-profiles\agent-ui-5v4Tdx
 ok    desktop/mobile chat, approval, canvas presence, stop, conflicting edits and missing-agent setup; screenshots saved
 Running format-ui-check.mjs
-format-ui: Chrome pid 6412, DevTools port 63654, profile C:\Users\User\cf-router-review-32a4422e\outputs\browser-profiles\format-ui-etKNyb
+format-ui: Chrome pid 6412, DevTools port 63654, profile C:\Users\<user>\cf-router-review-32a4422e\outputs\browser-profiles\format-ui-etKNyb
 UI mock checks ok: app runner, shared sheet, Library after reload, 390px layout, Create generation/feed/camera presets and hidden invalid route. Four mocked generations and one reviewed writer request; no provider calls. Six screenshots saved.
 Running widget-browser-checks.mjs
-widget-browser: Chrome pid 28168, DevTools port 56399, profile C:\Users\User\cf-router-review-32a4422e\outputs\browser-profiles\widget-browser-hYZeHp
+widget-browser: Chrome pid 28168, DevTools port 56399, profile C:\Users\<user>\cf-router-review-32a4422e\outputs\browser-profiles\widget-browser-hYZeHp
 Browser checks passed: PNG mask pixels, face crop and Library pick, aspect ratio, keyboard, touch, video trim/poster, four Flow nodes, 390px layout
 Running router-ui-check.mjs
-router-ui: Chrome pid 17396, DevTools port 62438, profile C:\Users\User\cf-router-review-32a4422e\outputs\browser-profiles\router-ui-AhsBhU
+router-ui: Chrome pid 17396, DevTools port 62438, profile C:\Users\<user>\cf-router-review-32a4422e\outputs\browser-profiles\router-ui-AhsBhU
 Router UI checks passed: fake key gating, 10 picker selections and mocked generations, independent native payloads, combined reference limits, partial batch recovery with stable keys and Library persistence, desktop and 390px layouts. Eight mock screenshots saved.
 17/17 check scripts passed

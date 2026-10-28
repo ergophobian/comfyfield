@@ -1,6 +1,6 @@
 # Voice library validation
 
-Validated on 2026-10-19 in the isolated Windows clone `C:/Users/User/comfyfield-voice-library-81c1eca8`, through `ssh pi-windows`, using Node 24.11.1. Installation, build, checks and headless Chrome ran sequentially on Windows. No provider requests or paid generations were made. No keys or environment files were loaded by the voice fixture.
+Validated on 2026-10-19 in the isolated Windows clone `C:~/comfyfield-voice-library-81c1eca8`, through `ssh <windows-host>`, using Node 24.11.1. Installation, build, checks and headless Chrome ran sequentially on Windows. No provider requests or paid generations were made. No keys or environment files were loaded by the voice fixture.
 
 Commands:
 

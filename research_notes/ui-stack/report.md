@@ -33,13 +33,13 @@ No feature was intentionally dropped. The changed execution mechanism replaces B
 
 Code revision: `c023b40c4626966a572fc079e1fa5a190b422065`.
 
-Host: `pi-windows`, Node 24.11.1. Worktree: `D:\comfyfield-lanes\ui-stack`. Provider environment configuration was cleared before running checks, and the validation home was isolated. Checks use synthetic connections and mocked provider requests. No paid generation or shell key was used.
+Host: `<windows-host>`, Node 24.11.1. Worktree: `<lane-root>\ui-stack`. Provider environment configuration was cleared before running checks, and the validation home was isolated. Checks use synthetic connections and mocked provider requests. No paid generation or shell key was used.
 
 - `npx vite build`: passed. Existing large-bundle warning remains.
 - `node scripts/verify.mjs`: 26/27 check scripts passed. All integration, jobs, runner, Router and browser checks passed. Only `pod-checks.mjs` failed: 77 passed and seven failed, matching the known Windows bash-path failures described in the task. The full verifier therefore exits 1; this is not an all-green run.
 - New coverage: durable Router payloads/keys and partial files; failed and pending batch reloads; terminal-key rotation after reload; restored format Retry preflight and failed-take-only execution; cancellation after reload; server error fields through disk and polling; Router cancellation preserving request identity; media-picker upload with combined reference limits.
 
-Logs remain in `D:\comfyfield-lanes\ui-stack\outputs\ui-stack-build.log` and `ui-stack-verify.log`. The Windows worktree remains available for review; it has not landed.
+Logs remain in `<lane-root>\ui-stack\outputs\ui-stack-build.log` and `ui-stack-verify.log`. The Windows worktree remains available for review; it has not landed.
 
 The attached phone screenshot is the production interface with mocked connections, captured by the Windows browser check. It is not evidence of a paid generation. The browser fixture also writes technical reload/retry/cancel screenshots under `research_notes/screenshots/router-breadth/integration-*.png` on Windows.
 
