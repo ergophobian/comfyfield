@@ -2,7 +2,8 @@
 import { appsIn, categories, formats, hubs, userFormats, yoursHub } from '../../lib/formats/index.js'
 
 const media = ['image', 'video', 'audio', 'draw', 'mask', 'face', 'crop']
-export const mainInput = (format) => format.inputs.find((i) => media.includes(i.type))
+// An input marked main: false (an optional style reference) stays in the settings panel, out of the stage.
+export const mainInput = (format) => format.inputs.find((i) => media.includes(i.type) && i.main !== false)
 
 export const matches = (f, q) => !q || `${f.name} ${f.blurb} ${f.runsOn || ''}`.toLowerCase().includes(q)
 

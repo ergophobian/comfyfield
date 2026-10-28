@@ -3,12 +3,16 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { preview } from 'vite'
 import { startBrowser, uiTimeout } from './browser.mjs'
 
-let posted, items = [{ id: 'idea-1', channel: 'channel-1', idea: 'Mock finished story', status: 'made', libraryItem: '/media/mock.mp4' }]
+let posted, added, noPostiz = false, items = [{ id: 'idea-1', channel: 'channel-1', idea: 'Mock finished story', status: 'made', libraryItem: '/media/mock.mp4' }]
 const server = await preview({ configFile: false, envFile: false, plugins: [{ name: 'postiz-mock', configurePreviewServer(s) {
   s.middlewares.use(async (req, res, next) => {
     const url = new URL(req.url, 'http://localhost')
     if (!url.pathname.startsWith('/api/')) return next()
     res.setHeader('Content-Type', 'application/json')
+    if (url.pathname === '/api/postiz/channels' && noPostiz) {
+      res.statusCode = 400
+      return res.end(JSON.stringify({ error: 'Connect Postiz in Connections first.' }))
+    }
     if (url.pathname === '/api/postiz/channels') return res.end(JSON.stringify([{ id: 'channel-1', name: 'Mock channel', identifier: 'bluesky' }]))
     if (url.pathname === '/api/postiz/schedule') {
       let raw = ''; for await (const chunk of req) raw += chunk
@@ -19,6 +23,12 @@ const server = await preview({ configFile: false, envFile: false, plugins: [{ na
       let raw = ''; for await (const chunk of req) raw += chunk
       items[0] = { ...items[0], ...JSON.parse(raw) }
       return res.end(JSON.stringify(items[0]))
+    }
+    if (url.pathname === '/api/queue' && req.method === 'POST') {
+      let raw = ''; for await (const chunk of req) raw += chunk
+      added = { id: 'idea-2', status: 'idea', ...JSON.parse(raw) }
+      items.push(added)
+      return res.end(JSON.stringify(added))
     }
     if (url.pathname === '/api/queue') return res.end(JSON.stringify(items))
     if (url.pathname === '/api/library/generations') return res.end('[]')
@@ -64,7 +74,19 @@ try {
   await new Promise((r) => setTimeout(r, 100))
   const queueShot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false })
   writeFileSync('research_notes/postiz/mock-queue-390.png', Buffer.from(queueShot.data, 'base64'))
-  console.log('Postiz UI checks passed: 390px queue and sheet, draft request, queue status, mock screenshots. No real Postiz calls.')
+  // Without Postiz the queue still takes ideas: the channel becomes a name the user types.
+  noPostiz = true
+  await browser.send('Page.navigate', { url: `http://127.0.0.1:${server.httpServer.address().port}/library?tab=queue` })
+  await wait('document.body.innerText.includes("You can still name a channel yourself")')
+  assert.equal(await evaluate('document.querySelector("#queue-channel").tagName'), 'INPUT', 'Without Postiz the channel is a text field')
+  const type = (selector, value) => evaluate(`(() => { const el = document.querySelector(${JSON.stringify(selector)}); Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el), 'value').set.call(el, ${JSON.stringify(value)}); el.dispatchEvent(new Event('input', { bubbles: true })) })()`)
+  await type('#queue-channel', 'tiktok-main')
+  await type('#queue-idea', 'Typed channel idea')
+  await evaluate('[...document.querySelectorAll("button")].find(b => b.textContent === "Add idea").click()')
+  await wait('document.body.innerText.includes("Typed channel idea")')
+  assert.equal(added.channel, 'tiktok-main')
+  assert.ok(await evaluate('document.documentElement.scrollWidth <= 390'), 'Queue without Postiz fits 390px')
+  console.log('Postiz UI checks passed: 390px queue and sheet, draft request, queue status, queue without Postiz, mock screenshots. No real Postiz calls.')
 } finally {
   await browser?.close()
   await new Promise((r) => server.httpServer.close(r))

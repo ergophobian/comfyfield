@@ -31,7 +31,7 @@ const slideWrap = 'A vertical 9:16 carousel slide. Set the words in double quote
 const nextSlideWrap = 'A vertical 9:16 carousel slide in the same font, colors and layout as the first image, with a new picture and new words. Set the words in double quotes exactly as written, and add no other words. {written}'
 
 const product = { id: 'product', type: 'image', label: 'Product photo', optional: true, half: true }
-const reference = { id: 'reference', type: 'image', label: 'Character or style reference', optional: true, half: true }
+const reference = { id: 'reference', type: 'image', label: 'Character or style reference', optional: true, half: true, main: false }
 const length = { id: 'length', type: 'choice', label: 'Length', half: true, default: '10', options: [
   { id: '5', label: '5 seconds', params: { duration: 5 } },
   { id: '8', label: '8 seconds', params: { duration: 8 } },

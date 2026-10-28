@@ -11,6 +11,9 @@ function Provider({ id, info, state, onSaved }) {
   const [values, setValues] = useState({})
   const [msg, setMsg] = useState(null)
   const [saving, setSaving] = useState(false)
+  // A saved key counts as connected; after a failed test the badge says so instead.
+  const [failed, setFailed] = useState(false)
+  const connected = state?.connected && !failed
 
   const save = async () => {
     setSaving(true)
@@ -24,6 +27,7 @@ function Provider({ id, info, state, onSaved }) {
       return
     }
     const test = await testConnection(id).catch(() => ({ ok: false }))
+    setFailed(!test.ok)
     setMsg(test.ok ? 'Connected' : test.error ? `Saved, but the test failed. ${test.error}` : 'Saved, but the test call failed. Check the key.')
     setValues({})
     setSaving(false)
@@ -34,7 +38,7 @@ function Provider({ id, info, state, onSaved }) {
     <div className="conn glass">
       <div className="conn-top">
         <h3>{info.name}</h3>
-        <span className={`status${state?.connected ? ' ok' : ''}`}>{state?.connected ? info.on || 'Connected' : info.off || 'Not connected'}</span>
+        <span className={`status${connected ? ' ok' : ''}`}>{connected ? info.on || 'Connected' : failed ? 'Test failed' : info.off || 'Not connected'}</span>
       </div>
       {info.lead && <p className="conn-lead">{info.lead}</p>}
       <p>{info.blurb}</p>

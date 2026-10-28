@@ -142,7 +142,7 @@ export default function FormatWorkspace({ format, motion = false, showMore = tru
           {showMore && <ShareFormat format={format} github={connections.github?.connected} />}
           <div className="app-go">
             <button className="btn-blue" disabled={running || !wired || missing.length > 0 || !connected}>
-              {running ? 'Working' : `Generate ${nouns[format.kind] || ''}`}
+              {running ? 'Working' : `Generate ${nouns[format.kind] || ''}${format.outputs?.length > 1 && ['image', 'video'].includes(format.kind) ? 's' : ''}`}
               {wired && each && <span className="app-cost">{each.approx ? '≈' : ''}{money(each.usd)}</span>}
             </button>
             {note && <p className="sheet-note">{note}</p>}

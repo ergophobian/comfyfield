@@ -330,6 +330,16 @@ try {
   await evaluate('document.querySelector(".connect-comfy .btn-blue").click()')
   await wait('!document.querySelector(".connect-comfy")')
   assert.deepEqual(savedKeys, [{ id: 'comfy', values: { key: 'fake-key-for-qa' } }, { id: 'comfy', values: { key: 'mock-comfy-key' } }])
+  // A key that fails its test must not show Connected on its card.
+  connectionTestOk = false
+  await goto('/connections')
+  await wait('document.querySelector("#postiz-key")')
+  await evaluate('document.querySelector("#postiz-key").focus()')
+  await cdp('Input.insertText', { text: 'fake-key' })
+  await evaluate('document.querySelector("#postiz-key").closest(".conn").querySelector(".conn-actions .btn-blue").click()')
+  await wait('document.querySelector("#postiz-key").closest(".conn").querySelector(".conn-msg")')
+  assert.equal(await evaluate('document.querySelector("#postiz-key").closest(".conn").querySelector(".status").textContent'), 'Test failed')
+  connectionTestOk = true
   connected = true
   generationImports = [{ id: 'mock-proof-import', url: '/mock-proof.svg', kind: 'image', model: 'Mock proof import', aspect: '4:5', caption: 'Mock imported proof; no paid run', created: Date.now(), imported: true }]
   await evaluate('localStorage.removeItem("comfyfield.library")')
