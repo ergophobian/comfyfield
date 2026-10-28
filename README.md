@@ -77,6 +77,7 @@ Other clients take the same command, `node /absolute/path/to/comfyfield/bin/comf
 
 - Generation: `list_models`, `get_model_schema`, `generate`, `write_prompts`, `balance`
 - Stitch: `stitch`, `export_stitch`
+- Scheduling: `postiz_channels`, `schedule_post`, `queue_list`, `queue_add`, `queue_update`, `queue_remove`; CLI: `comfyfield schedule` and `comfyfield queue`. See [Postiz setup](docs/postiz.md).
 - Flows: `list_flows`, `get_flow`, `create_flow`, `add_node`, `connect_nodes`, `update_node`, `remove_node`, `run_flow`
 - Teamwork: `list_agents`, `assign_agent`, `my_tasks`
 

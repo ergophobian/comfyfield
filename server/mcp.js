@@ -25,6 +25,17 @@ export function createServer({ invoke, handlers = new Map(), flowService = flows
   }
   const kind = z.enum(['image', 'video', 'audio']).optional().describe('Filter by media kind')
 
+  register('postiz_channels', { description: 'List connected Postiz channels. Read only.', inputSchema: {} }, tool(() => core.postizChannels()))
+  register('schedule_post', {
+    description: 'Upload finished Library media and schedule a post or save a Postiz draft. Requires explicit user authorization to schedule. Reuse requestKey on retries; reserved keys are refused. Settings are keyed by integration ID; use the Postiz provider settings docs.',
+    inputSchema: { media: z.array(z.string()).min(1), caption: z.string(), channels: z.array(z.string()).min(1), date: z.string().optional(), draft: z.boolean().optional(), requestKey: z.string(), settings: z.record(z.string(), z.record(z.string(), z.unknown())).optional() },
+  }, tool((args) => core.schedulePost(args)))
+  const queueFields = { channel: z.string(), idea: z.string(), format: z.string().optional(), status: z.enum(['idea', 'made', 'scheduled']).optional(), libraryItem: z.string().optional(), postizId: z.string().optional(), when: z.string().optional() }
+  register('queue_list', { description: 'List queued ideas, optionally per channel.', inputSchema: { channel: z.string().optional() } }, tool((args) => core.queueList(args)))
+  register('queue_add', { description: 'Save an idea for a channel. Does not publish.', inputSchema: queueFields }, tool((args) => core.queueAdd(args)))
+  register('queue_update', { description: 'Update an idea, output link or scheduling status. Does not publish.', inputSchema: { id: z.string(), ...Object.fromEntries(Object.entries(queueFields).map(([k, v]) => [k, v.optional()])) } }, tool(({ id, ...changes }) => core.queueUpdate(id, changes)))
+  register('queue_remove', { description: 'Remove an idea from the local queue.', inputSchema: { id: z.string() } }, tool(({ id }) => core.queueRemove(id)))
+
   register('stitch', {
     description: 'Join ordered clips locally with ffmpeg, preserving clip audio. Optional trims, burned captions and looped music with volume and fade. No paid calls. Set preview to review first, then call export_stitch to save that exact file to the Library.',
     inputSchema: {

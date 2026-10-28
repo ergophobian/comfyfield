@@ -1,3 +1,4 @@
+import Schedule from './Schedule.jsx'
 import { PageArt } from '../Art.jsx'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -31,6 +32,7 @@ function downloadAll(list) {
 }
 
 export default function Generations({ gens }) {
+  const [schedule, setSchedule] = useState(null)
   const [filter, setFilter] = useState('all')
   const [query, setQuery] = useState('')
   const [folder, setFolder] = useState('all')
@@ -144,6 +146,7 @@ export default function Generations({ gens }) {
                   <div className="lib-acts">
                     <Act label={it.approved ? 'Remove approval' : 'Approve'} on={it.approved} onClick={() => gens.toggleApprove(it.id)}><IconCheck /></Act>
                     <a className="lib-act" href={it.url} download={fileName(it)} aria-label="Download" title="Download" onClick={(e) => e.stopPropagation()}><IconDownload /></a>
+                    {['image', 'video'].includes(it.kind) && <button type="button" className="btn-soft xs" onClick={(e) => { e.stopPropagation(); setSchedule(it) }}>Schedule</button>}
                     <Act label="Copy prompt" onClick={() => copy(it)}><IconCopy /></Act>
                     <Act label="Delete" onClick={() => { gens.dismiss(it.id); fs.forget([it.id]) }}><IconTrash /></Act>
                   </div>
@@ -174,6 +177,7 @@ export default function Generations({ gens }) {
         </div>
       )}
 
+      {schedule && <Schedule item={schedule} onClose={() => setSchedule(null)} />}
       {sheet && <FolderSheet sheet={sheet} onClose={() => setSheet(null)}
         onSave={(name) => {
           if (sheet.mode === 'rename') fs.rename(sheet.folder.id, name)
