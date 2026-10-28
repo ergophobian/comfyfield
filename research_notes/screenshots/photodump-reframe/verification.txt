@@ -1,7 +1,7 @@
 Photodump and Reframe review verification
 
 Date: 2026-10-19
-Host: pi-windows
+Host: <windows-host>
 Scratch clone: C:/temp/comfyfield-photodump-review-20261019
 Runtime: Node 24.11.1, Windows, headless Chrome
 Setup: npm ci --no-audit --no-fund

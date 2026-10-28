@@ -31,7 +31,7 @@ The merge commit `f3331c80c4db7d9aa3ec66b578a41191334baff3` retains both parents
 - `npx vite build`: passed on Windows at the validated code commit above.
 - `node scripts/verify.mjs`: **68/68 check scripts passed**, exit 0, including the new demo-kit check from main.
 - The standalone Flows check passed 29/29. The studio check passed 440 runner cases.
-- Windows source files were unchanged after verification. The checkout, build logs and raw verification logs are under `D:\comfyfield-lanes\l1`; the final pass also uses that lane's temporary directory and npm cache. No install, application build or JavaScript check ran on the Mac.
+- Windows source files were unchanged after verification. The checkout, build logs and raw verification logs are under `<lane-root>\l1`; the final pass also uses that lane's temporary directory and npm cache. No install, application build or JavaScript check ran on the Mac.
 - [Captured final verification log](issue-209-windows-verify.log), sha256 `1eebd0907eddabc9d2c271dd3465f33b2918fb444f90d1f3561c5b83bf7a07bc`.
 
 The fixes passed 67/67 on `f63c341` before the last main merge. The original full pass on `78af226` was 63/67. Its failures were corrected before the passing runs:

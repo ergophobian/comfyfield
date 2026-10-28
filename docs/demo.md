@@ -115,13 +115,13 @@ This client launches the actual local stdio MCP server, calls `get_flow`, then `
 Create the recording-only flow once, with enough time to select it:
 
 ```sh
-node scripts/demo-agent.mjs --home D:/comfyfield-lanes/l4/recording --delay 15000 --hold 6000
+node scripts/demo-agent.mjs --home <lane-root>/l4/recording --delay 15000 --hold 6000
 ```
 
 Open **Flows → Recording · agent prompt edit**, select the left prompt node and leave its panel visible. The command prints its flow id. For the actual take, repeat against that flow with different starting text, or target the real Cinema shot 2 using its saved flow id:
 
 ```sh
-node scripts/demo-agent.mjs --home D:/comfyfield-lanes/l4/recording --flow <saved-flow-id> --node shot-2 --delay 5000 --hold 6000 --prompt "A violet portal opens over wet cobblestones. Camera: Slow push toward the forming portal. Continuity: Silver raincoat, black satchel, violet rim light, courier faces screen right."
+node scripts/demo-agent.mjs --home <lane-root>/l4/recording --flow <saved-flow-id> --node shot-2 --delay 5000 --hold 6000 --prompt "A violet portal opens over wet cobblestones. Camera: Slow push toward the forming portal. Continuity: Silver raincoat, black satchel, violet rim light, courier faces screen right."
 ```
 
 For the default recording-only flow use `--node prompt` and omit `--prompt` to apply: “A red ceramic cup on wet slate, morning sunlight, steam curling above the rim, slow push in”. Restore a different starting prompt in the panel before every retake so the edit is visible. On a Cinema model node this changes the actual Flow prompt, not `cinemaShot` editor metadata; record that edit on the canvas, and do not imply it rendered or return to Cinema to regenerate it.
@@ -147,7 +147,7 @@ Create an untracked manifest outside the checkout. Replace the example paths and
 Add shot 2, shot 3 and the replacement shot 2 with their own real files/job ids. For an assembled final export, retain its constituent job evidence and seed the four original provider clips; use the app's actual Stitch/export path to create the final Library item. A supplied job id is operator-attested metadata, not a provider verification performed by this script.
 
 ```sh
-node scripts/demo-seed.mjs --home D:/comfyfield-lanes/l4/recording --manifest D:/comfyfield-lanes/l4/recording-media/media.json
+node scripts/demo-seed.mjs --home <lane-root>/l4/recording --manifest <lane-root>/l4/recording-media/media.json
 ```
 
 Reload `/assets` and select **Generations**. Captions and model labels visibly begin **Pre-generated · recorded earlier** or **Source photo · imported**. Each import retains `demoSource.sha256`, provider and provider job id for audit. Keep the recorded-earlier overlay when presenting imported media even if a player hides its caption. No generated media ships in this branch. Never use check fixtures, synthetic test clips or mock screenshots as competition outputs.

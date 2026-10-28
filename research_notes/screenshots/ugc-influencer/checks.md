@@ -1,6 +1,6 @@
 # Verification report
 
-Verified October 19, 2026 on pi-windows, Windows 11, Node 24.11.1. Builds and checks ran sequentially in the scratch clone `C:/comfyfield-ugc-fixes-cb037261`. The Mac edited files, inspected screenshots and committed. No provider calls, keys, paid generations or live Sessions were used.
+Verified October 19, 2026 on <windows-host>, Windows 11, Node 24.11.1. Builds and checks ran sequentially in the scratch clone `C:/comfyfield-ugc-fixes-cb037261`. The Mac edited files, inspected screenshots and committed. No provider calls, keys, paid generations or live Sessions were used.
 
 `git fetch origin` and `git rebase origin/main` completed before changes; the branch was already current. Implementation base: `738dfc26ebcaf27f5a7e5242480f6cd7d01f9c94`. Main: `7ee3b1c9c84ba1c5e59b9b4b3069f8af6ecef0c1`. All 19 implementation/test files in [the source manifest](tested-source.json) matched the Windows clone by sha256. This report, documentation and artifacts are excluded from that manifest.
 

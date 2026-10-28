@@ -92,7 +92,7 @@ qwen2511_photodump: references, canvas, prompt and saved output valid; untested 
 qwen2511_reframe: references, canvas, prompt and saved output valid; untested live
 41 Cloud alternates: core node contracts, links, placeholders and optional references valid; two Trellis graphs retain other Pod-only files. No live runs.
 Running cost-check.mjs
-cost: Chrome pid 11452, DevTools port 57954, profile D:\comfyfield-lanes\l1\repo\outputs\browser-profiles\cost-7sWmyZ
+cost: Chrome pid 11452, DevTools port 57954, profile <lane-root>\l1\repo\outputs\browser-profiles\cost-7sWmyZ
 Cost checks ok: Cloud seconds table, Comfy Cloud and Router estimates, Upscale in the Create video estimate, spend cap batching, Connections cap, ask, Cancel and Run anyway, 390px. Mocked runs only; screenshots saved.
 Running docker-check.mjs
 docker-check: ok
@@ -355,7 +355,7 @@ Presenter regression checks ok: full-format Session preflight, no duplicate stag
 Running requirements-checks.mjs
 Requirements checks ok: read-only endpoint, null input rejection, Router writer availability, inline Cloud alternates and Qwen reference-image resolution. Synthetic connections only.
 Running router-models-check.mjs
-router-models: Chrome pid 31040, DevTools port 56379, profile D:\comfyfield-lanes\l1\repo\outputs\browser-profiles\router-models-42izC1
+router-models: Chrome pid 31040, DevTools port 56379, profile <lane-root>\l1\repo\outputs\browser-profiles\router-models-42izC1
 Router models checks ok: catalog paging, ten minute cache per key, merge with hand rows, no-key state on Models and in the picker, company groups with live prices, 390px. Mocked catalog only; screenshots saved.
 Running share-checks.mjs
 Share checks passed: stripping, parsing, gist links, mocked gist create and read, import with origin
@@ -366,7 +366,7 @@ check synthetic fixtures with ffmpeg on win32/x64
 check input validation and system ffmpeg preview
 check decoded frame pixels and audio samples
 ok    trims, mixed formats, ordering, captions, clip audio, preview and Library export
-check bundled preview with D:\comfyfield-lanes\l1\repo\node_modules\ffmpeg-static\ffmpeg.exe
+check bundled preview with <lane-root>\l1\repo\node_modules\ffmpeg-static\ffmpeg.exe
 Encode clip 1
 Join clips and mix audio
 ok    bundled ffmpeg, portrait aspect, music looping, volume and fades
@@ -378,7 +378,7 @@ check MCP tools
 ok    MCP stitch and export_stitch tools
 check HTTP routes
 ok    HTTP upload, preview, media playback and Library export
-All Stitch checks passed. Synthetic fixtures retained at D:\comfyfield-lanes\l1\repo\.comfyfield\stitch-checks\clips with spaces ' gDI9Ud
+All Stitch checks passed. Synthetic fixtures retained at <lane-root>\l1\repo\.comfyfield\stitch-checks\clips with spaces ' gDI9Ud
 check story stills and per-shot narration
 ok    story stills, narration, frozen video tails and boxed captions
 ok    app media only, narration duration cap and render cleanup
@@ -414,22 +414,22 @@ ok    Router writer keeps the supplied logical key and exposes request ids on ev
 ok    missing both keys fails without a request; Google remains preferred when configured
 all 9 writer checks passed (mocked network only)
 Running ads-ui-checks.mjs
-ads-studios: Chrome pid 32532, DevTools port 61687, profile D:\comfyfield-lanes\l1\repo\outputs\browser-profiles\ads-studios-QZNtaa
+ads-studios: Chrome pid 32532, DevTools port 61687, profile <lane-root>\l1\repo\outputs\browser-profiles\ads-studios-QZNtaa
 Ads studio browser checks ok: both links imported, bad page recovery, editable scripts and storyboard, rights and script approval block rendering, primary photo selection, rejected page instructions, partial failure retry, images/video/voiceover requests, result approval, Library after reload, desktop and 390px. Four mock render attempts including one targeted retry, two writer requests and one Stitch mock; no provider calls. Ten screenshots saved.
 Running agent-ui-checks.mjs
 Agent UI fixture: http://127.0.0.1:64646/assistant
 Agent UI fixture: http://127.0.0.1:64647/assistant
-agent-ui: Chrome pid 12912, DevTools port 64648, profile D:\comfyfield-lanes\l1\repo\outputs\browser-profiles\agent-ui-WNTqNM
+agent-ui: Chrome pid 12912, DevTools port 64648, profile <lane-root>\l1\repo\outputs\browser-profiles\agent-ui-WNTqNM
 ok    desktop/mobile chat, approval, canvas presence, stop, live sync with local selection, agent roster and assignment, and missing-agent setup; screenshots saved
 Running ascii-ui-check.mjs
-ascii-ui: Chrome pid 25120, DevTools port 51946, profile D:\comfyfield-lanes\l1\repo\outputs\browser-profiles\ascii-ui-M5v1PP
+ascii-ui: Chrome pid 25120, DevTools port 51946, profile <lane-root>\l1\repo\outputs\browser-profiles\ascii-ui-M5v1PP
 live loop: 15 frames per second, worst live frame 1.000 ms, full repaint 10.600 ms
 1440px, 1x: 8208 cells, 53 redrawn per frame, mean 0.146 ms, p95 0.200 ms, p99 0.300 ms, max 1.700 ms
 390px, 1x: 2067 cells, 12 redrawn per frame, mean 0.057 ms, p95 0.100 ms, p99 0.200 ms, max 0.800 ms
 1440px, 2x: 8208 cells, 52 redrawn per frame, mean 0.165 ms, p95 0.300 ms, p99 0.300 ms, max 1.900 ms
 ascii ui ok
 Running cinema-ui-check.mjs
-cinema-ui: Chrome pid 35740, DevTools port 54615, profile D:\comfyfield-lanes\l1\repo\outputs\browser-profiles\cinema-ui-eJnqzH
+cinema-ui: Chrome pid 35740, DevTools port 54615, profile <lane-root>\l1\repo\outputs\browser-profiles\cinema-ui-eJnqzH
 check desktop: plan and edit
 check desktop: render and per-shot review
 check desktop: replace, re-stitch and export
@@ -443,16 +443,16 @@ Running demo-kit-ui-checks.mjs
 ok    cloud dry-run reads no keys, env file or provider configuration
 ok    recording plan uses exact Cinema dimensions, four takes and the mapped image edit
 ok    local Library imports have visible provenance, byte hashes and repeat-safe ids; missing evidence is refused
-demo-mcp: Chrome pid 31324, DevTools port 50562, profile D:\comfyfield-lanes\l1\repo\outputs\browser-profiles\demo-mcp-XIdYtp
+demo-mcp: Chrome pid 31324, DevTools port 50562, profile <lane-root>\l1\repo\outputs\browser-profiles\demo-mcp-XIdYtp
 ok    real stdio MCP edits a node; production canvas refreshes and shows cursor/badge; session exits cleanly; screenshot is offline evidence only
 Running flow-draft-ui-check.mjs
-flow-draft-ui: Chrome pid 25140, DevTools port 60596, profile D:\comfyfield-lanes\l1\repo\outputs\browser-profiles\flow-draft-ui-kbN9lm
+flow-draft-ui: Chrome pid 25140, DevTools port 60596, profile <lane-root>\l1\repo\outputs\browser-profiles\flow-draft-ui-kbN9lm
 [33mAssets in public directory cannot be imported from JavaScript.
 If you intend to import that asset, put the file in the src directory, and use [36m/src/art/video/index.json[33m instead of [36m/public/art/video/index.json[33m.
 If you intend to use the URL of that asset, use [36m/art/video/index.json?url[33m.[39m
 Flow draft browser checks passed: ghost nodes and edges, dropped reason, discard, accept saves real nodes, 390px
 Running flow-image-ui-check.mjs
-flow-image-ui: Chrome pid 3364, DevTools port 59175, profile D:\comfyfield-lanes\l1\repo\outputs\browser-profiles\flow-image-ui-goHztx
+flow-image-ui: Chrome pid 3364, DevTools port 59175, profile <lane-root>\l1\repo\outputs\browser-profiles\flow-image-ui-goHztx
 [33mAssets in public directory cannot be imported from JavaScript.
 If you intend to import that asset, put the file in the src directory, and use [36m/src/art/video/index.json[33m instead of [36m/public/art/video/index.json[33m.
 If you intend to use the URL of that asset, use [36m/art/video/index.json?url[33m.[39m
@@ -462,41 +462,41 @@ If you intend to use the URL of that asset, use [36m/art/video/index.json?url[
 Flow image browser checks passed: legacy data URL migrates, upload state, failure message, upload stores the URL, reload keeps it
 Running flow-library-ui-check.mjs
 ok    flow store: outputs saved and tagged; Approve, Send, Rerun and Run rules unchanged
-flow-library-ui: Chrome pid 5316, DevTools port 57387, profile D:\comfyfield-lanes\l1\repo\outputs\browser-profiles\flow-library-ui-If7C3c
+flow-library-ui: Chrome pid 5316, DevTools port 57387, profile <lane-root>\l1\repo\outputs\browser-profiles\flow-library-ui-If7C3c
 ok    Flows page Run and Send save four tagged takes to Library > Generations, at 1440px and 390px; no keys or paid calls
 Running format-share-ui-check.mjs
-format-share-ui: Chrome pid 35584, DevTools port 56692, profile D:\comfyfield-lanes\l1\repo\outputs\browser-profiles\format-share-ui-tWa1JB
+format-share-ui: Chrome pid 35584, DevTools port 56692, profile <lane-root>\l1\repo\outputs\browser-profiles\format-share-ui-tWa1JB
 [33mAssets in public directory cannot be imported from JavaScript.
 If you intend to import that asset, put the file in the src directory, and use [36m/src/art/video/index.json[33m instead of [36m/public/art/video/index.json[33m.
 If you intend to use the URL of that asset, use [36m/art/video/index.json?url[33m.[39m
 Format share browser checks passed: file and gist import into Yours, refusal message, gist share, remove, 390px
 Running format-ui-check.mjs
-format-ui: Chrome pid 33748, DevTools port 54958, profile D:\comfyfield-lanes\l1\repo\outputs\browser-profiles\format-ui-9ci9Iv
+format-ui: Chrome pid 33748, DevTools port 54958, profile <lane-root>\l1\repo\outputs\browser-profiles\format-ui-9ci9Iv
 Video cover browser checks ok: poster under reduced motion and Save-Data, visible inline playback, offscreen pause, four-cover ceiling, failed media falls back to still then gradient, desktop/390px screenshots
 UI mock checks ok: app runner, shared sheet, Library after reload, 390px layout, Create generation/feed/camera presets and hidden invalid route. Failed writer and render sessions recover through Retry failed without repeating completed steps, and insufficient credits links to Comfy; no provider calls. First-run Connections notice and link, Comfy first in Connections, and the inline Connect Comfy prompt on Create checked at 390px. Labeled mock proof import deduplicates on reload and deletes on the server. Live Comfy progress on the render tile. Eleven screenshots saved.
 Running mesh-ui-check.mjs
-mesh-ui: Chrome pid 37860, DevTools port 65182, profile D:\comfyfield-lanes\l1\repo\outputs\browser-profiles\mesh-ui-ECVZkn
+mesh-ui: Chrome pid 37860, DevTools port 65182, profile <lane-root>\l1\repo\outputs\browser-profiles\mesh-ui-ECVZkn
 Mesh UI checks ok: not rig-ready note and print choice on the sheet, 3D filter, card still, viewer with drag, closed surface note, STL action and 390px fit. No provider calls.
 Running photodump-reframe-ui-check.mjs
-photodump-reframe-ui: Chrome pid 20120, DevTools port 63935, profile D:\comfyfield-lanes\l1\repo\outputs\browser-profiles\photodump-reframe-ui-YgIOje
+photodump-reframe-ui: Chrome pid 20120, DevTools port 63935, profile <lane-root>\l1\repo\outputs\browser-profiles\photodump-reframe-ui-YgIOje
 Photodump and Reframe mock browser checks passed: 10 saved images, three references, permission gates, saved character, dimensions, prompts, 3-success/1-failure per-shot and bulk recovery, matching/extreme ratio guards, unwired video, Library after reload and desktop/390px screenshots. No provider calls.
 Running presenter-ui-check.mjs
-presenter-ui: Chrome pid 12456, DevTools port 55712, profile D:\comfyfield-lanes\l1\repo\outputs\browser-profiles\presenter-ui-peytCn
+presenter-ui: Chrome pid 12456, DevTools port 55712, profile <lane-root>\l1\repo\outputs\browser-profiles\presenter-ui-peytCn
 Presenter UI checks ok: full-format preflight, writer-only retry, rendering input lock, speech limit and explicit stale video rerun; four creator formats and influencer motion; Library picks, edited script and explicit approval, motion upload/trim, ten results after reload, desktop and 390px. Ten mocked generations, five writer requests, twelve screenshots. No provider calls.
 Running router-ui-check.mjs
-router-ui: Chrome pid 7832, DevTools port 65122, profile D:\comfyfield-lanes\l1\repo\outputs\browser-profiles\router-ui-kacmSB
+router-ui: Chrome pid 7832, DevTools port 65122, profile <lane-root>\l1\repo\outputs\browser-profiles\router-ui-kacmSB
 Router UI checks passed: fake key gating, 10 picker selections and mocked generations, independent native payloads, combined reference limits, durable jobs, partial batch recovery and pending resumption after reload, cancellation and cancelled-take Retry, queued Retry reload with stable keys, silent historical failures, restored format preflight and session-limit notes, interrupted-run charge warning and Retry copy, concurrent format shots, per-take Library failures and session retries, independent Create error ownership, shared-sheet writer recovery, desktop and 390px layouts. Mock screenshots saved.
 Running share-ui-check.mjs
-share-ui: Chrome pid 32992, DevTools port 49565, profile D:\comfyfield-lanes\l1\repo\outputs\browser-profiles\share-ui-2SNXo3
+share-ui: Chrome pid 32992, DevTools port 49565, profile <lane-root>\l1\repo\outputs\browser-profiles\share-ui-2SNXo3
 [33mAssets in public directory cannot be imported from JavaScript.
 If you intend to import that asset, put the file in the src directory, and use [36m/src/art/video/index.json[33m instead of [36m/public/art/video/index.json[33m.
 If you intend to use the URL of that asset, use [36m/art/video/index.json?url[33m.[39m
 Share browser checks passed: gist share strips uploads, import from gist and file, origin shown, bad link message, 390px
 Running story-ui-check.mjs
-story-ui: Chrome pid 13120, DevTools port 58579, profile D:\comfyfield-lanes\l1\repo\outputs\browser-profiles\story-ui-gDNU6E
+story-ui: Chrome pid 13120, DevTools port 58579, profile <lane-root>\l1\repo\outputs\browser-profiles\story-ui-gDNU6E
 Story page checks passed: all three pages, both approvals, mock providers, real ffmpeg, playback, Library, dependency error and 390px layouts
 Running studio-ui-check.mjs
-studio-ui: Chrome pid 31048, DevTools port 51951, profile D:\comfyfield-lanes\l1\repo\outputs\browser-profiles\studio-ui-xYflA8
+studio-ui: Chrome pid 31048, DevTools port 51951, profile <lane-root>\l1\repo\outputs\browser-profiles\studio-ui-xYflA8
 Studio UI mock checks ok: 24 mocked generation requests, five studios, all six video edits, real upload URLs, language/delivery/voice/trim vars, Library persistence, disabled unavailable paths and 390px layouts. 27 labeled mock screenshots saved to research_notes/screenshots/issue-101. No provider calls.
 Running threejs-browser-checks.mjs
 ok    options keep the size, rate, duration and frame count inside the limits (0.0 s)
@@ -509,14 +509,14 @@ ok    in Flows a Three.js video feeds a real Stitch and a video model (1.1 s)
 ok    MCP flow tools add and describe Three.js nodes (0.0 s)
 all 8 passed
 Running upscale-ui-check.mjs
-upscale-ui: Chrome pid 33920, DevTools port 61644, profile D:\comfyfield-lanes\l1\repo\outputs\browser-profiles\upscale-ui-Vw67fd
+upscale-ui: Chrome pid 33920, DevTools port 61644, profile <lane-root>\l1\repo\outputs\browser-profiles\upscale-ui-Vw67fd
 Upscale UI checks ok: auto source and target, Advanced picks, 390px layout, and takes that go on to SeedVR2 3B and 7B. Mocked runs only; two screenshots saved.
 Running voice-library-ui-check.mjs
 Voice API checks passed: consent, size/type/duration/trim validation, four codecs, save/list/rename/delete/reload, media confinement, and saved samples in five workflow graphs. No provider calls.
-voice-library: Chrome pid 11484, DevTools port 64625, profile D:\comfyfield-lanes\l1\repo\outputs\browser-profiles\voice-library-FLt1CA
+voice-library: Chrome pid 11484, DevTools port 64625, profile <lane-root>\l1\repo\outputs\browser-profiles\voice-library-FLt1CA
 Voice browser checks passed: upload/record/trim/consent/save, playback, reload, rename, picker/preview/selection, delete/cancel/reload and 390px layout. Six synthetic-fixture screenshots saved under research_notes/screenshots/voice-library/.
 Running widget-browser-checks.mjs
-widget-browser: Chrome pid 15868, DevTools port 52837, profile D:\comfyfield-lanes\l1\repo\outputs\browser-profiles\widget-browser-OdkOiM
+widget-browser: Chrome pid 15868, DevTools port 52837, profile <lane-root>\l1\repo\outputs\browser-profiles\widget-browser-OdkOiM
 [33mAssets in public directory cannot be imported from JavaScript.
 If you intend to import that asset, put the file in the src directory, and use [36m/src/art/video/index.json[33m instead of [36m/public/art/video/index.json[33m.
 If you intend to use the URL of that asset, use [36m/art/video/index.json?url[33m.[39m

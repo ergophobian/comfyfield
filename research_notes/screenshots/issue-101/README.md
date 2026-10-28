@@ -16,7 +16,7 @@ The studio graph assertion recursively rejects unresolved placeholders, actual `
 
 All screenshots use a production build with a local mock API. The portrait, silent color clip and tone are synthetic fixtures, not model outputs. No provider routes, real keys or paid generations are used. The capture waits for decoded, paused video frames.
 
-Reproduce on `pi-windows` with `npx vite build`, then `node scripts/verify.mjs`. The owned scratch clone is `D:/comfyfield-lanes/issue101-review-20261019`. Put Git Bash (`C:/Program Files/Git/bin` and `C:/Program Files/Git/usr/bin`) first in that process's path; the default Windows `bash` is the WSL launcher and cannot run the native Windows shell fixtures. Commands run sequentially, with one headless Chrome instance per browser check. Protected Pod files and main's Comfy target routing are unchanged.
+Reproduce on `<windows-host>` with `npx vite build`, then `node scripts/verify.mjs`. The owned scratch clone is `<lane-root>/issue101-review-20261019`. Put Git Bash (`C:/Program Files/Git/bin` and `C:/Program Files/Git/usr/bin`) first in that process's path; the default Windows `bash` is the WSL launcher and cannot run the native Windows shell fixtures. Commands run sequentially, with one headless Chrome instance per browser check. Protected Pod files and main's Comfy target routing are unchanged.
 
 The suite passes all 18 check scripts, including 436 studio runner cases and 23 mocked generation requests (18 format runs plus five restored provider paths). It writes 25 labeled mock screenshots: 12 desktop/390px pairs plus the scrolled mixed-media controls capture. Exact output is in [validation.txt](validation.txt).
 

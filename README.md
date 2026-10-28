@@ -85,9 +85,11 @@ Other clients take the same command, `node /absolute/path/to/comfyfield/bin/comf
 ```sh
 node bin/comfyfield.js models --kind video
 node bin/comfyfield.js generate "a fox in fresh snow, dolly in" --model <id> --ratio 16:9 --out ./renders
-node bin/comfyfield.js stitch first.mp4 second.mp4 --ratio 9:16 --out ./renders
+node bin/comfyfield.js stitch /media/first.mp4 /media/second.mp4 --ratio 9:16 --out ./renders
 node bin/comfyfield.js --help
 ```
+
+The Stitch example uses files already uploaded or generated in the app. Replace the `/media/` paths with your Library file URLs, or use public HTTP(S) media URLs. Local filesystem paths are not accepted.
 
 ## Costs
 
