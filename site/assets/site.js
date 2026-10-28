@@ -6,7 +6,22 @@ const seen = new IntersectionObserver((entries) => entries.forEach(({ target, is
 }), { threshold: 0.25 })
 document.querySelectorAll('video[data-autoplay]').forEach((video) => seen.observe(video))
 
-// The hero's shot timeline follows the scene as it plays.
+// Each Play button controls its own video and remembers a manual pause.
+document.querySelectorAll('.toggle[data-video]').forEach((toggle) => {
+  const video = document.getElementById(toggle.dataset.video)
+  const name = toggle.getAttribute('aria-label').replace(/^Play /, '')
+  const label = () => {
+    toggle.textContent = video.paused ? 'Play' : 'Pause'
+    toggle.setAttribute('aria-label', `${video.paused ? 'Play' : 'Pause'} ${name}`)
+  }
+  video.addEventListener('play', label)
+  video.addEventListener('pause', label)
+  toggle.addEventListener('click', () => {
+    if (video.paused) { delete video.dataset.paused; video.play() } else { video.dataset.paused = 'true'; video.pause() }
+  })
+})
+
+// The Cinema shot timeline follows the scene as it plays.
 const film = document.getElementById('film')
 const shots = document.querySelectorAll('.reel li')
 const tick = () => {
@@ -14,16 +29,7 @@ const tick = () => {
   shots.forEach((li, i) => li.style.setProperty('--fill', Math.min(1, Math.max(0, (film.currentTime - i * part) / part))))
   if (!film.paused) requestAnimationFrame(tick)
 }
-const toggle = document.querySelector('.toggle')
-const label = () => {
-  toggle.textContent = film.paused ? 'Play' : 'Pause'
-  toggle.setAttribute('aria-label', film.paused ? 'Play the scene' : 'Pause the scene')
-}
-film.addEventListener('play', () => { tick(); label() })
-film.addEventListener('pause', label)
-toggle.addEventListener('click', () => {
-  if (film.paused) { delete film.dataset.paused; film.play() } else { film.dataset.paused = 'true'; film.pause() }
-})
+film.addEventListener('play', tick)
 
 document.querySelectorAll('[data-copy]').forEach((button) => button.addEventListener('click', async () => {
   await navigator.clipboard.writeText(document.getElementById(button.dataset.copy).innerText)
