@@ -98,11 +98,14 @@ export function comfyRouterInput(model, o) {
     return { prompt: o.prompt, aspect_ratio: aspect, ...params }
   }
   if (['byteplus/dreamina-seedance-2-5-260628', 'byteplus/seedance-1-0-pro-fast-251015'].includes(model)) {
-    const multi = model === 'byteplus/dreamina-seedance-2-5-260628' && pictures.length > 1
+    // Seedance 2.5 also takes a clip as a reference (its moves and timing), which puts it in reference mode.
+    const clips = model === 'byteplus/dreamina-seedance-2-5-260628' && o.video ? [o.video] : []
+    const multi = model === 'byteplus/dreamina-seedance-2-5-260628' && (pictures.length > 1 || clips.length > 0)
     limited(multi ? 9 : 1)
     const image = pictures[0]
     // Seedance 2.5 follows the first frame's shape and refuses a concrete ratio with it.
-    return { content: [{ type: 'text', text: o.prompt }, ...pictures.map((url) => ({ type: 'image_url', image_url: { url }, role: multi ? 'reference_image' : 'first_frame' }))], duration: o.duration || 5, resolution: '720p', ...(image && !multi ? {} : { ratio: aspect }), ...params }
+    return { content: [{ type: 'text', text: o.prompt }, ...pictures.map((url) => ({ type: 'image_url', image_url: { url }, role: multi ? 'reference_image' : 'first_frame' })),
+      ...clips.map((url) => ({ type: 'video_url', video_url: { url }, role: 'reference_video' }))], duration: o.duration || 5, resolution: '720p', ...(image && !multi ? {} : { ratio: aspect }), ...params }
   }
   if (model === 'ltx/ltx-2-5-fast') {
     limited(0)

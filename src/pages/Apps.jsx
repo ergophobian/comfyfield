@@ -43,6 +43,10 @@ export default function Apps() {
     { value: 'all', label: <>All<em>{total}</em></> },
     ...groups.map((g) => ({ value: g.id, label: <>{g.name}<em>{g.list.length}</em></> })),
   ]
+  // A hub with groups shows one section per group under its own tab.
+  const sections = (g) => hub === g.id && g.groups
+    ? g.groups.map((p) => ({ ...g, ...p, key: `${g.id}:${p.name}`, part: true, found: g.found.filter((f) => f.group === p.name) })).filter((p) => p.found.length)
+    : [{ ...g, key: g.id }]
   const shown = (hub === 'all' ? groups : groups.filter((g) => g.id === hub))
     .map((g) => ({ ...g, found: g.list.filter((f) => matches(f, q)) }))
     .filter((g) => g.found.length)
@@ -77,12 +81,12 @@ export default function Apps() {
         </form>
       )}
 
-      {shown.map((g, gi) => {
+      {shown.flatMap(sections).map((g, gi) => {
         const cut = hub === 'all' && !q && g.found.length > PREVIEW
         return (
-          <section key={g.id} className="apps-sec rise" style={{ '--d': `calc(${Math.min(gi + 2, 12)} * var(--stagger))` }}>
+          <section key={g.key} className="apps-sec rise" style={{ '--d': `calc(${Math.min(gi + 2, 12)} * var(--stagger))` }}>
             <div className="apps-sec-head">
-              {g.id !== 'yours' && <span className="hub-art"><ArtImage id={g.id} src={hubArt(g.id) || categoryArt(g.id)} alt={`${g.name} examples`} /></span>}
+              {g.id !== 'yours' && !g.part && <span className="hub-art"><ArtImage id={g.id} src={hubArt(g.id) || categoryArt(g.id)} alt={`${g.name} examples`} /></span>}
               <div>
                 <h2>{g.name}</h2>
                 <p>{g.blurb}</p>
