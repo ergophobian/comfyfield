@@ -1191,7 +1191,7 @@ code { font-size: .92em; }
 .app-hero > p { margin: 0 16px; font-size: var(--text-md); color: var(--ink-2); }
 .app-tags { justify-content: center; margin: 2px 0 0; }
 .app-main { margin-top: 8px; text-align: left; }
-.app-main .field > label { margin: 0 4px 6px; }
+.app-main .field > label { display: flex; align-items: baseline; gap: 6px; margin: 0 4px 6px; }
 .app-main .drop:not(.sound) { height: 200px; }
 .app-main .drop.has:not(.sound) { height: 320px; }
 .app-main .draw-stage img { max-height: 420px; }

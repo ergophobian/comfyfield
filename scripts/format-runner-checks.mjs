@@ -5,6 +5,7 @@ import { compileFormat, runFormat as runWithPlanning, preflight, beatOf } from '
 import { stepOptions } from '../src/lib/formats/options.js'
 import { validateFormat } from '../src/lib/formats/validate.js'
 import { schemas } from '../src/lib/formats/schemas.js'
+import { mainInput } from '../src/components/apps/data.js'
 import { falInput, comfyVars, comfyRouterInput } from '../shared/mapping.js'
 
 import { offlineRequirements } from './fixtures/format-planning.mjs'
@@ -505,6 +506,8 @@ assert.equal(rapVideo.shot, 0)
   assert.equal(beatOf('No markers here', 1), 'No markers here')
   const earned = allFormats.filter((f) => f.category === 'earn')
   assert(earned.length >= 16 && earned.every((f) => formats.includes(f) && f.hub === 'earn'), 'Every format that earns validates and lists on Apps')
+  // The page's stage holds the product photo or the cover, never an optional style reference.
+  for (const f of earned) assert.notEqual(mainInput(f)?.id, 'reference', `${f.id}: the style reference stays in the settings panel`)
   for (const f of earned.filter((x) => x.kind === 'video')) {
     // Nothing pays for a video before a person has approved what it starts from.
     for (const step of f.steps.filter((s) => s.kind === 'video')) assert(step.from.some((id) => f.steps.find((s) => s.id === id)?.type === 'approve'), `${f.id}: ${step.id} needs an approval first`)
