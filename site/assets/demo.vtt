@@ -1,0 +1,55 @@
+WEBVTT
+
+00:00.900 --> 00:08.900
+ComfyField · one idea, a finished scene
+
+00:10.000 --> 00:14.600
+Start with one idea
+
+00:14.600 --> 00:20.400
+Try the portal effect loads a free, built-in shot plan
+
+00:20.400 --> 00:28.400
+Every shot stays editable: prompt, camera move, duration, continuity
+
+00:28.400 --> 00:34.700
+Generate scene would render three LTX-2.5 clips, about $0.24. Not clicked here.
+
+00:34.733 --> 00:41.833
+The built-in plan, rendered earlier with LTX-2.5 on Comfy Cloud
+
+00:42.033 --> 00:47.133
+Add the three clips to a Stitch node
+
+00:47.133 --> 00:54.133
+Stitch scene joins them locally with ffmpeg
+
+00:54.133 --> 00:59.633
+Preview the finished 15-second scene
+
+00:59.633 --> 01:05.933
+Export to Assets, then download the MP4
+
+01:06.133 --> 01:12.533
+Every Cinema scene is a saved Flow
+
+01:12.533 --> 01:16.633
+Approve gates hold each shot until you press Send
+
+01:16.833 --> 01:23.433
+A scripted agent opens the same Flow through the local MCP server
+
+01:23.433 --> 01:29.933
+Its cursor and badge show the node it is editing
+
+01:29.933 --> 01:36.833
+The prompt is updated. Nothing runs until you press Run.
+
+01:37.033 --> 01:44.033
+Open source and local-first, on the Comfy Developer Platform
+
+01:44.033 --> 01:46.933
+Bring your own Comfy key. Clone it and make something.
+
+01:49.300 --> 01:55.000
+github.com/ergophobian/comfyfield · Bring your own Comfy key · MIT
