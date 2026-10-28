@@ -1,5 +1,10 @@
 /* Theme tokens. Raw colors, sizes and timings live here and nowhere else in the app. */
 :root {
+  --postiz-control-height: 42px;
+  --postiz-control-pad: 14px;
+  --postiz-control-border: 1px;
+  --postiz-action-gap: 8px;
+  --postiz-queue-gap: 16px;
   /* Generated art slots */
   --art-card-gap: 10px;
   --art-hub-width: 112px;
@@ -3132,3 +3137,9 @@ a.skill-chip:active { transform: scale(.96); }
   .cinema-scene-heading { align-items: flex-start; }
   .cinema-actions { flex-direction: column; }
 }
+
+.postiz-actions { display: flex; flex-wrap: wrap; gap: var(--postiz-action-gap); }
+.postiz-queue { display: flex; flex-direction: column; gap: var(--postiz-queue-gap); }
+
+.postiz-sheet select, .postiz-queue select { width: 100%; height: var(--postiz-control-height); padding: 0 var(--postiz-control-pad); font: inherit; color: var(--ink); border: var(--postiz-control-border) solid var(--line); border-radius: var(--r-md); background: var(--glass-strong); }
+.postiz-sheet select:focus, .postiz-queue select:focus { outline: none; border-color: var(--blue-focus); box-shadow: var(--ring); }

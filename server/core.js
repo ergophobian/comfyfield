@@ -34,6 +34,7 @@ export { GPU_LADDER, NO_POD } from './pod.js'
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
 export const providers = {
+  postiz: { env: ['POSTIZ_API_KEY', 'POSTIZ_URL'], fields: ['key', 'url'] },
   comfy: { env: ['COMFY_URL', 'COMFY_API_KEY', 'COMFY_MODE', 'COMFY_RUN'], fields: ['url', 'key', 'mode', 'run'] },
   fal: { env: ['FAL_KEY'], fields: ['key'] },
   google: { env: ['GEMINI_API_KEY'], fields: ['key'] },
@@ -67,6 +68,7 @@ export function config(id) {
   const saved = readKeys()[id] || {}
   const { env, fields } = providers[id]
   const out = Object.fromEntries(fields.map((f, i) => [f, saved[f] || process.env[env[i]] || '']))
+  if (id === 'postiz' && !out.url) out.url = 'https://api.postiz.com/public/v1'
   return id === 'comfy' ? { ...out, mode: comfyMode(), url: process.env.COMFY_URL || '' } : out
 }
 
@@ -551,6 +553,7 @@ export async function writePrompts({ idea, n = 6, kind = 'video' }) {
 
 export async function testConnection(id) {
   const c = config(id)
+  if (id === 'postiz') { await postizChannels(); return true }
   if (id === 'comfy') {
     if (c.mode === 'cloud') {
       if (!c.key) return pod().test()
@@ -647,7 +650,7 @@ export function connections() {
     // Comfy Cloud + Pod can run with a Comfy key, or with a RunPod key through a Pod.
     if (id === 'blender') return [id, { connected: Boolean(c.path || c.host), path: c.path, host: c.host }]
     const on = id !== 'comfy' ? c.key : c.mode === 'cloud' ? c.key || config('runpod').key || sandboxed() : c.url || c.key
-    return [id, { connected: Boolean(on), key: mask(c.key), ...(id === 'comfy' ? { mode: c.mode } : {}) }]
+    return [id, { connected: Boolean(on), key: mask(c.key), ...(id === 'comfy' ? { mode: c.mode } : id === 'postiz' ? { url: c.url } : {}) }]
   }))
   out.comfyRouter = { connected: Boolean(config('comfy').key) }
   const rp = config('runpod')
@@ -663,6 +666,12 @@ export function saveConnection(id, values) {
   if (id === 'runpod' && values.auto != null && !['on', 'off'].includes(values.auto)) throw Object.assign(new Error('Start Pods automatically is on or off.'), { status: 400 })
   if (id === 'runpod' && values.cap != null && !(parseFloat(values.cap) > 0)) throw Object.assign(new Error('The daily cap is a dollar amount above 0.'), { status: 400 })
   if (id === 'runpod' && values.idle != null && !IDLE_CHOICES.includes(Number(values.idle))) throw Object.assign(new Error(`Idle shutdown is ${IDLE_CHOICES.join(', ')} minutes.`), { status: 400 })
+  if (id === 'postiz' && Object.entries(values).some(([k, v]) => !['key', 'url'].includes(k) || typeof v !== 'string' || /[\r\n]/.test(v))) throw Object.assign(new Error('Postiz takes a key and API base URL, each on one line.'), { status: 400 })
+  if (id === 'postiz' && values.url) {
+    let url
+    try { url = new URL(values.url) } catch { throw Object.assign(new Error('Enter a complete Postiz API base URL.'), { status: 400 }) }
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) throw Object.assign(new Error('Use an http or https Postiz API base without credentials, query or fragment.'), { status: 400 })
+  }
   if (id === 'blender' && Object.entries(values).some(([k, v]) => !['path', 'host'].includes(k) || typeof v !== 'string' || /[\r\n]/.test(v))) throw Object.assign(new Error('Blender takes a path and an SSH host, each on one line.'), { status: 400 })
   if (id === 'runpod' && values.cap != null) values = { ...values, cap: String(Math.round(parseFloat(values.cap) * 100) / 100) }
   const keys = readKeys()
@@ -1616,4 +1625,159 @@ export async function stitchStatus() {
     await findFfmpeg()
     return { available: true }
   } catch (e) { return { available: false, error: e.message } }
+}
+
+// Short, synchronous transactions keep CLI, app and MCP writers from losing each other's edits.
+function postizStore(name, change) {
+  fs.mkdirSync(home(), { recursive: true })
+  const file = path.join(home(), `${name}.json`)
+  const lock = `${file}.lock`
+  let fd
+  if (change) {
+    try { fd = fs.openSync(lock, 'wx', 0o600) } catch { throw Object.assign(new Error('Queue or scheduling ledger is busy. Retry; a stale lock needs manual inspection.'), { status: 409 }) }
+  }
+  try {
+    let data
+    try { data = JSON.parse(fs.readFileSync(file, 'utf8')) } catch (e) {
+      if (e.code !== 'ENOENT') throw new Error(`Cannot read ${name} storage. Restore it before continuing.`)
+      data = name === 'queue' ? [] : {}
+    }
+    if (name === 'queue' ? !Array.isArray(data) : !data || typeof data !== 'object' || Array.isArray(data)) throw new Error(`Invalid ${name} storage. Restore it before continuing.`)
+    if (!change) return data
+    const result = change(data)
+    const tmp = `${file}.${randomUUID()}.tmp`
+    const out = fs.openSync(tmp, 'wx', 0o600)
+    try { fs.writeFileSync(out, JSON.stringify(data, null, 2)); fs.fsyncSync(out) } finally { fs.closeSync(out) }
+    fs.renameSync(tmp, file)
+    return result
+  } finally {
+    if (fd != null) { fs.closeSync(fd); fs.unlinkSync(lock) }
+  }
+}
+const postizBad = (message, status = 400) => Object.assign(new Error(message), { status })
+const postizText = (value, label) => {
+  if (typeof value !== 'string' || !value.trim() || value.length > 20000) throw postizBad(`Supply ${label}.`)
+  return value.trim()
+}
+async function postizCall(endpoint, { body, method = 'GET' } = {}) {
+  const { key, url } = config('postiz')
+  if (!key) throw postizBad('Connect Postiz in Connections first.')
+  let base
+  try { base = new URL(url) } catch { throw postizBad('Enter a complete Postiz API base URL.') }
+  if (!['http:', 'https:'].includes(base.protocol) || base.username || base.password || base.search || base.hash) throw postizBad('Use an http or https Postiz API base without credentials, query or fragment.')
+  // The explicitly configured instance may be private. Media URLs use publicGet instead.
+  let response
+  try {
+    response = await fetch(`${base.href.replace(/\/+$/, '')}/${endpoint}`, {
+      method, redirect: 'error', signal: AbortSignal.timeout(120000),
+      headers: { Authorization: key, ...(body && !(body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}) },
+      body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
+    })
+  } catch { throw postizBad('Postiz request did not finish. Check Postiz before retrying a reserved request.', 502) }
+  if (!response.ok) throw postizBad(response.status === 401 ? 'Postiz rejected the API key.' : response.status === 429 ? 'Postiz create-post rate limit reached. Check Postiz before retrying.' : `Postiz refused the request (${response.status}). Check channel settings in Postiz.`, response.status)
+  try { return await response.json() } catch { throw postizBad('Postiz returned an unreadable response. Check Postiz before retrying.', 502) }
+}
+export async function postizChannels() {
+  const channels = await postizCall('integrations')
+  if (!Array.isArray(channels)) throw postizBad('Postiz returned an invalid channel list.', 502)
+  return channels
+}
+
+async function postizMedia(value) {
+  postizText(value, 'a Library media URL or path')
+  let buf, mime, name
+  if (/^https?:\/\//i.test(value)) {
+    const remote = await publicGet(value, { limit: 50 * 1024 * 1024, accept: 'image/*,video/mp4', timeout: 30000 })
+    buf = remote.body
+    mime = String(remote.headers['content-type'] || '').split(';')[0]
+    name = path.basename(new URL(remote.url).pathname) || 'media'
+  } else {
+    const candidate = value.startsWith('/media/') ? path.join(mediaDir(), decodeURIComponent(value.slice(7))) : path.resolve(value)
+    let root, file
+    try { root = fs.realpathSync(mediaDir()); file = fs.realpathSync(candidate) } catch { throw postizBad('That Library media file is missing.') }
+    const relative = path.relative(root, file)
+    if (!relative || relative.startsWith('..') || path.isAbsolute(relative) || !fs.statSync(file).isFile()) throw postizBad('Local media must be inside the Library media folder.')
+    if (fs.statSync(file).size > 50 * 1024 * 1024) throw postizBad('Use media smaller than 50 MB.', 413)
+    buf = fs.readFileSync(file)
+    name = path.basename(file)
+    mime = mediaTypes[path.extname(file).slice(1).toLowerCase()]
+  }
+  if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif', 'image/bmp', 'image/tiff', 'video/mp4'].includes(mime)) throw postizBad('Postiz accepts images or MP4 video. Convert this file first.')
+  const form = new FormData()
+  form.append('file', new Blob([buf], { type: mime }), name)
+  form.append('adjust', 'false')
+  const uploaded = await postizCall('upload', { method: 'POST', body: form })
+  if (!uploaded.id || !uploaded.path || uploaded.status === 'processing') throw postizBad('Postiz did not return ready media.', 502)
+  return { id: uploaded.id, path: uploaded.path }
+}
+
+export async function schedulePost(input = {}) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) throw postizBad('Supply a post object.')
+  const { media, caption, channels, date, draft = false, requestKey, settings = {} } = input
+  postizText(requestKey, 'a stable requestKey (reuse it on retries)')
+  if (requestKey.length > 200) throw postizBad('Use a request key under 200 characters.')
+  if (!Array.isArray(media) || !media.length || media.length > 20 || media.some((m) => typeof m !== 'string')) throw postizBad('Supply 1 to 20 media files.')
+  if (typeof caption !== 'string' || caption.length > 20000) throw postizBad('Supply a caption under 20000 characters.')
+  if (!Array.isArray(channels) || !channels.length || channels.length > 50 || channels.some((c) => typeof c !== 'string' || !c.trim()) || new Set(channels).size !== channels.length) throw postizBad('Select unique channel IDs.')
+  if (typeof draft !== 'boolean' || !settings || typeof settings !== 'object' || Array.isArray(settings)) throw postizBad('Supply valid draft and channel settings.')
+  if (date != null && (typeof date !== 'string' || !/^\d{4}-\d\d-\d\dT.*(?:Z|[+-]\d\d:\d\d)$/.test(date) || !Number.isFinite(Date.parse(date)))) throw postizBad('Supply an ISO date with a timezone.')
+  if (!draft && (!date || Date.parse(date) <= Date.now())) throw postizBad('Choose a future schedule date with a timezone.')
+  if (Object.hasOwn(postizStore('postiz'), requestKey)) throw postizBad('This request key is already reserved. Check Postiz and the local ledger; it will not be sent twice.', 409)
+  const available = await postizChannels()
+  const selected = channels.map((id) => {
+    const channel = available.find((c) => c.id === id && !c.disabled)
+    if (!channel || !channel.identifier) throw postizBad(`Channel ${id} is unavailable.`)
+    const extra = settings[id] || {}
+    if (!extra || typeof extra !== 'object' || Array.isArray(extra)) throw postizBad('Channel settings must be objects keyed by channel ID.')
+    return { integration: { id }, settings: { ...extra, __type: channel.identifier } }
+  })
+  // Reserve durably before uploads or creates. Even an ambiguous failure cannot double-publish.
+  postizStore('postiz', (ledger) => {
+    if (Object.hasOwn(ledger, requestKey)) throw postizBad('This request key is already reserved.', 409)
+    Object.defineProperty(ledger, requestKey, { value: { status: 'reserved', at: new Date().toISOString(), channels }, enumerable: true, writable: true })
+  })
+  try {
+    const image = []
+    for (const file of media) image.push(await postizMedia(file))
+    const result = await postizCall('posts', { method: 'POST', body: {
+      type: draft ? 'draft' : 'schedule', date: date || new Date().toISOString(), shortLink: false, tags: [],
+      posts: selected.map((p) => ({ ...p, value: [{ content: caption, image }] })),
+    } })
+    if (!Array.isArray(result) || result.length !== channels.length || result.some((p) => !p?.postId || !channels.includes(p.integration))) throw postizBad('Postiz returned an incomplete result. Check Postiz before retrying.', 502)
+    postizStore('postiz', (ledger) => { ledger[requestKey] = { ...ledger[requestKey], status: draft ? 'draft' : 'scheduled', result } })
+    return { requestKey, result }
+  } catch (e) {
+    postizStore('postiz', (ledger) => { ledger[requestKey] = { ...ledger[requestKey], status: 'uncertain' } })
+    throw e
+  }
+}
+
+function queueItem(input) {
+  const item = { ...input }
+  postizText(item.channel, 'a channel ID')
+  postizText(item.idea, 'idea text')
+  if (!['idea', 'made', 'scheduled'].includes(item.status)) throw postizBad('Queue status must be idea, made or scheduled.')
+  for (const key of ['format', 'libraryItem', 'postizId', 'when']) if (item[key] != null && typeof item[key] !== 'string') throw postizBad(`${key} must be text.`)
+  if (item.when && !Number.isFinite(Date.parse(item.when))) throw postizBad('Use a valid date for when.')
+  return Object.fromEntries(['id', 'channel', 'idea', 'status', 'format', 'libraryItem', 'postizId', 'when'].filter((k) => item[k] != null).map((k) => [k, item[k]]))
+}
+export const queueList = ({ channel } = {}) => postizStore('queue').filter((i) => !channel || i.channel === channel)
+export function queueAdd(input) {
+  const item = queueItem({ ...input, id: randomUUID(), status: input?.status || 'idea' })
+  return postizStore('queue', (items) => { items.push(item); return item })
+}
+export function queueUpdate(id, changes) {
+  return postizStore('queue', (items) => {
+    const index = items.findIndex((i) => i.id === id)
+    if (index < 0) throw postizBad('Queue item not found.', 404)
+    items[index] = queueItem({ ...items[index], ...changes, id })
+    return items[index]
+  })
+}
+export function queueRemove(id) {
+  return postizStore('queue', (items) => {
+    const index = items.findIndex((i) => i.id === id)
+    if (index < 0) throw postizBad('Queue item not found.', 404)
+    return items.splice(index, 1)[0]
+  })
 }

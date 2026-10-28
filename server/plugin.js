@@ -151,6 +151,12 @@ function mount(server, harness) {
     // Validate even reads: a rebinding domain can present matching Host and Origin headers.
     if ((url.pathname === '/api' || url.pathname.startsWith('/api/')) && crossSite(req.headers)) return send(res, 403, { error: 'Use the local ComfyField app. Requests from other sites are refused.' })
     try {
+      if (url.pathname === '/api/postiz/channels' && req.method === 'GET') return send(res, 200, await core.postizChannels())
+      if (url.pathname === '/api/postiz/schedule' && req.method === 'POST') return send(res, 200, await core.schedulePost(await body(req)))
+      if (url.pathname === '/api/queue' && req.method === 'GET') return send(res, 200, core.queueList({ channel: url.searchParams.get('channel') }))
+      if (url.pathname === '/api/queue' && req.method === 'POST') return send(res, 200, core.queueAdd(await body(req)))
+      if (url.pathname.startsWith('/api/queue/') && req.method === 'PATCH') return send(res, 200, core.queueUpdate(decodeURIComponent(url.pathname.slice(11)), await body(req)))
+      if (url.pathname.startsWith('/api/queue/') && req.method === 'DELETE') return send(res, 200, core.queueRemove(decodeURIComponent(url.pathname.slice(11))))
       if (url.pathname === '/api/pod' && req.method === 'GET') {
         const { mode, key } = core.config('comfy')
         // instant: Comfy Cloud can take runs at once.

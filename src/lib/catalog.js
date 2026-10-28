@@ -157,6 +157,10 @@ export const providerInfo = {
     { id: 'path', label: 'Blender path', placeholder: 'blender, or the full path to the Blender program' },
     { id: 'host', label: 'SSH host', placeholder: 'user@host, optional' },
   ], link: 'https://www.blender.org/download/', linkLabel: 'Get Blender', on: 'Saved', off: 'Uses PATH' },
+  postiz: { name: 'Postiz', blurb: 'Schedule posts to your channels with your Postiz API key.', fields: [
+    { id: 'key', label: 'API key', placeholder: 'From Postiz settings', secret: true },
+    { id: 'url', label: 'API base URL', placeholder: 'https://api.postiz.com/public/v1' },
+  ], link: 'https://docs.postiz.com/public-api', linkLabel: 'Postiz setup' },
 }
 
 // Account sign-ins for later. These need each site's own login, not an API key.
