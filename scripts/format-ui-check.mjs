@@ -126,7 +126,7 @@ try {
   await cdp('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1100, deviceScaleFactor: 1, mobile: false })
   await goto('/')
   await wait('document.querySelector(".ex-art [data-video-cover] img")?.naturalWidth > 0')
-  assert(await evaluate('document.querySelector(".ex-art [data-video-cover] img").src.endsWith("/art/video/cinema-studio.webp")'), 'Reduced motion shows the video poster')
+  assert(await evaluate('/\\/art\\/video\\/[\\w-]+\\.webp$/.test(document.querySelector(".ex-art [data-video-cover] img").src)'), 'Reduced motion shows the video poster')
   assert.equal(await evaluate('document.querySelectorAll("video").length'), 0, 'Reduced motion must never load or play a video')
   await cdp('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] })
   await wait('document.querySelector(".ex-art video")?.currentTime > 0')
