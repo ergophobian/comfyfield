@@ -7,7 +7,7 @@ import { EventEmitter } from 'node:events'
 import { dataDirectory } from '../server/startup-paths.js'
 import { checkComfy, diskCheck, nodeProblem, startupChecks, installationStorageChecks } from '../server/startup-checks.js'
 import { createRequire } from 'node:module'
-import { findFfmpeg, probeFfmpeg, ffmpegFix } from '../server/ffmpeg.js'
+import { findFfmpeg, probeFfmpeg, hasCaptions, ffmpegFix } from '../server/ffmpeg.js'
 import { openBrowser, ensureDependencies, missingDependencies, loadEnvironment } from '../server/start.js'
 import { allowedApiRequest, bindHost } from '../server/local-access.js'
 import vm from 'node:vm'
@@ -33,8 +33,12 @@ await assert.rejects(findFfmpeg({ probe: async () => false, bundled: () => null 
 let bundled
 try { bundled = createRequire(import.meta.url)('ffmpeg-static') } catch {}
 if (bundled) assert.ok(await probeFfmpeg(bundled), 'An installed optional binary must run')
+if (bundled) assert.ok(await hasCaptions(bundled), 'The bundled ffmpeg must burn captions')
 await findFfmpeg().catch((error) => assert.equal(error.message, ffmpegFix))
 assert.equal(await findFfmpeg({ probe: async (p) => p === 'ffmpeg', bundled: () => { throw Error('download failed') } }), 'ffmpeg')
+// A system ffmpeg without libass (Homebrew's ffmpeg 9) must not win over a bundled build that can burn captions.
+assert.equal(await findFfmpeg({ probe: async () => true, bundled: () => 'bundled', captions: async (p) => p === 'bundled' }), 'bundled')
+assert.equal(await findFfmpeg({ probe: async () => true, bundled: () => 'bundled', captions: async () => false }), 'ffmpeg')
 await assert.rejects(findFfmpeg({ probe: async () => false, bundled: () => { throw Error('download failed') } }), /Stitch features are disabled/)
 let requested = 0
 const request = (status, body = {}) => async (url, opts) => {
