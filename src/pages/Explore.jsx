@@ -30,6 +30,12 @@ export default function Explore() {
 
 const slides = [
   {
+    tool: 'apps', to: '/apps?hub=earn', art: 'influencer', cta: 'Browse formats that earn', name: 'Formats that earn',
+    title: 'Insert your product, get posts that sell',
+    line: 'Pick a proven viral format. It writes the plan, you approve one cheap frame, then the video renders.',
+    chips: ['Product ads', 'Faceless series', 'AI influencer', '9:16'],
+  },
+  {
     tool: 'cinema-studio', art: 'cinema', cta: 'Open cinema studio',
     title: 'Direct every shot like you are on set',
     line: 'Pick the camera, lens and move, then block the scene one shot at a time.',
@@ -65,7 +71,7 @@ function Art({ slide }) {
   )
 }
 
-// Rotates through three featured tools. Hover, focus or the pause button stop it; reduced motion never starts it.
+// Rotates through the featured tools. Hover, focus or the pause button stop it; reduced motion never starts it.
 function Hero() {
   const [at, setAt] = useState(0)
   const [held, setHeld] = useState(false)
@@ -93,12 +99,12 @@ function Hero() {
     <section className="ex-hero glass" aria-roledescription="carousel" aria-label="Featured tools"
       onPointerEnter={() => setHeld(true)} onPointerLeave={() => setHeld(false)}
       onFocus={() => setHeld(true)} onBlur={(e) => !e.currentTarget.contains(e.relatedTarget) && setHeld(false)}>
-      <div className="ex-slide" id="ex-slide" role="tabpanel" aria-roledescription="slide" aria-label={`${at + 1} of ${slides.length}: ${tool.name}`} key={slide.tool}>
+      <div className="ex-slide" id="ex-slide" role="tabpanel" aria-roledescription="slide" aria-label={`${at + 1} of ${slides.length}: ${slide.name || tool.name}`} key={slide.tool}>
         <div className="ex-copy">
-          <span className="ex-kicker"><ToolIcon id={tool.id} />{tool.name}<Badge badge={tool.badge} /></span>
+          <span className="ex-kicker"><ToolIcon id={tool.id} />{slide.name || tool.name}<Badge badge={tool.badge} /></span>
           <h1>{slide.title}</h1>
           <p>{slide.line}</p>
-          <Link className="btn-blue" to={tool.route}>{slide.cta}</Link>
+          <Link className="btn-blue" to={slide.to || tool.route}>{slide.cta}</Link>
         </div>
         <Art slide={slide} />
       </div>
@@ -106,8 +112,8 @@ function Hero() {
         <div role="tablist" aria-label="Featured tools" ref={tabs} onKeyDown={tabKeys}>
           {slides.map((s, n) => (
             <button key={s.tool} type="button" role="tab" aria-selected={n === at} aria-controls="ex-slide" tabIndex={n === at ? 0 : -1}
-              aria-label={toolById(s.tool).name} className={`ex-tab${n === at ? ' on' : ''}`} onClick={() => setAt(n)}>
-              <i /><span>{toolById(s.tool).name}</span>
+              aria-label={s.name || toolById(s.tool).name} className={`ex-tab${n === at ? ' on' : ''}`} onClick={() => setAt(n)}>
+              <i /><span>{s.name || toolById(s.tool).name}</span>
             </button>
           ))}
         </div>
