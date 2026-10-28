@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="ComfyField is an open-source creative studio for images, video and audio. Turn one idea into a multi-shot scene with LTX-2.5 on Comfy Cloud, on your own keys.">
+  <meta name="description" content="ComfyField is the open-source studio for formats that earn. Insert your product, pick a proven viral format, approve the frame, and schedule the posts. Your own keys, on the Comfy Developer Platform.">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; media-src 'self'; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'none'">
   <meta name="theme-color" content="#f7f8ff">
-  <title>ComfyField: one idea, a finished scene</title>
+  <title>ComfyField: formats that earn</title>
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
   <link rel="stylesheet" href="assets/style.css">
 </head>
@@ -16,147 +16,212 @@
   <header class="top wrap">
     <a class="brand" href="#main"><img src="assets/logo.svg" width="28" height="28" alt="">ComfyField</a>
     <nav aria-label="Main">
-      <a href="#cinema">Cinema</a>
-      <a href="#studio">Studio</a>
-      <a href="#start">Quick start</a>
+      <a href="#formats">Formats</a>
+      <a href="#how">How it works</a>
+      <a href="#agents">Agents</a>
+      <a href="#start">Start</a>
       <a class="pill" href="https://github.com/ergophobian/comfyfield">GitHub</a>
     </nav>
   </header>
 
   <main id="main">
     <section class="hero" aria-labelledby="hero-title">
-      <div class="wrap hero-head">
-        <h1 id="hero-title">One idea.<br>A finished scene.</h1>
-        <div class="hero-side">
-          <p>ComfyField is an open-source creative studio for images, video and audio. It runs on your computer, with your own keys, on the Comfy Developer Platform.</p>
+      <div class="wrap hero-grid">
+        <div class="hero-copy">
+          <h1 id="hero-title">Formats<br>that earn.</h1>
+          <p class="hero-lead">Insert your product, pick a proven viral format, post on schedule. Open source, on your own keys.</p>
           <div class="actions">
-            <a class="btn-blue" href="https://github.com/ergophobian/comfyfield">View on GitHub</a>
-            <a class="btn-glass" href="#start">Run it locally</a>
+            <a class="btn-blue" href="#start">Run it on your computer</a>
+            <a class="btn-glass" href="#formats">See the formats</a>
           </div>
+          <ol class="chain" aria-label="What happens">
+            <li>Your one line</li>
+            <li>A proven format</li>
+            <li>Posts on a schedule</li>
+          </ol>
         </div>
-      </div>
 
-      <figure class="wrap film">
-        <div class="screen">
-          <video id="film" data-autoplay muted loop playsinline preload="metadata" poster="assets/scene.jpg" aria-label="The folded alley: a courier in a silver raincoat watches a violet portal fold an alley open onto a sunlit ocean, in three shots">
-            <source src="assets/scene.mp4" type="video/mp4">
-          </video>
-          <button class="toggle" type="button" data-video="film" aria-label="Play the scene">Play</button>
-        </div>
-        <ol class="reel" aria-label="Shots in this scene">
-          <li><span class="track"><span class="fill"></span></span><strong>Shot 1</strong><span>Slow dolly toward the ring</span></li>
-          <li><span class="track"><span class="fill"></span></span><strong>Shot 2</strong><span>Low orbit around the portal</span></li>
-          <li><span class="track"><span class="fill"></span></span><strong>Shot 3</strong><span>Track right behind the courier</span></li>
-        </ol>
-        <figcaption>The folded alley. Rendered with LTX-2.5 on Comfy Cloud.</figcaption>
-      </figure>
+        <figure class="phone">
+          <div class="phone-screen">
+            <video id="example" data-autoplay muted loop playsinline preload="metadata" poster="assets/example-seedance.jpg" aria-label="A vertical fitness post: a creator in a gym shows four core exercises, each captioned with sets and reps">
+              <source src="assets/example-seedance.mp4" type="video/mp4">
+            </video>
+            <span class="tag">Made with Seedance 2.5</span>
+            <button class="toggle" type="button" data-video="example" aria-label="Play the example">Play</button>
+          </div>
+          <figcaption>A vertical post made with Seedance 2.5 by the ComfyField team.</figcaption>
+        </figure>
+      </div>
     </section>
 
-    <section id="cinema" class="night" aria-labelledby="cinema-title">
+    <section id="formats" class="formats wrap" aria-labelledby="formats-title">
+      <div class="section-head">
+        <h2 id="formats-title">Pick a format that already works</h2>
+        <p>22 short-form formats from TikTok, Reels and Shorts, in five families. Each one writes its own plan on top of your one line, in 9:16.</p>
+      </div>
+
+      <div class="families">
+        <article class="family">
+          <h3>Product ads and UGC</h3>
+          <p class="family-blurb">Your product in the formats that sell: stories, mascots, reveals and ratings.</p>
+          <ul>
+            <li><strong>Chaotic product story</strong><span>Real people play an absurd situation straight, then your product saves it.</span><em>3 beats, joined</em></li>
+            <li><strong>Problem mascot</strong><span>The problem becomes a cute, annoying creature. Your product sends it packing.</span><em>1 clip</em></li>
+            <li><strong>Before and after reveal</strong><span>A specific before, the switch, and an honest after from the same angle.</span><em>1 clip</em></li>
+            <li><strong>Rated carousel</strong><span>I rated 4 ways to fix a problem. Yours wins on merit, slide by slide.</span><em>5 slides</em></li>
+          </ul>
+          <p class="more">Also ingredient parade, unboxing hook and price knockout.</p>
+        </article>
+
+        <article class="family">
+          <h3>Faceless series</h3>
+          <p class="family-blurb">A channel without a face. One topic in, a series of posts out.</p>
+          <ul>
+            <li><strong>What if</strong><span>What happens if you never do the thing? Three beats of rising stakes.</span><em>3 beats, joined</em></li>
+            <li><strong>Countdown list</strong><span>Five things people get wrong about your topic, counted down to number one.</span><em>6 slides</em></li>
+            <li><strong>Science narrator</strong><span>One question, one visual metaphor the camera follows, one takeaway.</span><em>1 clip</em></li>
+            <li><strong>Timeline transformation</strong><span>Day 1 to day 100 of one place, thing or habit, from a locked camera.</span><em>1 clip</em></li>
+          </ul>
+          <p class="more">Also big question.</p>
+        </article>
+
+        <article class="family">
+          <h3>Drama shorts</h3>
+          <p class="family-blurb">Episodes people follow, with your product as the payoff.</p>
+          <ul>
+            <li><strong>Object drama</strong><span>Fruit, food or everyday objects in a soap opera, with your product as the twist.</span><em>4 beats, joined</em></li>
+            <li><strong>Challenge vlog</strong><span>A challenge vlog parody with one host and one impossible detail per beat.</span><em>3 beats, joined</em></li>
+            <li><strong>Hero and villains</strong><span>The problems are villains. Your product is the hero who says its name.</span><em>3 beats, joined</em></li>
+          </ul>
+        </article>
+
+        <article class="family">
+          <h3>AI influencer</h3>
+          <p class="family-blurb">A fictional creator on white, then in every trend.</p>
+          <ul>
+            <li><strong>Influencer character sheet</strong><span>A fictional adult on white in four views, ready to save as a character.</span><em>1 image</em></li>
+            <li><strong>Put them in a trend</strong><span>Your character takes over a trend clip you have rights to: same moves, same timing.</span><em>Picture, approve, clip</em></li>
+            <li><strong>Influencer from scratch</strong><span>Describe a character, approve them on white, then drop them into a trend clip.</span><em>Picture, approve, clip</em></li>
+            <li><strong>Influencer product post</strong><span>Your character films a casual selfie video with your product.</span><em>1 clip</em></li>
+          </ul>
+        </article>
+
+        <article class="family">
+          <h3>3D explainers</h3>
+          <p class="family-blurb">A cute character explains it in its own voice.</p>
+          <ul>
+            <li><strong>Body part explainer</strong><span>A cute 3D body part talks through a general wellness topic. Not medical advice.</span><em>1 clip</em></li>
+            <li><strong>Object explainer</strong><span>Your product or any object explains what people get wrong about it.</span><em>1 clip</em></li>
+            <li><strong>Tiny worker</strong><span>A tiny rounded worker does its job inside a machine, a product or a place.</span><em>3 beats, joined</em></li>
+          </ul>
+        </article>
+
+        <aside class="family family-note">
+          <h3>Writers stick to your facts</h3>
+          <p>No invented prices, reviews, results or health claims, and no real people or other brands. If a claim matters, put it in your one line.</p>
+          <p>Formats are plain data. Add your own in a few lines, or import one someone shared.</p>
+        </aside>
+      </div>
+    </section>
+
+    <section id="how" class="night" aria-labelledby="how-title">
       <div class="wrap">
-        <div class="cinema-head">
-          <h2 id="cinema-title">Cinema turns one idea into a scene you can edit</h2>
-          <figure class="idea">
-            <blockquote><p>A courier in a silver raincoat finds a glowing portal in a rain-soaked alley. The ring materialises from sparks, folds the street upward, and opens onto a sunlit ocean.</p></blockquote>
-            <figcaption>The idea behind the scene above, as typed into Cinema</figcaption>
+        <h2 id="how-title">From one line to a scheduled post</h2>
+
+        <div class="how-grid">
+          <ol class="how">
+            <li><strong>Insert your product</strong><span>Write one line: what you sell and who it is for. Add a product photo or a character if you have one.</span></li>
+            <li><strong>Pick a format</strong><span>The format's writer layers its proven structure on top of your line. You read and edit the plan before anything renders.</span></li>
+            <li><strong>Approve the cheap frame, then render</strong><span>Each video makes a still with Flux 2 Pro first and waits for you. Only an approved frame becomes a Seedance 2.5 clip, with sound.</span></li>
+            <li><strong>Queue and schedule</strong><span>Every output lands in the Library. Keep an idea queue per channel and schedule posts to your channels with Postiz.</span></li>
+          </ol>
+          <figure class="format-shot">
+            <img decoding="async" src="assets/ui-format.webp" width="600" height="1355" alt="The Chaotic product story format in ComfyField: a field for what you sell and who it is for, four story choices, an optional product photo, and a Generate video button with an estimated price">
+            <figcaption>A format in the app. The price is an estimate, shown before anything runs.</figcaption>
           </figure>
         </div>
 
-        <div class="strip">
-          <figure class="shot">
-            <video data-autoplay muted loop playsinline preload="none" poster="assets/shot1.jpg" aria-label="Shot 1: the courier stops as a violet ring of sparks traces itself on the wet street">
-              <source src="assets/shot1.mp4" type="video/mp4">
-            </video>
-            <figcaption><strong>Shot 1</strong><span class="cam">Slow dolly toward the ring</span><span>A courier in a silver raincoat stops in a rain-soaked alley. Violet sparks trace a ring in the wet air.</span></figcaption>
-          </figure>
-          <figure class="shot">
-            <video data-autoplay muted loop playsinline preload="none" poster="assets/shot2.jpg" aria-label="Shot 2: the portal glows in a brick wall while the alley bends upward around the courier">
-              <source src="assets/shot2.mp4" type="video/mp4">
-            </video>
-            <figcaption><strong>Shot 2</strong><span class="cam">Low orbit around the forming portal</span><span>A glowing violet portal unfolds beside the courier. The street bends upward like a sheet.</span></figcaption>
-          </figure>
-          <figure class="shot">
-            <video data-autoplay muted loop playsinline preload="none" poster="assets/shot3.jpg" aria-label="Shot 3: the courier walks toward a round portal that opens onto a bright ocean">
-              <source src="assets/shot3.mp4" type="video/mp4">
-            </video>
-            <figcaption><strong>Shot 3</strong><span class="cam">Track right behind the courier</span><span>The courier steps through the portal. A sunlit ocean appears inside the ring.</span></figcaption>
+        <div class="cinema">
+          <div class="cinema-text">
+            <h3>Longer stories go to Cinema</h3>
+            <p>Cinema plans 2 to 6 shots from one idea, renders each with LTX-2.5 on Comfy Cloud, and lets you approve or rerun shot by shot before joining them. This scene was made that way.</p>
+          </div>
+          <figure class="film">
+            <div class="screen">
+              <video id="film" data-autoplay muted loop playsinline preload="none" poster="assets/scene.jpg" aria-label="The folded alley: a courier in a silver raincoat watches a violet portal fold an alley open onto a sunlit ocean, in three shots">
+                <source src="assets/scene.mp4" type="video/mp4">
+              </video>
+              <button class="toggle" type="button" data-video="film" aria-label="Play the scene">Play</button>
+            </div>
+            <ol class="reel" aria-label="Shots in this scene">
+              <li><span class="track"><span class="fill"></span></span><strong>Shot 1</strong><span>Slow dolly toward the ring</span></li>
+              <li><span class="track"><span class="fill"></span></span><strong>Shot 2</strong><span>Low orbit around the portal</span></li>
+              <li><span class="track"><span class="fill"></span></span><strong>Shot 3</strong><span>Track right behind the courier</span></li>
+            </ol>
+            <figcaption>The folded alley. Rendered with LTX-2.5 on Comfy Cloud.</figcaption>
           </figure>
         </div>
-        <p class="credit">Rendered with LTX-2.5 on Comfy Cloud</p>
+      </div>
+    </section>
 
-        <ol class="flow">
-          <li><strong>Plan</strong><span>Shape each shot's prompt, camera move and length before anything renders.</span></li>
-          <li><strong>Render</strong><span>Every shot runs with LTX-2.5 on Comfy Cloud, sound included.</span></li>
-          <li><strong>Review</strong><span>Approve a shot to send it to the scene, or rerun only that one.</span></li>
-          <li><strong>Stitch</strong><span>Join the approved clips on your machine and export the MP4.</span></li>
-        </ol>
-
-        <figure class="app-shot dark">
-          <img decoding="async" src="assets/ui-cinema.webp" width="945" height="640" alt="Cinema studio in ComfyField with the courier idea typed into the cinematic idea field, next to the Plan shots button">
-        </figure>
+    <section id="agents" class="agents wrap" aria-labelledby="agents-title">
+      <div class="agents-grid">
+        <div>
+          <h2 id="agents-title">Let your agent run it</h2>
+          <p class="lead">Claude Code, Codex or any MCP client can fill each channel's idea queue, write and generate, run flows, and schedule the posts you approve. Flows stop at every approval gate. Only you can press Send.</p>
+          <dl class="tools">
+            <div><dt>Plan</dt><dd><code>queue_add</code> <code>queue_list</code> <code>queue_update</code> <code>postiz_channels</code></dd></div>
+            <div><dt>Make</dt><dd><code>write_prompts</code> <code>generate</code> <code>create_flow</code> <code>run_flow</code> <code>stitch</code></dd></div>
+            <div><dt>Post</dt><dd><code>schedule_post</code></dd></div>
+          </dl>
+        </div>
+        <div class="agent-side">
+          <div class="terminal">
+            <div class="terminal-bar"><span>In your comfyfield folder</span><button type="button" data-copy="mcp">Copy</button></div>
+<pre id="mcp" class="wrap-lines"><code>claude mcp add --scope user comfyfield -- node "$PWD/bin/comfyfield.js" mcp</code></pre>
+          </div>
+          <p class="hint">For Codex, run the same line with <code>codex mcp add comfyfield</code>. The same tools are on the command line: <code>comfyfield queue</code> and <code>comfyfield schedule</code>.</p>
+          <figure class="ask">
+            <blockquote><p>Add ten Problem mascot ideas for my pocket espresso maker to my TikTok queue.</p></blockquote>
+            <figcaption>Something to ask once it is connected</figcaption>
+          </figure>
+        </div>
       </div>
     </section>
 
     <section id="demo" class="demo wrap" aria-labelledby="demo-title">
       <h2 id="demo-title">Watch the walkthrough</h2>
-      <!--
-        Demo video slot. Replace the contents of #demo-video with:
-          <video controls playsinline preload="metadata" poster="assets/demo.jpg"><source src="assets/demo.mp4" type="video/mp4"></video>
-        For a YouTube embed, use an <iframe> and add "frame-src https://www.youtube-nocookie.com" to the Content-Security-Policy above.
-        Then remove the data-empty attribute.
-      -->
       <div id="demo-video" class="demo-frame">
         <video controls playsinline preload="metadata" poster="assets/demo.jpg"><source src="assets/demo.mp4" type="video/mp4"><track kind="captions" src="assets/demo.vtt" srclang="en" label="English"></video>
       </div>
     </section>
 
-    <section id="studio" class="studio wrap" aria-labelledby="studio-title">
-      <h2 id="studio-title">The rest of the studio works the same way</h2>
-
-      <article class="feature">
-        <div class="feature-text">
-          <h3>One composer</h3>
-          <p>Image, video and audio start from the same prompt bar. Pick any connected model, add references, and run one prompt or a whole batch.</p>
-        </div>
-        <img decoding="async" src="assets/ui-composer.webp" width="960" height="560" alt="The ComfyField composer with a prompt about a paper boat on a rainy street, the FLUX model selected and a Generate button">
-      </article>
-
-      <article class="feature wide">
-        <div class="feature-text">
-          <h3>Flows, with agents in the loop</h3>
-          <p>Every Cinema scene is saved as a Flow you can open on the canvas. Approve gates hold each step until you press Send. Agents build and edit the same flows through the MCP server, and stop at the same gates.</p>
-        </div>
-        <img decoding="async" src="assets/ui-flows.webp" width="1180" height="200" alt="A flow built by an agent through MCP: prompt, FLUX image model, Approve gate, LTX image to video, and output">
-        <p class="note">This flow was built by an agent through MCP.</p>
-      </article>
-
-      <article class="feature flip">
-        <div class="feature-text">
-          <h3>A Library for every take</h3>
-          <p>Generations land in the Library, next to the characters, products, brand kits and voices you reuse across tools.</p>
-        </div>
-        <img decoding="async" src="assets/ui-library.webp" width="1140" height="440" alt="The ComfyField Library with tabs for generations, characters, products, brand kits and voices">
-      </article>
-    </section>
-
     <section id="start" class="start" aria-labelledby="start-title">
       <div class="wrap start-grid">
         <div>
-          <h2 id="start-title">Run it locally</h2>
+          <h2 id="start-title">Start in three steps</h2>
           <ol class="steps">
-            <li><strong>Clone the repository</strong><span>You need Git and Node.js 22 or newer.</span></li>
-            <li><strong>Install</strong><span>One npm install pulls everything the studio needs.</span></li>
-            <li><strong>Start the studio</strong><span>Open <code>localhost:5173</code> in your browser.</span></li>
-            <li><strong>Add a Comfy key</strong><span>In Connections, paste a key from <a href="https://platform.comfy.org/profile/api-keys">platform.comfy.org</a> and choose Save and test.</span></li>
+            <li><strong>Install Node.js and Git</strong><span>Get <a href="https://nodejs.org/en/download">Node.js 22 or newer</a> and <a href="https://git-scm.com/downloads">Git</a>, then reopen your terminal.</span></li>
+            <li><strong>Paste the three lines</strong><span><code>npm start</code> installs everything, builds the studio and opens it in your browser. The first start takes a few minutes.</span></li>
+            <li><strong>Add your Comfy key</strong><span>Open Connections, paste a key from <a href="https://platform.comfy.org/profile/api-keys">platform.comfy.org</a> and choose Save and test.</span></li>
           </ol>
-          <p class="cost">Generation uses your own provider credits.</p>
+          <p class="cost">You pay only your own Comfy credits, nothing to ComfyField, and you approve the frame before any paid video renders.</p>
         </div>
-        <div class="terminal">
-          <div class="terminal-bar"><span>Terminal</span><button type="button" data-copy="commands">Copy</button></div>
+        <div class="start-side">
+          <div class="terminal">
+            <div class="terminal-bar"><span>Terminal</span><button type="button" data-copy="commands">Copy</button></div>
 <pre id="commands"><code>git clone https://github.com/ergophobian/comfyfield.git
 cd comfyfield
-npm install
-npm run dev</code></pre>
+npm start</code></pre>
+          </div>
+          <div class="agent-ask">
+            <div class="agent-ask-text">
+              <strong>Or ask your agent</strong>
+              <p id="ask-agent">Clone github.com/ergophobian/comfyfield and run it with npm start.</p>
+            </div>
+            <button type="button" data-copy="ask-agent">Copy</button>
+          </div>
+          <p class="hint">On Windows PowerShell, the last line is <code>npm.cmd start</code>. More in the <a href="https://github.com/ergophobian/comfyfield/blob/main/docs/setup.md">setup guide</a>.</p>
         </div>
       </div>
     </section>
@@ -164,10 +229,10 @@ npm run dev</code></pre>
     <section id="comfy" class="comfy wrap" aria-labelledby="comfy-title">
       <h2 id="comfy-title">Built on the Comfy Developer Platform</h2>
       <dl>
-        <div><dt>Comfy Router API v2</dt><dd>Hosted image, video and audio models from one Comfy key, mapped onto the composer's settings.</dd></div>
+        <div><dt>Comfy Router API v2</dt><dd>The Flux 2 Pro frames and Seedance 2.5 clips behind every format, and the other hosted models, from one Comfy key.</dd></div>
         <div><dt>Comfy SDK</dt><dd>Runs the bundled ComfyUI workflows on Comfy Cloud, including the LTX-2.5 graph behind Cinema.</dd></div>
       </dl>
-      <p class="also">Bring more keys when you want them: fal, Google AI, ElevenLabs and RunPod.</p>
+      <p class="also">Bring more keys when you want them: fal, Google AI, ElevenLabs, RunPod and Postiz.</p>
     </section>
   </main>
 
@@ -175,12 +240,13 @@ npm run dev</code></pre>
     <div class="wrap foot-grid">
       <div>
         <p class="foot-title">Open source, MIT licensed.</p>
-        <p>Built for Open Source Higgsfield. Fork it, change it, ship your own studio.</p>
+        <p>Built for Open Source Higgsfield. Fork it, add your own formats, ship your own studio.</p>
       </div>
       <div class="foot-links">
         <a class="btn-blue" href="https://github.com/ergophobian/comfyfield">View on GitHub</a>
         <a href="https://github.com/ergophobian/comfyfield/blob/main/LICENSE">License</a>
         <a href="https://github.com/ergophobian/comfyfield/blob/main/docs/setup.md">Setup guide</a>
+        <a href="https://github.com/ergophobian/comfyfield/blob/main/docs/formats-that-earn.md">Formats guide</a>
         <a href="https://github.com/ergophobian/comfyfield/blob/main/AGENTS.md">Contributing</a>
       </div>
     </div>

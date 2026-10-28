@@ -1,100 +1,109 @@
 # ComfyField
 
-One idea. A finished scene.
+Formats that earn.
 
-ComfyField is an open-source creative studio for images, video and audio. It runs on your computer, with your own keys, on the Comfy Developer Platform. Built for [Open Source Higgsfield](https://comfy.org/open-source-higgsfield).
+Insert your product, pick a proven viral format, post on schedule. ComfyField is an open-source studio for short-form video, images and audio. It runs on your computer, with your own keys, on the Comfy Developer Platform. Built for [Open Source Higgsfield](https://comfy.org/open-source-higgsfield).
 
 **Site:** https://comfyfield.com
 
-[![The folded alley: a courier in a silver raincoat watches a violet portal fold an alley open onto a sunlit ocean](site/assets/scene.jpg)](https://comfyfield.com)
+<a href="site/assets/example-seedance.mp4"><img src="site/assets/example-seedance.jpg" width="270" alt="A vertical fitness post made with Seedance 2.5: a creator in a gym introduces four core exercises"></a>
+
+Made with Seedance 2.5 by the ComfyField team.
 
 <!-- DEMO VIDEO -->
 **Demo video (2 min):** [watch on comfyfield.com](https://comfyfield.com/#demo) · [download the MP4](site/assets/demo.mp4)
 
-## Cinema
+## How it works
 
-Cinema turns one idea into a short scene you can edit.
+1. **Insert your product.** Write one line: what you sell and who it is for. Add a product photo or a character if you have one.
+2. **Pick a format.** The format's writer layers its proven structure on top of your line. You read and edit the plan before anything renders.
+3. **Approve the cheap frame, then render.** Each video format makes a still with Flux 2 Pro first and waits at an approval gate. Only an approved frame becomes a Seedance 2.5 clip, with sound. Series formats do this per beat and join the clips in order.
+4. **Queue and schedule.** Every output lands in the Library. Keep an idea queue per channel in Assets, and schedule posts to your channels with [Postiz](docs/postiz.md).
 
-1. **Idea.** Open **Cinema studio** and write an idea, or press **Try the portal effect** to load the built-in example for free.
-2. **Plan.** **Plan shots** returns 2 to 6 shots. Each has a prompt, a camera move, a length of 5, 8 or 10 seconds, and continuity notes. Edit any field, add a start frame to any shot, and see the cost of the whole scene before anything renders.
-3. **Render.** **Generate scene** renders every shot with LTX-2.5 on Comfy Cloud, sound included.
-4. **Review.** **Approve and Send** passes a shot to the scene. **Rerun shot** replaces only that shot; the others keep their approval.
-5. **Stitch.** The approved clips join on your machine with ffmpeg. Order, trim and caption them, add music, preview, then export the MP4.
+## The formats
 
-Every scene is saved as a Flow, so you can open it on the canvas and agents can edit it through MCP. Details: [Cinema on LTX-2.5](docs/cinema-ltx.md).
+22 formats in five families, first on Explore and on Apps under **Formats that earn**. All are vertical (9:16).
 
-The scene above, shot by shot. Real LTX-2.5 renders on Comfy Cloud:
+| Family | Formats |
+| --- | --- |
+| Product ads and UGC | Chaotic product story, Problem mascot, Before and after reveal, Ingredient parade, Unboxing hook, Price knockout, Rated carousel |
+| Faceless series | What if, Countdown list, Science narrator, Timeline transformation, Big question |
+| Drama shorts | Object drama, Challenge vlog, Hero and villains |
+| AI influencer | Influencer character sheet, Put them in a trend, Influencer from scratch, Influencer product post |
+| 3D explainers | Body part explainer, Object explainer, Tiny worker |
 
-| Shot 1 | Shot 2 | Shot 3 |
-| --- | --- | --- |
-| [![Shot 1: the courier stops as a violet ring of sparks traces itself on the wet street](site/assets/shot1.jpg)](site/assets/shot1.mp4) | [![Shot 2: the portal glows while the alley bends upward around the courier](site/assets/shot2.jpg)](site/assets/shot2.mp4) | [![Shot 3: the courier walks toward a portal that opens onto a bright ocean](site/assets/shot3.jpg)](site/assets/shot3.mp4) |
-| Slow dolly toward the ring | Low orbit around the forming portal | Track right behind the courier |
+Writers use only the facts you give: no invented prices, reviews, results or health claims, and no real people or other brands. Formats are plain data in [src/lib/formats/earn.js](src/lib/formats/earn.js), so you can add your own in a few lines, or share and import one as a file. Each format, its shape and how to write a new one: [Formats that earn](docs/formats-that-earn.md).
 
-## What it does
+## Let your agent run it
 
-- **Create** images, video and audio from one composer. Pick any connected model, add references, run one prompt or a batch.
-- **Flows** chain prompts, models, Writer nodes and Stitch on a canvas. Approve gates hold each step until you press Send. Agents build and edit the same flows through MCP, and you watch their cursor move node to node.
-- **Library** (Assets) keeps every generation next to the characters, products, brand kits and voices you reuse across tools.
-- **Studios and formats.** Apps, effects and presets are plain data that run through the same engine and land in the same Library.
-- **Motion transfer** (Wan Animate 2) and **character swap** (SCAIL-2) render a short draft first. Approve it and the final runs.
-- **Stitch** joins clips locally with trims, captions and music, at no cost. See [Stitch](docs/stitch.md).
-
-Multi-part runs, such as long speech or long video, show "not available yet". Use one segment or a short script per run.
-
-## Quick start
-
-You need Git and [Node.js 22 or newer](https://nodejs.org/en/download).
+Claude Code, Codex or any MCP client can fill each channel's idea queue, write and generate, run flows and schedule posts. Flows stop at every Approve gate; only you can press Send. In your comfyfield folder:
 
 ```sh
-git clone https://github.com/ergophobian/comfyfield.git
-cd comfyfield
-npm install
-npm run dev
+claude mcp add --scope user comfyfield -- node "$PWD/bin/comfyfield.js" mcp
 ```
 
-Open the address the terminal prints (usually http://localhost:5173). Get a Comfy key from [platform.comfy.org](https://platform.comfy.org/profile/api-keys), then open **Connections**, paste it into the **ComfyUI** card and choose **Save and test**.
+For Codex, run the same line with `codex mcp add comfyfield`. Other clients run `node bin/comfyfield.js mcp` with the full path to the file.
 
-Windows commands, data folders and fixes: [setup guide](docs/setup.md).
+- Queue and posting: `queue_add`, `queue_list`, `queue_update`, `queue_remove`, `postiz_channels`, `schedule_post`
+- Making: `write_prompts`, `generate`, `list_models`, `get_model_schema`, `balance`, `stitch`, `export_stitch`
+- Flows: `list_flows`, `get_flow`, `create_flow`, `add_node`, `connect_nodes`, `update_node`, `remove_node`, `run_flow`
+- Teamwork: `list_agents`, `assign_agent`, `my_tasks`
+
+The same features are on the command line:
+
+```sh
+node bin/comfyfield.js channels
+node bin/comfyfield.js queue list
+node bin/comfyfield.js models --kind video
+node bin/comfyfield.js --help
+```
+
+See [Flows through MCP](docs/flows-mcp.md) and [Postiz setup](docs/postiz.md).
+
+## Costs
+
+You pay only your own provider credits; ComfyField bills nothing. Every video format stops for your approval of a cheap still before the paid clip renders. Prices in the app are estimates. Connections has an optional spend cap that asks before a run takes this session past it.
+
+## Start
+
+1. Install [Node.js 22 or newer](https://nodejs.org/en/download) and [Git](https://git-scm.com/downloads), then reopen your terminal.
+2. Paste these three lines. `npm start` installs everything, builds the studio and opens it in your browser. The first start takes a few minutes.
+
+   ```sh
+   git clone https://github.com/ergophobian/comfyfield.git
+   cd comfyfield
+   npm start
+   ```
+
+3. Open **Connections**, paste a key from [platform.comfy.org](https://platform.comfy.org/profile/api-keys) into the **ComfyUI** card and choose **Save and test**.
+
+Or ask your agent: "Clone github.com/ergophobian/comfyfield and run it with npm start."
+
+On Windows PowerShell, the last line is `npm.cmd start`. Data folders, ports and fixes: [setup guide](docs/setup.md). Developers can use `npm run dev` for live reload.
 
 ## How it uses Comfy
 
 One Comfy key covers both paths. The app, CLI and MCP server share them through [server/core.js](server/core.js).
 
-- **Comfy Router API v2.** `GET https://api.comfy.org/v2/models` lists hosted models. A run posts to `/v2/models/{provider}/{model}/requests` with `X-API-Key` and an `Idempotency-Key`, polls `/requests/{id}/status`, then fetches `/requests/{id}` for the result. [shared/mapping.js](shared/mapping.js) maps the composer's settings onto each model's inputs.
+- **Comfy Router API v2.** Every format runs here: Flux 2 Pro for frames and slides, Seedance 2.5 for clips. `GET https://api.comfy.org/v2/models` lists hosted models. A run posts to `/v2/models/{provider}/{model}/requests` with `X-API-Key` and an `Idempotency-Key`, polls `/requests/{id}/status`, then fetches `/requests/{id}` for the result. [shared/mapping.js](shared/mapping.js) maps the composer's settings onto each model's inputs.
 - **Comfy SDK on Comfy Cloud.** `@comfyorg/sdk` loads a bundled API-format workflow from [public/workflows](public/workflows) with `client.workflows.fromFile`, attaches uploads with `client.assets.fromBytes`, waits for the job and saves its outputs to the Library. The LTX-2.5 graphs behind Cinema run this way. The same runner can target your own RunPod Pod for long sessions.
 
-Optional keys add fal, Google AI, ElevenLabs and RunPod.
+Optional keys add fal, Google AI, ElevenLabs, RunPod and Postiz.
 
-## Agents and CLI
+## The rest of the studio
 
-The MCP server and CLI use the keys saved in Connections. Point your agent at your clone:
+- **Cinema** turns one idea into a 2 to 6 shot scene with LTX-2.5 on Comfy Cloud. Approve or rerun each shot, then stitch. See [Cinema on LTX-2.5](docs/cinema-ltx.md).
 
-```sh
-claude mcp add comfyfield -- node /absolute/path/to/comfyfield/bin/comfyfield.js mcp
-```
+  | Shot 1 | Shot 2 | Shot 3 |
+  | --- | --- | --- |
+  | [![Shot 1: the courier stops as a violet ring of sparks traces itself on the wet street](site/assets/shot1.jpg)](site/assets/shot1.mp4) | [![Shot 2: the portal glows while the alley bends upward around the courier](site/assets/shot2.jpg)](site/assets/shot2.mp4) | [![Shot 3: the courier walks toward a portal that opens onto a bright ocean](site/assets/shot3.jpg)](site/assets/shot3.mp4) |
 
-Other clients take the same command, `node /absolute/path/to/comfyfield/bin/comfyfield.js mcp`, in their MCP config.
+- **Create** images, video and audio from one composer with any connected model.
+- **Flows** chain prompts, models, Writer nodes and Stitch on a canvas, with Approve gates. Formats run on the same engine, and every Cinema scene is saved as a flow.
+- **Library** (Assets) keeps every generation next to your characters, products, brand kits, voices and idea queue.
+- **Stitch** joins clips locally with trims, captions and music, at no cost. See [Stitch](docs/stitch.md).
 
-- Generation: `list_models`, `get_model_schema`, `generate`, `write_prompts`, `balance`
-- Stitch: `stitch`, `export_stitch`
-- Scheduling: `postiz_channels`, `schedule_post`, `queue_list`, `queue_add`, `queue_update`, `queue_remove`; CLI: `comfyfield schedule` and `comfyfield queue`. See [Postiz setup](docs/postiz.md).
-- Flows: `list_flows`, `get_flow`, `create_flow`, `add_node`, `connect_nodes`, `update_node`, `remove_node`, `run_flow`
-- Teamwork: `list_agents`, `assign_agent`, `my_tasks`
-
-`run_flow` fills gaps and stops at every Approve gate; only you can press Send. See [Flows through MCP](docs/flows-mcp.md).
-
-```sh
-node bin/comfyfield.js models --kind video
-node bin/comfyfield.js generate "a fox in fresh snow, dolly in" --model <id> --ratio 16:9 --out ./renders
-node bin/comfyfield.js stitch /media/first.mp4 /media/second.mp4 --ratio 9:16 --out ./renders
-node bin/comfyfield.js --help
-```
-
-The Stitch example uses files already uploaded or generated in the app. Replace the `/media/` paths with your Library file URLs, or use public HTTP(S) media URLs. Local filesystem paths are not accepted.
-
-## Costs
-
-Every run uses your own provider credits; ComfyField bills nothing. Prices in the app are estimates, and Cinema shows the cost of a whole scene before it renders. Connections has an optional spend cap that asks before a run takes this session past it. Pods have their own daily cap and idle shutdown on the Pods page.
+Multi-part runs, such as long speech or long video, show "not available yet". Use one segment or a short script per run.
 
 ## Docker
 
