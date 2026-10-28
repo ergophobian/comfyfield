@@ -1158,7 +1158,7 @@ Create a wide 16:9 finished-output image for a ComfyField feature card and studi
 
 ## Validation and evidence
 
-Windows scratch clone: `C:/Users/User/comfyfield-art-20261019`. Builds, checks, image optimization and headless Chrome run there, sequentially. No source `.env` or `.comfyfield` directory is transferred.
+Windows scratch clone: `C:~/comfyfield-art-20261019`. Builds, checks, image optimization and headless Chrome run there, sequentially. No source `.env` or `.comfyfield` directory is transferred.
 
 Before/after screenshots: `research_notes/screenshots/placeholder-assets/` at 1440px and 390px, for Explore, the Professional app hub, Character studio, and the empty Library. Capture uses an isolated mock API and empty browser profile; it does not generate or seed Library results.
 

@@ -5,7 +5,7 @@ Tested 2026-10-25. Recommendation: hold public release for dependency and third-
 ## Inputs and boundaries
 
 - Baseline: `a6a64b1d9812eb204da14b2c780b954900203f94`, fresh authenticated HTTPS clone of `ergophobian/comfyfield`. GitHub visibility was still private when checked.
-- Windows clone: `D:\comfyfield-lanes\l2\fresh-20261025-201936`. Windows x64, Node `24.11.1`, npm `11.6.2`; about 11 GB available memory and 224 GB free on D: before execution.
+- Windows clone: `<lane-root>\l2\fresh-20261025-201936`. Windows x64, Node `24.11.1`, npm `11.6.2`; about 11 GB available memory and 224 GB free on D: before execution.
 - All installs, builds, checks, browser fixtures, ffmpeg decoding and history scanning ran on Windows, sequentially. No work ran in the integration lane. The Mac performed source review, edits, git operations and image inspection only.
 - Provider environment variables were cleared by name without reading their values. Every app run used new lane-owned storage. No pre-existing key/environment files were opened. Only the explicitly fake QA key and check-owned synthetic credentials were used. Real Comfy tests were read-only account checks, never generations.
 - Spend: $0. No pushes, pull requests, media deletion, history rewriting or main-branch commits. Final Windows process inspection found zero remaining lane-owned Node, Chrome or ffmpeg processes.
@@ -25,7 +25,7 @@ Tested 2026-10-25. Recommendation: hold public release for dependency and third-
 | Reachable origin history secret scan | PASS, bounded scan | Non-shallow clone; all fetched branches/tags, 387 commits, 2,379,506 patch lines including removed lines and merge parents. No installed gitleaks/trufflehog/Docker, so used a streaming git-log pattern scan. Seventeen explicit fixture/example matches; zero suspicious candidates. Binary contents/OCR, unreachable objects, unfetched PR refs and unrelated unpublished local branches were not scanned. | None |
 | Ignore rules and application license metadata | FAIL at baseline; PASS with fix | `.comfyfield/` and `.env` were ignored, but loaded `.env.local`/production variants were not. MIT LICENSE existed; package.json had no license field. Fixed ignore probes and matching manifest/lockfile license metadata verified. | `6544489` |
 | Dependencies, third-party licenses and media rights | FAIL / incomplete review | Six dependency advisories; third-party patch/logo notice gaps; models/packs have research license notes but no complete release inventory. All 422 tracked raster images were reviewed as thumbnails; 63 videos were reviewed by posters/provenance, not frame by frame. See findings. | Report only |
-| Personal paths/hosts in shipped runtime source | PASS, bounded scan | No actual personal username, `/Users/<person>`, pi-windows host or Tailscale endpoint found in src/server/shared/bin/bundled workflows. Test fixtures use example paths/private IPs. Research provenance/logs contain personal absolute paths and need a separate privacy decision. | None |
+| Personal paths/hosts in shipped runtime source | PASS, bounded scan | No actual personal username, `/Users/<person>`, <windows-host> host or Tailscale endpoint found in src/server/shared/bin/bundled workflows. Test fixtures use example paths/private IPs. Research provenance/logs contain personal absolute paths and need a separate privacy decision. | None |
 
 ## Audit findings by severity
 
@@ -52,5 +52,5 @@ Tested 2026-10-25. Recommendation: hold public release for dependency and third-
 - `d1736b6`: rejected-key error and focused browser regression.
 - The full `62/62` result belongs to baseline `a6a64b1`, not to a rerun of the complete suite after fixes. After fixes, the production build, expanded `format-ui-check.mjs`, and real dev/production/fake-key smoke passed.
 - Windows tested the five changed files as a working-tree overlay on baseline; SHA-256 values in `fixed-source-hashes.json` were compared with this branch and all five matched. The scratch smoke JSON's `sha` field names the baseline; its `fixed` tag and these hashes identify the patched run.
-- Primary logs and synthetic artifacts remain in `D:\comfyfield-lanes\l2\`. The fresh clone retains test screenshots and generated fixture files. Selected small artifacts, redacted audit output and reproducible scratch harnesses are copied to ignored `outputs/release-gates/` in this worktree.
+- Primary logs and synthetic artifacts remain in `<lane-root>\l2\`. The fresh clone retains test screenshots and generated fixture files. Selected small artifacts, redacted audit output and reproducible scratch harnesses are copied to ignored `outputs/release-gates/` in this worktree.
 - Useful local evidence: `verify-a6a64b1.utf8.log`, `history-audit.json`, `npm-audit.json` (UTF-16 JSON), `baseline-connection-smoke.json`, `fixed-connection-smoke.json`, `fixed-source-hashes.json`, `mp4-reopen.json`, `format-ui-fixed.utf8.log`, and `fixed-bad-key-inline.png`.

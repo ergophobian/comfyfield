@@ -2,7 +2,7 @@
 
 Date: 2026-10-19. Source: ComfyUI at commit `45bf90d1c91eecd782643346dcfb73cb0017667f` (v0.41.1), fetched with `git fetch --depth 1` from `comfyanonymous/ComfyUI`. No GPU run, no ComfyUI process: every check is static or a re-run of the exact Python/JS logic the server uses.
 
-The scripts are in the session scratchpad (`C:\Users\Bryan\AppData\Local\Temp\claude\d--Code-comfyfield\03e6c042-6fbf-4151-8e49-fb2e2da9648f\scratchpad\qe\tools\`). Copy them before the session folder goes:
+The scripts are in the session scratchpad (`C:\Users\<user>\AppData\Local\Temp\claude\d--Code-comfyfield\03e6c042-6fbf-4151-8e49-fb2e2da9648f\scratchpad\qe\tools\`). Copy them before the session folder goes:
 
 - `schemas.py`: reads every node schema from the source with Python's `ast` (V3 `io.Schema(node_id=..., inputs=[...])` and V1 `INPUT_TYPES` / `RETURN_TYPES` / `NODE_CLASS_MAPPINGS`); 646 classes.
 - `check_graphs.py`: the per-graph checks below.

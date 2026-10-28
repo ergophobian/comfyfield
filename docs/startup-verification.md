@@ -21,7 +21,7 @@ The writer fixture now supplies a legitimate local Host header. The widget brows
 
 ## Current results
 
-All substantial build/check work ran in the fresh Windows scratch clone `C:\Users\User\comfyfield-startup-review-20261019`, one command at a time. Provider credentials were cleared and data folders isolated. The ordinary macOS user (uid 501) ran only the requested lightweight fresh-clone startup smoke, with `NODE_OPTIONS=--max-old-space-size=512` and no browser opened.
+All substantial build/check work ran in the fresh Windows scratch clone `C:\Users\<user>\comfyfield-startup-review-20261019`, one command at a time. Provider credentials were cleared and data folders isolated. The ordinary macOS user (uid 501) ran only the requested lightweight fresh-clone startup smoke, with `NODE_OPTIONS=--max-old-space-size=512` and no browser opened.
 
 | Check | Evidence |
 | --- | --- |

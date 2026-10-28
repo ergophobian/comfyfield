@@ -74,7 +74,7 @@ The app page and shared recipe sheet retain sessions through `onSession` and `er
 
 ## Validation
 
-All builds/checks run sequentially on `pi-windows` in `C:/Users/kylek1/comfyfield-runner-resilience-437c496c`, a scratch clone of the stacked branch. Git Bash is first in `Path`; bundled `ffmpeg-static` is installed. Provider environment fields are cleared before launching checks; fixtures supply synthetic configuration. No real keys or paid calls are used.
+All builds/checks run sequentially on `<windows-host>` in `C:~/comfyfield-runner-resilience-437c496c`, a scratch clone of the stacked branch. Git Bash is first in `Path`; bundled `ffmpeg-static` is installed. Provider environment fields are cleared before launching checks; fixtures supply synthetic configuration. No real keys or paid calls are used.
 
 Focused checks cover exact retry request counts, real Router-batch lost-response reconciliation, writer key reuse, fresh explicit Rerun keys, failed-item retention, captured values, the run-id alias, early session/busy signals, concurrent hook calls with different values, approval gates, null endpoint inputs, inline/image Cloud alternates, target-policy agreement and unknown GPU-time prices. Inventory assertions derive valid counts and unique ids from the loaded catalog instead of fixed 450/479 totals.
 
@@ -92,7 +92,7 @@ All six review findings were confirmed and fixed. Adapter signatures preserve id
 
 Regression coverage lives in `format-runner-checks.mjs` (edited prompts, terminal/uncertain keys, Pod warnings, queued retries), `requirements-checks.mjs` (live phase), `comfy-checks.mjs` and `writer-check.mjs` (provider classification), and the existing format/Router browser checks (retained review panels, recovery and independent Create errors). The requirements HTTP fixture now supplies localhost Host headers for the merged local API guard. No engine change was needed.
 
-Final checks ran sequentially on `pi-windows` in `C:/Users/User/cf-runner-verified-7b278bf9`, cloned from `4aa24d2` with the review patch applied. The launcher used an allowlist of operating-system environment variables, excluding provider keys. All 17 changed runtime/check files matched the Mac worktree byte for byte. No paid calls occurred.
+Final checks ran sequentially on `<windows-host>` in `C:~/cf-runner-verified-7b278bf9`, cloned from `4aa24d2` with the review patch applied. The launcher used an allowlist of operating-system environment variables, excluding provider keys. All 17 changed runtime/check files matched the Mac worktree byte for byte. No paid calls occurred.
 
 - `npx vite build`: passed.
 - Focused runner, requirements, Router/core (22 tests) and writer (9 checks): passed.

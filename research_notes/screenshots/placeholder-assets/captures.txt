@@ -1,4 +1,4 @@
-art-after: Chrome pid 24524, DevTools port 50163, profile C:\Users\User\comfyfield-art-20261019\outputs\browser-profiles\art-after-spJm3J
+art-after: Chrome pid 24524, DevTools port 50163, profile C:\Users\<user>\comfyfield-art-20261019\outputs\browser-profiles\art-after-spJm3J
 after-explore-1440.png: 61 art images, 1425px page width
 after-app-hub-1440.png: 8 art images, 1440px page width
 after-studio-1440.png: 4 art images, 1440px page width

@@ -40,7 +40,7 @@ Native image results are collected from Seedream `data[].url`, Luma `assets.imag
 
 ## Evidence
 
-Windows validation checkout: `C:/Users/User/cf-router-breadth-32a4422e`, host `pi-windows`. Build and check processes run sequentially; Chrome is headless. Provider configuration is removed from the verification process environment. The runner explicitly selects Git Bash instead of the Windows WSL Bash alias for shell fixtures.
+Windows validation checkout: `C:~/cf-router-breadth-32a4422e`, host `<windows-host>`. Build and check processes run sequentially; Chrome is headless. Provider configuration is removed from the verification process environment. The runner explicitly selects Git Bash instead of the Windows WSL Bash alias for shell fixtures.
 
 Picker screenshots use a fake key saved through the mocked Connections page, then show Router favorites with native model names and published unit prices. No real output media is depicted.
 
@@ -80,7 +80,7 @@ All seven review findings are fixed:
 
 Additional review items are fixed: both audio models accept binary `application/octet-stream` as mp3; object schemas reject numbers, null, arrays and strings; every picker model has a hand-written native payload expectation independent of the production mapper; 390px picker price units wrap visibly rather than clipping.
 
-Windows scratch clone: `C:/Users/User/cf-router-review-32a4422e`. Commands run sequentially with only an allowlist of operating-system environment variables, Git Bash on the path, no `.env` or saved configuration, and mocked provider requests. No keys or paid generations were used. Live provider behavior, account availability and billing remain unverified.
+Windows scratch clone: `C:~/cf-router-review-32a4422e`. Commands run sequentially with only an allowlist of operating-system environment variables, Git Bash on the path, no `.env` or saved configuration, and mocked provider requests. No keys or paid generations were used. Live provider behavior, account availability and billing remain unverified.
 
 Final validation: production build passes (334 modules, existing chunk-size warning); `node scripts/verify.mjs` passes 17/17 scripts, including 21 core checks, 9 writer checks, 82 unchanged Pod checks, and the extended Router browser fixture. The latter checks ten picker models, native payloads, combined references, partial recovery, duplicate-click protection, Library reload, and 390px layout.
 

@@ -1,6 +1,6 @@
 # Story studio review fixes
 
-Implementation: `4aa5b83` on `story-studios`. The requested `git fetch origin` and rebase completed; `origin/main` was already included (`7ee3b1c`). All local edits stayed in `/Users/kylekumar/.t3/worktrees/comfyfield/t3-2d16bd1c`.
+Implementation: `4aa5b83` on `story-studios`. The requested `git fetch origin` and rebase completed; `origin/main` was already included (`7ee3b1c`). All local edits stayed in `~/.t3/worktrees/comfyfield/t3-2d16bd1c`.
 
 | Finding | Resolution |
 | --- | --- |
@@ -21,7 +21,7 @@ Global format totals in checks now derive from the catalog and validation result
 
 ## Validation
 
-Passed on implementation commit `4aa5b834c1d3e1d4d401631c8adc33fcad95a3bf`. All builds, checks, browser fixtures and ffmpeg work run sequentially in the scratch clone `C:/comfyfield-story-fixes-2d16` on `pi-windows`; no heavy checks run on the Mac. Provider credentials are removed from the validation process environment before the final run. Providers are mocked; paid spend is zero.
+Passed on implementation commit `4aa5b834c1d3e1d4d401631c8adc33fcad95a3bf`. All builds, checks, browser fixtures and ffmpeg work run sequentially in the scratch clone `C:/comfyfield-story-fixes-2d16` on `<windows-host>`; no heavy checks run on the Mac. Provider credentials are removed from the validation process environment before the final run. Providers are mocked; paid spend is zero.
 
 Check output:
 

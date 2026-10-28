@@ -1,7 +1,7 @@
 {
   "date": "2026-10-21",
   "baseCommit": "3174854ed9904e3a4d9a017ab1a62215252e20a6",
-  "host": "pi-windows",
+  "host": "<windows-host>",
   "checkout": "C:/comfyfield-live-runs-71",
   "node": "24.11.1",
   "shellPrerequisite": "Git Bash first on process PATH; Windows WSL bash cannot run the native-path fixtures",

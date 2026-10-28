@@ -14,7 +14,7 @@ Restored format items also say: "Format session ended on reload. Remaining steps
 
 ## Validation
 
-Host: `pi-windows`, Node 24.11.1. Isolated worktree: `D:\comfyfield-lanes\cancel-retry-3972476d`. Provider environment variables were cleared without reading their values. Fresh dependencies and an isolated validation home were used. No paid calls or live keys were used.
+Host: `<windows-host>`, Node 24.11.1. Isolated worktree: `<lane-root>\cancel-retry-3972476d`. Provider environment variables were cleared without reading their values. Fresh dependencies and an isolated validation home were used. No paid calls or live keys were used.
 
 - `npx vite build`: passed, with the existing bundle-size warning.
 - `node scripts/verify.mjs`: 26/27 check scripts passed; exit 1. All six browser scripts and all new regressions passed.

@@ -44,7 +44,7 @@ Live writer JSON reliability, Comfy Cloud execution, actual generation duration,
 
 ## Validation results
 
-Windows verification ran in `D:/comfyfield-lanes/cinema-regressions-bba702e0`. The Mac performed editing and evidence inspection only. Provider key variables were removed from the test process; the writer payload checks use isolated fake saved keys and intercepted network calls.
+Windows verification ran in `<lane-root>/cinema-regressions-bba702e0`. The Mac performed editing and evidence inspection only. Provider key variables were removed from the test process; the writer payload checks use isolated fake saved keys and intercepted network calls.
 
 - `npx vite build`: passes, with the existing chunk-size warning.
 - `node scripts/cinema-checks.mjs`: passes; balanced JSON extraction, duration normalization, two-shot plans, the built-in example, both writer payloads, estimates, catalog resolution, image inputs, persistence and replacement safeguards.
@@ -55,4 +55,4 @@ Windows verification ran in `D:/comfyfield-lanes/cinema-regressions-bba702e0`. T
 
 The tested source diff on Windows matches the local source diff exactly.
 
-The current build and full verification logs are retained on Windows at `D:/comfyfield-lanes/cinema-bba702e0-build.log` and `D:/comfyfield-lanes/cinema-bba702e0-verify.log`, with local copies under the ignored `outputs/` directory.
+The current build and full verification logs are retained on Windows at `<lane-root>/cinema-bba702e0-build.log` and `<lane-root>/cinema-bba702e0-verify.log`, with local copies under the ignored `outputs/` directory.
