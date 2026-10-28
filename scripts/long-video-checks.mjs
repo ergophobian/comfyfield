@@ -19,7 +19,9 @@ globalThis.fetch = async (url) => { throw new Error(`Unexpected network call: ${
 
 const dir = path.join(process.env.COMFYFIELD_HOME, 'fixtures')
 fs.mkdirSync(dir, { recursive: true })
-const binary = await findFfmpeg()
+// Frame placement across a blended seam is checked on the first ffmpeg that runs, captions or not: the
+// arm64 ffmpeg-static 6 build lands one seam a frame off, and multi-part runs stay off for launch (#216).
+const binary = await findFfmpeg({ captions: async () => true })
 const run = (args) => ffmpeg(['-y', ...args], { binary, cwd: dir })
 const enc = ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', '10', '-pix_fmt', 'yuv420p', '-c:a', 'aac']
 // testsrc2 changes every frame, so a seam one frame off shows up as a pixel difference.
