@@ -1,4 +1,5 @@
 import path from 'node:path'
+import { createHash } from 'node:crypto'
 import { parseArgs } from 'node:util'
 import fs from 'node:fs'
 
@@ -8,7 +9,10 @@ Usage
   comfyfield [start] [--port 5173] [--no-open]  Start the app and open the browser
   comfyfield models [--kind image|video|audio] [--search <text>]
   comfyfield generate "<prompt>" --model <id> [--ratio 16:9] [--duration 5] [--count 1] [--image <url|file>] [--out ./dir]
-  comfyfield connect <comfy|fal|google|elevenlabs|runpod> --key <key>
+  comfyfield connect <comfy|fal|google|elevenlabs|runpod|postiz> --key <key> [--url <api-base>]
+  comfyfield schedule <library-file> --channel <id> --at <iso> --caption <text> [--request-key <key>] [--draft] [--settings <json>]
+  comfyfield channels
+  comfyfield queue list|add|update|remove [id] [--channel <id>] [--idea <text>] [--status idea|made|scheduled]
   comfyfield balance
   comfyfield stitch <clip> [<clip> ...] [--ratio 16:9] [--music <file>] [--volume 0.25] [--fade 1] [--out ./dir]
   comfyfield stitch --spec <stitch.json> [--preview] [--out ./dir]
@@ -20,6 +24,9 @@ FAL_KEY, GEMINI_API_KEY, ELEVENLABS_API_KEY, COMFY_API_KEY and RUNPOD_API_KEY.
 ComfyUI runs use a ready Pod, else Comfy Cloud; the CLI never starts a Pod.`
 
 const options = {
+  channel: { type: 'string', multiple: true }, at: { type: 'string' }, caption: { type: 'string' }, draft: { type: 'boolean' },
+  'request-key': { type: 'string' }, settings: { type: 'string' }, url: { type: 'string' },
+  idea: { type: 'string' }, status: { type: 'string' }, format: { type: 'string' }, 'library-item': { type: 'string' }, 'postiz-id': { type: 'string' },
   kind: { type: 'string' }, search: { type: 'string' }, model: { type: 'string', short: 'm' },
   ratio: { type: 'string' }, duration: { type: 'string' }, count: { type: 'string' }, image: { type: 'string' },
   out: { type: 'string', short: 'o' }, key: { type: 'string' }, json: { type: 'boolean' },
@@ -46,6 +53,19 @@ async function main() {
 
   const core = await import('../server/core.js')
 
+  if (cmd === 'channels') return console.log(JSON.stringify(await core.postizChannels(), null, 2))
+  if (cmd === 'schedule') {
+    const input = { media: rest, channels: v.channel, caption: v.caption || '', date: v.at, draft: Boolean(v.draft), settings: v.settings ? JSON.parse(v.settings) : {} }
+    // Identical CLI invocations retain a key across process restarts.
+    const requestKey = v['request-key'] || `cli-${createHash('sha256').update(JSON.stringify(input)).digest('hex')}`
+    return console.log(JSON.stringify(await core.schedulePost({ ...input, requestKey }), null, 2))
+  }
+  if (cmd === 'queue') {
+    const [action = 'list', id] = rest
+    const fields = Object.fromEntries(Object.entries({ channel: v.channel?.[0], idea: v.idea, status: v.status, format: v.format, libraryItem: v['library-item'], postizId: v['postiz-id'], when: v.at }).filter(([, value]) => value != null))
+    const result = action === 'list' ? core.queueList(fields) : action === 'add' ? core.queueAdd(fields) : action === 'update' ? core.queueUpdate(id, fields) : action === 'remove' ? core.queueRemove(id) : die('Queue action must be list, add, update or remove.')
+    return console.log(JSON.stringify(result, null, 2))
+  }
   if (cmd === 'stitch') {
     const spec = v.spec ? JSON.parse(fs.readFileSync(v.spec, 'utf8')) : { clips: rest }
     if (v.ratio) spec.aspect = v.ratio
@@ -80,6 +100,7 @@ async function main() {
     if (!core.providers[id]) die(`Provider must be one of: ${Object.keys(core.providers).join(', ')}`)
     const values = {}
     if (v.key) values.key = v.key
+    if (v.url) values.url = v.url
     if (!Object.keys(values).length) die('Pass --key.')
     core.saveConnection(id, values)
     return console.log(`Saved ${id} to .comfyfield/keys.json`)
