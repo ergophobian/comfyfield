@@ -25,6 +25,25 @@ The free portal example is the fixed three-shot idea. It avoids an unbudgeted te
 
 Do not try to fit uncapped waiting inside a single 120-second take. Approvals and exports should show actual working controls; a render error blocks that segment until the generation lane resolves it. Imported clips can be stitched via **Add clips** without running a model, but label this as an assembly of pre-generated clips, not as a freshly rendered Cinema run.
 
+## Recorded cut, October 27
+
+The submitted cut was made without a live take and without paid calls. It is 115 seconds, 1920 × 1080, with burned-in captions, a matching `.srt` and an ffmpeg-synthesized pad under the clips' own LTX audio. The video files are not committed.
+
+| Time | Segment | Source and label |
+| --- | --- | --- |
+| 0–10 s | The folded alley, shots 1–3 with their own sound, title "ComfyField · one idea, a finished scene" | The October 26 LTX-2.5 renders on Comfy Cloud (`site/assets/provenance.md`). "Rendered earlier with LTX-2.5 on Comfy Cloud". |
+| 10–35 s | `/cinema`: type the idea, **Try the portal effect**, change shot 2's camera move, show **Whole scene · ≈$0.24**. **Generate scene** is not clicked. | Live app. "Cinema studio · free built-in plan". |
+| 35–42 s | The three shots side by side | Same renders, same label. |
+| 42–66 s | Flows: a Stitch node, **Add clips** with the three renders, **Stitch scene**, preview, **Export to Assets**, **Download video** | Live app, local ffmpeg. "Local stitch · no credits". |
+| 66–77 s | The portal plan as a Flow: three LTX-2.5 nodes behind Approve gates, one Approve panel open | `cinemaFlow` output created through the MCP `create_flow` tool; nothing run. "The same plan as a saved Flow". |
+| 77–97 s | `scripts/demo-agent.mjs --flow <id> --node prompt` edits **Recording · agent prompt edit**; the Demo agent cursor and badge appear; its real terminal output is overlaid | "Live local MCP edit · no generation"; the terminal overlay names it a scripted MCP client. |
+| 97–109 s | `site/` served with `python3 -m http.server` | The domain goes live October 29. |
+| 109–115 s | End card: github.com/ergophobian/comfyfield, "Bring your own Comfy key · MIT" | — |
+
+Differences from the script above: no live Generate or Rerun, and no Flux 2 Pro cup edit (no owned source photo and no budget). Stitch is shown on the Flows canvas because the Cinema assembly panel appears only after **Generate scene**. Captions replace the voiceover.
+
+While recording, switching from a flow with a Stitch node to a flow without that node blanked the page (`stitchInputs` in `src/lib/stitch.js` received an undefined node). Reload `/flows` with the next flow selected instead of switching from the Flows menu.
+
 ## Fixed Cinema prompts
 
 Idea (the built-in example, exact text):
