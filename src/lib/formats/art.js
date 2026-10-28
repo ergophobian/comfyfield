@@ -3,6 +3,28 @@ import videoIds from '../../../public/art/video/index.json' with { type: 'json' 
 // Generated editorial art is optional; unmapped entries keep their original gradient.
 export const coverArt = {
   // New formats borrow the closest existing cover until they get art of their own.
+  "earn-chaotic-product-story": "/art/covers/behind-the-scenes.webp",
+  "earn-problem-mascot": "/art/covers/micro-beasts.webp",
+  "earn-before-after": "/art/covers/transition.webp",
+  "earn-ingredient-parade": "/art/covers/plush-toy.webp",
+  "earn-unboxing-hook": "/art/covers/packshot.webp",
+  "earn-price-knockout": "/art/covers/game-show.webp",
+  "earn-rated-carousel": "/art/covers/ad-variants.webp",
+  "earn-what-if": "/art/covers/time-lapse.webp",
+  "earn-countdown": "/art/covers/meme.webp",
+  "earn-science-narrator": "/art/covers/explainer.webp",
+  "earn-timeline": "/art/covers/time-lapse.webp",
+  "earn-big-question": "/art/covers/world-morph.webp",
+  "earn-object-drama": "/art/covers/short-sequence.webp",
+  "earn-challenge-vlog": "/art/covers/human-video.webp",
+  "earn-hero-villain": "/art/covers/game-style.webp",
+  "earn-influencer-sheet": "/art/covers/character-sheet.webp",
+  "earn-influencer-trend": "/art/covers/video-character-swap.webp",
+  "earn-influencer-start": "/art/covers/character-scene.webp",
+  "earn-influencer-product": "/art/covers/talking-head.webp",
+  "earn-body-explainer": "/art/covers/faceless.webp",
+  "earn-object-explainer": "/art/covers/turntable.webp",
+  "earn-tiny-worker": "/art/covers/micro-beasts.webp",
   "music-video": "/art/covers/music.webp",
   "ai-influencer-video": "/art/covers/talking-head.webp",
   "pose-transfer": "/art/covers/character-scene.webp",
@@ -159,6 +181,7 @@ const toolSources = {
   "assets": "library"
 }
 const hubSources = {
+  "earn": "product-ad",
   "professional": "shots",
   "enhance": "relight-photo",
   "face": "character-sheet",
@@ -169,6 +192,7 @@ const hubSources = {
   "trending": "cloud-surfing"
 }
 const categorySources = {
+  "earn": "product-ad",
   "camera": "cam-tracking",
   "effects": "turn-to-sand",
   "cinema": "cinema-shot",

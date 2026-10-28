@@ -91,6 +91,8 @@ export function validateFormat(format, schemas = savedSchemas) {
     ids.add(step.id)
     if (step.from != null && (!Array.isArray(step.from) || step.from.some((id) => typeof id !== 'string'))) bad(`Invalid dependencies for ${step.id}`)
     if (step.takes != null && (!Number.isInteger(step.takes) || step.takes < 1)) bad(`Invalid takes for ${step.id}`)
+    if (step.beat != null && (!Number.isInteger(step.beat) || step.beat < 1)) bad(`Invalid beat for ${step.id}`)
+    if (step.wrap != null && (typeof step.wrap !== 'string' || !step.wrap.includes('{written}'))) bad(`${step.id}: A wrap needs {written}`)
     if (step.type === 'approve' || step.type === 'stitch') continue
     if (step.type === 'writer') {
       if (step.when && (!step.optional || !slots.get(step.when[0])?.options?.some((o) => o.id === step.when[1]))) bad(`${step.id}: Invalid optional writer condition`)
@@ -240,6 +242,9 @@ export function validateFormat(format, schemas = savedSchemas) {
           } catch (error) { bad(`${label} ${error.message}`) }
         }
         for (const input of format.inputs) if (pictureTypes.includes(input.type) && model.maxImages) used.add(input.id)
+        for (const input of format.inputs) if (input.type === 'video' && model.videoRef) used.add(input.id)
+        // A length or shape choice sets the run itself, as it does for a graph.
+        for (const input of format.inputs) if (input.type === 'choice' && input.options.every((o) => Object.keys(o.params || {}).length && Object.keys(o.params).every((field) => RUN_SETTINGS.includes(field)))) used.add(input.id)
       } else bad(`${label} Provider ${model.provider} has no format schema validator yet`)
     }
   }

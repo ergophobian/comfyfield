@@ -14,6 +14,19 @@ export function nearestAspect(shape) {
   return Object.keys(aspectSize).reduce((best, a) => (gap(a) < gap(best) ? a : best), '1:1')
 }
 
+// One written plan can drive several steps. "Beat 2:" (or Shot, Scene, Slide) starts the second part; the text
+// before the first marker (the cast and look) goes with every part, so each step keeps the same characters.
+// Without markers, or without that part, the step gets the whole text.
+export function beatOf(text, n) {
+  const marker = /^[^\S\n]*[*#_]*(?:beat|shot|scene|slide)[^\S\n]*(\d+)\b[*_]*[^\S\n]*[:.)-]?/gim
+  const marks = [...String(text).matchAll(marker)]
+  const at = marks.findIndex((m) => Number(m[1]) === n)
+  if (at < 0) return text
+  const lead = text.slice(0, marks[0].index).trim()
+  const part = text.slice(marks[at].index, marks[at + 1]?.index ?? text.length).trim()
+  return lead ? `${lead}\n\n${part}` : part
+}
+
 export function compileFormat(format, userInputs = {}, { writerAvailable = true } = {}) {
   const problems = validateFormat(format)
   if (problems.length) throw new Error(`${format.name}: ${problems.join('; ')}`)
@@ -48,7 +61,9 @@ export function compileFormat(format, userInputs = {}, { writerAvailable = true 
         const value = values[input.id]
         return value?.url ? [value.faceUrl || value.url] : value?.images || []
       })
-      let note = visibleInputs(format, values).filter((i) => ['text', 'longtext'].includes(i.type)).map((i) => values[i.id]).filter(Boolean).join('\n\n')
+      // A choice marked toWriter tells the writer which option the user picked.
+      const told = (i) => { const o = i.options.find((x) => x.id === values[i.id]); return o && `${i.label}: ${o.text || o.label}` }
+      let note = visibleInputs(format, values).map((i) => ['text', 'longtext'].includes(i.type) ? values[i.id] : i.type === 'choice' && i.toWriter ? told(i) : null).filter(Boolean).join('\n\n')
       if (step.optional) note = `${note}\n\nBase prompt: ${stepOptions(format, format.steps.find((s) => !s.type), values).prompt}`
       nodes.push({ id: step.id, type: 'writer', data: { optional: step.optional, instructions: step.instructions || step.writer_instructions || format.writer, note, images: media, target: step.target || format.runsOn || format.kind, ...(step.review && { review: step.review }) } })
     } else if (step.type === 'stitch') {
@@ -58,7 +73,7 @@ export function compileFormat(format, userInputs = {}, { writerAvailable = true 
       nodes.push({ id: step.id, type: 'approve', data: {} })
     } else {
       const options = stepOptions(format, step, values)
-      const model = { ...stepModel(format, step, values), formatStep: { id: step.id, from, options, written: receivesWriter(from) } }
+      const model = { ...stepModel(format, step, values), formatStep: { id: step.id, from, options, written: receivesWriter(from), ...(step.beat && { beat: step.beat }), ...(step.wrap && { wrap: step.wrap }) } }
       nodes.push({ id: step.id, type: 'model', data: { model, prompt: options.prompt || format.name, aspect: options.aspect, duration: options.duration, count: options.count, takes: step.takes || 1 } })
       // One reference triggers one run, including tools whose prompt is empty or which take named image fields.
       if (!from.length) {
@@ -149,7 +164,10 @@ export async function runFormat(format, inputs, { run, writePrompt, onChange = (
     run: async (model, unit, identity) => {
       const { formatStep, ...target } = model
       const options = { ...formatStep.options, count: unit.count, caption: format.name }
-      if (formatStep.written && unit.prompt) options.prompt = unit.prompt
+      if (formatStep.written && unit.prompt) {
+        const text = formatStep.beat ? beatOf(unit.prompt, formatStep.beat) : unit.prompt
+        options.prompt = formatStep.wrap ? formatStep.wrap.replace('{written}', text) : text
+      }
       if (formatStep.from.length && unit.image) {
         options.images = [unit.image]
         // An upstream picture takes the first slot; the format's other pictures keep theirs.

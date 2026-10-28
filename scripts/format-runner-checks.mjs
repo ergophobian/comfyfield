@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict'
 import { recipes, initialValues, recipeOptions } from '../src/lib/recipes.js'
 import { allFormats, formats, formatProblems } from '../src/lib/formats/index.js'
-import { compileFormat, runFormat as runWithPlanning, preflight } from '../src/lib/formats/runner.js'
+import { compileFormat, runFormat as runWithPlanning, preflight, beatOf } from '../src/lib/formats/runner.js'
 import { stepOptions } from '../src/lib/formats/options.js'
 import { validateFormat } from '../src/lib/formats/validate.js'
 import { schemas } from '../src/lib/formats/schemas.js'
-import { falInput, comfyVars } from '../shared/mapping.js'
+import { falInput, comfyVars, comfyRouterInput } from '../shared/mapping.js'
 
 import { offlineRequirements } from './fixtures/format-planning.mjs'
 const runFormat = (format, values, options) => runWithPlanning(format, values, { requirements: offlineRequirements, ...options })
@@ -392,8 +392,8 @@ assert.match(dubCalls[0].opts.prompt, /conversational Mandarin/)
 const dubVars = comfyVars('video', dubCalls[0].opts)
 assert.deepEqual([dubVars.start, dubVars.duration, dubVars.video], [2, 30, '/media/talk.mp4'])
 assert.equal(dub.inputs.find((i) => i.id === 'language').options[0].id, 'es', 'Spanish stays the first dub language')
-assert.equal(formats.length, 473)
-assert.equal(allFormats.length, 497, 'Do not delete planned formats')
+assert.equal(formats.length, 495)
+assert.equal(allFormats.length, 519, 'Do not delete planned formats')
 assert.equal(allFormats.filter((f) => f.category === 'camera').length > 0, true, 'Keep Create prompt presets')
 assert(allFormats.filter((f) => !formats.includes(f)).every((f) => formatProblems.get(f.id).length))
 
@@ -493,6 +493,77 @@ const rapVideo = comfyVars('video', rapRuns[1].opts, rapRuns[1].model.sizes)
 assert.equal(rapVideo.audio, song.url)
 assert.equal(rapVideo.image, photo.url)
 assert.equal(rapVideo.shot, 0)
+
+{
+  // Formats that earn: one written plan drives every step. Each step takes its own beat with the shared look,
+  // the frames wait for approval before any clip is paid for, and the clips join in beat order.
+  const plan = 'Look: a grumpy lemon in a blue apron, a bright kitchen.\nBeat 1: the lemon is left out of the fruit bowl. "seriously?"\nBeat 2: the bowl laughs.\n**Beat 3:** the lemon squares up.'
+  assert.equal(beatOf(plan, 1), 'Look: a grumpy lemon in a blue apron, a bright kitchen.\n\nBeat 1: the lemon is left out of the fruit bowl. "seriously?"')
+  assert.equal(beatOf(plan, 3), 'Look: a grumpy lemon in a blue apron, a bright kitchen.\n\n**Beat 3:** the lemon squares up.')
+  assert.equal(beatOf(plan, 4), plan, 'A missing beat falls back to the whole plan')
+  assert.equal(beatOf('Shot 1: a box\nShot 2: it opens', 2), 'Shot 2: it opens')
+  assert.equal(beatOf('No markers here', 1), 'No markers here')
+  const earned = allFormats.filter((f) => f.category === 'earn')
+  assert(earned.length >= 16 && earned.every((f) => formats.includes(f) && f.hub === 'earn'), 'Every format that earns validates and lists on Apps')
+  for (const f of earned.filter((x) => x.kind === 'video')) {
+    // Nothing pays for a video before a person has approved what it starts from.
+    for (const step of f.steps.filter((s) => s.kind === 'video')) assert(step.from.some((id) => f.steps.find((s) => s.id === id)?.type === 'approve'), `${f.id}: ${step.id} needs an approval first`)
+  }
+  const drama = formats.find((f) => f.id === 'earn-object-drama')
+  const dramaRuns = []
+  const dramaWrites = []
+  const blender = { url: 'https://example.test/blender.png', ratio: '1:1', name: 'Blender' }
+  const dramaSession = await runFormat(drama, { ...valuesFor(drama), product: blender, idea: 'A blender, starring fruit', arc: 'rescue' }, {
+    writePrompt: async (input) => { dramaWrites.push(input); return plan.replace('**Beat 3:**', 'Beat 3:') + '\nBeat 4: the blender arrives.' },
+    run: async (model, opts, metadata) => {
+      dramaRuns.push({ model, opts, metadata })
+      if (model.provider === 'stitch') return [{ url: '/media/drama.mp4', kind: 'video' }]
+      return [{ url: `https://example.test/${metadata.stepId}.${model.kind === 'video' ? 'mp4' : 'png'}`, kind: model.kind }]
+    },
+  })
+  assert.match(dramaWrites[0].note, /A blender, starring fruit\n\nStory: someone hits rock bottom/, 'A picked story option reaches the writer')
+  assert.equal(dramaRuns.length, 0, 'The plan waits for review')
+  await dramaSession.sendWriter('plan')
+  assert.deepEqual(dramaRuns.map((r) => r.metadata.stepId).sort(), ['frame1', 'frame2', 'frame3', 'frame4'], 'Frames render, clips wait for approval')
+  const frame = (id) => dramaRuns.find((r) => r.metadata.stepId === id).opts
+  assert.match(frame('frame1').prompt, /^One vertical still frame/)
+  assert.match(frame('frame1').prompt, /Look: a grumpy lemon[^]*Beat 1: the lemon is left out/)
+  assert.doesNotMatch(frame('frame1').prompt, /Beat 2/)
+  assert.match(frame('frame3').prompt, /exactly as in the first image[^]*Look: a grumpy lemon[^]*Beat 3: the lemon squares up/)
+  assert.deepEqual([comfyRouterInput('bfl/flux-2-pro', frame('frame1')).input_image, comfyRouterInput('bfl/flux-2-pro', frame('frame1')).input_image_2], [photo.url, blender.url], 'The first frame reads the reference and the product')
+  assert.equal(comfyRouterInput('bfl/flux-2-pro', frame('frame2')).input_image, 'https://example.test/frame1.png', 'Later frames match the first')
+  assert.equal(comfyRouterInput('bfl/flux-2-pro', frame('frame2')).input_image_2, blender.url, 'Later frames keep the product')
+  for (const n of [1, 2, 3, 4]) await dramaSession.send(`check${n}`)
+  const clip2 = dramaRuns.find((r) => r.metadata.stepId === 'clip2')
+  assert.equal(clip2.model.model, 'byteplus/dreamina-seedance-2-5-260628')
+  assert.match(clip2.opts.prompt, /Beat 2: the bowl laughs\.[^]*Keep every character and the product/)
+  const clip2Input = comfyRouterInput(clip2.model.model, clip2.opts)
+  assert.deepEqual(clip2Input.content.slice(1).map((c) => c.image_url.url), ['https://example.test/frame2.png', blender.url], 'A clip starts from its approved frame and keeps the product')
+  assert.equal(clip2Input.generate_audio, true)
+  assert.equal(clip2Input.duration, 5)
+  const dramaJoin = dramaRuns.find((r) => r.model.provider === 'stitch')
+  assert.deepEqual(dramaJoin.opts.clips.map((c) => c.url), [1, 2, 3, 4].map((n) => `https://example.test/clip${n}.mp4`), 'Beats join in order')
+
+  // Put them in a trend: a clean picture of the character to approve, then Seedance 2.5 takes the trend clip
+  // as a reference video.
+  const trendFormat = formats.find((f) => f.id === 'earn-influencer-trend')
+  const trendRuns = []
+  const trendClip = { url: '/media/trend.mp4', name: 'trend.mp4', ratio: '9:16', duration: 8, trim: { start: 0, end: 8 } }
+  const trendSession = await runFormat(trendFormat, { ...valuesFor(trendFormat), video: trendClip, rights: 'confirmed' }, {
+    run: async (model, opts, metadata) => { trendRuns.push({ model, opts, metadata }); return [{ url: `https://example.test/${metadata.stepId}.${model.kind === 'video' ? 'mp4' : 'png'}`, kind: model.kind }] },
+  })
+  assert.deepEqual(trendRuns.map((r) => r.metadata.stepId), ['ready'], 'The swap waits for approval')
+  await trendSession.send('check')
+  const swap = trendRuns.find((r) => r.metadata.stepId === 'swap')
+  const swapInput = comfyRouterInput(swap.model.model, swap.opts)
+  assert.deepEqual(swapInput.content.slice(1), [
+    { type: 'image_url', image_url: { url: 'https://example.test/ready.png' }, role: 'reference_image' },
+    { type: 'video_url', video_url: { url: '/media/trend.mp4' }, role: 'reference_video' },
+  ])
+  assert.equal(swapInput.ratio, '9:16')
+  assert.equal(swapInput.duration, 8)
+  console.log(`Formats that earn ok: ${earned.length} formats, beat plans, approvals before every clip, ordered joins and a trend clip reference.`)
+}
 
 console.log(`Format runner checks ok: ${checked} recipe cases, approval and batching, concurrency, schema rejection, Comfy placeholders, writer handoff and provider failures. No network calls.`)
 

@@ -172,7 +172,7 @@ function Explore({ onRecreate }) {
     ...influencerPresets.map((p) => ({ cover: p.cover, type: p.picks.type })),
   ]
   const uses = (item) => [
-    ...characterUses(item, openFormat, ['influencer-post', 'ai-influencer-video', 'character-scene', ...trendIds]),
+    ...characterUses(item, openFormat, ['influencer-post', 'ai-influencer-video', 'character-scene', 'earn-influencer-product', ...trendIds]),
     ...[motionFormat, ...ugcFormats].map((format) => ({ label: format.name, onClick: () => openFormat(format.id, { character: toRef('character', item) }) })),
   ]
   return (

@@ -77,6 +77,9 @@ await test('Router consumes ordered format slots and character or product refere
   assert.deepEqual(mixed, { prompt: 'Edit', width: 1024, height: 1024, input_image: a, input_image_2: b })
   assert.deepEqual(comfyRouterInput('byteplus/seedance-1-0-pro-fast-251015', { prompt: 'Move', images: [a] }), { content: [{ type: 'text', text: 'Move' }, { type: 'image_url', image_url: { url: a }, role: 'first_frame' }], duration: 5, resolution: '720p' })
   assert.deepEqual(comfyRouterInput('byteplus/dreamina-seedance-2-5-260628', { prompt: 'Move', slots: { pictures: [a, b] } }), { content: [{ type: 'text', text: 'Move' }, { type: 'image_url', image_url: { url: a }, role: 'reference_image' }, { type: 'image_url', image_url: { url: b }, role: 'reference_image' }], duration: 5, resolution: '720p', ratio: '16:9' })
+  // A clip is a reference video for Seedance 2.5, which switches a single picture to a reference too.
+  assert.deepEqual(comfyRouterInput('byteplus/dreamina-seedance-2-5-260628', { prompt: 'Swap', aspect: '9:16', images: [a], video: '/media/trend.mp4' }), { content: [{ type: 'text', text: 'Swap' }, { type: 'image_url', image_url: { url: a }, role: 'reference_image' }, { type: 'video_url', video_url: { url: '/media/trend.mp4' }, role: 'reference_video' }], duration: 5, resolution: '720p', ratio: '9:16' })
+  assert.equal(comfyRouterInput('byteplus/seedance-1-0-pro-fast-251015', { prompt: 'Move', images: [a], video: '/media/trend.mp4' }).content.length, 2, 'Seedance 1.0 fast takes no reference clip')
 })
 
 await test('Router chains reject unsupported upstream images before any generation, including gates and targets', async () => {

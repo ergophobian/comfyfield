@@ -192,13 +192,18 @@ function Home() {
 
   const effects = pick(['video', 'image'].flatMap((kind) => formatsFor({ kind, category: 'effects', openOnly: false })))
   const motion = pick(formatsFor({ kind: 'video', category: 'camera', openOnly: false }))
-  const apps = pick(formats.filter((f) => f.hub))
+  const apps = pick(formats.filter((f) => f.hub && f.hub !== 'earn'))
+  const earn = formats.filter((f) => f.category === 'earn')
   const shown = allShown ? allTools : topIds.map(toolById)
   const openFx = (f) => (f.hub ? navigate(`/apps/${f.id}`) : openFormat(f))
 
   return (
     <main className="page explore">
       <Hero />
+
+      <Row id="earn" strip title="Formats that earn" line="Proven viral formats. Insert your product, get posts." more={<Link className="link-btn" to="/apps?hub=earn">See all</Link>}>
+        <FormatGrid list={earn} onOpen={(f) => navigate(`/apps/${f.id}`)} />
+      </Row>
 
       <Row id="tools" title="Top tools" line="Start with the main studios and generators." more={
         <button type="button" className="link-btn" aria-expanded={allShown} aria-controls="ex-tools" onClick={() => setAllShown((v) => !v)}>

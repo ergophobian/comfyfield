@@ -16,8 +16,10 @@ import { effects } from './effects.js'
 import { music } from './music.js'
 import { photodumpReframe } from './photodumpReframe.js'
 import { presenterFormats } from './presenters.js'
+import { earn, earnGroups } from './earn.js'
 
 export const categories = [
+  { id: 'earn', name: 'Formats that earn', blurb: 'Proven viral formats. Insert your product, get posts.' },
   { id: 'camera', name: 'Camera moves', blurb: 'One photo, one camera move.' },
   { id: 'effects', name: 'Effects', blurb: 'One click visual effects for a photo.' },
   { id: 'cinema', name: 'Cinema', blurb: 'Direct a shot like a film set.' },
@@ -74,7 +76,7 @@ const widenMix = (f) => ({
   }),
 })
 
-export const allFormats = [...motion, ...presets, ...looks, ...edits, ...people, ...ads, ...fun, ...apps2, ...mixedLooks, ...jobs, ...three, ...fromFal, ...effects, ...music, ...photodumpReframe, ...presenterFormats]
+export const allFormats = [...motion, ...presets, ...looks, ...edits, ...people, ...ads, ...fun, ...apps2, ...mixedLooks, ...jobs, ...three, ...fromFal, ...effects, ...music, ...photodumpReframe, ...presenterFormats, ...earn]
   .map((f) => (f.id === 'cam-mix' ? widenMix(f) : f))
   .map((f) => ['long-video', 'tts', 'drama3-tts', 'qwen3-tts', 'motion-transfer', 'video-character-swap'].includes(f.id) ? { ...f, availabilityNote: 'Multi-part runs are not available yet. Use one segment or a short script per run.' } : f)
 
@@ -83,6 +85,7 @@ export const formats = allFormats.filter((f) => !formatProblems.get(f.id).length
 
 // Higgsfield's app hubs. A format with `hub` set shows on /apps under that hub and opens at /apps/:id.
 export const hubs = [
+  { id: 'earn', name: 'Formats that earn', blurb: 'Proven viral formats. Insert your product, get posts.', groups: earnGroups },
   { id: 'professional', name: 'Professional', blurb: 'Angles, shots, zooms and color for working creators.' },
   { id: 'enhance', name: 'Enhance and style', blurb: 'Relight, retouch, restyle and try on.' },
   { id: 'face', name: 'Face and identity', blurb: 'Your own face or a saved character, anywhere.' },

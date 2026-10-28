@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Field } from './Fields.jsx'
 import FormatReview from './Review.jsx'
-import { stepModel } from '../../lib/formats/options.js'
+import { stepModel, stepOptions } from '../../lib/formats/options.js'
 import Results from '../Results.jsx'
 import { AppGrid } from '../apps/AppCard.jsx'
 import { mainInput, pathFor, valuesFrom } from '../apps/data.js'
@@ -51,13 +51,17 @@ export default function FormatWorkspace({ format, motion = false, showMore = tru
     setValues((x) => ({ ...x, ...patch }))
   }
 
-  const model = stepModel(format, format.steps.find((step) => !step.type), values)
-  const metaOf = useModelMeta([model])
+  // The button prices every model step, so a pipeline shows what the whole run costs.
+  const paid = format.steps.filter((step) => !step.type)
+  const models = paid.map((step) => stepModel(format, step, values))
+  const model = models[0]
+  const metaOf = useModelMeta(models)
   const provider = providerInfo[model.provider === 'comfyRouter' ? 'comfy' : model.provider]
   const wired = isWired(format)
   const connected = model.provider === 'comfy' || connections[model.provider === 'comfyRouter' ? 'comfy' : model.provider]?.connected
   const missing = missingInputs(format, values)
-  const each = estimate(model, metaOf(model), { aspect: '1:1', count: 1, duration: format.settings?.duration })
+  const parts = paid.map((step, i) => estimate(models[i], metaOf(models[i]), { aspect: '1:1', count: 1, duration: stepOptions(format, step, values).duration ?? format.settings?.duration })).filter(Boolean)
+  const each = parts.length ? { usd: parts.reduce((n, p) => n + p.usd, 0), approx: parts.length < paid.length || parts.some((p) => p.approx) } : null
   const main = mainInput(format)
   const rest = visibleInputs(format, values).filter((i) => i.id !== main?.id)
   const Icon = icons[format.kind] || IconSpark
