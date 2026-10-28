@@ -9,7 +9,7 @@ ComfyField is an open-source creative studio for images, video and audio. It run
 [![The folded alley: a courier in a silver raincoat watches a violet portal fold an alley open onto a sunlit ocean](site/assets/scene.jpg)](https://comfyfield.com)
 
 <!-- DEMO VIDEO -->
-Demo video: link coming with the submission.
+**Demo video (2 min):** [watch on comfyfield.com](https://comfyfield.com/#demo) · [download the MP4](site/assets/demo.mp4)
 
 ## Cinema
 
