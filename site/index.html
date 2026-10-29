@@ -41,15 +41,14 @@
           </ol>
         </div>
 
-        <figure class="phone">
-          <div class="phone-screen">
-            <video id="example" data-autoplay muted loop playsinline preload="metadata" poster="assets/example-seedance.jpg" aria-label="A vertical fitness post: a creator in a gym shows four core exercises, each captioned with sets and reps">
-              <source src="assets/example-seedance.mp4" type="video/mp4">
+        <figure class="hero-film">
+          <div class="screen">
+            <video id="example" data-autoplay muted loop playsinline preload="metadata" poster="assets/film-loop.jpg" aria-label="Opening of the short film Press play: a nurse comes home late to a dark kitchen, and the title Press play appears">
+              <source src="assets/film-loop.mp4" type="video/mp4">
             </video>
-            <span class="tag">Made with Seedance 2.5</span>
-            <button class="toggle" type="button" data-video="example" aria-label="Play the example">Play</button>
+            <button class="toggle" type="button" data-video="example" aria-label="Play the opening">Play</button>
           </div>
-          <figcaption>A vertical post made with Seedance 2.5 by the ComfyField team.</figcaption>
+          <figcaption><a href="#film-section">Watch the full film with sound</a></figcaption>
         </figure>
       </div>
     </section>
@@ -187,6 +186,14 @@
           </figure>
         </div>
       </div>
+    </section>
+
+    <section id="film-section" class="demo wrap" aria-labelledby="film-title">
+      <h2 id="film-title">Press play, a short film</h2>
+      <div class="demo-frame">
+        <video id="film-full" controls playsinline preload="none" poster="assets/film.jpg"><source src="assets/film.mp4" type="video/mp4"></video>
+      </div>
+      <p class="film-note">Made by the ComfyField team with MiniMax, LTX and Blender.</p>
     </section>
 
     <section id="demo" class="demo wrap" aria-labelledby="demo-title">

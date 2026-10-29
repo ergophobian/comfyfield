@@ -1,8 +1,9 @@
 # Launch assets
 
-## Hero example
+## Hero film
 
-- `example-seedance.mp4` (720 × 1280, 26 s, H.264, no audio, faststart) and `example-seedance.jpg` (the frame at 1 s): a web copy of a vertical post Kyle Kumar made with Seedance 2.5 (source: `capcutedit.mp4`, 1080 × 1920, 60 fps). Used with his permission. Re-encoded with ffmpeg at 30 fps, CRF 25, capped at 2.1 Mb/s.
+- `film.mp4` (1280 × 720, 4 min 24 s, H.264 + AAC, faststart) and `film.jpg` (the frame at 4:11): a web copy of "Press play", a short film the ComfyField team made with MiniMax, LTX and Blender (source: `1029-full-film-music-004.mp4`, 1920 × 1080). The ComfyField logo covers the generator's corner mark; the "Press play" title and the end card were added with ffmpeg. Used with Kyle Kumar's permission. CRF 27, capped at 1.3 Mb/s.
+- `film-loop.mp4` (1280 × 720, 15 s, no audio) and `film-loop.jpg` (the frame at 0:16.5): the opening, 0:03.1 to 0:17.9, for the hero.
 
 ## Footage
 

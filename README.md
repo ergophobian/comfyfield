@@ -6,9 +6,9 @@ Insert your product, pick a proven viral format, post on schedule. ComfyField is
 
 **Site:** https://comfyfield.com
 
-<a href="site/assets/example-seedance.mp4"><img src="site/assets/example-seedance.jpg" width="270" alt="A vertical fitness post made with Seedance 2.5: a creator in a gym introduces four core exercises"></a>
+<a href="https://comfyfield.com/#film-section"><img src="site/assets/film-loop.jpg" width="640" alt="Press play, a short film: a nurse at her kitchen table late at night, with the title Press play"></a>
 
-Made with Seedance 2.5 by the ComfyField team.
+**Press play**, a short film made by the ComfyField team with MiniMax, LTX and Blender: [watch on comfyfield.com](https://comfyfield.com/#film-section) · [download the MP4](site/assets/film.mp4)
 
 <!-- DEMO VIDEO -->
 **Demo video (2 min):** [watch on comfyfield.com](https://comfyfield.com/#demo) · [download the MP4](site/assets/demo.mp4)

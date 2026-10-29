@@ -95,11 +95,10 @@
   --w-shot: 900px;
   --w-wide-text: 760px;
   --gap-hair: 2px;
-  --w-phone: 340px;
   --w-format-shot: 360px;
   --w-lead: 34em;
-  --ratio-phone: 9 / 16;
   --ratio-scene: 1280 / 704;
+  --ratio-film: 16 / 9;
 }
 
 * { box-sizing: border-box; }
@@ -134,7 +133,7 @@ code, pre { font-family: var(--mono); }
 
 /* Hero */
 .hero { background: var(--sky-hero); padding-block: var(--s-6) var(--s-7); }
-.hero-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: var(--s-6); align-items: center; }
+.hero-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: var(--s-6); align-items: center; }
 h1 { font-size: var(--t-hero); line-height: var(--tight); letter-spacing: var(--track-hero); font-weight: 680; }
 .hero-lead { margin-top: var(--s-4); color: var(--ink-2); font-size: var(--t-lg); line-height: 1.4; letter-spacing: var(--track-sub); max-width: 22em; }
 .actions { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-5); }
@@ -142,12 +141,11 @@ h1 { font-size: var(--t-hero); line-height: var(--tight); letter-spacing: var(--
 .chain li { padding: var(--pad-chip); border-radius: var(--r-pill); background: var(--glass); border: var(--hair) solid var(--glass-line); backdrop-filter: var(--blur-md); }
 .chain li + li::before { content: '\2192'; margin-right: var(--s-2); color: var(--blue); }
 
-.phone { justify-self: center; width: min(var(--w-phone), 100%); }
-.phone-screen { position: relative; aspect-ratio: var(--ratio-phone); border-radius: var(--r-xl); overflow: hidden; background: var(--night); box-shadow: var(--shadow-film); border: var(--hair) solid var(--glass-line); }
-.phone-screen video { width: 100%; height: 100%; object-fit: cover; }
-.phone-screen::after, .screen::after { content: ''; position: absolute; inset: auto 0 0; height: 30%; background: var(--scrim-film); pointer-events: none; }
-.tag { position: absolute; left: var(--s-3); top: var(--s-3); z-index: 1; padding: var(--pad-pill); border-radius: var(--r-pill); background: var(--night-glass); border: var(--hair) solid var(--night-line); color: var(--night-ink); font-size: var(--t-xs); font-weight: 600; backdrop-filter: var(--blur-md); }
-.phone figcaption { margin-top: var(--s-3); font-size: var(--t-sm); color: var(--ink); opacity: .72; text-align: center; }
+.hero-film .screen { aspect-ratio: var(--ratio-film); border-radius: var(--r-xl); box-shadow: var(--shadow-film); border: var(--hair) solid var(--glass-line); }
+.screen::after { content: ''; position: absolute; inset: auto 0 0; height: 30%; background: var(--scrim-film); pointer-events: none; }
+.hero-film figcaption { margin-top: var(--s-3); font-size: var(--t-sm); text-align: center; }
+.hero-film figcaption a { color: var(--ink); font-weight: 600; }
+.film-note { margin-top: var(--s-3); font-size: var(--t-sm); color: var(--ink-2); }
 .toggle { position: absolute; right: var(--s-3); bottom: var(--s-3); z-index: 1; padding: var(--pad-pill); border: var(--hair) solid var(--night-line); border-radius: var(--r-pill); background: var(--night-glass); color: var(--night-ink); font: 600 var(--t-xs)/1 var(--sans); cursor: pointer; backdrop-filter: var(--blur-md); }
 .toggle:hover { background: var(--night-glass-hi); }
 
@@ -262,7 +260,7 @@ code { font-size: .9em; }
 .foot-links a:not(.btn-blue) { color: var(--ink); }
 
 @media (max-width: 720px) {
-  :root { --gutter: 32px; --s-6: 32px; --s-7: 64px; --s-8: 80px; --w-phone: 300px; }
+  :root { --gutter: 32px; --s-6: 32px; --s-7: 64px; --s-8: 80px; }
   .top nav { gap: var(--s-3); }
   .top nav a:not(.pill) { display: none; }
   .hero { padding-top: var(--s-4); }
