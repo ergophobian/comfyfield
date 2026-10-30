@@ -1,0 +1,107 @@
+# Music report
+
+- length 36.00 s · 240 bpm · 6 pulses a bar (1.5 s) · D dorian · 770 events
+- integrated loudness -15.6 LUFS · loudness range 3.5 LU · true peak -1.5 dBFS (want about -16 LUFS for a phone, peak under -1)
+- instruments: string 335, pop 16, woodbar 52, stomp 45, chuck 38, bass 48, glass 23, wood 11, bell 15, paper 5, pat 45, tine 22, whoosh 5, shaker 60, swell 1, tick 24, thump 6, sizzle 1, scrape 6, chop 6, breath 6
+- loudness each second (dBFS RMS): -20 -18 -26 -21 -22 -24 -17 -17 -17 -17 -18 -18 -17 -17 -18 -18 -17 -16 -17 -17 -18 -16 -16 -17 -16 -17 -19 -16 -17 -17 -18 -18 -19 -16 -19 -19
+
+## Sections
+- 0–6 s Intro — the taco built and taken apart — pluck alone, then pats; toppings and layers ring their own notes
+- 6–15 s Countdown — growing — groove in: hemiola strum, bass, shaker, pats
+- 15–21 s Night — map and nixtamal — drops to glass pad, tine, ticking like a truck/clock; Bb lydian colour
+- 21–30 s Fire — trompo, comal, shave — fullest: thump on the big beats, scrapes, sizzle, the breath tune
+- 30–36 s Dinner — three bites — stop-time on the bites; D lydian to close
+
+## Cues → what the music does there (nearest event / nearest strong event)
+- 0.00 s [scene] hero: string 0 ms / pop 248 ms
+- 0.25 s [hit] taco: pineapple lands: woodbar -2 ms / pop -2 ms
+- 0.50 s [hit] taco: onion lands: woodbar 3 ms / pop -5 ms
+- 0.75 s [hit] taco: cilantro lands: pop 0 ms / pop 0 ms
+- 1.00 s [hit] taco: salsa lands: woodbar -2 ms / pop 4 ms
+- 1.25 s [hit] taco: lime lands: pop 2 ms / pop 2 ms
+- 3.00 s [scene] apart: glass 0 ms / stomp -3 ms
+- 3.25 s [soft] apart: salsa lifts: string 4 ms / wood -246 ms
+- 3.50 s [soft] apart: cilantro lifts: bell 1 ms / chuck -4 ms
+- 3.75 s [soft] apart: onion lifts: stomp 0 ms / stomp 0 ms
+- 4.00 s [soft] apart: pineapple lifts: bell -2 ms / stomp 128 ms
+- 4.25 s [soft] apart: pork lifts: bell -2 ms / chuck -5 ms
+- 4.50 s [soft] apart: tortilla1 lifts: string 1 ms / stomp 2 ms
+- 4.75 s [soft] apart: tortilla2 lifts: bell 2 ms / chuck -5 ms
+- 5.00 s [soft] apart: lime rises: bell 2 ms / stomp -2 ms
+- 6.00 s [scene] pineapple: string 0 ms / wood -1 ms
+- 6.50 s [hit] pineapple: crown lands in the soil: woodbar -1 ms / pop 2 ms
+- 7.25 s [soft] pineapple: fruit rises from the centre: chuck 1 ms / chuck 1 ms
+- 7.75 s [soft] pineapple: violet flowers open: woodbar -1 ms / chuck 2 ms
+- 8.50 s [hit] pineapple: ripe and gold: bass 1 ms / stomp -5 ms
+- 9.00 s [scene] pig: woodbar 0 ms / stomp -3 ms
+- 10.50 s [hit] pig: stops and roots in the mud: bass -1 ms / stomp -3 ms
+- 11.00 s [soft] pig: snout flicks dirt: woodbar 0 ms / shaker 2 ms
+- 11.50 s [hit] pig: grown, head up: string 1 ms / shaker -1 ms
+- 12.00 s [scene] corn: bass 0 ms / bass 0 ms
+- 12.25 s [soft] corn: seedlings surge up: string 3 ms / shaker 4 ms
+- 12.75 s [hit] corn: shoots past the farmer: stomp 0 ms / stomp 0 ms
+- 13.25 s [hit] corn: full height, tassels out: chuck -1 ms / chuck -1 ms
+- 14.25 s [soft] corn: dry ears droop: woodbar 0 ms / pat 3 ms
+- 15.00 s [scene] map: bass 0 ms / wood 1 ms
+- 15.50 s [soft] map: the trucks set off: tine 1 ms / tick -4 ms
+- 16.25 s [soft] map: limes truck reaches Mexico City: tick -1 ms / tick -1 ms
+- 16.50 s [soft] map: pineapple truck reaches Mexico City: glass 2 ms / tick 2 ms
+- 16.75 s [soft] map: pork truck reaches Mexico City: bell 0 ms / tick 0 ms
+- 17.00 s [hit] map: corn truck reaches Mexico City: bell 2 ms / tick -4 ms
+- 18.00 s [scene] nixtamal: string -1 ms / wood 2 ms
+- 18.50 s [hit] nixtamal: kernels splash into the limewater: woodbar 0 ms / pat -1 ms
+- 19.50 s [soft] nixtamal: dawn, the clock reaches six: woodbar 0 ms / tick 5 ms
+- 20.00 s [soft] nixtamal: first push of the mano: tick -2 ms / tick -2 ms
+- 20.50 s [hit] nixtamal: a ball of masa: tick 2 ms / tick 2 ms
+- 21.00 s [scene] trompo: stomp 0 ms / stomp 0 ms
+- 21.50 s [hit] trompo: first slab slaps onto the spit: woodbar 1 ms / string -1 ms
+- 22.25 s [soft] trompo: the stack climbs: pop 0 ms / pop 0 ms
+- 23.00 s [soft] trompo: last slab lands: pop 1 ms / pop 1 ms
+- 23.50 s [hit] trompo: the pineapple crowns it: woodbar -1 ms / shaker 3 ms
+- 24.00 s [scene] comal: thump 1 ms / thump 1 ms
+- 24.50 s [hit] comal: the press slams the masa flat: shaker 1 ms / shaker 1 ms
+- 25.00 s [soft] comal: the tortilla lands on the hot comal: woodbar 0 ms / shaker 0 ms
+- 25.75 s [hit] comal: the tortilla PUFFS: pat 1 ms / pat 1 ms
+- 27.00 s [scene] shave: string 1 ms / string 1 ms
+- 27.25 s [hit] shave: first slices fall into the tortilla: pop 3 ms / pop 3 ms
+- 27.75 s [soft] shave: second stroke: string 1 ms / string 1 ms
+- 28.25 s [soft] shave: third stroke: scrape 0 ms / scrape 0 ms
+- 28.75 s [soft] shave: the knife flicks the pineapple: pat 3 ms / pat 3 ms
+- 29.25 s [hit] shave: the pineapple lands on the taco: chuck 2 ms / chuck 2 ms
+- 30.00 s [scene] bites: string 1 ms / wood -3 ms
+- 30.25 s [hit] dinner: onion lands: woodbar -2 ms / pop -4 ms
+- 30.50 s [hit] dinner: cilantro lands: woodbar 0 ms / pop 3 ms
+- 30.75 s [hit] dinner: salsa lands: string -3 ms / pop -5 ms
+- 31.00 s [hit] dinner: lime lands: woodbar -3 ms / pop 3 ms
+- 32.25 s [hit] bite 1: bass -1 ms / bass -1 ms
+- 33.00 s [hit] bite 2: thump 0 ms / thump 0 ms
+- 33.75 s [hit] bite 3: string 0 ms / bass -1 ms
+- 34.50 s [scene] end: glass 0 ms / bass -3 ms
+
+## Bars
+- bar 0 @0s: 20 events · string pop woodbar · A D F E
+- bar 1 @1.5s: 21 events · stomp string chuck · A D F E
+- bar 2 @3s: 30 events · stomp bass glass string wood bell chuck · C A G D E F
+- bar 3 @4.5s: 25 events · bass bell string stomp chuck · G B D E C F
+- bar 4 @6s: 36 events · paper stomp wood string bass woodbar chuck pat pop tine · A D F E G C
+- bar 5 @7.5s: 33 events · bass string woodbar stomp chuck pat · C G E D B A
+- bar 6 @9s: 43 events · whoosh string stomp woodbar bass wood shaker pat chuck · C F A E D B Eb
+- bar 7 @10.5s: 44 events · woodbar stomp string bass shaker pat chuck whoosh tine · G B D E A F C
+- bar 8 @12s: 46 events · paper string wood stomp bass shaker woodbar pat chuck · A D F E C
+- bar 9 @13.5s: 42 events · bass string woodbar shaker stomp chuck pat swell · C G B E D A F
+- bar 10 @15s: 22 events · glass tick bass wood string tine bell · E F D Bb A G
+- bar 11 @16.5s: 18 events · glass bell bass tick tine paper · G E B A C D F
+- bar 12 @18s: 23 events · glass tick string tine bass wood pat woodbar · Bb D F A G C
+- bar 13 @19.5s: 20 events · glass tine bass woodbar tick pat · E A D G
+- bar 14 @21s: 44 events · whoosh thump string sizzle wood shaker stomp bass woodbar pat chuck pop · A D F E C
+- bar 15 @22.5s: 40 events · string shaker bass stomp chuck pat pop woodbar scrape · G B C E D A F
+- bar 16 @24s: 44 events · paper bass string thump stomp shaker wood chop chuck pat scrape pop woodbar · F C B A E D Eb
+- bar 17 @25.5s: 40 events · string bass stomp shaker whoosh bell pop pat chuck scrape · D C# G B E F
+- bar 18 @27s: 48 events · thump shaker string stomp wood bass breath pop woodbar pat chuck scrape chop · A D F E C
+- bar 19 @28.5s: 44 events · string shaker bass breath stomp chuck pat whoosh tine woodbar pop scrape · B G E D A F
+- bar 20 @30s: 28 events · paper wood bass string pop woodbar pat · D A F E C
+- bar 21 @31.5s: 26 events · bass string chop thump · C B G E D A F
+- bar 22 @33s: 14 events · chop bass thump string · G D B
+- bar 23 @34.5s: 19 events · glass bass string wood bell tine · A D F# Ab C# E
+
+Pictures: pianoroll.png (notes by instrument, red lines = film cues), spectrogram.png, waveform.png. Sound: music.wav.

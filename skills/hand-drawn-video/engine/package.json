@@ -1,0 +1,7 @@
+{
+  "name": "hand-drawn-video-engine",
+  "private": true,
+  "type": "module",
+  "description": "Renders hand-drawn canvas videos: headless Chrome/Edge draws the frames, ffmpeg encodes them",
+  "dependencies": { "puppeteer-core": "^23.11.1" }
+}

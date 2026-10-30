@@ -1,0 +1,107 @@
+# Music report
+
+- length 37.50 s · 240 bpm · 6 pulses a bar (1.5 s) · D aeolian · 1278 events
+- integrated loudness -15.8 LUFS · loudness range 7.6 LU · true peak -1.5 dBFS (want about -16 LUFS for a phone, peak under -1)
+- instruments: jarana 719, requinto 88, palmeo 34, wood 11, leona 61, tecomate 238, whoosh 2, tarima 96, paper 5, scrape 9, plunk 1, quijada 6, comal 2, puff 1, chop 2, crunch 3
+- loudness each second (dBFS RMS): -23 -23 -25 -22 -20 -22 -21 -22 -22 -20 -21 -20 -20 -19 -20 -26 -21 -25 -24 -26 -25 -17 -18 -17 -18 -19 -18 -18 -17 -18 -19 -22 -24 -24 -19 -22 -45 -73
+
+## Sections
+- 0–6 s Intro — the taco built and taken apart — jarana alone, requinto plucks the toppings; palmeo and the tecomate lift the layers
+- 6–15 s Countdown — growing — the son arrives: rasgueo in the hemiola, leona, tarima heels; tecomate climbs a step a bar; requinto hook from the pig
+- 15–21 s Night — map and nixtamal — drop: a soft jarana trémolo, the night tune rolled on the tecomate, the leona as the truck; nobody dances
+- 21–30 s Fire — trompo, comal, shave — fullest: both dancers, redobles, quijada; the puff stops the band; the requinto arcs with the pineapple
+- 30–34.5 s Dinner — three bites — the toppings rhyme, then stop-time: Gm – Bb – A7 on the bites, the C# alone
+- 34.5–37.5 s End card — remate: the last stamp, a D major trémolo, the Picardy third, ringing out
+
+## Cues → what the music does there (nearest event / nearest strong event)
+- 0.00 s [hit] taco: pineapple lands: jarana 0 ms / —
+- 0.00 s [scene] hero: jarana 0 ms / —
+- 0.50 s [hit] taco: onion lands: requinto 0 ms / —
+- 1.00 s [hit] taco: cilantro lands: requinto 0 ms / —
+- 1.50 s [hit] taco: salsa lands: jarana 0 ms / —
+- 2.00 s [hit] taco: lime lands: jarana 0 ms / —
+- 2.55 s [soft] taco: the fold opens: palmeo 0 ms / palmeo 0 ms
+- 3.00 s [scene] apart: leona 1 ms / wood -5 ms
+- 3.50 s [soft] apart: salsa lifts: jarana 0 ms / palmeo 5 ms
+- 3.75 s [soft] apart: onion lifts: jarana 0 ms / palmeo 0 ms
+- 4.00 s [soft] apart: pork lifts: jarana 0 ms / palmeo 6 ms
+- 4.25 s [soft] apart: tortilla2 lifts: jarana 0 ms / palmeo 6 ms
+- 4.50 s [soft] apart: lime rises: jarana 0 ms / palmeo 6 ms
+- 6.00 s [scene] pineapple: jarana -1 ms / wood -3 ms
+- 6.50 s [hit] pineapple: crown lands in the soil: jarana 0 ms / palmeo 5 ms
+- 7.25 s [soft] pineapple: fruit rises from the centre: jarana 0 ms / tarima 247 ms
+- 7.50 s [soft] pineapple: violet flowers open: jarana 0 ms / tarima -3 ms
+- 8.50 s [hit] pineapple: ripe and gold: jarana 0 ms / tarima 3 ms
+- 9.00 s [scene] pig: tecomate 0 ms / tarima -4 ms
+- 10.50 s [hit] pig: stops and roots in the mud: jarana 0 ms / tarima -11 ms
+- 11.00 s [soft] pig: snout flicks dirt: jarana 0 ms / tarima -11 ms
+- 11.50 s [hit] pig: grown, head up: jarana 0 ms / tarima -12 ms
+- 12.00 s [scene] corn: tecomate 0 ms / tarima 2 ms
+- 12.25 s [soft] corn: seedlings surge up: jarana 0 ms / tarima -248 ms
+- 12.75 s [hit] corn: shoots past the farmer: jarana 0 ms / tarima 0 ms
+- 13.25 s [hit] corn: full height, tassels out: jarana 0 ms / tarima 125 ms
+- 14.25 s [soft] corn: dry ears droop: jarana 0 ms / tarima 128 ms
+- 15.00 s [scene] map: jarana 1 ms / wood -1 ms
+- 15.50 s [soft] map: the trucks set off: jarana 1 ms / scrape 249 ms
+- 16.25 s [soft] map: limes truck reaches Mexico City: jarana 0 ms / scrape 245 ms
+- 16.50 s [soft] map: pineapple truck reaches Mexico City: jarana 0 ms / scrape -5 ms
+- 16.75 s [soft] map: pork truck reaches Mexico City: jarana 0 ms / —
+- 17.00 s [hit] map: corn truck reaches Mexico City: jarana 0 ms / —
+- 18.00 s [scene] nixtamal: jarana 1 ms / scrape -3 ms
+- 18.50 s [hit] nixtamal: kernels splash into the limewater: jarana 0 ms / plunk 3 ms
+- 19.50 s [soft] nixtamal: dawn, the clock reaches six: jarana 1 ms / scrape 6 ms
+- 20.00 s [soft] nixtamal: first push of the mano: jarana 1 ms / scrape 1 ms
+- 20.50 s [hit] nixtamal: a ball of masa: palmeo 1 ms / palmeo 1 ms
+- 21.00 s [scene] trompo: requinto 3 ms / leona 4 ms
+- 21.50 s [hit] trompo: first slab slaps onto the spit: jarana 0 ms / requinto 0 ms
+- 22.25 s [soft] trompo: the stack climbs: jarana 0 ms / requinto 3 ms
+- 23.00 s [soft] trompo: last slab lands: jarana 0 ms / requinto 0 ms
+- 23.50 s [hit] trompo: the pineapple crowns it: jarana 0 ms / tarima 2 ms
+- 24.00 s [scene] comal: palmeo 2 ms / palmeo 2 ms
+- 24.50 s [hit] comal: the press slams the masa flat: jarana 0 ms / palmeo 0 ms
+- 25.00 s [soft] comal: the tortilla lands on the hot comal: jarana 0 ms / palmeo -6 ms
+- 25.75 s [hit] comal: the tortilla PUFFS: jarana 0 ms / tarima 1 ms
+- 27.00 s [scene] shave: wood -4 ms / wood -4 ms
+- 27.25 s [hit] shave: first slices fall into the tortilla: jarana 0 ms / palmeo 0 ms
+- 27.75 s [soft] shave: second stroke: jarana 0 ms / tarima 0 ms
+- 28.25 s [soft] shave: third stroke: jarana 0 ms / chop 0 ms
+- 28.75 s [soft] shave: the knife flicks the pineapple: jarana 0 ms / tarima 128 ms
+- 29.25 s [hit] shave: the pineapple lands on the taco: jarana 0 ms / jarana 0 ms
+- 30.00 s [scene] bites: jarana 1 ms / wood -2 ms
+- 30.25 s [hit] dinner: onion lands: requinto 0 ms / —
+- 30.50 s [hit] dinner: cilantro lands: jarana 0 ms / tarima 239 ms
+- 30.75 s [hit] dinner: salsa lands: requinto 0 ms / tarima -11 ms
+- 31.00 s [hit] dinner: lime lands: requinto 0 ms / —
+- 31.50 s [hit] bite 1: crunch 0 ms / crunch 0 ms
+- 32.25 s [hit] bite 2: crunch 0 ms / crunch 0 ms
+- 33.00 s [hit] bite 3: crunch 0 ms / crunch 0 ms
+- 34.50 s [scene] end: wood -1 ms / wood -1 ms
+
+## Bars
+- bar 0 @0s: 13 events · jarana requinto · A D F E
+- bar 1 @1.5s: 39 events · jarana requinto palmeo · A D F C# E G
+- bar 2 @3s: 53 events · wood jarana leona palmeo tecomate · A D F G Bb
+- bar 3 @4.5s: 44 events · leona jarana tecomate palmeo whoosh · A E C# G D F
+- bar 4 @6s: 68 events · tecomate tarima wood jarana leona palmeo · D A F G Bb
+- bar 5 @7.5s: 68 events · tarima tecomate jarana leona requinto · E A C# G D F
+- bar 6 @9s: 74 events · whoosh leona tarima jarana tecomate requinto wood · D A F G Bb C
+- bar 7 @10.5s: 74 events · tarima tecomate jarana leona requinto · G C E Bb A F
+- bar 8 @12s: 75 events · paper jarana wood leona tecomate requinto tarima · F D Bb A G
+- bar 9 @13.5s: 60 events · jarana leona tarima tecomate requinto · A C# E G
+- bar 10 @15s: 63 events · paper tecomate leona wood jarana scrape · A Bb F D G E
+- bar 11 @16.5s: 70 events · scrape tecomate jarana leona · E D A C F
+- bar 12 @18s: 65 events · paper tecomate scrape jarana wood leona plunk · A G Bb D C
+- bar 13 @19.5s: 67 events · quijada jarana leona scrape tecomate palmeo requinto · E A D G
+- bar 14 @21s: 61 events · tarima wood requinto leona jarana comal tecomate palmeo · A D F G Bb
+- bar 15 @22.5s: 64 events · requinto tarima leona jarana palmeo tecomate quijada · E A C# G D F
+- bar 16 @24s: 64 events · paper tarima wood leona jarana palmeo requinto comal · D A F G Bb C
+- bar 17 @25.5s: 53 events · puff leona jarana tarima requinto palmeo quijada · C G E Bb A F
+- bar 18 @27s: 60 events · tarima leona wood requinto jarana tecomate palmeo chop · Bb D F G A
+- bar 19 @28.5s: 43 events · tarima jarana leona requinto quijada paper · A C# G E
+- bar 20 @30s: 32 events · tarima jarana wood leona requinto · A D F E
+- bar 21 @31.5s: 18 events · tarima leona crunch jarana · G D Bb F
+- bar 22 @33s: 10 events · leona crunch jarana tarima requinto · A C# E G
+- bar 23 @34.5s: 40 events · tarima wood requinto quijada leona jarana · D A F#
+- bar 24 @36s: 0 events ·  · 
+
+Pictures: pianoroll.png (notes by instrument, red lines = film cues), spectrogram.png, waveform.png. Sound: music.wav.
