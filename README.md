@@ -8,7 +8,7 @@ Insert your product, pick a proven viral format, post on schedule. ComfyField is
 
 <a href="https://comfyfield.com/#film-section"><img src="site/assets/film-loop.jpg" width="640" alt="Press play, a short film: a nurse at her kitchen table late at night, with the title Press play"></a>
 
-**Press play**, a short film made by the ComfyField team with MiniMax, LTX and Blender: [watch on comfyfield.com](https://comfyfield.com/#film-section) · [download the MP4](site/assets/film.mp4)
+**Press play**, a short film made by the ComfyField team with MiniMax H3, LTX and Blender: [watch on comfyfield.com](https://comfyfield.com/#film-section) · [download the MP4](site/assets/film.mp4)
 
 <!-- DEMO VIDEO -->
 **Demo video (2 min):** [watch on comfyfield.com](https://comfyfield.com/#demo) · [download the MP4](site/assets/demo.mp4)
